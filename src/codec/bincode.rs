@@ -12,8 +12,6 @@ use async_trait::async_trait;
 use bincode::{
     DefaultOptions,
     Options,
-    config::WithOtherIntEncoding,
-    config::FixintEncoding
 };
 use erased_serde as erased;
 use serde::de::Visitor;
@@ -43,8 +41,6 @@ impl From<bincode::Error> for crate::error::Error {
     }
 }
 
-type Decoder = bincode::Deserializer<bincode::de::read::IoReader<Cursor<Vec<u8>>>, WithOtherIntEncoding<DefaultOptions, FixintEncoding>>;
-
 pub struct Codec<R, W>
 where 
     R: FrameRead + Send + Sync + Unpin,
@@ -52,9 +48,6 @@ where
 {
     reader: R,
     writer: W,
-
-    // decoder buffer. The decoded must have a lifetime as long as the codec
-    // _dec_buf: Decoder,
 }
 
 impl<R, W> Codec<R, W> 
@@ -66,11 +59,6 @@ where
         Self {
             reader,
             writer,
-            
-            // _dec_buf: bincode::Deserializer::with_reader(
-            //     Cursor::new(vec![]), 
-            //     DefaultOptions::new().with_fixint_encoding()
-            // )
         }
     }
 }
@@ -118,8 +106,7 @@ where
             Err(e) => return Some(Err(e))
         };
 
-        // need to store with the codec to ensure a lifetime long enough
-        // self._dec_buf = de;
+        // wrap the deserializer as DeserializerOwned
         let de_owned = DeserializerOwned::new(de);
 
         // returns a Deserializer referencing to decoder

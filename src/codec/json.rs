@@ -1,4 +1,3 @@
-// use futures::StreamExt;
 use futures::io::{
     AsyncRead,
     AsyncWrite,
@@ -32,14 +31,9 @@ impl From<serde_json::error::Error> for Error {
     }
 }
 
-pub type Decoder = serde_json::Deserializer<serde_json::de::IoRead<Cursor<Vec<u8>>>>;
-
 pub struct Codec<T> where T: AsyncRead + AsyncWrite + Send + Sync + Clone {
     reader: BufReader<T>,
     writer: BufWriter<T>,
-
-    // decoder buffer
-    // _dec_buf: Decoder
 }
 
 impl<T> Codec<T> where T: AsyncRead + AsyncWrite + Send + Sync + Clone {
@@ -47,11 +41,6 @@ impl<T> Codec<T> where T: AsyncRead + AsyncWrite + Send + Sync + Clone {
         Self {
             reader: BufReader::new(stream.clone()),
             writer: BufWriter::new(stream.clone()),
-            // _dec_buf: serde_json::Deserializer::from_reader(
-            //     Cursor::new(
-            //         Vec::new()
-            //     )
-            // )
         }
     }
 }
@@ -89,7 +78,7 @@ where T: Unpin + AsyncRead + AsyncWrite + Send + Sync + Clone
             Err(e) => return Some(Err(e.into()))
         };
 
-        // self._dec_buf = de;
+        // wrap the deserializer as DeserializerOwned
         let de_owned = DeserializerOwned::new(de);
 
         Some(
