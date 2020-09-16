@@ -1495,6 +1495,16 @@ dependencies = [
  "serde",
  "serde_json",
  "tide",
+ "toy_rpc_macros",
+]
+
+[[package]]
+name = "toy_rpc_macros"
+version = "0.1.0"
+dependencies = [
+ "lazy_static",
+ "quote",
+ "syn",
 ]
 
 [[package]]

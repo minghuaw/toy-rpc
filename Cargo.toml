@@ -15,7 +15,6 @@ codec-bincode = []
 codec-json = []
 
 
-
 [dependencies]
 serde = { version = "1.0.115", features = ["derive"] }
 features = "0.10.0"
@@ -30,3 +29,11 @@ log = "0.4.11"
 env_logger = "0.7.1"
 tide = { version = "0.13.0", optional = true }
 lazy_static = "1.4.0"
+
+# local imports
+toy_rpc_macros = { path="macros", version = "0.1.0" }
+
+[workspace]
+members = [
+    "macros"
+]

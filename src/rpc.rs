@@ -1,5 +1,5 @@
+use serde::{Deserialize, Serialize};
 use std::sync::atomic::AtomicU16;
-use serde::{Serialize, Deserialize};
 
 // use crate::error::{Error, RpcError};
 
@@ -25,7 +25,7 @@ impl Metadata for RequestHeader {
 #[derive(Serialize, Deserialize, Debug, Default)]
 pub struct ResponseHeader {
     pub id: MessageId,
-    pub is_error: bool
+    pub is_error: bool,
 }
 
 impl Metadata for ResponseHeader {

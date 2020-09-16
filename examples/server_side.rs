@@ -1,30 +1,30 @@
-use std::sync::{Arc, Mutex};
-use async_std::task;
 use async_std::net::TcpListener;
-use serde::{Serialize, Deserialize};
+use async_std::task;
 use env_logger;
-use log;
 use lazy_static::lazy_static;
+use log;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
 
 use toy_rpc::server::Server;
-use toy_rpc::service::Service;
 use toy_rpc::service::Handler;
+use toy_rpc::service::Service;
 
 #[derive(Serialize, Deserialize, Debug)]
 struct EchoRequest {
     pub a: u32,
-    pub b: u32
+    pub b: u32,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 struct EchoResponse {
     pub a: u32,
-    pub b: u32
+    pub b: u32,
 }
 
 struct EchoService {
-    counter: Mutex<u32>
+    counter: Mutex<u32>,
 }
 
 trait EchoRpc {
@@ -36,10 +36,7 @@ trait EchoRpc {
 
 impl EchoRpc for EchoService {
     fn echo(&self, req: EchoRequest) -> Result<EchoResponse, String> {
-        let res = EchoResponse {
-            a: req.a,
-            b: req.b
-        };
+        let res = EchoResponse { a: req.a, b: req.b };
 
         Ok(res)
     }
@@ -47,7 +44,7 @@ impl EchoRpc for EchoService {
     fn increment_a(&self, req: EchoRequest) -> Result<EchoResponse, String> {
         let res = EchoResponse {
             a: req.a + 1,
-            b: req.b 
+            b: req.b,
         };
 
         Ok(res)
@@ -56,20 +53,19 @@ impl EchoRpc for EchoService {
     fn increment_b(&self, req: EchoRequest) -> Result<EchoResponse, String> {
         let res = EchoResponse {
             a: req.a,
-            b: req.b + 1
+            b: req.b + 1,
         };
 
         Ok(res)
     }
 
     fn increment_counter(&self, req: EchoRequest) -> Result<EchoResponse, String> {
-        let mut _counter = self.counter.lock()
-            .map_err(|_| "")?;
-        
+        let mut _counter = self.counter.lock().map_err(|_| "")?;
+
         *_counter += 1;
         let res = EchoResponse {
             a: req.a,
-            b: *_counter
+            b: *_counter,
         };
         Ok(res)
     }
@@ -82,15 +78,15 @@ lazy_static! {
             .register_method("increment_a", EchoService::increment_a)
             .register_method("increment_b", EchoService::increment_b)
             .register_method("increment_counter", EchoService::increment_counter);
-        
+
         builder.handlers
     };
 }
 
-
-
 async fn run_server() {
-    let echo = EchoService{counter: Mutex::new(0u32)};
+    let echo = EchoService {
+        counter: Mutex::new(0u32),
+    };
     // let echo_service = Service::builder()
     //     .register_state(Arc::new(echo))
     //     .register_method("echo", EchoService::echo)
@@ -108,9 +104,7 @@ async fn run_server() {
     // let fut = accept_loop(addrs);
 
     log::info!("Starting server at {}", &addrs);
-    let server = Server::builder()
-        .register("service", echo_service)
-        .build();
+    let server = Server::builder().register("service", echo_service).build();
 
     // server.serve_tcp(addrs).await.unwrap();
     let listener = TcpListener::bind(addrs).await.unwrap();

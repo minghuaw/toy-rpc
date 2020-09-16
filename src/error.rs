@@ -1,27 +1,31 @@
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug)]
 pub enum Error {
-    IoError (std::io::Error),
+    IoError(std::io::Error),
 
-    ParseError { source: Box<dyn std::error::Error + Send> },
+    ParseError {
+        source: Box<dyn std::error::Error + Send>,
+    },
     // ParseError{ source: &'static (dyn std::error::Error + Send) },
-
-    TransportError { expected: u64, found: u64 },
+    TransportError {
+        expected: u64,
+        found: u64,
+    },
 
     NoneError,
 
-    RpcError(RpcError)
+    RpcError(RpcError),
 }
 
 impl std::error::Error for Error {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
             Error::IoError(ref e) => Some(e),
-            Error::ParseError{source} => Some(&**source),
-            Error::TransportError{ .. } => None,
+            Error::ParseError { source } => Some(&**source),
+            Error::TransportError { .. } => None,
             Error::NoneError => None,
-            Error::RpcError(ref e) => Some(e)
+            Error::RpcError(ref e) => Some(e),
         }
     }
 }
@@ -29,21 +33,13 @@ impl std::error::Error for Error {
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Error::IoError(ref err) => {
-                err.fmt(f)
-            },
-            Error::ParseError{source} => {
-                std::fmt::Display::fmt(&*source, f)
-            },
-            Error::TransportError{expected, found} => {
+            Error::IoError(ref err) => err.fmt(f),
+            Error::ParseError { source } => std::fmt::Display::fmt(&*source, f),
+            Error::TransportError { expected, found } => {
                 write!(f, "Expected: {}, Found: {}", expected, found)
-            },
-            Error::NoneError => {
-                write!(f, "None error")
-            },
-            Error::RpcError(ref err) => {
-                std::fmt::Display::fmt(err, f)
             }
+            Error::NoneError => write!(f, "None error"),
+            Error::RpcError(ref err) => std::fmt::Display::fmt(err, f),
         }
     }
 }
@@ -61,7 +57,7 @@ pub enum RpcError {
     MethodNotFound,
     InvalidParams,
     InternalError,
-    ServerError(String)
+    ServerError(String),
 }
 
 impl std::error::Error for RpcError {
@@ -72,7 +68,7 @@ impl std::error::Error for RpcError {
             RpcError::MethodNotFound => None,
             RpcError::InvalidParams => None,
             RpcError::InternalError => None,
-            RpcError::ServerError(_) => None
+            RpcError::ServerError(_) => None,
         }
     }
 }
@@ -80,24 +76,12 @@ impl std::error::Error for RpcError {
 impl std::fmt::Display for RpcError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            RpcError::ParseError => {
-                write!(f, "Parse error")
-            },
-            RpcError::InvalidRequest => {
-                write!(f, "Invalid request")
-            }
-            RpcError::MethodNotFound => {
-                write!(f, "Method not found")
-            },
-            RpcError::InvalidParams => {
-                write!(f, "Invalid parameters")
-            },
-            RpcError::InternalError => {
-                write!(f, "Internal error")
-            },
-            RpcError::ServerError(ref s) => {
-                write!(f, "Server error {}", s)
-            }
+            RpcError::ParseError => write!(f, "Parse error"),
+            RpcError::InvalidRequest => write!(f, "Invalid request"),
+            RpcError::MethodNotFound => write!(f, "Method not found"),
+            RpcError::InvalidParams => write!(f, "Invalid parameters"),
+            RpcError::InternalError => write!(f, "Internal error"),
+            RpcError::ServerError(ref s) => write!(f, "Server error {}", s),
         }
     }
 }

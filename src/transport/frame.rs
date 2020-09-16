@@ -1,27 +1,21 @@
-use std::pin::Pin;
 use async_trait::async_trait;
-use futures::Stream;
-use futures::ready;
-use futures::task::{
-    Poll,
-    Context,
-};
+use bincode::{DefaultOptions, Options};
 use futures::io::{
-    // AsyncRead, 
-    AsyncReadExt,
     AsyncBufRead,
+    // AsyncRead,
+    AsyncReadExt,
     // BufReader,
     AsyncWrite,
-    AsyncWriteExt
+    AsyncWriteExt,
 };
-use serde::{Serialize, Deserialize};
-use bincode::{
-    DefaultOptions,
-    Options
-};
-use pin_project::pin_project;
-use log;
+use futures::ready;
+use futures::task::{Context, Poll};
+use futures::Stream;
 use lazy_static::lazy_static;
+use log;
+use pin_project::pin_project;
+use serde::{Deserialize, Serialize};
+use std::pin::Pin;
 
 use crate::error::Error;
 use crate::rpc::MessageId;
@@ -31,7 +25,8 @@ type PayloadLen = u32;
 
 // const HEADER_LEN: usize = 8; // header length in bytes
 lazy_static! {
-    static ref HEADER_LEN: usize = bincode::serialized_size(&FrameHeader::default()).unwrap() as usize;
+    static ref HEADER_LEN: usize =
+        bincode::serialized_size(&FrameHeader::default()).unwrap() as usize;
 }
 
 #[async_trait]
@@ -42,11 +37,11 @@ pub trait FrameRead: AsyncBufRead {
 #[async_trait]
 pub trait FrameWrite: AsyncWrite {
     async fn write_frame(
-        &mut self, 
-        message_id: MessageId, 
-        frame_id: FrameId, 
-        payload_type: PayloadType, 
-        buf: &[u8]
+        &mut self,
+        message_id: MessageId,
+        frame_id: FrameId,
+        payload_type: PayloadType,
+        buf: &[u8],
     ) -> Result<usize, Error>;
 }
 
@@ -55,21 +50,21 @@ pub(crate) struct FrameHeader {
     message_id: MessageId,
     frame_id: FrameId,
     payload_type: u8, // this is not used for now
-    payload_len: PayloadLen
+    payload_len: PayloadLen,
 }
 
 impl FrameHeader {
     pub fn new(
-        message_id: MessageId, 
-        frame_id: FrameId, 
+        message_id: MessageId,
+        frame_id: FrameId,
         payload_type: PayloadType,
-        payload_len: PayloadLen
+        payload_len: PayloadLen,
     ) -> Self {
         Self {
             message_id,
             frame_id,
             payload_type: payload_type.into(),
-            payload_len
+            payload_len,
         }
     }
 
@@ -77,14 +72,14 @@ impl FrameHeader {
         DefaultOptions::new()
             .with_fixint_encoding()
             .deserialize(&buf)
-            .map_err(|err| Error::ParseError {source: err})
+            .map_err(|err| Error::ParseError { source: err })
     }
 
     pub fn to_vec(&self) -> Result<Vec<u8>, Error> {
         DefaultOptions::new()
             .with_fixint_encoding()
             .serialize(self)
-            .map_err(|err| Error::ParseError{source: err})
+            .map_err(|err| Error::ParseError { source: err })
     }
 }
 
@@ -106,7 +101,7 @@ impl From<u8> for PayloadType {
         match t {
             0 => Self::Header,
             1 => Self::Data,
-            _ => Self::Trailer
+            _ => Self::Trailer,
         }
     }
 }
@@ -116,7 +111,7 @@ impl From<PayloadType> for u8 {
         match t {
             PayloadType::Header => 0,
             PayloadType::Data => 1,
-            PayloadType::Trailer => 2
+            PayloadType::Trailer => 2,
         }
     }
 }
@@ -124,19 +119,15 @@ impl From<PayloadType> for u8 {
 pub struct Frame {
     pub message_id: MessageId,
     pub frame_id: FrameId,
-    pub payload: Vec<u8>
+    pub payload: Vec<u8>,
 }
 
 impl Frame {
-    pub fn new(
-        message_id: MessageId, 
-        frame_id: FrameId, 
-        payload: Vec<u8>
-    ) -> Self {
+    pub fn new(message_id: MessageId, frame_id: FrameId, payload: Vec<u8>) -> Self {
         Self {
             message_id,
             frame_id,
-            payload
+            payload,
         }
     }
 }
@@ -149,41 +140,37 @@ impl<R: AsyncBufRead + Unpin + Send + Sync> FrameRead for R {
         let _ = self.read_exact(&mut buf).await.ok()?;
         let header = match FrameHeader::from_slice(&buf) {
             Ok(h) => h,
-            Err(e) => return Some(Err(e))
+            Err(e) => return Some(Err(e)),
         };
-            
+
         // read frame payload
         let mut payload = vec![0; header.payload_len as usize];
         let _ = self.read_exact(&mut payload).await.ok()?;
 
-        Some(
-            Ok(
-                Frame::new(header.message_id, header.frame_id, payload)
-            )
-        )
+        Some(Ok(Frame::new(header.message_id, header.frame_id, payload)))
     }
 }
 
 #[async_trait]
 impl<W: AsyncWrite + AsyncWriteExt + Unpin + Send + Sync> FrameWrite for W {
     async fn write_frame(
-        &mut self, 
-        message_id: MessageId, 
-        frame_id: FrameId, 
+        &mut self,
+        message_id: MessageId,
+        frame_id: FrameId,
         payload_type: PayloadType,
-        buf: &[u8]
+        buf: &[u8],
     ) -> Result<usize, Error> {
         // check if buf length exceed maximum
         if buf.len() > PayloadLen::MAX as usize {
             return Err(Error::TransportError {
                 expected: PayloadLen::MAX as u64,
-                found: buf.len() as u64
-            })
+                found: buf.len() as u64,
+            });
         }
 
         // construct frame header
         let header = FrameHeader::new(message_id, frame_id, payload_type, buf.len() as u32);
-        
+
         // write header
         self.write(&header.to_vec()?).await?;
         self.flush().await?;
@@ -191,91 +178,90 @@ impl<W: AsyncWrite + AsyncWriteExt + Unpin + Send + Sync> FrameWrite for W {
         // write payload
         let nbytes = self.write(buf).await?;
         self.flush().await?;
-        
+
         Ok(nbytes)
     }
 }
 
-
 #[pin_project]
-pub struct FrameStream<'r, T> where T: AsyncBufRead + Send + Sync + Unpin {
+pub struct FrameStream<'r, T>
+where
+    T: AsyncBufRead + Send + Sync + Unpin,
+{
     #[pin]
     inner: &'r mut T,
-    header: Option<FrameHeader>
+    header: Option<FrameHeader>,
 }
 
 impl<'r, T: AsyncBufRead + Unpin + Send + Sync> Stream for FrameStream<'r, T> {
     type Item = Result<Frame, Error>;
 
-    fn poll_next(
-            self: Pin<&mut Self>,
-            cx: &mut Context<'_>,
-        ) -> Poll<Option<Self::Item>> {
-        
+    fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let this = self.project();
         let mut reader = this.inner;
         let header = this.header;
-        
+
         loop {
-            let buf = ready!(
-                reader.as_mut().poll_fill_buf(cx)?
-            ); 
+            let buf = ready!(reader.as_mut().poll_fill_buf(cx)?);
 
             if buf.len() == 0 {
-                return Poll::Ready(None)
-            } 
-            
+                return Poll::Ready(None);
+            }
+
             match header {
                 None => {
                     // pending if not enough bytes are found in buffer
                     if buf.len() < *HEADER_LEN {
                         // there will be more bytes coming
-                        return Poll::Pending
+                        return Poll::Pending;
                     }
-                    
+
                     // decode header
                     match FrameHeader::from_slice(&buf[..*HEADER_LEN]) {
                         Ok(h) => {
                             header.get_or_insert(h);
-                                                        
+
                             // consume the bytes used for header
                             reader.as_mut().consume(*HEADER_LEN);
-                            
+
                             // Cannot return Poll::Pending here
                             continue;
-                        },
+                        }
                         Err(e) => {
                             log::debug!("Parse error {}", e);
-                            return Poll::Ready(Some(Err(e)))
+                            return Poll::Ready(Some(Err(e)));
                         }
                     }
-                },
-                Some(ref h) => {                    
+                }
+                Some(ref h) => {
                     if buf.len() < h.payload_len as usize {
                         // there will be more bytes coming
-                        return Poll::Pending
+                        return Poll::Pending;
                     }
-                    
+
                     let payload = &buf[..h.payload_len as usize];
-                    
+
                     // construct frame
                     let frame = Frame {
                         message_id: h.message_id,
                         frame_id: h.frame_id,
-                        payload: payload.to_vec()
+                        payload: payload.to_vec(),
                     };
-                    
+
                     reader.as_mut().consume(h.payload_len as usize);
                     header.as_mut().take();
-    
-                    return Poll::Ready(Some(Ok(frame)))
+
+                    return Poll::Ready(Some(Ok(frame)));
                 }
             }
         }
     }
 }
 
-pub trait FrameStreamExt<T>: where T: AsyncBufRead + Unpin + Send + Sync {
+pub trait FrameStreamExt<T>
+where
+    T: AsyncBufRead + Unpin + Send + Sync,
+{
     fn frames<'a>(&'a mut self) -> FrameStream<'a, T>;
 }
 
@@ -283,7 +269,7 @@ impl<T: AsyncBufRead + Send + Sync + Unpin> FrameStreamExt<T> for T {
     fn frames<'a>(&'a mut self) -> FrameStream<'a, T> {
         FrameStream {
             inner: self,
-            header: None
+            header: None,
         }
     }
 }
@@ -306,7 +292,7 @@ mod tests {
         message_id: MessageId,
         frame_id: FrameId,
         payload_type: u8,
-        payload_len: PayloadLen
+        payload_len: PayloadLen,
     }
 
     #[test]

@@ -1,8 +1,8 @@
 mod codec;
-mod transport;
-mod rpc;
 mod error;
+mod rpc;
+mod transport;
 
-pub mod service;
-pub mod server;
 pub mod client;
+pub mod server;
+pub mod service;
