@@ -1,13 +1,15 @@
 use std::sync::Mutex;
-// use async_std::sync::Arc;
+use async_std::sync::Arc;
 use std::collections::HashMap;
 // use lazy_static::lazy_static;
-use toy_rpc::{
+use toy_rpc::macros::{
     // export_struct,
     export_impl,
     // export_method,
     // service::Handler
+    service,
 };
+use toy_rpc_definitions::service::HandleService;
 
 // #[export_struct]
 struct EchoService {
@@ -30,7 +32,11 @@ impl EchoService {
 }
 
 fn main() {
-    for k in static_toy_rpc_service_EchoService.keys() {
+    for k in STATIC_TOY_RPC_SERVICE_EchoService.keys() {
         println!("{}", k);
     }
+    let a = Arc::new(EchoService{count: Mutex::new(1)});
+
+    let a_service = service!(a, EchoService);
+    println!("{:?}", a_service.get_method("echo").is_some());
 }

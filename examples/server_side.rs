@@ -10,6 +10,10 @@ use std::sync::{Arc, Mutex};
 use toy_rpc::server::Server;
 use toy_rpc::service::Handler;
 use toy_rpc::service::Service;
+use toy_rpc::macros::{
+    export_impl,
+    service
+};
 
 #[derive(Serialize, Deserialize, Debug)]
 struct EchoRequest {
@@ -34,13 +38,16 @@ trait EchoRpc {
     fn increment_counter(&self, req: EchoRequest) -> Result<EchoResponse, String>;
 }
 
+#[export_impl]
 impl EchoRpc for EchoService {
+    #[export_method]
     fn echo(&self, req: EchoRequest) -> Result<EchoResponse, String> {
         let res = EchoResponse { a: req.a, b: req.b };
 
         Ok(res)
     }
 
+    #[export_method]
     fn increment_a(&self, req: EchoRequest) -> Result<EchoResponse, String> {
         let res = EchoResponse {
             a: req.a + 1,
@@ -50,6 +57,7 @@ impl EchoRpc for EchoService {
         Ok(res)
     }
 
+    #[export_method]
     fn increment_b(&self, req: EchoRequest) -> Result<EchoResponse, String> {
         let res = EchoResponse {
             a: req.a,
@@ -59,6 +67,7 @@ impl EchoRpc for EchoService {
         Ok(res)
     }
 
+    #[export_method]
     fn increment_counter(&self, req: EchoRequest) -> Result<EchoResponse, String> {
         let mut _counter = self.counter.lock().map_err(|_| "")?;
 
@@ -71,22 +80,22 @@ impl EchoRpc for EchoService {
     }
 }
 
-lazy_static! {
-    static ref HANDLERS: HashMap<&'static str, Handler<EchoService>> = {
-        let builder = Service::<EchoService>::builder()
-            .register_method("echo", EchoService::echo)
-            .register_method("increment_a", EchoService::increment_a)
-            .register_method("increment_b", EchoService::increment_b)
-            .register_method("increment_counter", EchoService::increment_counter);
+// lazy_static! {
+//     static ref HANDLERS: HashMap<&'static str, Handler<EchoService>> = {
+//         let builder = Service::<EchoService>::builder()
+//             .register_method("echo", EchoService::echo)
+//             .register_method("increment_a", EchoService::increment_a)
+//             .register_method("increment_b", EchoService::increment_b)
+//             .register_method("increment_counter", EchoService::increment_counter);
 
-        builder.handlers
-    };
-}
+//         builder.handlers
+//     };
+// }
 
 async fn run_server() {
-    let echo = EchoService {
+    let echo = Arc::new(EchoService {
         counter: Mutex::new(0u32),
-    };
+    });
     // let echo_service = Service::builder()
     //     .register_state(Arc::new(echo))
     //     .register_method("echo", EchoService::echo)
@@ -95,16 +104,16 @@ async fn run_server() {
     //     .register_method("increment_counter", EchoService::increment_counter)
     //     .build();
 
-    let echo_service = Service::builder()
-        .register_state(Arc::new(echo))
-        .register_handlers(&*HANDLERS)
-        .build();
+    // let echo_service = Service::builder()
+    //     .register_state(Arc::new(echo))
+    //     .register_handlers(&*HANDLERS)
+    //     .build();
 
     let addrs = "127.0.0.1:23333";
     // let fut = accept_loop(addrs);
 
     log::info!("Starting server at {}", &addrs);
-    let server = Server::builder().register("service", echo_service).build();
+    let server = Server::builder().register("service", service!(echo, EchoService)).build();
 
     // server.serve_tcp(addrs).await.unwrap();
     let listener = TcpListener::bind(addrs).await.unwrap();

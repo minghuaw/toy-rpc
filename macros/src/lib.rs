@@ -15,8 +15,9 @@ use syn::{
 use toy_rpc_definitions::{
     IntoHandler
 };
+// use toy_rpc;
 
-const SERVICE_PREFIX: &str = "static_toy_rpc_service";
+const SERVICE_PREFIX: &str = "STATIC_TOY_RPC_SERVICE";
 const ATTR_EXPORT_METHOD: &str = "export_method";
 
 /// A macro that impls serde::Deserializer by simply calling the 
@@ -260,10 +261,8 @@ pub fn export_impl(attr: TokenStream, item: TokenStream) -> TokenStream {
             // println!("{:?}", &f.attrs);
             f.attrs.iter()
                 .any(|attr| {
-                    attr.path.segments.iter()
-                        .any(|seg| {
-                            seg.ident == ATTR_EXPORT_METHOD 
-                        })
+                    let ident = attr.path.get_ident().unwrap();
+                    ident == ATTR_EXPORT_METHOD
                 })
         })
         // append ident and names of function with attribute
@@ -273,10 +272,8 @@ pub fn export_impl(attr: TokenStream, item: TokenStream) -> TokenStream {
             
             // clear the attributes for now
             f.attrs.retain(|attr| {
-                !attr.path.segments.iter()
-                    .any(|seg| {
-                        seg.ident == ATTR_EXPORT_METHOD 
-                    })
+                let ident = attr.path.get_ident().unwrap();
+                ident != ATTR_EXPORT_METHOD
             })
         });
 
@@ -302,6 +299,45 @@ pub fn export_impl(attr: TokenStream, item: TokenStream) -> TokenStream {
         #input
         #export
     };
+    output.into()
+}
+
+struct ServiceExport {
+    instance_id: syn::Ident,
+    impl_path: syn::Path
+}
+
+impl syn::parse::Parse for ServiceExport {
+    fn parse(input: syn::parse::ParseStream) -> Result<Self, syn::Error> {
+        let instance_id: syn::Ident = input.parse()?;
+        input.parse::<syn::Token![,]>()?;
+        let impl_path: syn::Path = input.parse()?;
+
+        Ok(
+            ServiceExport {
+                instance_id,
+                impl_path
+            }
+        )
+    }
+}
+
+#[proc_macro]
+pub fn service(input: TokenStream) -> TokenStream {
+    println!("{:?}", &input);
+    let ServiceExport{instance_id, impl_path} = parse_macro_input!(input as ServiceExport);
+    let ident = impl_path.get_ident().unwrap();
+    let static_name = format!("{}_{}", SERVICE_PREFIX, &ident);
+    let static_ident = syn::Ident::new(&static_name, ident.span());
+
+    println!("{:?}", instance_id);
+    println!("{:?}", impl_path);
+
+    let output = quote!{
+        toy_rpc_definitions::service::build_service(#instance_id, &*#static_ident)
+    };
+
+    // let output = quote!{};
     output.into()
 }
 

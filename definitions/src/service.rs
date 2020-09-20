@@ -6,11 +6,13 @@ use async_trait::async_trait;
 use erased_serde as erased;
 use serde;
 
-pub use toy_rpc_definitions::{
+pub use crate::{
     Handler,
     HandlerResult,
     IntoHandler,
 };
+
+// pub use toy_rpc_macros::service;
 
 use crate::{Error, RpcError};
 
@@ -165,6 +167,16 @@ where
 
         Service { state, handlers }
     }
+}
+
+/// A convenience function to build a Service object using a State and handler map
+pub fn build_service<State>(state: Arc<State>, handlers: &'static HashMap<&'static str, Handler<State>>) -> Service<State> 
+where State: Send + Sync + 'static,
+{
+    Service::builder()
+        .register_state(state)
+        .register_handlers(handlers)
+        .build()
 }
 
 #[cfg(test)]

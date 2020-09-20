@@ -1504,6 +1504,7 @@ name = "toy_rpc_definitions"
 version = "0.1.0"
 dependencies = [
  "async-std",
+ "async-trait",
  "bincode",
  "erased-serde",
  "serde",

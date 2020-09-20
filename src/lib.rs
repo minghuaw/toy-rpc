@@ -1,13 +1,10 @@
 pub use toy_rpc_definitions::{
+    service,
     Error,
     RpcError
 };
 
-pub use toy_rpc_macros::{
-    // export_struct,
-    export_impl,
-    // export_method,
-};
+pub use toy_rpc_macros as macros;
 
 mod codec;
 // mod error;
@@ -16,4 +13,4 @@ mod transport;
 
 pub mod client;
 pub mod server;
-pub mod service;
+// pub mod service;
