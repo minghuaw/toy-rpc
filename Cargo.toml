@@ -32,8 +32,10 @@ lazy_static = "1.4.0"
 
 # local imports
 toy_rpc_macros = { path="macros", version = "0.1.0" }
+toy_rpc_definitions = {path="definitions", version = "0.1.0" }
 
 [workspace]
 members = [
-    "macros"
+    "macros",
+    "definitions"
 ]

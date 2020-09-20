@@ -72,7 +72,7 @@ impl EchoRpc for EchoService {
 }
 
 lazy_static! {
-    static ref HANDLERS: HashMap<&'static str, Arc<Handler<EchoService>>> = {
+    static ref HANDLERS: HashMap<&'static str, Handler<EchoService>> = {
         let builder = Service::<EchoService>::builder()
             .register_method("echo", EchoService::echo)
             .register_method("increment_a", EchoService::increment_a)

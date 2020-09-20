@@ -1495,16 +1495,30 @@ dependencies = [
  "serde",
  "serde_json",
  "tide",
+ "toy_rpc_definitions",
  "toy_rpc_macros",
+]
+
+[[package]]
+name = "toy_rpc_definitions"
+version = "0.1.0"
+dependencies = [
+ "async-std",
+ "bincode",
+ "erased-serde",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
 name = "toy_rpc_macros"
 version = "0.1.0"
 dependencies = [
+ "async-std",
  "lazy_static",
  "quote",
  "syn",
+ "toy_rpc_definitions",
 ]
 
 [[package]]

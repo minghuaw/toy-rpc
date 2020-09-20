@@ -10,6 +10,9 @@ edition = "2018"
 proc-macro = true
 
 [dependencies]
-syn = { version = "1.0.41" }
+syn = { version = "1.0.41", features = ["full", "derive", "extra-traits"] }
 quote = { version = "1.0.7" }
 lazy_static = "1.4.0"
+async-std = "1.6.3"
+
+toy_rpc_definitions = { path = "../definitions", version = "0.1.0" }

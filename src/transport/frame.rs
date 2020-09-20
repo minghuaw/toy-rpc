@@ -17,7 +17,7 @@ use pin_project::pin_project;
 use serde::{Deserialize, Serialize};
 use std::pin::Pin;
 
-use crate::error::Error;
+use crate::Error;
 use crate::rpc::MessageId;
 
 type FrameId = u8;

@@ -8,19 +8,23 @@ use async_std::task;
 use erased_serde as erased;
 use futures::StreamExt;
 
+pub use toy_rpc_definitions::{
+    HandlerResult,
+    ServeRequest,
+    ServiceMap
+};
+
 use crate::codec::{DefaultCodec, ServerCodec};
-use crate::error::{Error, RpcError};
+use crate::{Error, RpcError};
 use crate::rpc::{MessageId, RequestHeader, ResponseHeader};
 use crate::service::{
     HandleService,
-    // Service,
-    HandlerResult,
 };
 
 // type FutResult = Pin<Box<dyn Future<Output=HandlerResult>>>;
-type ServeRequest =
-    dyn Fn(&str, &mut (dyn erased::Deserializer + Send + Sync)) -> HandlerResult + Send + Sync;
-type ServiceMap = HashMap<&'static str, Arc<ServeRequest>>;
+// type ServeRequest =
+//     dyn Fn(&str, &mut (dyn erased::Deserializer + Send + Sync)) -> HandlerResult + Send + Sync;
+// type ServiceMap = HashMap<&'static str, Arc<ServeRequest>>;
 
 pub struct Server {
     services: Arc<ServiceMap>,
@@ -52,7 +56,8 @@ impl Server {
         // using feature flag controlled default codec
         let codec = DefaultCodec::new(stream);
 
-        let fut = task::spawn_blocking(|| Self::_serve_codec(codec, services)).await;
+        // let fut = task::spawn_blocking(|| Self::_serve_codec(codec, services)).await;
+        let fut = Self::_serve_codec(codec, services);
 
         let ret = fut.await;
         log::info!("Client disconnected from {}", peer_addr);
@@ -77,7 +82,7 @@ impl Server {
 
             // look up the service
             // TODO; consider adding a new error type
-            let call: &Arc<ServeRequest> = services
+            let call: &ServeRequest = services
                 .get(service_name)
                 .ok_or(Error::RpcError(RpcError::MethodNotFound))?;
 
@@ -145,7 +150,7 @@ impl Server {
 }
 
 pub struct ServerBuilder {
-    services: HashMap<&'static str, Arc<ServeRequest>>,
+    services: HashMap<&'static str, ServeRequest>,
 }
 
 impl ServerBuilder {

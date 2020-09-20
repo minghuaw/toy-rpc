@@ -6,7 +6,7 @@ use serde::de::Visitor;
 use std::io::Cursor; // serde doesn't support AsyncRead
 
 use super::{CodecRead, CodecWrite, DeserializerOwned, Marshal, Unmarshal};
-use crate::error::Error;
+use crate::Error;
 use crate::rpc::{MessageId, Metadata};
 use toy_rpc_macros::impl_inner_deserializer;
 
@@ -19,14 +19,6 @@ where
     // the rest is simply calling self.inner.deserialize_xxx()
     // use a macro to generate the code
     impl_inner_deserializer!();
-}
-
-impl From<serde_json::error::Error> for Error {
-    fn from(err: serde_json::error::Error) -> Self {
-        Error::ParseError {
-            source: Box::new(err),
-        }
-    }
 }
 
 pub struct Codec<T>

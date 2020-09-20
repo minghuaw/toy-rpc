@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use serde_json;
 
 #[derive(Debug)]
 pub enum Error {
@@ -91,6 +92,24 @@ impl From<RpcError> for Box<dyn std::error::Error + Send> {
         Box::new(err)
     }
 }
+
+/// Convert from serde_json::Error to the custom Error
+impl From<serde_json::error::Error> for Error {
+    fn from(err: serde_json::error::Error) -> Self {
+        Error::ParseError {
+            source: Box::new(err),
+        }
+    }
+}
+
+/// Convert from bincode::Error to the custom Error
+impl From<bincode::Error> for Error {
+    fn from(err: bincode::Error) -> Self {
+        Error::ParseError { source: err }
+    }
+}
+
+
 
 #[cfg(test)]
 mod test {

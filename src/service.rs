@@ -6,19 +6,24 @@ use async_trait::async_trait;
 use erased_serde as erased;
 use serde;
 
-use crate::error::{Error, RpcError};
-// use crate::codec::ServerCodec;
+pub use toy_rpc_definitions::{
+    Handler,
+    HandlerResult,
+    IntoHandler,
+};
 
-pub(crate) type HandlerResult = Result<Box<dyn erased::Serialize + Send + Sync + 'static>, Error>;
-pub type Handler<S> =
-    dyn Fn(Arc<S>, &mut dyn erased::Deserializer) -> HandlerResult + Send + Sync + 'static;
+use crate::{Error, RpcError};
+
+// pub type HandlerResult = Result<Box<dyn erased::Serialize + Send + Sync + 'static>, Error>;
+// pub type Handler<S> =
+//     dyn Fn(Arc<S>, &mut dyn erased::Deserializer) -> HandlerResult + Send + Sync + 'static;
 
 pub struct Service<State>
 where
     State: Send + Sync + 'static,
 {
     state: Arc<State>,
-    handlers: HashMap<&'static str, Arc<Handler<State>>>,
+    handlers: HashMap<&'static str, Handler<State>>,
 }
 
 impl<State> Service<State>
@@ -33,7 +38,7 @@ where
 #[async_trait]
 pub trait HandleService<State> {
     fn get_state(&self) -> Arc<State>;
-    fn get_method(&self, name: &str) -> Option<Arc<Handler<State>>>;
+    fn get_method(&self, name: &str) -> Option<Handler<State>>;
 
     fn call<'a>(
         &'a self,
@@ -62,7 +67,7 @@ where
         self.state.clone()
     }
 
-    fn get_method(&self, name: &str) -> Option<Arc<Handler<State>>> {
+    fn get_method(&self, name: &str) -> Option<Handler<State>> {
         self.handlers.get(name).map(|m| m.clone())
     }
 }
@@ -79,7 +84,7 @@ where
     State: Send + Sync + 'static,
 {
     pub state: Option<Arc<State>>,
-    pub handlers: HashMap<&'static str, Arc<Handler<State>>>,
+    pub handlers: HashMap<&'static str, Handler<State>>,
 
     // helper members for TypeState only
     // is_builder_ready: BuilderMode
@@ -129,28 +134,17 @@ where
         Req: serde::de::DeserializeOwned,
         Res: serde::Serialize + Send + Sync + 'static,
     {
-        let handler = move |_state: Arc<State>,
-                            _deserializer: &mut dyn erased::Deserializer|
-              -> HandlerResult {
-            let _req: Req = erased::deserialize(_deserializer)
-                .map_err(|_| Error::RpcError(RpcError::InvalidRequest))?;
-
-            let res = method(&_state, _req)
-                .map(|r| Box::new(r) as Box<dyn erased::Serialize + Send + Sync + 'static>)
-                .map_err(|e| Error::RpcError(RpcError::ServerError(e.to_string())));
-
-            return res;
-        };
-
+        let handler = <method as IntoHandler>.into_handler();
         let mut handlers = self.handlers;
-        handlers.insert(name, Arc::new(handler));
+        // handlers.insert(name, Arc::new(handler));
+        handlers.insert(name, handler);
 
         Self { handlers, ..self }
     }
 
     pub fn register_handlers(
         self,
-        map: &'static HashMap<&'static str, Arc<Handler<State>>>,
+        map: &'static HashMap<&'static str, Handler<State>>,
     ) -> Self {
         let mut builder = self;
         for (key, val) in map.iter() {

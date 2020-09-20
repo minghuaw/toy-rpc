@@ -1,6 +1,24 @@
+use std::sync::Mutex;
+use std::collections::HashMap;
+use async_std::sync::Arc;
 use proc_macro::TokenStream;
 use quote::quote;
+use lazy_static::lazy_static;
+use syn::{
+    parse_macro_input,
+    ItemStruct,
+    ItemImpl,
+    ItemFn,
+    Ident
+};
 
+use toy_rpc_definitions;
+
+const SERVICE_PREFIX: &str = "static_toy_rpc_service";
+const ATTR_EXPORT_METHOD: &str = "export_method";
+
+/// A macro that impls serde::Deserializer by simply calling the 
+/// corresponding functions of the inner deserializer
 #[proc_macro]
 pub fn impl_inner_deserializer(_: TokenStream) -> TokenStream {
     let output = quote! {
@@ -204,3 +222,92 @@ pub fn impl_inner_deserializer(_: TokenStream) -> TokenStream {
 
     output.into()
 }
+
+#[proc_macro_attribute]
+pub fn export_impl(attr: TokenStream, item: TokenStream) -> TokenStream {
+    // parse attr
+    // let mut args = parse_macro_input!(attr as syn::AttributeArgs);
+    // println!("impl attr: {:?}", args);
+
+    // parse item
+    let mut input = parse_macro_input!(item as syn::ItemImpl);
+    let mut idents: Vec<syn::Ident> = Vec::new();
+    let mut names: Vec<String> = Vec::new();
+    let ty = &input.self_ty;
+    
+    let _ = input.items.iter_mut()
+        // first filter out method
+        .filter_map(|item| {
+            match item {
+                syn::ImplItem::Method(f) => {
+                    Some(f)
+                },
+                _ => None
+            }
+        })
+        // find whether function has attributes
+        .filter(|f| {
+            // println!("{:?}", &f.attrs);
+            f.attrs.iter()
+                .any(|attr| {
+                    attr.path.segments.iter()
+                        .any(|seg| {
+                            seg.ident == ATTR_EXPORT_METHOD 
+                        })
+                })
+        })
+        // append ident and names of function with attribute
+        .for_each(|f| {
+            idents.push(f.sig.ident.clone());
+            names.push(f.sig.ident.to_string());
+            
+            // clear the attributes for now
+            f.attrs.retain(|attr| {
+                !attr.path.segments.iter()
+                    .any(|seg| {
+                        seg.ident == ATTR_EXPORT_METHOD 
+                    })
+            })
+        });
+
+    println!("idents: {:?}", idents);
+
+    let output = quote! {
+        #input
+    };
+    output.into()
+}
+
+#[proc_macro_attribute]
+pub fn export_struct(attr: TokenStream, item: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(item as ItemStruct);
+    let ident = &input.ident;
+    let static_name = format!("{}_{}", SERVICE_PREFIX, ident);
+    let static_ident = Ident::new(&static_name, ident.span());
+
+    // initialize 
+    let static_map_output = quote! {
+        lazy_static::lazy_static! {
+            static ref #static_ident: 
+                std::sync::Mutex<std::collections::HashMap<&'static str, async_std::sync::Arc<toy_rpc_definitions::Handler<#ident>>>> 
+            = {
+                Mutex::new(
+                    HashMap::new()
+                )
+            };
+        }
+    };
+
+    let output = quote! {
+        #input
+
+        #static_map_output
+    };
+
+    output.into()
+}
+
+// #[proc_macro_attribute]
+// pub fn export_method(attr: TokenStream, item: TokenStream) -> TokenStream {
+//     item
+// }
