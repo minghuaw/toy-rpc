@@ -1,18 +1,20 @@
-use std::sync::Mutex;
-use std::collections::HashMap;
-use async_std::sync::Arc;
+// use std::sync::Mutex;
+// use std::collections::HashMap;
+// use async_std::sync::Arc;
 use proc_macro::TokenStream;
 use quote::quote;
-use lazy_static::lazy_static;
+// use lazy_static::lazy_static;
 use syn::{
     parse_macro_input,
     ItemStruct,
-    ItemImpl,
-    ItemFn,
+    // ItemImpl,
+    // ItemFn,
     Ident
 };
 
-use toy_rpc_definitions;
+use toy_rpc_definitions::{
+    IntoHandler
+};
 
 const SERVICE_PREFIX: &str = "static_toy_rpc_service";
 const ATTR_EXPORT_METHOD: &str = "export_method";
@@ -231,9 +233,17 @@ pub fn export_impl(attr: TokenStream, item: TokenStream) -> TokenStream {
 
     // parse item
     let mut input = parse_macro_input!(item as syn::ItemImpl);
-    let mut idents: Vec<syn::Ident> = Vec::new();
+    let mut fn_idents: Vec<syn::Ident> = Vec::new();
     let mut names: Vec<String> = Vec::new();
-    let ty = &input.self_ty;
+
+    // extract Self type and use it for construct Ident for handler HashMap
+    let self_ty = &input.self_ty;
+    let ident = match parse_impl_self_ty(self_ty) {
+        Ok(i) => i,
+        Err(err) => return err.to_compile_error().into()
+    };
+    let static_name = format!("{}_{}", SERVICE_PREFIX, ident);
+    let static_ident = Ident::new(&static_name, ident.span());
     
     let _ = input.items.iter_mut()
         // first filter out method
@@ -258,7 +268,7 @@ pub fn export_impl(attr: TokenStream, item: TokenStream) -> TokenStream {
         })
         // append ident and names of function with attribute
         .for_each(|f| {
-            idents.push(f.sig.ident.clone());
+            fn_idents.push(f.sig.ident.clone());
             names.push(f.sig.ident.to_string());
             
             // clear the attributes for now
@@ -270,44 +280,76 @@ pub fn export_impl(attr: TokenStream, item: TokenStream) -> TokenStream {
             })
         });
 
-    println!("idents: {:?}", idents);
+    // println!("self_ty: {:?}", ident);
+    // println!("static_ident: {:?}", static_ident);
+    // println!("idents: {:?}", fn_idents);
 
-    let output = quote! {
-        #input
-    };
-    output.into()
-}
-
-#[proc_macro_attribute]
-pub fn export_struct(attr: TokenStream, item: TokenStream) -> TokenStream {
-    let input = parse_macro_input!(item as ItemStruct);
-    let ident = &input.ident;
-    let static_name = format!("{}_{}", SERVICE_PREFIX, ident);
-    let static_ident = Ident::new(&static_name, ident.span());
-
-    // initialize 
-    let static_map_output = quote! {
+    let export = quote!{
         lazy_static::lazy_static! {
-            static ref #static_ident: 
-                std::sync::Mutex<std::collections::HashMap<&'static str, async_std::sync::Arc<toy_rpc_definitions::Handler<#ident>>>> 
-            = {
-                Mutex::new(
-                    HashMap::new()
-                )
-            };
+            static ref #static_ident:
+                std::collections::HashMap<&'static str, toy_rpc_definitions::Handler<#ident>>
+                = {
+                    let mut map = std::collections::HashMap::new();
+                    #(map.insert(#names, toy_rpc_definitions::wrap(#self_ty::#fn_idents));)*;
+
+                    map
+                };
         }
     };
+    // println!("export: {:?}", export);
 
     let output = quote! {
         #input
-
-        #static_map_output
+        #export
     };
-
     output.into()
 }
+
+// #[proc_macro_attribute]
+// pub fn export_struct(attr: TokenStream, item: TokenStream) -> TokenStream {
+//     let input = parse_macro_input!(item as ItemStruct);
+//     let ident = &input.ident;
+//     let static_name = format!("{}_{}", SERVICE_PREFIX, ident);
+//     let static_ident = Ident::new(&static_name, ident.span());
+
+//     // initialize 
+//     let static_map_output = quote! {
+//         lazy_static::lazy_static! {
+//             static ref #static_ident: 
+//                 std::sync::Mutex<std::collections::HashMap<&'static str, async_std::sync::Arc<toy_rpc_definitions::Handler<#ident>>>> 
+//             = {
+//                 std::sync::Mutex::new(
+//                     HashMap::new()
+//                 )
+//             };
+//         }
+//     };
+
+//     let output = quote! {
+//         #input
+
+//         #static_map_output
+//     };
+
+//     output.into()
+// }
 
 // #[proc_macro_attribute]
 // pub fn export_method(attr: TokenStream, item: TokenStream) -> TokenStream {
 //     item
 // }
+
+fn parse_impl_self_ty(self_ty: &syn::Type) -> Result<&syn::Ident, syn::Error> {
+    match self_ty {
+        syn::Type::Path(tp) => {
+            Ok(
+                &tp.path.segments[0].ident
+            )
+        },
+        _ => {
+            Err(
+                syn::Error::new_spanned(quote!{}, "Compile Error: Self type")
+            )
+        }
+    }
+}

@@ -4,7 +4,7 @@ pub use toy_rpc_definitions::{
 };
 
 pub use toy_rpc_macros::{
-    export_struct,
+    // export_struct,
     export_impl,
     // export_method,
 };

@@ -52,3 +52,13 @@ where
 {
 
 }
+
+pub fn wrap<State, F, E, Req, Res>(method: F) -> Handler<State>
+where
+    F: Fn(&State, Req) -> Result<Res, E> + Send + Sync + 'static,
+    E: ToString,
+    Req: serde::de::DeserializeOwned,
+    Res: serde::Serialize + Send + Sync + 'static,
+{
+    method.into_handler()
+}

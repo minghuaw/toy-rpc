@@ -134,7 +134,7 @@ where
         Req: serde::de::DeserializeOwned,
         Res: serde::Serialize + Send + Sync + 'static,
     {
-        let handler = <method as IntoHandler>.into_handler();
+        let handler = method.into_handler();
         let mut handlers = self.handlers;
         // handlers.insert(name, Arc::new(handler));
         handlers.insert(name, handler);
