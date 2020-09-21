@@ -54,7 +54,7 @@ where
 
 }
 
-pub fn wrap<State, F, E, Req, Res>(method: F) -> Handler<State>
+pub fn wrap_method<State, F, E, Req, Res>(method: F) -> Handler<State>
 where
     F: Fn(&State, Req) -> Result<Res, E> + Send + Sync + 'static,
     E: ToString,

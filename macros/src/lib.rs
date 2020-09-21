@@ -1,21 +1,9 @@
-// use std::sync::Mutex;
-// use std::collections::HashMap;
-// use async_std::sync::Arc;
 use proc_macro::TokenStream;
 use quote::quote;
-// use lazy_static::lazy_static;
 use syn::{
     parse_macro_input,
-    ItemStruct,
-    // ItemImpl,
-    // ItemFn,
     Ident
 };
-
-use toy_rpc_definitions::{
-    IntoHandler
-};
-// use toy_rpc;
 
 const SERVICE_PREFIX: &str = "STATIC_TOY_RPC_SERVICE";
 const ATTR_EXPORT_METHOD: &str = "export_method";
@@ -227,7 +215,7 @@ pub fn impl_inner_deserializer(_: TokenStream) -> TokenStream {
 }
 
 #[proc_macro_attribute]
-pub fn export_impl(attr: TokenStream, item: TokenStream) -> TokenStream {
+pub fn export_impl(_attr: TokenStream, item: TokenStream) -> TokenStream {
     // parse attr
     // let mut args = parse_macro_input!(attr as syn::AttributeArgs);
     // println!("impl attr: {:?}", args);
@@ -243,7 +231,7 @@ pub fn export_impl(attr: TokenStream, item: TokenStream) -> TokenStream {
         Ok(i) => i,
         Err(err) => return err.to_compile_error().into()
     };
-    let static_name = format!("{}_{}", SERVICE_PREFIX, ident);
+    let static_name = format!("{}_{}", SERVICE_PREFIX, ident.to_string().to_uppercase());
     let static_ident = Ident::new(&static_name, ident.span());
     
     let _ = input.items.iter_mut()
@@ -277,23 +265,20 @@ pub fn export_impl(attr: TokenStream, item: TokenStream) -> TokenStream {
             })
         });
 
-    // println!("self_ty: {:?}", ident);
-    // println!("static_ident: {:?}", static_ident);
-    // println!("idents: {:?}", fn_idents);
-
+    // export a lazy_static HashMap of handlers
     let export = quote!{
         lazy_static::lazy_static! {
+            #[allow(non_upper_case_globals)]
             static ref #static_ident:
                 std::collections::HashMap<&'static str, toy_rpc_definitions::Handler<#ident>>
                 = {
                     let mut map = std::collections::HashMap::new();
-                    #(map.insert(#names, toy_rpc_definitions::wrap(#self_ty::#fn_idents));)*;
+                    #(map.insert(#names, toy_rpc_definitions::wrap_method(#self_ty::#fn_idents));)*;
 
                     map
                 };
         }
     };
-    // println!("export: {:?}", export);
 
     let output = quote! {
         #input
@@ -324,20 +309,15 @@ impl syn::parse::Parse for ServiceExport {
 
 #[proc_macro]
 pub fn service(input: TokenStream) -> TokenStream {
-    println!("{:?}", &input);
     let ServiceExport{instance_id, impl_path} = parse_macro_input!(input as ServiceExport);
     let ident = impl_path.get_ident().unwrap();
-    let static_name = format!("{}_{}", SERVICE_PREFIX, &ident);
+    let static_name = format!("{}_{}", SERVICE_PREFIX, &ident.to_string().to_uppercase());
     let static_ident = syn::Ident::new(&static_name, ident.span());
-
-    println!("{:?}", instance_id);
-    println!("{:?}", impl_path);
 
     let output = quote!{
         toy_rpc_definitions::service::build_service(#instance_id, &*#static_ident)
     };
 
-    // let output = quote!{};
     output.into()
 }
 

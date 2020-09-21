@@ -22,11 +22,11 @@ async fn main() {
     let client = Client::dial("127.0.0.1:23333").unwrap();
     let args = EchoRequest { a: 1, b: 2 };
 
-    let reply: EchoResponse = client.call("service.echo", args.clone()).unwrap();
+    let reply: EchoResponse = client.call("echo_service.echo", args.clone()).unwrap();
 
     println!("{:?}", reply);
 
-    let handle = client.task("service.increment_counter", args.clone());
+    let handle = client.task("echo_service.increment_counter", args.clone());
     // let handle = task::spawn(
     //     client.async_call("service.increment", args)
     // );
