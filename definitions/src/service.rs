@@ -9,10 +9,10 @@ use crate::{Error, RpcError};
 
 pub type HandlerResult = Result<Box<dyn erased::Serialize + Send + Sync + 'static>, Error>;
 pub type Handler<S> =
-    Arc<dyn Fn(Arc<S>, &mut dyn erased::Deserializer) -> HandlerResult + Send + Sync + 'static>;
+    Arc<dyn Fn(Arc<S>, Box<dyn erased::Deserializer>) -> HandlerResult + Send + Sync + 'static>;
 
 pub type ServeRequest =
-    Arc<dyn Fn(&str, &mut (dyn erased::Deserializer + Send + Sync)) -> HandlerResult + Send + Sync>;
+    Arc<dyn Fn(String, Box<(dyn erased::Deserializer + Send + Sync)>) -> HandlerResult + Send + Sync>;
 pub type ServiceMap = HashMap<&'static str, ServeRequest>;
 
 pub trait IntoHandler<State, E, Req, Res> 
@@ -24,9 +24,9 @@ where
 {
     fn into_handler(self) -> Handler<State> {
         let handler = move |_state: Arc<State>,
-                            _deserializer: &mut dyn erased::Deserializer|
+                            mut _deserializer: Box<dyn erased::Deserializer>|
             -> HandlerResult {
-            let _req: Req = erased::deserialize(_deserializer)
+            let _req: Req = erased::deserialize(_deserializer.as_mut())
                 .map_err(|_| Error::RpcError(RpcError::InvalidRequest))?;
 
             let res = self(&_state, _req)
@@ -86,7 +86,7 @@ pub trait HandleService<State> {
     fn call<'a>(
         &'a self,
         name: &str,
-        _deserializer: &'a mut dyn erased::Deserializer,
+        _deserializer: Box<dyn erased::Deserializer>,
     ) -> HandlerResult {
         let _state = self.get_state();
         let _method = match self.get_method(name) {

@@ -20,9 +20,9 @@ pub use crate::codec::bincode::Codec as DefaultCodec;
 #[async_trait]
 pub trait ServerCodec: Send + Sync {
     async fn read_request_header(&mut self) -> Option<Result<RequestHeader, Error>>;
-    async fn read_request_body<'c>(
-        &'c mut self,
-    ) -> Option<Result<Box<dyn erased::Deserializer + Send + Sync + 'c>, Error>>;
+    async fn read_request_body(
+        &mut self,
+    ) -> Option<Result<Box<dyn erased::Deserializer<'static> + Send + Sync + 'static>, Error>>;
 
     async fn write_response(
         &mut self,
@@ -34,9 +34,9 @@ pub trait ServerCodec: Send + Sync {
 #[async_trait]
 pub trait ClientCodec: Send + Sync {
     async fn read_response_header(&mut self) -> Option<Result<ResponseHeader, Error>>;
-    async fn read_response_body<'c>(
-        &'c mut self,
-    ) -> Option<Result<Box<dyn erased::Deserializer + Send + Sync + 'c>, Error>>;
+    async fn read_response_body(
+        &mut self,
+    ) -> Option<Result<Box<dyn erased::Deserializer<'static> + Send + Sync + 'static>, Error>>;
 
     async fn write_request(
         &mut self,
@@ -51,9 +51,9 @@ pub trait CodecRead: Unmarshal {
     where
         H: serde::de::DeserializeOwned;
 
-    async fn read_body<'c>(
-        &'c mut self,
-    ) -> Option<Result<Box<dyn erased::Deserializer<'c> + Send + Sync + 'c>, Error>>;
+    async fn read_body(
+        &mut self,
+    ) -> Option<Result<Box<dyn erased::Deserializer<'static> + Send + Sync + 'static>, Error>>;
 }
 
 #[async_trait]
@@ -86,9 +86,9 @@ where
         self.read_header().await
     }
 
-    async fn read_request_body<'c>(
-        &'c mut self,
-    ) -> Option<Result<Box<dyn erased::Deserializer<'c> + Send + Sync + 'c>, Error>> {
+    async fn read_request_body(
+        &mut self,
+    ) -> Option<Result<Box<dyn erased::Deserializer<'static> + Send + Sync + 'static>, Error>> {
         self.read_body().await
     }
 
@@ -115,9 +115,9 @@ where
         self.read_header().await
     }
 
-    async fn read_response_body<'c>(
-        &'c mut self,
-    ) -> Option<Result<Box<dyn erased::Deserializer<'c> + Send + Sync + 'c>, Error>> {
+    async fn read_response_body(
+        &mut self,
+    ) -> Option<Result<Box<dyn erased::Deserializer<'static> + Send + Sync + 'static>, Error>> {
         self.read_body().await
     }
 

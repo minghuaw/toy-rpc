@@ -63,27 +63,31 @@ impl Server {
         while let Some(header) = codec.read_request_header().await {
             // destructure header
             let RequestHeader { id, service_method } = header?;
-            let service_method = &service_method[..];
+            // let service_method = &service_method[..];
             let pos = service_method
                 .rfind(".")
                 .ok_or(Error::RpcError(RpcError::MethodNotFound))?;
             let service_name = &service_method[..pos];
-            let method_name = &service_method[pos + 1..];
+            let method_name = service_method[pos + 1..].to_owned();
 
             log::info!("service: {}, method: {}", service_name, method_name);
 
             // look up the service
             // TODO; consider adding a new error type
-            let call: &ServeRequest = services
+            let call: ServeRequest = services
                 .get(service_name)
-                .ok_or(Error::RpcError(RpcError::MethodNotFound))?;
+                .ok_or(Error::RpcError(RpcError::MethodNotFound))?
+                .clone();
 
             // read body
             let res = {
-                let mut deserializer = codec.read_request_body().await.unwrap()?;
+                let deserializer = codec.read_request_body().await.unwrap()?;
 
                 // log::info!("Calling handler");
-                call(method_name, &mut deserializer)
+                // pass ownership to the `call`
+                task::spawn_blocking(
+                    move || call(method_name, deserializer)
+                ).await
             };
 
             // send back result
@@ -158,9 +162,9 @@ impl ServerBuilder {
         T: Send + Sync + 'static,
     {
         let serve =
-            move |method_name: &str,
-                  _deserializer: &mut (dyn erased::Deserializer + Send + Sync)| {
-                service.call(method_name, _deserializer)
+            move |method_name: String,
+                  _deserializer: Box<(dyn erased::Deserializer + Send + Sync)>| {
+                service.call(&method_name, _deserializer)
             };
 
         let mut ret = self;

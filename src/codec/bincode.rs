@@ -76,9 +76,9 @@ where
         )
     }
 
-    async fn read_body<'c>(
-        &'c mut self,
-    ) -> Option<Result<Box<dyn erased::Deserializer<'c> + Send + Sync + 'c>, Error>> {
+    async fn read_body(
+        & mut self,
+    ) -> Option<Result<Box<dyn erased::Deserializer<'static> + Send + Sync + 'static>, Error>> {
         let reader = &mut self.reader;
 
         let de = match reader.frames().next().await? {
