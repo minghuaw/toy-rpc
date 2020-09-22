@@ -50,7 +50,7 @@ where
 
 }
 
-/// A convenience function to build a 
+/// A convenience function to build a service. 
 pub fn wrap_method<State, F, E, Req, Res>(method: F) -> Handler<State>
 where
     F: Fn(&State, Req) -> Result<Res, E> + Send + Sync + 'static,
