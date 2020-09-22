@@ -2,9 +2,7 @@ use async_trait::async_trait;
 use bincode::{DefaultOptions, Options};
 use futures::io::{
     AsyncBufRead,
-    // AsyncRead,
     AsyncReadExt,
-    // BufReader,
     AsyncWrite,
     AsyncWriteExt,
 };
@@ -18,7 +16,7 @@ use serde::{Deserialize, Serialize};
 use std::pin::Pin;
 
 use crate::Error;
-use crate::rpc::MessageId;
+use crate::message::MessageId;
 
 type FrameId = u8;
 type PayloadLen = u32;

@@ -1,8 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::sync::atomic::AtomicU16;
 
-// use crate::error::{Error, RpcError};
-
 pub type MessageId = u16;
 pub type AtomicMessageId = AtomicU16;
 

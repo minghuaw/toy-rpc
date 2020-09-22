@@ -3,7 +3,7 @@ use erased_serde as erased;
 use serde;
 
 use crate::Error;
-use crate::rpc::{MessageId, Metadata, RequestHeader, ResponseHeader};
+use crate::message::{MessageId, Metadata, RequestHeader, ResponseHeader};
 
 #[cfg(all(feature = "codec-json", not(feauture = "codec-bincode")))]
 mod json;

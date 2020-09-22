@@ -1,14 +1,11 @@
 use std::collections::HashMap;
-// use futures::future::{Future, BoxFuture};
-// use std::future::Future;
-// use std::pin::Pin;
 use async_std::net::{TcpListener, TcpStream};
 use async_std::sync::Arc;
 use async_std::task;
 use erased_serde as erased;
 use futures::StreamExt;
 
-pub use toy_rpc_definitions::{
+pub use toy_rpc_definitions::service::{
     HandlerResult,
     ServeRequest,
     ServiceMap
@@ -16,15 +13,10 @@ pub use toy_rpc_definitions::{
 
 use crate::codec::{DefaultCodec, ServerCodec};
 use crate::{Error, RpcError};
-use crate::rpc::{MessageId, RequestHeader, ResponseHeader};
+use crate::message::{MessageId, RequestHeader, ResponseHeader};
 use crate::service::{
     HandleService,
 };
-
-// type FutResult = Pin<Box<dyn Future<Output=HandlerResult>>>;
-// type ServeRequest =
-//     dyn Fn(&str, &mut (dyn erased::Deserializer + Send + Sync)) -> HandlerResult + Send + Sync;
-// type ServiceMap = HashMap<&'static str, Arc<ServeRequest>>;
 
 pub struct Server {
     services: Arc<ServiceMap>,
@@ -182,29 +174,3 @@ impl ServerBuilder {
         }
     }
 }
-
-// struct Foo {
-
-// }
-
-// impl Foo {
-//     fn foo<S, T>(service: Arc<dyn HandleService<T> + Send + Sync + 'static>)
-//     where
-//         S: HandleService<T> + Send + Sync + 'static,
-//         T: Send + Sync + 'static
-//     {
-//         // type FooResult = Result<Box<(dyn erased_serde::Serialize + Send + Sync)>, Error>;
-//         type FooResult = ();
-//         // type FooFn = Box<(dyn Fn(&str, &mut dyn ServerCodec) -> Pin<Box<(dyn Future<Output=FooResult> + 'static)>> + 'static)>;
-//         type FooFn = Box<dyn Fn(&str, &mut dyn ServerCodec) >;
-//         let mut map: HashMap<&str, FooFn> = HashMap::new();
-//         // let mut map: HashMap<&str, _> = HashMap::new();
-
-//         map.insert("k",Box::new(
-//             |name: &str, codec: &mut dyn ServerCodec| async move {
-//                 service.call(name, codec).await
-//             })
-//         );
-//         // map.insert("b", Box::new(|name: &str, codec: &mut dyn ServerCodec| service.call(name, codec)));
-//     }
-// }

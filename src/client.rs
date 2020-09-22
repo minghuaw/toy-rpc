@@ -7,7 +7,7 @@ use std::sync::atomic::Ordering;
 
 use crate::codec::{ClientCodec, DefaultCodec};
 use crate::{Error, RpcError};
-use crate::rpc::{AtomicMessageId, MessageId, RequestHeader, ResponseHeader};
+use crate::message::{AtomicMessageId, MessageId, RequestHeader, ResponseHeader};
 
 pub struct Client {
     count: AtomicMessageId,

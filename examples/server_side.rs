@@ -39,7 +39,6 @@ impl EchoRpc for EchoService {
     #[export_method]
     fn echo(&self, req: EchoRequest) -> Result<EchoResponse, String> {
         let res = EchoResponse { a: req.a, b: req.b };
-
         Ok(res)
     }
 
@@ -49,7 +48,6 @@ impl EchoRpc for EchoService {
             a: req.a + 1,
             b: req.b,
         };
-
         Ok(res)
     }
 
@@ -59,7 +57,6 @@ impl EchoRpc for EchoService {
             a: req.a,
             b: req.b + 1,
         };
-
         Ok(res)
     }
 

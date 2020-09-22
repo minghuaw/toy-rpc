@@ -270,10 +270,10 @@ pub fn export_impl(_attr: TokenStream, item: TokenStream) -> TokenStream {
         lazy_static::lazy_static! {
             #[allow(non_upper_case_globals)]
             static ref #static_ident:
-                std::collections::HashMap<&'static str, toy_rpc_definitions::Handler<#ident>>
+                std::collections::HashMap<&'static str, toy_rpc_definitions::service::Handler<#ident>>
                 = {
                     let mut map = std::collections::HashMap::new();
-                    #(map.insert(#names, toy_rpc_definitions::wrap_method(#self_ty::#fn_idents));)*;
+                    #(map.insert(#names, toy_rpc_definitions::service::wrap_method(#self_ty::#fn_idents));)*;
 
                     map
                 };
@@ -313,9 +313,14 @@ pub fn service(input: TokenStream) -> TokenStream {
     let ident = impl_path.get_ident().unwrap();
     let static_name = format!("{}_{}", SERVICE_PREFIX, &ident.to_string().to_uppercase());
     let static_ident = syn::Ident::new(&static_name, ident.span());
+    let mut static_impl_path = impl_path.clone();
+
+    // modify the path
+    static_impl_path.segments.first_mut().unwrap()
+        .ident = static_ident;
 
     let output = quote!{
-        toy_rpc_definitions::service::build_service(#instance_id, &*#static_ident)
+        toy_rpc_definitions::service::build_service(#instance_id, &*#static_impl_path)
     };
 
     output.into()
@@ -348,11 +353,6 @@ pub fn service(input: TokenStream) -> TokenStream {
 //     };
 
 //     output.into()
-// }
-
-// #[proc_macro_attribute]
-// pub fn export_method(attr: TokenStream, item: TokenStream) -> TokenStream {
-//     item
 // }
 
 fn parse_impl_self_ty(self_ty: &syn::Type) -> Result<&syn::Ident, syn::Error> {

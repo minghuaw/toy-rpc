@@ -8,7 +8,7 @@ use std::io::Cursor; // serde doesn't support AsyncRead
 
 use super::{CodecRead, CodecWrite, DeserializerOwned, Marshal, Unmarshal};
 use crate::Error;
-use crate::rpc::{MessageId, Metadata};
+use crate::message::{MessageId, Metadata};
 use crate::transport::frame::{FrameRead, FrameStreamExt, FrameWrite, PayloadType};
 use toy_rpc_macros::impl_inner_deserializer;
 
