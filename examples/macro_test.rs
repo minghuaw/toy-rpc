@@ -26,7 +26,10 @@ impl EchoService {
 
     #[export_method]
     pub fn echo(&self, a: i32) -> Result<i32, String> {
+        let _count = self.count.lock()
+            .map_err(|_| "Cannot lock".to_string())?;
         println!("echo");
+        println!("count {:?}", *_count);
         Ok(a)
     }
 }

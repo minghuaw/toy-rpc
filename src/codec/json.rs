@@ -7,7 +7,7 @@ use std::io::Cursor; // serde doesn't support AsyncRead
 
 use super::{CodecRead, CodecWrite, DeserializerOwned, Marshal, Unmarshal};
 use crate::Error;
-use crate::rpc::{MessageId, Metadata};
+use crate::message::{MessageId, Metadata};
 use toy_rpc_macros::impl_inner_deserializer;
 
 impl<'de, R> serde::Deserializer<'de> for DeserializerOwned<serde_json::Deserializer<R>>
@@ -57,9 +57,9 @@ where
         }
     }
 
-    async fn read_body<'c>(
-        &'c mut self,
-    ) -> Option<Result<Box<dyn erased::Deserializer<'c> + Send + Sync + 'c>, Error>> {
+    async fn read_body(
+        &mut self,
+    ) -> Option<Result<Box<dyn erased::Deserializer<'static> + Send + Sync + 'static>, Error>> {
         let mut buf = String::new();
 
         let de = match self.reader.read_line(&mut buf).await {
