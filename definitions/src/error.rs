@@ -109,8 +109,6 @@ impl From<bincode::Error> for Error {
     }
 }
 
-
-
 #[cfg(test)]
 mod test {
     use super::*;

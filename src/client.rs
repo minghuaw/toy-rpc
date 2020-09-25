@@ -34,33 +34,36 @@ impl Client {
     //     unimplemented!()
     // }
 
-    pub fn call<Req, Res>(&self, service_method: impl ToString, args: Req) -> Result<Res, Error>
+    pub fn call<Req, Res>(
+        &self, 
+        service_method: impl ToString, 
+        args: Req
+    ) -> Result<Res, Error>
     where
         Req: serde::Serialize + Send + Sync,
         Res: serde::de::DeserializeOwned,
     {
         let codec = self.codec.clone();
-        // let id = self.count.clone();
         let id = self.count.fetch_add(1u16, Ordering::Relaxed);
 
         task::block_on(async move { Self::_async_call(service_method, &args, id, codec).await })
     }
 
-    pub fn task<'a, Req, Res, M>(
+    pub fn task<'a, Req, Res>(
         &self,
-        service_method: M,
+        service_method: impl ToString + Send + 'static,
         args: Req,
     ) -> task::JoinHandle<Result<Res, Error>>
     where
         Req: serde::Serialize + Send + Sync + 'static,
         Res: serde::de::DeserializeOwned + Send + 'static,
-        M: ToString + Send + 'static,
     {
-        // let _args = args.to_owned();
         let codec = self.codec.clone();
         let id = self.count.fetch_add(1u16, Ordering::Relaxed);
 
-        task::spawn(async move { Self::_async_call(service_method, &args, id, codec).await })
+        task::spawn(async move { 
+            Self::_async_call(service_method, &args, id, codec).await 
+        })
     }
 
     pub async fn async_call<Req, Res>(
@@ -80,7 +83,7 @@ impl Client {
     async fn _async_call<Req, Res>(
         service_method: impl ToString,
         args: &Req,
-        _id: MessageId,
+        id: MessageId,
         codec: Arc<Mutex<Box<dyn ClientCodec>>>,
     ) -> Result<Res, Error>
     where
@@ -88,12 +91,8 @@ impl Client {
         Res: serde::de::DeserializeOwned,
     {
         let _codec = &mut *codec.lock().await;
-        // let _id = id.lock().await.clone();
-        // let _id = id;
-
-        // let id = _id;
         let header = RequestHeader {
-            id: _id,
+            id,
             service_method: service_method.to_string(),
         };
         let req = &args as &(dyn erased::Serialize + Send + Sync);

@@ -7,9 +7,9 @@ use serde::de::Visitor;
 use std::io::Cursor; // serde doesn't support AsyncRead
 
 use super::{CodecRead, CodecWrite, DeserializerOwned, Marshal, Unmarshal};
-use crate::Error;
 use crate::message::{MessageId, Metadata};
 use crate::transport::frame::{FrameRead, FrameStreamExt, FrameWrite, PayloadType};
+use crate::Error;
 use toy_rpc_macros::impl_inner_deserializer;
 
 impl<'de, R, O> serde::Deserializer<'de> for DeserializerOwned<bincode::Deserializer<R, O>>
@@ -77,7 +77,7 @@ where
     }
 
     async fn read_body(
-        & mut self,
+        &mut self,
     ) -> Option<Result<Box<dyn erased::Deserializer<'static> + Send + Sync + 'static>, Error>> {
         let reader = &mut self.reader;
 

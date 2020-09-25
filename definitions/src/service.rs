@@ -1,9 +1,9 @@
 use async_std::sync::Arc;
-use std::collections::HashMap;
-use std::marker::PhantomData;
 use async_trait::async_trait;
 use erased_serde as erased;
 use serde;
+use std::collections::HashMap;
+use std::marker::PhantomData;
 
 use crate::{Error, RpcError};
 
@@ -11,11 +11,12 @@ pub type HandlerResult = Result<Box<dyn erased::Serialize + Send + Sync + 'stati
 pub type Handler<S> =
     Arc<dyn Fn(Arc<S>, Box<dyn erased::Deserializer>) -> HandlerResult + Send + Sync + 'static>;
 
-pub type ServeRequest =
-    Arc<dyn Fn(String, Box<(dyn erased::Deserializer + Send + Sync)>) -> HandlerResult + Send + Sync>;
+pub type ServeRequest = Arc<
+    dyn Fn(String, Box<(dyn erased::Deserializer + Send + Sync)>) -> HandlerResult + Send + Sync,
+>;
 pub type ServiceMap = HashMap<&'static str, ServeRequest>;
 
-pub trait IntoHandler<State, E, Req, Res> 
+pub trait IntoHandler<State, E, Req, Res>
 where
     E: ToString,
     Req: serde::de::DeserializeOwned,
@@ -25,7 +26,7 @@ where
     fn into_handler(self) -> Handler<State> {
         let handler = move |_state: Arc<State>,
                             mut _deserializer: Box<dyn erased::Deserializer>|
-            -> HandlerResult {
+              -> HandlerResult {
             let _req: Req = erased::deserialize(_deserializer.as_mut())
                 .map_err(|_| Error::RpcError(RpcError::InvalidRequest))?;
 
@@ -40,17 +41,16 @@ where
     }
 }
 
-impl<F, E, Req, Res, State> IntoHandler<State, E, Req, Res> for F 
-where 
+impl<F, E, Req, Res, State> IntoHandler<State, E, Req, Res> for F
+where
     F: Fn(&State, Req) -> Result<Res, E> + Send + Sync + Sized + 'static,
     E: ToString,
     Req: serde::de::DeserializeOwned,
     Res: serde::Serialize + Send + Sync + 'static,
 {
-
 }
 
-/// A convenience function to build a service. 
+/// A convenience function to build a service.
 pub fn wrap_method<State, F, E, Req, Res>(method: F) -> Handler<State>
 where
     F: Fn(&State, Req) -> Result<Res, E> + Send + Sync + 'static,
@@ -185,10 +185,7 @@ where
         Self { handlers, ..self }
     }
 
-    pub fn register_handlers(
-        self,
-        map: &'static HashMap<&'static str, Handler<State>>,
-    ) -> Self {
+    pub fn register_handlers(self, map: &'static HashMap<&'static str, Handler<State>>) -> Self {
         let mut builder = self;
         for (key, val) in map.iter() {
             builder.handlers.insert(key, val.clone());
@@ -211,8 +208,12 @@ where
 }
 
 /// A convenience function to build a Service object using a State and handler map
-pub fn build_service<State>(state: Arc<State>, handlers: &'static HashMap<&'static str, Handler<State>>) -> Service<State> 
-where State: Send + Sync + 'static,
+pub fn build_service<State>(
+    state: Arc<State>,
+    handlers: &'static HashMap<&'static str, Handler<State>>,
+) -> Service<State>
+where
+    State: Send + Sync + 'static,
 {
     Service::builder()
         .register_state(state)

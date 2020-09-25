@@ -5,11 +5,8 @@ use log;
 use serde::{Deserialize, Serialize};
 use std::sync::{Arc, Mutex};
 
+use toy_rpc::macros::{export_impl, service};
 use toy_rpc::server::Server;
-use toy_rpc::macros::{
-    export_impl,
-    service
-};
 
 #[derive(Serialize, Deserialize, Debug)]
 struct EchoRequest {
@@ -81,7 +78,9 @@ async fn run_server() {
     let addrs = "127.0.0.1:23333";
 
     log::info!("Starting server at {}", &addrs);
-    let server = Server::builder().register("echo_service", service!(echo_service, EchoService)).build();
+    let server = Server::builder()
+        .register("echo_service", service!(echo_service, EchoService))
+        .build();
 
     let listener = TcpListener::bind(addrs).await.unwrap();
     server.accept(listener).await.unwrap();

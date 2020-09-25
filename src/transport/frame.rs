@@ -1,11 +1,6 @@
 use async_trait::async_trait;
 use bincode::{DefaultOptions, Options};
-use futures::io::{
-    AsyncBufRead,
-    AsyncReadExt,
-    AsyncWrite,
-    AsyncWriteExt,
-};
+use futures::io::{AsyncBufRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 use futures::ready;
 use futures::task::{Context, Poll};
 use futures::Stream;
@@ -15,8 +10,8 @@ use pin_project::pin_project;
 use serde::{Deserialize, Serialize};
 use std::pin::Pin;
 
-use crate::Error;
 use crate::message::MessageId;
+use crate::Error;
 
 type FrameId = u8;
 type PayloadLen = u32;

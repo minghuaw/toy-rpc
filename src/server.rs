@@ -1,22 +1,16 @@
-use std::collections::HashMap;
 use async_std::net::{TcpListener, TcpStream};
 use async_std::sync::Arc;
 use async_std::task;
 use erased_serde as erased;
 use futures::StreamExt;
+use std::collections::HashMap;
 
-pub use toy_rpc_definitions::service::{
-    HandlerResult,
-    ServeRequest,
-    ServiceMap
-};
+pub use toy_rpc_definitions::service::{HandlerResult, ServeRequest, ServiceMap};
 
 use crate::codec::{DefaultCodec, ServerCodec};
-use crate::{Error, RpcError};
 use crate::message::{MessageId, RequestHeader, ResponseHeader};
-use crate::service::{
-    HandleService,
-};
+use crate::service::HandleService;
+use crate::{Error, RpcError};
 
 pub struct Server {
     services: Arc<ServiceMap>,
@@ -85,9 +79,7 @@ impl Server {
 
                 // log::info!("Calling handler");
                 // pass ownership to the `call`
-                task::spawn_blocking(
-                    move || call(method_name, deserializer)
-                ).await
+                task::spawn_blocking(move || call(method_name, deserializer)).await
             };
 
             // send back result

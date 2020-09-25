@@ -1,14 +1,11 @@
 use proc_macro::TokenStream;
 use quote::quote;
-use syn::{
-    parse_macro_input,
-    Ident
-};
+use syn::{parse_macro_input, Ident};
 
 const SERVICE_PREFIX: &str = "STATIC_TOY_RPC_SERVICE";
 const ATTR_EXPORT_METHOD: &str = "export_method";
 
-/// A macro that impls serde::Deserializer by simply calling the 
+/// A macro that impls serde::Deserializer by simply calling the
 /// corresponding functions of the inner deserializer
 #[proc_macro]
 pub fn impl_inner_deserializer(_: TokenStream) -> TokenStream {
@@ -229,35 +226,32 @@ pub fn export_impl(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let self_ty = &input.self_ty;
     let ident = match parse_impl_self_ty(self_ty) {
         Ok(i) => i,
-        Err(err) => return err.to_compile_error().into()
+        Err(err) => return err.to_compile_error().into(),
     };
     let static_name = format!("{}_{}", SERVICE_PREFIX, ident.to_string().to_uppercase());
     let static_ident = Ident::new(&static_name, ident.span());
-    
-    let _ = input.items.iter_mut()
+
+    let _ = input
+        .items
+        .iter_mut()
         // first filter out method
-        .filter_map(|item| {
-            match item {
-                syn::ImplItem::Method(f) => {
-                    Some(f)
-                },
-                _ => None
-            }
+        .filter_map(|item| match item {
+            syn::ImplItem::Method(f) => Some(f),
+            _ => None,
         })
         // find whether function has attributes
         .filter(|f| {
             // println!("{:?}", &f.attrs);
-            f.attrs.iter()
-                .any(|attr| {
-                    let ident = attr.path.get_ident().unwrap();
-                    ident == ATTR_EXPORT_METHOD
-                })
+            f.attrs.iter().any(|attr| {
+                let ident = attr.path.get_ident().unwrap();
+                ident == ATTR_EXPORT_METHOD
+            })
         })
         // append ident and names of function with attribute
         .for_each(|f| {
             fn_idents.push(f.sig.ident.clone());
             names.push(f.sig.ident.to_string());
-            
+
             // clear the attributes for now
             f.attrs.retain(|attr| {
                 let ident = attr.path.get_ident().unwrap();
@@ -266,7 +260,7 @@ pub fn export_impl(_attr: TokenStream, item: TokenStream) -> TokenStream {
         });
 
     // export a lazy_static HashMap of handlers
-    let export = quote!{
+    let export = quote! {
         lazy_static::lazy_static! {
             #[allow(non_upper_case_globals)]
             static ref #static_ident:
@@ -289,7 +283,7 @@ pub fn export_impl(_attr: TokenStream, item: TokenStream) -> TokenStream {
 
 struct ServiceExport {
     instance_id: syn::Ident,
-    impl_path: syn::Path
+    impl_path: syn::Path,
 }
 
 impl syn::parse::Parse for ServiceExport {
@@ -298,28 +292,28 @@ impl syn::parse::Parse for ServiceExport {
         input.parse::<syn::Token![,]>()?;
         let impl_path: syn::Path = input.parse()?;
 
-        Ok(
-            ServiceExport {
-                instance_id,
-                impl_path
-            }
-        )
+        Ok(ServiceExport {
+            instance_id,
+            impl_path,
+        })
     }
 }
 
 #[proc_macro]
 pub fn service(input: TokenStream) -> TokenStream {
-    let ServiceExport{instance_id, impl_path} = parse_macro_input!(input as ServiceExport);
+    let ServiceExport {
+        instance_id,
+        impl_path,
+    } = parse_macro_input!(input as ServiceExport);
     let ident = impl_path.get_ident().unwrap();
     let static_name = format!("{}_{}", SERVICE_PREFIX, &ident.to_string().to_uppercase());
     let static_ident = syn::Ident::new(&static_name, ident.span());
     let mut static_impl_path = impl_path.clone();
 
     // modify the path
-    static_impl_path.segments.first_mut().unwrap()
-        .ident = static_ident;
+    static_impl_path.segments.first_mut().unwrap().ident = static_ident;
 
-    let output = quote!{
+    let output = quote! {
         toy_rpc_definitions::service::build_service(#instance_id, &*#static_impl_path)
     };
 
@@ -333,11 +327,11 @@ pub fn service(input: TokenStream) -> TokenStream {
 //     let static_name = format!("{}_{}", SERVICE_PREFIX, ident);
 //     let static_ident = Ident::new(&static_name, ident.span());
 
-//     // initialize 
+//     // initialize
 //     let static_map_output = quote! {
 //         lazy_static::lazy_static! {
-//             static ref #static_ident: 
-//                 std::sync::Mutex<std::collections::HashMap<&'static str, async_std::sync::Arc<toy_rpc_definitions::Handler<#ident>>>> 
+//             static ref #static_ident:
+//                 std::sync::Mutex<std::collections::HashMap<&'static str, async_std::sync::Arc<toy_rpc_definitions::Handler<#ident>>>>
 //             = {
 //                 std::sync::Mutex::new(
 //                     HashMap::new()
@@ -357,15 +351,10 @@ pub fn service(input: TokenStream) -> TokenStream {
 
 fn parse_impl_self_ty(self_ty: &syn::Type) -> Result<&syn::Ident, syn::Error> {
     match self_ty {
-        syn::Type::Path(tp) => {
-            Ok(
-                &tp.path.segments[0].ident
-            )
-        },
-        _ => {
-            Err(
-                syn::Error::new_spanned(quote!{}, "Compile Error: Self type")
-            )
-        }
+        syn::Type::Path(tp) => Ok(&tp.path.segments[0].ident),
+        _ => Err(syn::Error::new_spanned(
+            quote! {},
+            "Compile Error: Self type",
+        )),
     }
 }

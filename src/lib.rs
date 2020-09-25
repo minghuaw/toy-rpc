@@ -1,9 +1,4 @@
-pub use toy_rpc_definitions::{
-    Error,
-    RpcError,
-    message,
-    service,
-};
+pub use toy_rpc_definitions::{message, service, Error, RpcError};
 
 pub use toy_rpc_macros as macros;
 

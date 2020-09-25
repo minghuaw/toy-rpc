@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use toy_rpc::client::Client;
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug)]
 struct EchoRequest {
     pub a: u32,
     pub b: u32,
@@ -22,11 +22,11 @@ async fn main() {
     let client = Client::dial("127.0.0.1:23333").unwrap();
     let args = EchoRequest { a: 1, b: 2 };
 
-    let reply: EchoResponse = client.call("echo_service.echo", args.clone()).unwrap();
+    let reply: EchoResponse = client.call("echo_service.echo", &args).unwrap();
 
     println!("{:?}", reply);
 
-    let handle = client.task("echo_service.increment_counter", args.clone());
+    let handle = client.task("echo_service.increment_counter", args);
     // let handle = task::spawn(
     //     client.async_call("service.increment", args)
     // );
