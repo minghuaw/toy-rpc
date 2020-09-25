@@ -9,7 +9,7 @@ use crate::{Error, RpcError};
 
 pub type HandlerResult = Result<Box<dyn erased::Serialize + Send + Sync + 'static>, Error>;
 pub type Handler<S> =
-    Arc<dyn Fn(Arc<S>, Box<dyn erased::Deserializer>) -> HandlerResult + Send + Sync + 'static>;
+    Arc<dyn Fn(&S, Box<dyn erased::Deserializer>) -> HandlerResult + Send + Sync + 'static>;
 
 pub type ServeRequest = Arc<
     dyn Fn(String, Box<(dyn erased::Deserializer + Send + Sync)>) -> HandlerResult + Send + Sync,
@@ -24,7 +24,7 @@ where
     Self: Fn(&State, Req) -> Result<Res, E> + Send + Sync + Sized + 'static,
 {
     fn into_handler(self) -> Handler<State> {
-        let handler = move |_state: Arc<State>,
+        let handler = move |_state: &State,
                             mut _deserializer: Box<dyn erased::Deserializer>|
               -> HandlerResult {
             let _req: Req = erased::deserialize(_deserializer.as_mut())
@@ -95,7 +95,7 @@ pub trait HandleService<State> {
         };
 
         // execute hanlder method
-        let res = _method(_state, _deserializer);
+        let res = _method(&_state, _deserializer);
 
         // return handler result
         return res;
