@@ -1507,6 +1507,7 @@ dependencies = [
  "async-trait",
  "bincode",
  "erased-serde",
+ "futures",
  "serde",
  "serde_json",
 ]
@@ -1516,6 +1517,7 @@ name = "toy_rpc_macros"
 version = "0.1.0"
 dependencies = [
  "async-std",
+ "erased-serde",
  "lazy_static",
  "quote",
  "syn",
