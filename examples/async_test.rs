@@ -1,18 +1,24 @@
 use async_std::sync::{Mutex, Arc};
-use std::collections::HashMap;
-use std::pin::Pin;
-use erased_serde as erased;
-use futures::future::Future;
+use async_std::net::TcpListener;
+// use std::collections::HashMap;
+// use std::pin::Pin;
+// use erased_serde as erased;
+// use futures::future::Future;
 
-use toy_rpc_definitions::async_service::{
+// use toy_rpc_definitions::async_service::{
     // HandlerResult, 
-    HandlerResultFut,
+    // HandlerResultFut,
     // AsyncHandler,
-    ArcAsyncHandler
+    // ArcAsyncHandler
+// };
+use toy_rpc_macros::{
+    async_export_impl,
+    service
 };
-use toy_rpc_macros::async_export_impl;
 
 use toy_rpc_definitions::{Error, RpcError};
+use toy_rpc::server::Server;
+// use toy_rpc::async_service;
 
 struct EchoService {
     count: Mutex<i32>
@@ -82,4 +88,15 @@ async fn main() {
     for key in STATIC_TOY_RPC_SERVICE_ECHOSERVICE.keys() {
         println!("{:?}", key);
     }
+
+    let echo_service = Arc::new(EchoService{count: Mutex::new(0)});
+    // let echo_service_server = ;
+    // let echo_service_server = async_service::build_service(echo_service.clone(), &*STATIC_TOY_RPC_SERVICE_ECHOSERVICE);
+    let addrs = "127.0.0.1:23333";
+    let server = Server::builder()
+        .register("echo_service", service!(echo_service, EchoService))
+        .build();
+
+    let listener = TcpListener::bind(addrs).await.unwrap();
+    server.accept(listener).await.unwrap();
 }

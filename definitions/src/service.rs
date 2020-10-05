@@ -71,7 +71,7 @@ where
 
 impl<State> Service<State>
 where
-    State: Send + Sync,
+    State: Send + Sync + 'static,
 {
     pub fn builder() -> ServiceBuilder<State, BuilderNotReady> {
         ServiceBuilder::new()
@@ -117,7 +117,7 @@ where
 
 /// Type state for the service builder when state is set
 #[allow(dead_code)]
-pub struct BuilderIsReady;
+pub struct BuilderReady;
 /// Type state for the service builder when state is NOT set
 #[allow(dead_code)]
 pub struct BuilderNotReady;
@@ -147,8 +147,8 @@ where
         }
     }
 
-    pub fn with_state(s: Arc<State>) -> ServiceBuilder<State, BuilderIsReady> {
-        ServiceBuilder::<State, BuilderIsReady> {
+    pub fn with_state(s: Arc<State>) -> ServiceBuilder<State, BuilderReady> {
+        ServiceBuilder::<State, BuilderReady> {
             state: Some(s),
             handlers: HashMap::new(),
 
@@ -156,8 +156,8 @@ where
         }
     }
 
-    pub fn register_state(self, s: Arc<State>) -> ServiceBuilder<State, BuilderIsReady> {
-        ServiceBuilder::<State, BuilderIsReady> {
+    pub fn register_state(self, s: Arc<State>) -> ServiceBuilder<State, BuilderReady> {
+        ServiceBuilder::<State, BuilderReady> {
             state: Some(s),
             handlers: self.handlers,
 
@@ -195,7 +195,7 @@ where
     }
 }
 
-impl<State> ServiceBuilder<State, BuilderIsReady>
+impl<State> ServiceBuilder<State, BuilderReady>
 where
     State: Send + Sync + 'static,
 {

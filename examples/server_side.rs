@@ -5,7 +5,7 @@ use log;
 use serde::{Deserialize, Serialize};
 use std::sync::{Arc, Mutex};
 
-use toy_rpc::macros::{export_impl, service};
+use toy_rpc::macros::{async_export_impl, service};
 use toy_rpc::server::Server;
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -24,23 +24,25 @@ struct EchoService {
     counter: Mutex<u32>,
 }
 
+#[async_trait::async_trait]
 trait EchoRpc {
-    fn echo(&self, req: EchoRequest) -> Result<EchoResponse, String>;
-    fn increment_a(&self, req: EchoRequest) -> Result<EchoResponse, String>;
-    fn increment_b(&self, req: EchoRequest) -> Result<EchoResponse, String>;
-    fn increment_counter(&self, req: EchoRequest) -> Result<EchoResponse, String>;
+    async fn echo(&self, req: EchoRequest) -> Result<EchoResponse, String>;
+    async fn increment_a(&self, req: EchoRequest) -> Result<EchoResponse, String>;
+    async fn increment_b(&self, req: EchoRequest) -> Result<EchoResponse, String>;
+    async fn increment_counter(&self, req: EchoRequest) -> Result<EchoResponse, String>;
 }
 
-#[export_impl]
+#[async_trait::async_trait]
+#[async_export_impl]
 impl EchoRpc for EchoService {
     #[export_method]
-    fn echo(&self, req: EchoRequest) -> Result<EchoResponse, String> {
+    async fn echo(&self, req: EchoRequest) -> Result<EchoResponse, String> {
         let res = EchoResponse { a: req.a, b: req.b };
         Ok(res)
     }
 
     #[export_method]
-    fn increment_a(&self, req: EchoRequest) -> Result<EchoResponse, String> {
+    async fn increment_a(&self, req: EchoRequest) -> Result<EchoResponse, String> {
         let res = EchoResponse {
             a: req.a + 1,
             b: req.b,
@@ -49,7 +51,7 @@ impl EchoRpc for EchoService {
     }
 
     #[export_method]
-    fn increment_b(&self, req: EchoRequest) -> Result<EchoResponse, String> {
+    async fn increment_b(&self, req: EchoRequest) -> Result<EchoResponse, String> {
         let res = EchoResponse {
             a: req.a,
             b: req.b + 1,
@@ -58,7 +60,7 @@ impl EchoRpc for EchoService {
     }
 
     #[export_method]
-    fn increment_counter(&self, req: EchoRequest) -> Result<EchoResponse, String> {
+    async fn increment_counter(&self, req: EchoRequest) -> Result<EchoResponse, String> {
         let mut _counter = self.counter.lock().map_err(|_| "")?;
 
         *_counter += 1;

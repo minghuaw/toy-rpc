@@ -4,19 +4,19 @@ use std::sync::Mutex;
 // use lazy_static::lazy_static;
 use toy_rpc::macros::{
     // export_struct,
-    export_impl,
+    async_export_impl,
     // export_method,
     // service::Handler
     service,
 };
-use toy_rpc_definitions::service::HandleService;
+use toy_rpc_definitions::async_service::HandleService;
 
 // #[export_struct]
 struct EchoService {
     count: Mutex<i32>,
 }
 
-#[export_impl]
+#[async_export_impl]
 impl EchoService {
     pub fn new() -> Self {
         Self {
@@ -25,7 +25,7 @@ impl EchoService {
     }
 
     #[export_method]
-    pub fn echo(&self, a: i32) -> Result<i32, String> {
+    pub async fn echo(&self, a: i32) -> Result<i32, String> {
         let _count = self.count.lock().map_err(|_| "Cannot lock".to_string())?;
         println!("echo");
         println!("count {:?}", *_count);

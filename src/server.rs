@@ -5,15 +5,21 @@ use erased_serde as erased;
 use futures::StreamExt;
 use std::collections::HashMap;
 
-pub use toy_rpc_definitions::service::{HandlerResult, ServeRequest, ServiceMap};
+// pub use toy_rpc_definitions::service::{HandlerResult, ServeRequest, ServiceMap};
 
 use crate::codec::{DefaultCodec, ServerCodec};
 use crate::message::{MessageId, RequestHeader, ResponseHeader};
-use crate::service::HandleService;
+use crate::async_service::{
+    HandlerResult,
+    HandlerResultFut,
+    HandleService,
+    ArcAsyncServiceCall,
+    AsyncServiceMap
+};
 use crate::{Error, RpcError};
 
 pub struct Server {
-    services: Arc<ServiceMap>,
+    services: Arc<AsyncServiceMap>,
 }
 
 impl Server {
@@ -35,7 +41,7 @@ impl Server {
         Ok(())
     }
 
-    async fn _serve_conn(stream: TcpStream, services: Arc<ServiceMap>) -> Result<(), Error> {
+    async fn _serve_conn(stream: TcpStream, services: Arc<AsyncServiceMap>) -> Result<(), Error> {
         // let _stream = stream;
         let peer_addr = stream.peer_addr()?;
 
@@ -50,7 +56,7 @@ impl Server {
         ret
     }
 
-    async fn _serve_codec<C>(mut codec: C, services: Arc<ServiceMap>) -> Result<(), Error>
+    async fn _serve_codec<C>(mut codec: C, services: Arc<AsyncServiceMap>) -> Result<(), Error>
     where
         C: ServerCodec + Send + Sync,
     {
@@ -68,7 +74,7 @@ impl Server {
 
             // look up the service
             // TODO; consider adding a new error type
-            let call: ServeRequest = services
+            let call: ArcAsyncServiceCall = services
                 .get(service_name)
                 .ok_or(Error::RpcError(RpcError::MethodNotFound))?
                 .clone();
@@ -79,7 +85,7 @@ impl Server {
 
                 // log::info!("Calling handler");
                 // pass ownership to the `call`
-                task::spawn_blocking(move || call(method_name, deserializer)).await
+                call(method_name, deserializer).await
             };
 
             // send back result
@@ -138,7 +144,7 @@ impl Server {
 }
 
 pub struct ServerBuilder {
-    services: HashMap<&'static str, ServeRequest>,
+    services: AsyncServiceMap,
 }
 
 impl ServerBuilder {
@@ -153,14 +159,16 @@ impl ServerBuilder {
         S: HandleService<T> + Send + Sync + 'static,
         T: Send + Sync + 'static,
     {
-        let serve =
+        let call =
             move |method_name: String,
-                  _deserializer: Box<(dyn erased::Deserializer + Send + Sync)>| {
+                  _deserializer: Box<(dyn erased::Deserializer<'static> + Send)>| 
+                  -> HandlerResultFut
+            {
                 service.call(&method_name, _deserializer)
             };
 
         let mut ret = self;
-        ret.services.insert(service_name, Arc::new(serve));
+        ret.services.insert(service_name, Arc::new(call));
         ret
     }
 

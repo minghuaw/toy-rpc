@@ -327,48 +327,48 @@ fn filter_export_method(input: &mut syn::ItemImpl) -> (Vec<syn::Ident>, Vec<Stri
     (fn_idents, names)
 }
 
-fn filter_async_export_method(input: &mut syn::ItemImpl) -> (Vec<syn::Ident>, Vec<String>) {
-    let mut fn_idents: Vec<syn::Ident> = Vec::new();
-    let mut names: Vec<String> = Vec::new();
+// fn filter_async_export_method(input: &mut syn::ItemImpl) -> (Vec<syn::Ident>, Vec<String>) {
+//     let mut fn_idents: Vec<syn::Ident> = Vec::new();
+//     let mut names: Vec<String> = Vec::new();
     
-    input.items.iter_mut()
-        // first filter out method
-        .filter_map(|item| match item {
-            syn::ImplItem::Method(f) => Some(f),
-            _ => None,
-        })
-        // find whether function has attributes
-        .filter(|f| {
-            // println!("{:?}", &f.attrs);
-            f.attrs.iter().any(|attr| {
-                let ident = attr.path.get_ident().unwrap();
-                ident == ATTR_EXPORT_METHOD
-            })
-        })
-        // filter async function
-        .filter(|f| {
-            f.sig.asyncness.is_some()
-        })
-        // append ident and names of function with attribute
-        .for_each(|f| {
-            fn_idents.push(f.sig.ident.clone());
-            names.push(f.sig.ident.to_string());
+//     input.items.iter_mut()
+//         // first filter out method
+//         .filter_map(|item| match item {
+//             syn::ImplItem::Method(f) => Some(f),
+//             _ => None,
+//         })
+//         // find whether function has attributes
+//         .filter(|f| {
+//             // println!("{:?}", &f.attrs);
+//             f.attrs.iter().any(|attr| {
+//                 let ident = attr.path.get_ident().unwrap();
+//                 ident == ATTR_EXPORT_METHOD
+//             })
+//         })
+//         // filter async function
+//         .filter(|f| {
+//             f.sig.asyncness.is_some()
+//         })
+//         // append ident and names of function with attribute
+//         .for_each(|f| {
+//             fn_idents.push(f.sig.ident.clone());
+//             names.push(f.sig.ident.to_string());
 
-            // clear the attributes for now
-            f.attrs.retain(|attr| {
-                let ident = attr.path.get_ident().unwrap();
-                ident != ATTR_EXPORT_METHOD
-            })
-        });
+//             // clear the attributes for now
+//             f.attrs.retain(|attr| {
+//                 let ident = attr.path.get_ident().unwrap();
+//                 ident != ATTR_EXPORT_METHOD
+//             })
+//         });
     
-    (fn_idents, names)
-}
+//     (fn_idents, names)
+// }
 
 fn transform_impl(input: syn::ItemImpl) -> (syn::ItemImpl, Vec<String>, Vec<Ident>) {
     let mut names = Vec::new();
     let mut idents = Vec::new();
     let mut output = input;
-    let self_ty = &output.self_ty;
+    // let self_ty = &output.self_ty;
     output.items.retain(|item| 
         match item {
             syn::ImplItem::Method(f) => {
@@ -377,14 +377,16 @@ fn transform_impl(input: syn::ItemImpl) -> (syn::ItemImpl, Vec<String>, Vec<Iden
                     ident == ATTR_EXPORT_METHOD
                 });
 
-                let is_async = f.sig.asyncness.is_some();
+                // let is_async = f.sig.asyncness.is_some();
 
-                is_exported && is_async
+                // is_exported && is_async
+                is_exported
             },
             _ => false
         }
     );
 
+    output.trait_ = None;
     output.items.iter_mut()
         // first filter out method
         .filter_map(|item| match item {
@@ -429,7 +431,7 @@ fn transform_method(f: &mut syn::ImplItemMethod) {
         });
         
         f.sig.inputs = parse_quote!(
-            &'static self, mut deserializer: Box<dyn erased_serde::Deserializer<'static>>
+            self: Arc<Self>, mut deserializer: Box<dyn erased_serde::Deserializer<'static> + Send>
         );
 
         f.sig.output = parse_quote!(
@@ -494,7 +496,7 @@ pub fn service(input: TokenStream) -> TokenStream {
     static_impl_path.segments.first_mut().unwrap().ident = static_ident;
 
     let output = quote! {
-        toy_rpc_definitions::service::build_service(#instance_id, &*#static_impl_path)
+        toy_rpc_definitions::async_service::build_service(#instance_id, &*#static_impl_path)
     };
 
     output.into()
