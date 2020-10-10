@@ -12,7 +12,7 @@ use async_std::net::TcpListener;
     // ArcAsyncHandler
 // };
 use toy_rpc_macros::{
-    async_export_impl,
+    export_impl,
     service
 };
 
@@ -24,7 +24,7 @@ struct EchoService {
     count: Mutex<i32>
 }
 
-#[async_export_impl]
+#[export_impl]
 impl EchoService {
     pub fn new() -> Self {
         Self {

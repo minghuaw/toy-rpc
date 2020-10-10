@@ -5,11 +5,9 @@ use erased_serde as erased;
 use futures::StreamExt;
 use std::collections::HashMap;
 
-// pub use toy_rpc_definitions::service::{HandlerResult, ServeRequest, ServiceMap};
-
 use crate::codec::{DefaultCodec, ServerCodec};
 use crate::message::{MessageId, RequestHeader, ResponseHeader};
-use crate::async_service::{
+use crate::service::{
     HandlerResult,
     HandlerResultFut,
     HandleService,
@@ -157,7 +155,7 @@ impl ServerBuilder {
     pub fn register<S, T>(self, service_name: &'static str, service: S) -> Self
     where
         S: HandleService<T> + Send + Sync + 'static,
-        T: Send + Sync + 'static,
+        T: Send + Sync + 'static, 
     {
         let call =
             move |method_name: String,

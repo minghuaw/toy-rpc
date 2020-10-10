@@ -1,11 +1,12 @@
 use async_std::net::TcpListener;
 use async_std::task;
+use async_trait::async_trait;
 use env_logger;
 use log;
 use serde::{Deserialize, Serialize};
 use std::sync::{Arc, Mutex};
 
-use toy_rpc::macros::{async_export_impl, service};
+use toy_rpc::macros::{export_impl, service};
 use toy_rpc::server::Server;
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -24,7 +25,7 @@ struct EchoService {
     counter: Mutex<u32>,
 }
 
-#[async_trait::async_trait]
+#[async_trait]
 trait EchoRpc {
     async fn echo(&self, req: EchoRequest) -> Result<EchoResponse, String>;
     async fn increment_a(&self, req: EchoRequest) -> Result<EchoResponse, String>;
@@ -32,8 +33,8 @@ trait EchoRpc {
     async fn increment_counter(&self, req: EchoRequest) -> Result<EchoResponse, String>;
 }
 
-#[async_trait::async_trait]
-#[async_export_impl]
+#[async_trait]
+#[export_impl]
 impl EchoRpc for EchoService {
     #[export_method]
     async fn echo(&self, req: EchoRequest) -> Result<EchoResponse, String> {

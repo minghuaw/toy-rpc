@@ -1,22 +1,16 @@
 use async_std::sync::Arc;
 use std::sync::Mutex;
-// use std::collections::HashMap;
-// use lazy_static::lazy_static;
 use toy_rpc::macros::{
-    // export_struct,
-    async_export_impl,
-    // export_method,
-    // service::Handler
+    export_impl,
     service,
 };
 use toy_rpc_definitions::async_service::HandleService;
 
-// #[export_struct]
 struct EchoService {
     count: Mutex<i32>,
 }
 
-#[async_export_impl]
+#[export_impl]
 impl EchoService {
     pub fn new() -> Self {
         Self {
