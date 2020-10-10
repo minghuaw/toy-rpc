@@ -7,3 +7,7 @@ mod transport;
 
 pub mod client;
 pub mod server;
+
+// re-export
+pub use ::erased_serde;
+pub use ::lazy_static;

@@ -1252,8 +1252,6 @@ dependencies = [
  "async-std",
  "async-trait",
  "env_logger",
- "erased-serde",
- "lazy_static",
  "log",
  "serde",
  "toy_rpc",

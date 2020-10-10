@@ -1,7 +1,6 @@
 use async_std::net::TcpListener;
 use async_trait::async_trait;
 use async_std::sync::{Arc, Mutex};
-use erased_serde;
 
 use toy_rpc::macros::{export_impl, service};
 use toy_rpc::server::Server;

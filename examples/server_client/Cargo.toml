@@ -12,8 +12,6 @@ async-trait = "0.1.41"
 async-std = { version = "1.6.5", features = [ "attributes", ] }  
 
 toy_rpc = {version = "0.1.0", path = "../.."}
-erased-serde = "0.3.12"
-lazy_static = "1.4.0"
 log = "0.4.11"
 env_logger = "0.7.1"
 

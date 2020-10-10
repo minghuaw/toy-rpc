@@ -229,7 +229,7 @@ pub fn impl_inner_deserializer(_: TokenStream) -> TokenStream {
 
 //     // export a lazy_static HashMap of handlers
 //     let export = quote! {
-//         lazy_static::lazy_static! {
+//         toy_rpc::lazy_static::lazy_static! {
 //             #[allow(non_upper_case_globals)]
 //             static ref #static_ident:
 //                 std::collections::HashMap<&'static str, toy_rpc::service::Handler<#self_ty>>
@@ -267,7 +267,7 @@ pub fn export_impl(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let static_ident = Ident::new(&static_name, ident.span());
 
     let lazy = quote! {
-        lazy_static::lazy_static! { 
+        toy_rpc::lazy_static::lazy_static! { 
             static ref #static_ident:
                 std::collections::HashMap<&'static str, toy_rpc::service::ArcAsyncHandler<#self_ty>>
                 = {
@@ -414,10 +414,10 @@ fn transform_method(f: &mut syn::ImplItemMethod) {
         f.block = parse_quote!({
             Box::pin(
                 async move {
-                    let req: #req_ty = erased_serde::deserialize(&mut deserializer)
+                    let req: #req_ty = toy_rpc::erased_serde::deserialize(&mut deserializer)
                         .map_err(|_| toy_rpc::error::Error::RpcError(toy_rpc::error::RpcError::InvalidRequest))?;
                     let res = self.#ident(req).await
-                        .map(|r| Box::new(r) as Box<dyn erased_serde::Serialize + Send + Sync + 'static>)
+                        .map(|r| Box::new(r) as Box<dyn toy_rpc::erased_serde::Serialize + Send + Sync + 'static>)
                         .map_err(|e| toy_rpc::error::Error::RpcError(
                             toy_rpc::error::RpcError::ServerError(e.to_string())
                         ));
@@ -427,7 +427,7 @@ fn transform_method(f: &mut syn::ImplItemMethod) {
         });
         
         f.sig.inputs = parse_quote!(
-            self: Arc<Self>, mut deserializer: Box<dyn erased_serde::Deserializer<'static> + Send>
+            self: Arc<Self>, mut deserializer: Box<dyn toy_rpc::erased_serde::Deserializer<'static> + Send>
         );
 
         f.sig.output = parse_quote!(
@@ -507,7 +507,7 @@ pub fn service(input: TokenStream) -> TokenStream {
 
 //     // initialize
 //     let static_map_output = quote! {
-//         lazy_static::lazy_static! {
+//         toy_rpc::lazy_static::lazy_static! {
 //             static ref #static_ident:
 //                 std::sync::Mutex<std::collections::HashMap<&'static str, async_std::sync::Arc<toy_rpc::service::Handler<#ident>>>>
 //             = {
