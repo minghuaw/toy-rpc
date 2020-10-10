@@ -4,13 +4,13 @@ use serde::{Deserialize, Serialize};
 use toy_rpc::client::Client;
 
 #[derive(Serialize, Deserialize, Debug)]
-struct EchoRequest {
+struct FooRequest {
     pub a: u32,
     pub b: u32,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-struct EchoResponse {
+struct FooResponse {
     pub a: u32,
     pub b: u32,
 }
@@ -20,17 +20,19 @@ async fn main() {
     env_logger::init();
 
     let client = Client::dial("127.0.0.1:23333").unwrap();
-    let args = EchoRequest { a: 1, b: 2 };
+    let args = FooRequest { a: 1, b: 2 };
 
-    let reply: EchoResponse = client.call("echo_service.echo", &args).unwrap();
+    let reply: FooResponse = client.call("foo_service.echo", &args).unwrap();
 
     println!("{:?}", reply);
 
-    let handle = client.task("echo_service.increment_counter", args);
-    // let handle = task::spawn(
-    //     client.async_call("service.increment", args)
-    // );
-    let reply: EchoResponse = handle.await.unwrap();
+    let handle = client.task("foo_service.increment_b", args);
+    let reply: FooResponse = handle.await.unwrap();
+    println!("{:?}", reply);
+
+    let args = ();
+    let handle = client.task("foo_service.get_counter", args);
+    let reply: u32 = handle.await.unwrap();
 
     println!("{:?}", reply);
 }

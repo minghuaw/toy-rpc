@@ -9,7 +9,7 @@ use std::io::Cursor; // serde doesn't support AsyncRead
 use super::{CodecRead, CodecWrite, DeserializerOwned, Marshal, Unmarshal};
 use crate::message::{MessageId, Metadata};
 use crate::transport::frame::{FrameRead, FrameStreamExt, FrameWrite, PayloadType};
-use crate::Error;
+use crate::error::Error;
 use toy_rpc_macros::impl_inner_deserializer;
 
 impl<'de, R, O> serde::Deserializer<'de> for DeserializerOwned<bincode::Deserializer<R, O>>
@@ -82,10 +82,13 @@ where
         let reader = &mut self.reader;
 
         let de = match reader.frames().next().await? {
-            Ok(frame) => bincode::Deserializer::with_reader(
-                Cursor::new(frame.payload),
-                bincode::DefaultOptions::new().with_fixint_encoding(),
-            ),
+            Ok(frame) => {
+                log::debug!("frame: {:?}", frame);
+                bincode::Deserializer::with_reader(
+                    Cursor::new(frame.payload),
+                    bincode::DefaultOptions::new().with_fixint_encoding(),
+                )
+            },
             Err(e) => return Some(Err(e)),
         };
 

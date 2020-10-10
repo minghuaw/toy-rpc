@@ -25,6 +25,12 @@ impl EchoService {
         println!("count {:?}", *_count);
         Ok(a)
     }
+
+    #[export_method]
+    pub async fn get_count(&self, _: ()) -> Result<i32, String> {
+        let res = *self.count.lock().map_err(|e| e.to_string())?;
+        Ok(res)
+    }
 }
 
 fn main() {

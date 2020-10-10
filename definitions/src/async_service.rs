@@ -7,7 +7,7 @@ use std::marker::PhantomData;
 use std::pin::Pin;
 use futures::future::Future;
 
-use crate::{Error, RpcError};
+use crate::error::{Error, RpcError};
 
 // async versions of handlers
 pub type HandlerResult = Result<Box<dyn erased::Serialize + Send + Sync + 'static>, Error>;

@@ -4,47 +4,53 @@ use async_trait::async_trait;
 use env_logger;
 use log;
 use serde::{Deserialize, Serialize};
-use std::sync::{Arc, Mutex};
+use async_std::sync::{Arc, Mutex};
 
 use toy_rpc::macros::{export_impl, service};
 use toy_rpc::server::Server;
 
 #[derive(Serialize, Deserialize, Debug)]
-struct EchoRequest {
+struct FooRequest {
     pub a: u32,
     pub b: u32,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-struct EchoResponse {
+struct FooResponse {
     pub a: u32,
     pub b: u32,
 }
 
-struct EchoService {
+struct FooService {
     counter: Mutex<u32>,
 }
 
 #[async_trait]
-trait EchoRpc {
-    async fn echo(&self, req: EchoRequest) -> Result<EchoResponse, String>;
-    async fn increment_a(&self, req: EchoRequest) -> Result<EchoResponse, String>;
-    async fn increment_b(&self, req: EchoRequest) -> Result<EchoResponse, String>;
-    async fn increment_counter(&self, req: EchoRequest) -> Result<EchoResponse, String>;
+trait Rpc {
+    async fn echo(&self, req: FooRequest) -> Result<FooResponse, String>;
+    async fn increment_a(&self, req: FooRequest) -> Result<FooResponse, String>;
+    async fn increment_b(&self, req: FooRequest) -> Result<FooResponse, String>;
+    async fn get_counter(&self, _: ()) -> Result<u32, String>;
 }
 
 #[async_trait]
 #[export_impl]
-impl EchoRpc for EchoService {
+impl Rpc for FooService {
     #[export_method]
-    async fn echo(&self, req: EchoRequest) -> Result<EchoResponse, String> {
-        let res = EchoResponse { a: req.a, b: req.b };
+    async fn echo(&self, req: FooRequest) -> Result<FooResponse, String> {
+        let mut counter = self.counter.lock().await;
+        *counter += 1;
+
+        let res = FooResponse { a: req.a, b: req.b };
         Ok(res)
     }
 
     #[export_method]
-    async fn increment_a(&self, req: EchoRequest) -> Result<EchoResponse, String> {
-        let res = EchoResponse {
+    async fn increment_a(&self, req: FooRequest) -> Result<FooResponse, String> {
+        let mut counter = self.counter.lock().await;
+        *counter += 1;
+
+        let res = FooResponse {
             a: req.a + 1,
             b: req.b,
         };
@@ -52,8 +58,12 @@ impl EchoRpc for EchoService {
     }
 
     #[export_method]
-    async fn increment_b(&self, req: EchoRequest) -> Result<EchoResponse, String> {
-        let res = EchoResponse {
+    async fn increment_b(&self, req: FooRequest) -> Result<FooResponse, String> {
+        log::info!("incrementing b");
+        let mut counter = self.counter.lock().await;
+        *counter += 1;
+        
+        let res = FooResponse {
             a: req.a,
             b: req.b + 1,
         };
@@ -61,20 +71,16 @@ impl EchoRpc for EchoService {
     }
 
     #[export_method]
-    async fn increment_counter(&self, req: EchoRequest) -> Result<EchoResponse, String> {
-        let mut _counter = self.counter.lock().map_err(|_| "")?;
-
-        *_counter += 1;
-        let res = EchoResponse {
-            a: req.a,
-            b: *_counter,
-        };
+    async fn get_counter(&self, _: ()) -> Result<u32, String> {
+        log::info!("getting counter");
+        let counter = self.counter.lock().await;
+        let res = *counter;
         Ok(res)
     }
 }
 
 async fn run_server() {
-    let echo_service = Arc::new(EchoService {
+    let echo_service = Arc::new(FooService {
         counter: Mutex::new(0u32),
     });
 
@@ -82,7 +88,7 @@ async fn run_server() {
 
     log::info!("Starting server at {}", &addrs);
     let server = Server::builder()
-        .register("echo_service", service!(echo_service, EchoService))
+        .register("foo_service", service!(echo_service, FooService))
         .build();
 
     let listener = TcpListener::bind(addrs).await.unwrap();

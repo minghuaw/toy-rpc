@@ -232,10 +232,10 @@ pub fn impl_inner_deserializer(_: TokenStream) -> TokenStream {
 //         lazy_static::lazy_static! {
 //             #[allow(non_upper_case_globals)]
 //             static ref #static_ident:
-//                 std::collections::HashMap<&'static str, toy_rpc_definitions::service::Handler<#self_ty>>
+//                 std::collections::HashMap<&'static str, toy_rpc::service::Handler<#self_ty>>
 //                 = {
 //                     let mut map = std::collections::HashMap::new();
-//                     #(map.insert(#names, toy_rpc_definitions::service::wrap_method(#self_ty::#fn_idents));)*;
+//                     #(map.insert(#names, toy_rpc::service::wrap_method(#self_ty::#fn_idents));)*;
 
 //                     map
 //                 };
@@ -269,9 +269,9 @@ pub fn export_impl(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let lazy = quote! {
         lazy_static::lazy_static! { 
             static ref #static_ident:
-                std::collections::HashMap<&'static str, toy_rpc_definitions::async_service::ArcAsyncHandler<#self_ty>>
+                std::collections::HashMap<&'static str, toy_rpc::service::ArcAsyncHandler<#self_ty>>
                 = {
-                    let mut map: std::collections::HashMap<&'static str, toy_rpc_definitions::async_service::ArcAsyncHandler<#self_ty>> 
+                    let mut map: std::collections::HashMap<&'static str, toy_rpc::service::ArcAsyncHandler<#self_ty>> 
                         = std::collections::HashMap::new();
                     #(map.insert(#names, std::sync::Arc::new(#self_ty::#fn_idents));)*;
                     map
@@ -415,11 +415,11 @@ fn transform_method(f: &mut syn::ImplItemMethod) {
             Box::pin(
                 async move {
                     let req: #req_ty = erased_serde::deserialize(&mut deserializer)
-                        .map_err(|_| toy_rpc_definitions::Error::RpcError(toy_rpc_definitions::RpcError::InvalidRequest))?;
+                        .map_err(|_| toy_rpc::error::Error::RpcError(toy_rpc::error::RpcError::InvalidRequest))?;
                     let res = self.#ident(req).await
                         .map(|r| Box::new(r) as Box<dyn erased_serde::Serialize + Send + Sync + 'static>)
-                        .map_err(|e| toy_rpc_definitions::Error::RpcError(
-                            toy_rpc_definitions::RpcError::ServerError(e.to_string())
+                        .map_err(|e| toy_rpc::error::Error::RpcError(
+                            toy_rpc::error::RpcError::ServerError(e.to_string())
                         ));
                     res
                 }
@@ -431,7 +431,7 @@ fn transform_method(f: &mut syn::ImplItemMethod) {
         );
 
         f.sig.output = parse_quote!(
-            -> toy_rpc_definitions::async_service::HandlerResultFut
+            -> toy_rpc::service::HandlerResultFut
         );
         
     };
@@ -492,7 +492,7 @@ pub fn service(input: TokenStream) -> TokenStream {
     static_impl_path.segments.first_mut().unwrap().ident = static_ident;
 
     let output = quote! {
-        toy_rpc_definitions::async_service::build_service(#instance_id, &*#static_impl_path)
+        toy_rpc::service::build_service(#instance_id, &*#static_impl_path)
     };
 
     output.into()
@@ -509,7 +509,7 @@ pub fn service(input: TokenStream) -> TokenStream {
 //     let static_map_output = quote! {
 //         lazy_static::lazy_static! {
 //             static ref #static_ident:
-//                 std::sync::Mutex<std::collections::HashMap<&'static str, async_std::sync::Arc<toy_rpc_definitions::Handler<#ident>>>>
+//                 std::sync::Mutex<std::collections::HashMap<&'static str, async_std::sync::Arc<toy_rpc::service::Handler<#ident>>>>
 //             = {
 //                 std::sync::Mutex::new(
 //                     HashMap::new()

@@ -6,7 +6,7 @@ use serde;
 use std::sync::atomic::Ordering;
 
 use crate::codec::{ClientCodec, DefaultCodec};
-use crate::{Error, RpcError};
+use crate::error::{Error, RpcError};
 use crate::message::{AtomicMessageId, MessageId, RequestHeader, ResponseHeader};
 
 pub struct Client {

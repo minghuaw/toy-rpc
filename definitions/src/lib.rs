@@ -1,4 +1,4 @@
-mod error;
+pub mod error;
 
 pub mod message;
 
@@ -14,5 +14,3 @@ pub use sync_service as service;
 
 #[cfg(feature="async_service")]
 pub use async_service as service;
-
-pub use error::{Error, RpcError};

@@ -1,22 +1,11 @@
 use async_std::sync::{Mutex, Arc};
 use async_std::net::TcpListener;
-// use std::collections::HashMap;
-// use std::pin::Pin;
-// use erased_serde as erased;
-// use futures::future::Future;
-
-// use toy_rpc_definitions::async_service::{
-    // HandlerResult, 
-    // HandlerResultFut,
-    // AsyncHandler,
-    // ArcAsyncHandler
-// };
 use toy_rpc_macros::{
     export_impl,
     service
 };
 
-use toy_rpc_definitions::{Error, RpcError};
+// use toy_rpc_definitions::{Error, RpcError};
 use toy_rpc::server::Server;
 // use toy_rpc::async_service;
 
@@ -45,39 +34,6 @@ impl EchoService {
         Ok(ret)
     }
 }
-
-// // handlers
-// impl EchoService {
-//     pub fn echo_handler(&'static self, mut deserializer: Box<dyn erased::Deserializer<'static>>) -> HandlerResultFut {
-//         Box::pin(
-//             async move {
-//                 let req: i32 = erased::deserialize(&mut deserializer)
-//                     .map_err(|_| Error::RpcError(RpcError::InvalidRequest))?;
-
-//                 let res = self.echo(req).await
-//                     .map(|r| Box::new(r) as Box<dyn erased::Serialize + Send + Sync + 'static>)
-//                     .map_err(|e| Error::RpcError(RpcError::ServerError(e.to_string())));
-
-//                 res
-//             }
-//         )
-//     }
-
-//     pub fn add_handler(&'static self, mut deserializer: Box<dyn erased::Deserializer<'static>>) -> HandlerResultFut {
-//         Box::pin(
-//             async move {
-//                 let req: i32 = erased::deserialize(&mut deserializer)
-//                     .map_err(|_| Error::RpcError(RpcError::InvalidRequest))?;
-
-//                 let res = self.add(req).await
-//                     .map(|r| Box::new(r) as Box<dyn erased::Serialize + Send + Sync + 'static>)
-//                     .map_err(|e| Error::RpcError(RpcError::ServerError(e.to_string())));
-
-//                 res
-//             }
-//         )
-//     }
-// }
 
 #[async_std::main]
 async fn main() {

@@ -14,7 +14,7 @@ use crate::service::{
     ArcAsyncServiceCall,
     AsyncServiceMap
 };
-use crate::{Error, RpcError};
+use crate::error::{Error, RpcError};
 
 pub struct Server {
     services: Arc<AsyncServiceMap>,
@@ -79,9 +79,10 @@ impl Server {
 
             // read body
             let res = {
+                log::debug!("Reading request body");
                 let deserializer = codec.read_request_body().await.unwrap()?;
 
-                // log::info!("Calling handler");
+                log::debug!("Calling handler");
                 // pass ownership to the `call`
                 call(method_name, deserializer).await
             };

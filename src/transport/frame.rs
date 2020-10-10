@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 use std::pin::Pin;
 
 use crate::message::MessageId;
-use crate::Error;
+use crate::error::Error;
 
 type FrameId = u8;
 type PayloadLen = u32;
@@ -109,6 +109,7 @@ impl From<PayloadType> for u8 {
     }
 }
 
+#[derive(Debug)]
 pub struct Frame {
     pub message_id: MessageId,
     pub frame_id: FrameId,
@@ -164,6 +165,7 @@ impl<W: AsyncWrite + AsyncWriteExt + Unpin + Send + Sync> FrameWrite for W {
         // construct frame header
         let header = FrameHeader::new(message_id, frame_id, payload_type, buf.len() as u32);
 
+        // log::debug!("FrameHeader {:?}", &header);
         // write header
         self.write(&header.to_vec()?).await?;
         self.flush().await?;
@@ -195,14 +197,13 @@ impl<'r, T: AsyncBufRead + Unpin + Send + Sync> Stream for FrameStream<'r, T> {
         let header = this.header;
 
         loop {
-            let buf = ready!(reader.as_mut().poll_fill_buf(cx)?);
-
-            if buf.len() == 0 {
-                return Poll::Ready(None);
-            }
-
             match header {
                 None => {
+                    let buf = ready!(reader.as_mut().poll_fill_buf(cx)?);
+                    if buf.len() == 0 {
+                        return Poll::Ready(None);
+                    }
+
                     // pending if not enough bytes are found in buffer
                     if buf.len() < *HEADER_LEN {
                         // there will be more bytes coming
@@ -227,6 +228,24 @@ impl<'r, T: AsyncBufRead + Unpin + Send + Sync> Stream for FrameStream<'r, T> {
                     }
                 }
                 Some(ref h) => {
+                    log::debug!("{:?}", h);
+
+                    // if the message is of unit type
+                    if h.payload_len == 0 {
+                        let frame = Frame {
+                            message_id: h.message_id,
+                            frame_id: h.frame_id,
+                            payload: vec![],
+                        };
+
+                        return Poll::Ready(Some(Ok(frame)));
+                    }
+
+                    let buf = ready!(reader.as_mut().poll_fill_buf(cx)?);
+                    if buf.len() == 0 {
+                        return Poll::Ready(None);
+                    }
+
                     if buf.len() < h.payload_len as usize {
                         // there will be more bytes coming
                         return Poll::Pending;
