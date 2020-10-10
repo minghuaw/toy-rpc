@@ -4,7 +4,7 @@ use toy_rpc::macros::{
     export_impl,
     service,
 };
-use toy_rpc_definitions::async_service::HandleService;
+use toy_rpc::service::HandleService;
 
 struct EchoService {
     count: Mutex<i32>,
