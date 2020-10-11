@@ -1,5 +1,8 @@
 use serde::{Serialize, Deserialize};
 use async_trait::async_trait;
+// use async_std::sync::Arc;
+
+use toy_rpc::macros::export_impl;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct FooRequest {
@@ -18,13 +21,6 @@ pub struct BarRequest {
     pub content: String,
 }
 
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct BarResponse {
-    pub content: String,
-    pub is_modified: bool
-}
-
 #[async_trait]
 pub trait Rpc {
     async fn echo(&self, req: FooRequest) -> Result<FooResponse, String>;
@@ -33,5 +29,33 @@ pub trait Rpc {
     async fn get_counter(&self, _: ()) -> Result<u32, String>;
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+pub struct BarResponse {
+    pub content: String,
+    pub is_modified: bool
+}
 
+pub struct BarService {}
 
+#[export_impl]
+impl BarService {
+    #[export_method]
+    pub async fn echo(&self, req: BarRequest) -> Result<BarResponse, String> {
+        let res = BarResponse {
+            content: req.content,
+            is_modified: false
+        };
+
+        Ok(res)
+    }
+
+    #[export_method]
+    pub async fn exclaim(&self, req: BarRequest) -> Result<BarResponse, String> {
+        let res = BarResponse {
+            content: format!("{}!", req.content),
+            is_modified: true
+        };
+
+        Ok(res)
+    }
+}

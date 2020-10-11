@@ -8,12 +8,12 @@ use toy_rpc::server::Server;
 use server_client::rpc::{
     FooRequest,             
     FooResponse,
-    BarRequest,
-    BarResponse,
+    BarService,
     Rpc
 };
+use server_client::rpc;
 
-struct FooService {
+pub struct FooService {
     counter: Mutex<u32>
 }
 
@@ -65,31 +65,6 @@ impl Rpc for FooService {
     }
 }
 
-struct BarService {}
-
-#[export_impl]
-impl BarService {
-    #[export_method]
-    async fn echo(&self, req: BarRequest) -> Result<BarResponse, String> {
-        let res = BarResponse {
-            content: req.content,
-            is_modified: false
-        };
-
-        Ok(res)
-    }
-
-    #[export_method]
-    async fn exclaim(&self, req: BarRequest) -> Result<BarResponse, String> {
-        let res = BarResponse {
-            content: format!("{}!", req.content),
-            is_modified: true
-        };
-
-        Ok(res)
-    }
-}
-
 #[async_std::main]
 async fn main() {
     env_logger::init();
@@ -106,7 +81,7 @@ async fn main() {
 
     let server = Server::builder()
         .register("foo_service", service!(foo_service, FooService))
-        .register("bar_service", service!(bar_service, BarService))
+        .register("bar_service", service!(bar_service, rpc::BarService))
         .build();
 
     let listener = TcpListener::bind(addr).await.unwrap();

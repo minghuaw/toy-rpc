@@ -212,49 +212,10 @@ pub fn impl_inner_deserializer(_: TokenStream) -> TokenStream {
     output.into()
 }
 
-// #[proc_macro_attribute]
-// pub fn export_impl(_attr: TokenStream, item: TokenStream) -> TokenStream {
-//     // parse item
-//     let mut input = parse_macro_input!(item as syn::ItemImpl);
-//     let (fn_idents, names) = filter_export_method(&mut input);
-
-//     // extract Self type and use it for construct Ident for handler HashMap
-//     let self_ty = &input.self_ty;
-//     let ident = match parse_impl_self_ty(self_ty) {
-//         Ok(i) => i,
-//         Err(err) => return err.to_compile_error().into(),
-//     };
-//     let static_name = format!("{}_{}", SERVICE_PREFIX, ident.to_string().to_uppercase());
-//     let static_ident = Ident::new(&static_name, ident.span());
-
-//     // export a lazy_static HashMap of handlers
-//     let export = quote! {
-//         toy_rpc::lazy_static::lazy_static! {
-//             #[allow(non_upper_case_globals)]
-//             static ref #static_ident:
-//                 std::collections::HashMap<&'static str, toy_rpc::service::Handler<#self_ty>>
-//                 = {
-//                     let mut map = std::collections::HashMap::new();
-//                     #(map.insert(#names, toy_rpc::service::wrap_method(#self_ty::#fn_idents));)*;
-
-//                     map
-//                 };
-//         }
-//     };
-
-//     let output = quote! {
-//         #input
-//         #export
-//     };
-//     output.into()
-// }
-
 #[proc_macro_attribute]
 pub fn export_impl(_attr: TokenStream, item: TokenStream) -> TokenStream {
     // parse item
     let input = parse_macro_input!(item as syn::ItemImpl);
-    // let (fn_idents, names) = filter_async_export_method(&mut input);
-    // let handler_idents = generate_handler_idents(&fn_idents);
     let (handler_impl, names, fn_idents) = transform_impl(input.clone());
 
     // extract Self type and use it for construct Ident for handler HashMap
@@ -267,8 +228,9 @@ pub fn export_impl(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let static_ident = Ident::new(&static_name, ident.span());
 
     let lazy = quote! {
+        // store the handler functions in a gloabl lazy hashmap
         toy_rpc::lazy_static::lazy_static! { 
-            static ref #static_ident:
+            pub static ref #static_ident:
                 std::collections::HashMap<&'static str, toy_rpc::service::ArcAsyncHandler<#self_ty>>
                 = {
                     let mut map: std::collections::HashMap<&'static str, toy_rpc::service::ArcAsyncHandler<#self_ty>> 
@@ -290,76 +252,6 @@ pub fn export_impl(_attr: TokenStream, item: TokenStream) -> TokenStream {
     output.into()
 }
 
-// fn filter_export_method(input: &mut syn::ItemImpl) -> (Vec<syn::Ident>, Vec<String>) {
-//     let mut fn_idents: Vec<syn::Ident> = Vec::new();
-//     let mut names: Vec<String> = Vec::new();
-    
-//     input.items.iter_mut()
-//         // first filter out method
-//         .filter_map(|item| match item {
-//             syn::ImplItem::Method(f) => Some(f),
-//             _ => None,
-//         })
-//         // find whether function has attributes
-//         .filter(|f| {
-//             // println!("{:?}", &f.attrs);
-//             f.attrs.iter().any(|attr| {
-//                 let ident = attr.path.get_ident().unwrap();
-//                 ident == ATTR_EXPORT_METHOD
-//             })
-//         })
-//         // append ident and names of function with attribute
-//         .for_each(|f| {
-//             fn_idents.push(f.sig.ident.clone());
-//             names.push(f.sig.ident.to_string());
-
-//             // clear the attributes for now
-//             f.attrs.retain(|attr| {
-//                 let ident = attr.path.get_ident().unwrap();
-//                 ident != ATTR_EXPORT_METHOD
-//             })
-//         });
-    
-//     (fn_idents, names)
-// }
-
-// fn filter_async_export_method(input: &mut syn::ItemImpl) -> (Vec<syn::Ident>, Vec<String>) {
-//     let mut fn_idents: Vec<syn::Ident> = Vec::new();
-//     let mut names: Vec<String> = Vec::new();
-    
-//     input.items.iter_mut()
-//         // first filter out method
-//         .filter_map(|item| match item {
-//             syn::ImplItem::Method(f) => Some(f),
-//             _ => None,
-//         })
-//         // find whether function has attributes
-//         .filter(|f| {
-//             // println!("{:?}", &f.attrs);
-//             f.attrs.iter().any(|attr| {
-//                 let ident = attr.path.get_ident().unwrap();
-//                 ident == ATTR_EXPORT_METHOD
-//             })
-//         })
-//         // filter async function
-//         .filter(|f| {
-//             f.sig.asyncness.is_some()
-//         })
-//         // append ident and names of function with attribute
-//         .for_each(|f| {
-//             fn_idents.push(f.sig.ident.clone());
-//             names.push(f.sig.ident.to_string());
-
-//             // clear the attributes for now
-//             f.attrs.retain(|attr| {
-//                 let ident = attr.path.get_ident().unwrap();
-//                 ident != ATTR_EXPORT_METHOD
-//             })
-//         });
-    
-//     (fn_idents, names)
-// }
-
 fn transform_impl(input: syn::ItemImpl) -> (syn::ItemImpl, Vec<String>, Vec<Ident>) {
     let mut names = Vec::new();
     let mut idents = Vec::new();
@@ -373,9 +265,9 @@ fn transform_impl(input: syn::ItemImpl) -> (syn::ItemImpl, Vec<String>, Vec<Iden
                     ident == ATTR_EXPORT_METHOD
                 });
 
-                // let is_async = f.sig.asyncness.is_some();
+                // asyncness is not checked here because async_trait will convert the 
+                // function signature
 
-                // is_exported && is_async
                 is_exported
             },
             _ => false
@@ -427,7 +319,7 @@ fn transform_method(f: &mut syn::ImplItemMethod) {
         });
         
         f.sig.inputs = parse_quote!(
-            self: Arc<Self>, mut deserializer: Box<dyn toy_rpc::erased_serde::Deserializer<'static> + Send>
+            self: std::sync::Arc<Self>, mut deserializer: Box<dyn toy_rpc::erased_serde::Deserializer<'static> + Send>
         );
 
         f.sig.output = parse_quote!(
@@ -438,7 +330,6 @@ fn transform_method(f: &mut syn::ImplItemMethod) {
     
     f.sig.ident = handler_ident;
 }
-
 
 fn remove_export_method_attr(mut input: syn::ItemImpl) -> syn::ItemImpl {
     input.items.iter_mut()
@@ -457,8 +348,6 @@ fn remove_export_method_attr(mut input: syn::ItemImpl) -> syn::ItemImpl {
     
     input
 }
-
-
 struct ServiceExport {
     instance_id: syn::Ident,
     impl_path: syn::Path,
@@ -483,13 +372,16 @@ pub fn service(input: TokenStream) -> TokenStream {
         instance_id,
         impl_path,
     } = parse_macro_input!(input as ServiceExport);
-    let ident = impl_path.get_ident().unwrap();
+
+    
+    let last_segment = impl_path.segments.last().unwrap();
+    let ident = &last_segment.ident;
     let static_name = format!("{}_{}", SERVICE_PREFIX, &ident.to_string().to_uppercase());
     let static_ident = syn::Ident::new(&static_name, ident.span());
     let mut static_impl_path = impl_path.clone();
-
+    
     // modify the path
-    static_impl_path.segments.first_mut().unwrap().ident = static_ident;
+    static_impl_path.segments.last_mut().unwrap().ident = static_ident;
 
     let output = quote! {
         toy_rpc::service::build_service(#instance_id, &*#static_impl_path)
@@ -497,35 +389,6 @@ pub fn service(input: TokenStream) -> TokenStream {
 
     output.into()
 }
-
-// #[proc_macro_attribute]
-// pub fn export_struct(attr: TokenStream, item: TokenStream) -> TokenStream {
-//     let input = parse_macro_input!(item as ItemStruct);
-//     let ident = &input.ident;
-//     let static_name = format!("{}_{}", SERVICE_PREFIX, ident);
-//     let static_ident = Ident::new(&static_name, ident.span());
-
-//     // initialize
-//     let static_map_output = quote! {
-//         toy_rpc::lazy_static::lazy_static! {
-//             static ref #static_ident:
-//                 std::sync::Mutex<std::collections::HashMap<&'static str, async_std::sync::Arc<toy_rpc::service::Handler<#ident>>>>
-//             = {
-//                 std::sync::Mutex::new(
-//                     HashMap::new()
-//                 )
-//             };
-//         }
-//     };
-
-//     let output = quote! {
-//         #input
-
-//         #static_map_output
-//     };
-
-//     output.into()
-// }
 
 fn parse_impl_self_ty(self_ty: &syn::Type) -> Result<&syn::Ident, syn::Error> {
     match self_ty {

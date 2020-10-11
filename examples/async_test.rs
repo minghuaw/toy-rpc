@@ -9,7 +9,7 @@ use toy_rpc_macros::{
 use toy_rpc::server::Server;
 // use toy_rpc::async_service;
 
-struct EchoService {
+pub struct EchoService {
     count: Mutex<i32>
 }
 

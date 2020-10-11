@@ -6,7 +6,7 @@ use toy_rpc::macros::{
 };
 use toy_rpc::service::HandleService;
 
-struct EchoService {
+pub struct EchoService {
     count: Mutex<i32>,
 }
 
