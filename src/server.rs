@@ -6,15 +6,11 @@ use futures::StreamExt;
 use std::collections::HashMap;
 
 use crate::codec::{DefaultCodec, ServerCodec};
+use crate::error::{Error, RpcError};
 use crate::message::{MessageId, RequestHeader, ResponseHeader};
 use crate::service::{
-    HandlerResult,
-    HandlerResultFut,
-    HandleService,
-    ArcAsyncServiceCall,
-    AsyncServiceMap
+    ArcAsyncServiceCall, AsyncServiceMap, HandleService, HandlerResult, HandlerResultFut,
 };
-use crate::error::{Error, RpcError};
 
 pub struct Server {
     services: Arc<AsyncServiceMap>,
@@ -156,15 +152,11 @@ impl ServerBuilder {
     pub fn register<S, T>(self, service_name: &'static str, service: S) -> Self
     where
         S: HandleService<T> + Send + Sync + 'static,
-        T: Send + Sync + 'static, 
+        T: Send + Sync + 'static,
     {
-        let call =
-            move |method_name: String,
-                  _deserializer: Box<(dyn erased::Deserializer<'static> + Send)>| 
-                  -> HandlerResultFut
-            {
-                service.call(&method_name, _deserializer)
-            };
+        let call = move |method_name: String,
+                         _deserializer: Box<(dyn erased::Deserializer<'static> + Send)>|
+              -> HandlerResultFut { service.call(&method_name, _deserializer) };
 
         let mut ret = self;
         ret.services.insert(service_name, Arc::new(call));

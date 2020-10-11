@@ -1,9 +1,6 @@
 use async_std::sync::Arc;
 use std::sync::Mutex;
-use toy_rpc::macros::{
-    export_impl,
-    service,
-};
+use toy_rpc::macros::{export_impl, service};
 use toy_rpc::service::HandleService;
 
 pub struct EchoService {

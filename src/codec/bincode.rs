@@ -7,10 +7,10 @@ use serde::de::Visitor;
 use std::io::Cursor; // serde doesn't support AsyncRead
 
 use super::{CodecRead, CodecWrite, DeserializerOwned, Marshal, Unmarshal};
+use crate::error::Error;
+use crate::macros::impl_inner_deserializer;
 use crate::message::{MessageId, Metadata};
 use crate::transport::frame::{FrameRead, FrameStreamExt, FrameWrite, PayloadType};
-use crate::error::Error;
-use toy_rpc_macros::impl_inner_deserializer;
 
 impl<'de, R, O> serde::Deserializer<'de> for DeserializerOwned<bincode::Deserializer<R, O>>
 where
@@ -88,7 +88,7 @@ where
                     Cursor::new(frame.payload),
                     bincode::DefaultOptions::new().with_fixint_encoding(),
                 )
-            },
+            }
             Err(e) => return Some(Err(e)),
         };
 

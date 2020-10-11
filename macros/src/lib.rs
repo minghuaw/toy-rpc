@@ -1,6 +1,6 @@
 use proc_macro::TokenStream;
 use quote::quote;
-use syn::{parse_macro_input, Ident, parse_quote};
+use syn::{parse_macro_input, parse_quote, Ident};
 
 const SERVICE_PREFIX: &str = "STATIC_TOY_RPC_SERVICE";
 const ATTR_EXPORT_METHOD: &str = "export_method";
@@ -229,18 +229,18 @@ pub fn export_impl(_attr: TokenStream, item: TokenStream) -> TokenStream {
 
     let lazy = quote! {
         // store the handler functions in a gloabl lazy hashmap
-        toy_rpc::lazy_static::lazy_static! { 
+        toy_rpc::lazy_static::lazy_static! {
             pub static ref #static_ident:
                 std::collections::HashMap<&'static str, toy_rpc::service::ArcAsyncHandler<#self_ty>>
                 = {
-                    let mut map: std::collections::HashMap<&'static str, toy_rpc::service::ArcAsyncHandler<#self_ty>> 
+                    let mut map: std::collections::HashMap<&'static str, toy_rpc::service::ArcAsyncHandler<#self_ty>>
                         = std::collections::HashMap::new();
                     #(map.insert(#names, std::sync::Arc::new(#self_ty::#fn_idents));)*;
                     map
                 };
         }
     };
-    
+
     let input = remove_export_method_attr(input);
     let handler_impl = remove_export_method_attr(handler_impl);
 
@@ -257,25 +257,25 @@ fn transform_impl(input: syn::ItemImpl) -> (syn::ItemImpl, Vec<String>, Vec<Iden
     let mut idents = Vec::new();
     let mut output = input;
     // let self_ty = &output.self_ty;
-    output.items.retain(|item| 
-        match item {
-            syn::ImplItem::Method(f) => {
-                let is_exported = f.attrs.iter().any(|attr| {
-                    let ident = attr.path.get_ident().unwrap();
-                    ident == ATTR_EXPORT_METHOD
-                });
+    output.items.retain(|item| match item {
+        syn::ImplItem::Method(f) => {
+            let is_exported = f.attrs.iter().any(|attr| {
+                let ident = attr.path.get_ident().unwrap();
+                ident == ATTR_EXPORT_METHOD
+            });
 
-                // asyncness is not checked here because async_trait will convert the 
-                // function signature
+            // asyncness is not checked here because async_trait will convert the
+            // function signature
 
-                is_exported
-            },
-            _ => false
+            is_exported
         }
-    );
+        _ => false,
+    });
 
     output.trait_ = None;
-    output.items.iter_mut()
+    output
+        .items
+        .iter_mut()
         // first filter out method
         .filter_map(|item| match item {
             syn::ImplItem::Method(f) => Some(f),
@@ -295,14 +295,14 @@ fn transform_method(f: &mut syn::ImplItemMethod) {
     let ident = f.sig.ident.clone();
     let concat_name = format!("{}_{}", &ident.to_string(), HANDLER_SUFFIX);
     let handler_ident = Ident::new(&concat_name, ident.span());
-    
+
     // change asyncness
     f.sig.asyncness = None;
-    
+
     // transform function request type
     if let syn::FnArg::Typed(pt) = f.sig.inputs.last().unwrap() {
         let req_ty = &pt.ty;
-        
+
         f.block = parse_quote!({
             Box::pin(
                 async move {
@@ -317,7 +317,7 @@ fn transform_method(f: &mut syn::ImplItemMethod) {
                 }
             )
         });
-        
+
         f.sig.inputs = parse_quote!(
             self: std::sync::Arc<Self>, mut deserializer: Box<dyn toy_rpc::erased_serde::Deserializer<'static> + Send>
         );
@@ -325,15 +325,16 @@ fn transform_method(f: &mut syn::ImplItemMethod) {
         f.sig.output = parse_quote!(
             -> toy_rpc::service::HandlerResultFut
         );
-        
     };
-    
+
     f.sig.ident = handler_ident;
 }
 
 fn remove_export_method_attr(mut input: syn::ItemImpl) -> syn::ItemImpl {
-    input.items.iter_mut()
-    // first filter out method
+    input
+        .items
+        .iter_mut()
+        // first filter out method
         .filter_map(|item| match item {
             syn::ImplItem::Method(f) => Some(f),
             _ => None,
@@ -345,7 +346,7 @@ fn remove_export_method_attr(mut input: syn::ItemImpl) -> syn::ItemImpl {
                 ident != ATTR_EXPORT_METHOD
             })
         });
-    
+
     input
 }
 struct ServiceExport {
@@ -373,13 +374,12 @@ pub fn service(input: TokenStream) -> TokenStream {
         impl_path,
     } = parse_macro_input!(input as ServiceExport);
 
-    
     let last_segment = impl_path.segments.last().unwrap();
     let ident = &last_segment.ident;
     let static_name = format!("{}_{}", SERVICE_PREFIX, &ident.to_string().to_uppercase());
     let static_ident = syn::Ident::new(&static_name, ident.span());
     let mut static_impl_path = impl_path.clone();
-    
+
     // modify the path
     static_impl_path.segments.last_mut().unwrap().ident = static_ident;
 

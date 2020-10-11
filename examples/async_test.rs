@@ -1,23 +1,18 @@
-use async_std::sync::{Mutex, Arc};
 use async_std::net::TcpListener;
-use toy_rpc_macros::{
-    export_impl,
-    service
-};
+use async_std::sync::{Arc, Mutex};
+use toy_rpc::macros::{export_impl, service};
 
-// use toy_rpc_definitions::{Error, RpcError};
 use toy_rpc::server::Server;
-// use toy_rpc::async_service;
 
 pub struct EchoService {
-    count: Mutex<i32>
+    count: Mutex<i32>,
 }
 
 #[export_impl]
 impl EchoService {
     pub fn new() -> Self {
         Self {
-            count: Mutex::new(13)
+            count: Mutex::new(13),
         }
     }
 
@@ -45,7 +40,9 @@ async fn main() {
         println!("{:?}", key);
     }
 
-    let echo_service = Arc::new(EchoService{count: Mutex::new(0)});
+    let echo_service = Arc::new(EchoService {
+        count: Mutex::new(0),
+    });
     // let echo_service_server = ;
     // let echo_service_server = async_service::build_service(echo_service.clone(), &*STATIC_TOY_RPC_SERVICE_ECHOSERVICE);
     let addrs = "127.0.0.1:23333";

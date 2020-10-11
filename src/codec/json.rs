@@ -6,9 +6,9 @@ use serde::de::Visitor;
 use std::io::Cursor; // serde doesn't support AsyncRead
 
 use super::{CodecRead, CodecWrite, DeserializerOwned, Marshal, Unmarshal};
-use crate::message::{MessageId, Metadata};
 use crate::error::Error;
-use toy_rpc_macros::impl_inner_deserializer;
+use crate::macros::impl_inner_deserializer;
+use crate::message::{MessageId, Metadata};
 
 impl<'de, R> serde::Deserializer<'de> for DeserializerOwned<serde_json::Deserializer<R>>
 where

@@ -34,11 +34,7 @@ impl Client {
     //     unimplemented!()
     // }
 
-    pub fn call<Req, Res>(
-        &self, 
-        service_method: impl ToString, 
-        args: Req
-    ) -> Result<Res, Error>
+    pub fn call<Req, Res>(&self, service_method: impl ToString, args: Req) -> Result<Res, Error>
     where
         Req: serde::Serialize + Send + Sync,
         Res: serde::de::DeserializeOwned,
@@ -61,9 +57,7 @@ impl Client {
         let codec = self.codec.clone();
         let id = self.count.fetch_add(1u16, Ordering::Relaxed);
 
-        task::spawn(async move { 
-            Self::_async_call(service_method, &args, id, codec).await 
-        })
+        task::spawn(async move { Self::_async_call(service_method, &args, id, codec).await })
     }
 
     pub async fn async_call<Req, Res>(

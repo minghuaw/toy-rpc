@@ -1,20 +1,15 @@
 use async_std::net::TcpListener;
-use async_trait::async_trait;
 use async_std::sync::{Arc, Mutex};
+use async_trait::async_trait;
 
 use toy_rpc::macros::{export_impl, service};
 use toy_rpc::server::Server;
 
-use server_client::rpc::{
-    FooRequest,             
-    FooResponse,
-    BarService,
-    Rpc
-};
 use server_client::rpc;
+use server_client::rpc::{BarService, FooRequest, FooResponse, Rpc};
 
 pub struct FooService {
-    counter: Mutex<u32>
+    counter: Mutex<u32>,
 }
 
 #[async_trait]
@@ -25,10 +20,7 @@ impl Rpc for FooService {
         let mut counter = self.counter.lock().await;
         *counter += 1;
 
-        let res = FooResponse {
-            a: req.a,
-            b: req.b
-        };
+        let res = FooResponse { a: req.a, b: req.b };
         Ok(res)
     }
 
@@ -36,10 +28,10 @@ impl Rpc for FooService {
     async fn increment_a(&self, req: FooRequest) -> Result<FooResponse, String> {
         let mut counter = self.counter.lock().await;
         *counter += 1;
-        
+
         let res = FooResponse {
             a: req.a + 1,
-            b: req.b
+            b: req.b,
         };
         Ok(res)
     }
@@ -51,7 +43,7 @@ impl Rpc for FooService {
 
         let res = FooResponse {
             a: req.a,
-            b: req.b + 1
+            b: req.b + 1,
         };
 
         Ok(res)
@@ -70,14 +62,10 @@ async fn main() {
     env_logger::init();
 
     let addr = "127.0.0.1:23333";
-    let foo_service = Arc::new(
-        FooService {
-            counter: Mutex::new(0)
-        }
-    );
-    let bar_service = Arc::new(
-        BarService { }
-    );
+    let foo_service = Arc::new(FooService {
+        counter: Mutex::new(0),
+    });
+    let bar_service = Arc::new(BarService {});
 
     let server = Server::builder()
         .register("foo_service", service!(foo_service, FooService))
@@ -89,5 +77,3 @@ async fn main() {
     log::info!("Starting server at {}", &addr);
     server.accept(listener).await.unwrap();
 }
-
-
