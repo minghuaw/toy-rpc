@@ -28,7 +28,6 @@ impl Server {
             let stream = conn?;
             log::info!("Accepting incoming connection from {}", stream.peer_addr()?);
 
-            // let codec = Arc::new(Codec::new(stream));
             task::spawn(Self::_serve_conn(stream, self.services.clone()));
         }
 
@@ -64,7 +63,7 @@ impl Server {
             let service_name = &service_method[..pos];
             let method_name = service_method[pos + 1..].to_owned();
 
-            log::info!("service: {}, method: {}", service_name, method_name);
+            log::info!("Message {}, service: {}, method: {}", id, service_name, method_name);
 
             // look up the service
             // TODO; consider adding a new error type
@@ -85,7 +84,7 @@ impl Server {
 
             // send back result
             let bytes_sent = Self::_send_response(&mut codec, id, res).await?;
-            log::info!("Response sent with {} bytes", bytes_sent);
+            log::debug!("Response sent with {} bytes", bytes_sent);
         }
 
         Ok(())
