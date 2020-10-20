@@ -53,7 +53,19 @@ impl Server {
     where
         C: ServerCodec + Send + Sync,
     {
-        while let Some(header) = codec.read_request_header().await {
+        loop {
+            Self::_serve_codec_once(&mut codec, &services).await?
+        }
+
+        #[allow(unreachable_code)]
+        Ok(())
+    }
+
+    async fn _serve_codec_once<C>(codec: &mut C, services: &Arc<AsyncServiceMap>) -> Result<(), Error>
+    where 
+        C: ServerCodec + Send + Sync 
+    {
+        if let Some(header) = codec.read_request_header().await {
             // destructure header
             let RequestHeader { id, service_method } = header?;
             // let service_method = &service_method[..];
@@ -83,7 +95,7 @@ impl Server {
             };
 
             // send back result
-            let bytes_sent = Self::_send_response(&mut codec, id, res).await?;
+            let bytes_sent = Self::_send_response(codec, id, res).await?;
             log::debug!("Response sent with {} bytes", bytes_sent);
         }
 
