@@ -6,7 +6,7 @@ pub enum Error {
     IoError(std::io::Error),
 
     ParseError {
-        source: Box<dyn std::error::Error + Send>,
+        source: Box<dyn std::error::Error + Send + Sync>,
     },
     // ParseError{ source: &'static (dyn std::error::Error + Send) },
     TransportError {

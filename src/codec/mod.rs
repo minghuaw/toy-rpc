@@ -5,16 +5,16 @@ use serde;
 use crate::error::Error;
 use crate::message::{MessageId, Metadata, RequestHeader, ResponseHeader};
 
-#[cfg(all(feature = "codec-json", not(feauture = "codec-bincode")))]
+#[cfg(all(feature = "codec_json", not(feauture = "codec_bincode")))]
 mod json;
 
-#[cfg(all(feature = "codec-json", not(feauture = "codec-bincode")))]
+#[cfg(all(feature = "codec_json", not(feauture = "codec_bincode")))]
 pub use crate::codec::json::Codec as DefaultCodec;
 
-#[cfg(all(feature = "codec-bincode", not(feature = "codec-json")))]
+#[cfg(all(feature = "codec_bincode", not(feature = "codec_json")))]
 mod bincode;
 
-#[cfg(all(feature = "codec-bincode", not(feature = "codec-json")))]
+#[cfg(all(feature = "codec_bincode", not(feature = "codec_json")))]
 pub use crate::codec::bincode::Codec as DefaultCodec;
 
 #[async_trait]

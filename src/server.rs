@@ -5,6 +5,9 @@ use erased_serde as erased;
 use futures::StreamExt;
 use std::collections::HashMap;
 
+#[cfg(features="http_tide")]
+use tide;
+
 use crate::codec::{DefaultCodec, ServerCodec};
 use crate::error::{Error, RpcError};
 use crate::message::{MessageId, RequestHeader, ResponseHeader};
@@ -12,6 +15,10 @@ use crate::service::{
     ArcAsyncServiceCall, AsyncServiceMap, HandleService, HandlerResult, HandlerResultFut,
 };
 
+#[cfg(feature = "http_tide")]
+const DEFAULT_PATH: &str = "/_rpc_";
+
+#[derive(Clone)]
 pub struct Server {
     services: Arc<AsyncServiceMap>,
 }
@@ -102,6 +109,8 @@ impl Server {
         Ok(())
     }
 
+    // async fn _handle_request<C>()
+
     async fn _send_response<C>(
         _codec: &mut C,
         id: MessageId,
@@ -146,6 +155,32 @@ impl Server {
         C: ServerCodec + Send + Sync,
     {
         Self::_serve_codec(codec, self.services.clone()).await
+    }
+}
+
+impl Server {
+    #[cfg(feature = "http_tide")]
+    pub fn handle_http(&'static self) -> tide::Server<&Self> {
+        use futures::io::{BufReader, BufWriter};
+
+        let mut app = tide::Server::with_state(self);
+        app.at(DEFAULT_PATH).all(|mut req: tide::Request<&'static Server>| async move {
+            let input = req.body_bytes().await?;
+            let mut output: Vec<u8> = Vec::new();
+            
+            let mut codec = DefaultCodec::from_reader_writer(
+                BufReader::new(&input[..]), 
+                BufWriter::new(&mut output)
+            );
+            let services = req.state().services.clone();
+
+            Self::_serve_codec_once(&mut codec, &services).await?;
+
+            // construct tide::Response 
+            Ok(tide::Body::from_bytes(output))
+        });
+
+        app
     }
 }
 

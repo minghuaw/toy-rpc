@@ -29,8 +29,8 @@ where
     R: FrameRead + Send + Sync + Unpin,
     W: FrameWrite + Send + Sync + Unpin,
 {
-    reader: R,
-    writer: W,
+    pub reader: R,
+    pub writer: W,
 }
 
 impl<R, W> Codec<R, W>

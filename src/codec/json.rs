@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 use erased_serde as erased;
-use futures::io::{AsyncBufReadExt, AsyncRead, AsyncWrite, AsyncWriteExt, BufReader, BufWriter};
+use futures::io::{AsyncBufRead, AsyncBufReadExt, AsyncRead, AsyncWrite, AsyncWriteExt, BufReader, BufWriter};
 use serde;
 use serde::de::Visitor;
 use std::io::Cursor; // serde doesn't support AsyncRead
@@ -21,30 +21,42 @@ where
     impl_inner_deserializer!();
 }
 
-pub struct Codec<T>
+pub struct Codec<R, W>
 where
-    T: AsyncRead + AsyncWrite + Send + Sync + Clone,
+    R: AsyncBufRead + Send + Sync,
+    W: AsyncWrite + Send + Sync,
 {
-    reader: BufReader<T>,
-    writer: BufWriter<T>,
+    pub reader: R,
+    pub writer: W,
 }
 
-impl<T> Codec<T>
+impl<T> Codec<BufReader<T>, BufWriter<T>>
 where
-    T: AsyncRead + AsyncWrite + Send + Sync + Clone,
+    T: AsyncRead + AsyncWrite + Send + Sync + Unpin + Clone,
 {
     pub fn new(stream: T) -> Self {
-        Self {
-            reader: BufReader::new(stream.clone()),
-            writer: BufWriter::new(stream.clone()),
-        }
+        Self::from_reader_writer(
+            BufReader::new(stream.clone()),
+            BufWriter::new(stream.clone()),
+        )
+    }
+}
+
+impl<R, W> Codec<R, W>
+where
+    R: AsyncBufRead + Send + Sync + Unpin,
+    W: AsyncWrite + AsyncWriteExt + Send + Sync + Unpin,
+{
+    pub fn from_reader_writer(reader: R, writer: W) -> Self {
+        Self { reader, writer }
     }
 }
 
 #[async_trait]
-impl<T> CodecRead for Codec<T>
+impl<R, W> CodecRead for Codec<R, W>
 where
-    T: Unpin + AsyncRead + AsyncWrite + Send + Sync + Clone,
+    R: AsyncBufRead + Send + Sync + Unpin,
+    W: AsyncWrite + Send + Sync + Unpin,
 {
     async fn read_header<H>(&mut self) -> Option<Result<H, Error>>
     where
@@ -75,9 +87,10 @@ where
 }
 
 #[async_trait]
-impl<T> CodecWrite for Codec<T>
+impl<R, W> CodecWrite for Codec<R, W>
 where
-    T: Unpin + AsyncRead + AsyncWrite + Send + Sync + Clone,
+    R: AsyncBufRead + Send + Sync + Unpin,
+    W: AsyncWrite + Send + Sync + Unpin
 {
     async fn write_header<H>(&mut self, header: H) -> Result<usize, Error>
     where
@@ -106,18 +119,20 @@ where
     }
 }
 
-impl<T> Marshal for Codec<T>
+impl<R, W> Marshal for Codec<R, W>
 where
-    T: AsyncRead + AsyncWrite + Send + Sync + Clone,
+    R: AsyncBufRead + Send + Sync,
+    W: AsyncWrite + Send + Sync
 {
     fn marshal<S: serde::Serialize>(val: &S) -> Result<Vec<u8>, Error> {
         serde_json::to_vec(val).map_err(|e| e.into())
     }
 }
 
-impl<T> Unmarshal for Codec<T>
+impl<R, W> Unmarshal for Codec<R, W>
 where
-    T: AsyncRead + AsyncWrite + Send + Sync + Clone,
+    R: AsyncBufRead + Send + Sync,
+    W: AsyncWrite + Send + Sync
 {
     fn unmarshal<'de, D: serde::Deserialize<'de>>(buf: &'de [u8]) -> Result<D, Error> {
         serde_json::from_slice(buf).map_err(|e| e.into())
