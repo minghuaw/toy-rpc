@@ -1403,6 +1403,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "tide_integration"
+version = "0.1.0"
+dependencies = [
+ "async-std",
+ "async-trait",
+ "env_logger",
+ "log",
+ "serde",
+ "tide",
+ "toy_rpc",
+]
+
+[[package]]
 name = "time"
 version = "0.1.44"
 source = "registry+https://github.com/rust-lang/crates.io-index"

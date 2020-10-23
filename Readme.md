@@ -21,3 +21,45 @@ Errors in server.go
 - "rpc: can't find service " + req.ServiceMethod
 - "rpc: can't find method " + req.ServiceMethod
 - "rpc.Serve: accept:", err.Error()
+
+## Example serialized json
+
+Definitions:
+
+```rust
+#[derive(Serialize, Deserialize, Debug, Default)]
+pub struct RequestHeader {
+    pub id: MessageId,
+    pub service_method: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct FooRequest {
+    pub a: u32,
+    pub b: u32,
+}
+```
+
+Header instance:
+
+```rust 
+let header = RequestHeader {id: 0, service_method: "service.method".to_string()};
+```
+
+Serialized header
+
+```json
+{"id":0,"service_method":"service.method"}
+```
+
+Body instance:
+
+```rust 
+let body = FooRequest{a: 3, b: 6};
+```
+
+Serialized json
+
+```json
+{"a":3,"b":6}
+```

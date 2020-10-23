@@ -26,8 +26,8 @@ where
     R: AsyncBufRead + Send + Sync,
     W: AsyncWrite + Send + Sync,
 {
-    pub reader: R,
-    pub writer: W,
+    reader: R,
+    writer: W,
 }
 
 impl<T> Codec<BufReader<T>, BufWriter<T>>
@@ -136,5 +136,29 @@ where
 {
     fn unmarshal<'de, D: serde::Deserialize<'de>>(buf: &'de [u8]) -> Result<D, Error> {
         serde_json::from_slice(buf).map_err(|e| e.into())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use serde::{Serialize, Deserialize};
+    use crate::message::RequestHeader;
+
+    #[derive(Debug, Serialize, Deserialize)]
+    pub struct FooRequest {
+        pub a: u32,
+        pub b: u32,
+    }
+
+    #[test]
+    fn json_request() {
+        let header = RequestHeader {id: 0, service_method: "service.method".to_string()};
+        let body = FooRequest{a: 3, b: 6};
+
+        let header_buf = serde_json::to_string(&header).unwrap();
+        let body_buf = serde_json::to_string(&body).unwrap();
+
+        println!("header:\n{}", header_buf);
+        println!("body:\n{}", body_buf);
     }
 }

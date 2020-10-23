@@ -1,13 +1,13 @@
-use async_std::net::TcpListener;
 use async_std::sync::{Arc, Mutex};
 use async_trait::async_trait;
-use async_std::task;
+use tide::Request;
+use tide::prelude::*;
 
 use toy_rpc::macros::{export_impl, service};
 use toy_rpc::server::Server;
 
-use server_client::rpc;
-use server_client::rpc::{BarService, FooRequest, FooResponse, Rpc};
+use tide_integration::rpc;
+use tide_integration::rpc::{FooRequest, FooResponse, Rpc};
 
 pub struct FooService {
     counter: Mutex<u32>,
@@ -22,8 +22,9 @@ impl Rpc for FooService {
         *counter += 1;
 
         let res = FooResponse { a: req.a, b: req.b };
-        // Ok(res)
-        Err("echo error".into())
+        
+        Ok(res)
+        // Err("echo error".into())
     }
 
     #[export_method]
@@ -35,8 +36,9 @@ impl Rpc for FooService {
             a: req.a + 1,
             b: req.b,
         };
-        // Ok(res)
-        Err("increment_a error".into())
+
+        Ok(res)
+        // Err("increment_a error".into())
     }
 
     #[export_method]
@@ -49,8 +51,8 @@ impl Rpc for FooService {
             b: req.b + 1,
         };
 
-        // Ok(res)
-        Err("increment_b error".into())
+        Ok(res)
+        // Err("increment_b error".into())
     }
 
     #[export_method]
@@ -61,31 +63,39 @@ impl Rpc for FooService {
     }
 }
 
+#[derive(Debug, Deserialize)]
+struct Animal {
+    name: String,
+    legs: u8,
+}
+
 #[async_std::main]
-async fn main() {
+async fn main() -> tide::Result<()> {
     env_logger::init();
 
     let addr = "127.0.0.1:23333";
-    let foo_service = Arc::new(FooService {
-        counter: Mutex::new(0),
+    let foo_service = Arc::new(FooService{
+        counter: Mutex::new(0)
     });
-    let bar_service = Arc::new(BarService {});
-
     let server = Server::builder()
         .register("foo_service", service!(foo_service, FooService))
-        .register("bar_service", service!(bar_service, rpc::BarService))
         .build();
 
-    let listener = TcpListener::bind(addr).await.unwrap();
-
-    log::info!("Starting server at {}", &addr);
-
-    // server.accept(listener).await.unwrap();
-
-    let handle = task::spawn(async move {
-        server.accept(listener).await.unwrap();
+    let mut app = tide::new();
+    app.at("/orders/shoes").post(order_shoes);
+    app.at("/rpc").nest( {
+        server.handle_http()
     });
 
-    handle.await;
-    // task::sleep(std::time::Duration::from_secs(10)).await;
+    app.listen(addr).await?;
+    Ok(())
+}
+
+async fn order_shoes(mut req: Request<()>) -> tide::Result {
+    let body = req.body_string().await?;
+    println!("{:?}", body);
+
+    Ok("".into())
+    // let Animal { name, legs } = req.body_json().await?;
+    // Ok(format!("Hello, {}! I've put in an order for {} shoes", name, legs).into())
 }

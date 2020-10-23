@@ -158,14 +158,16 @@ impl Server {
     }
 }
 
+// integration with http frameworks
 impl Server {
     #[cfg(feature = "http_tide")]
-    pub fn handle_http(&'static self) -> tide::Server<&Self> {
+    pub fn handle_http(self) -> tide::Server<Self> {
         use futures::io::{BufReader, BufWriter};
 
         let mut app = tide::Server::with_state(self);
-        app.at(DEFAULT_PATH).all(|mut req: tide::Request<&'static Server>| async move {
+        app.at(DEFAULT_PATH).all(|mut req: tide::Request<Server>| async move {
             let input = req.body_bytes().await?;
+            // log::debug!("http body {:?}", )
             let mut output: Vec<u8> = Vec::new();
             
             let mut codec = DefaultCodec::from_reader_writer(

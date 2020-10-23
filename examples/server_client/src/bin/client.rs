@@ -1,4 +1,5 @@
 use toy_rpc::client::Client;
+use toy_rpc::error::Error;
 
 use server_client::rpc::{BarRequest, BarResponse, FooRequest, FooResponse};
 
@@ -11,23 +12,23 @@ async fn main() {
 
     // first request, echo
     let args = FooRequest { a: 1, b: 3 };
-    let reply: FooResponse = client.call("foo_service.echo", &args).unwrap();
+    let reply: Result<FooResponse, Error> = client.call("foo_service.echo", &args);
     println!("{:?}", reply);
 
     // second request, increment_a
-    let args = FooRequest {
-        a: reply.a,
-        b: reply.b,
-    };
-    let reply: FooResponse = client.call("foo_service.increment_a", &args).unwrap();
+    // let args = FooRequest {
+    //     a: reply.a,
+    //     b: reply.b,
+    // };
+    let reply: Result<FooResponse, Error> = client.call("foo_service.increment_a", &args);
     println!("{:?}", reply);
 
     // second request, increment_b
-    let args = FooRequest {
-        a: reply.a,
-        b: reply.b,
-    };
-    let reply: FooResponse = client.call("foo_service.increment_b", &args).unwrap();
+    // let args = FooRequest {
+    //     a: reply.a,
+    //     b: reply.b,
+    // };
+    let reply: Result<FooResponse, Error> = client.call("foo_service.increment_b", &args);
     println!("{:?}", reply);
 
     // third request, bar echo
