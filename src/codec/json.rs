@@ -23,8 +23,8 @@ where
 
 pub struct Codec<R, W>
 where
-    R: AsyncBufRead + Send + Sync,
-    W: AsyncWrite + Send + Sync,
+    // R: AsyncBufRead + Send + Sync,
+    // W: AsyncWrite + Send + Sync,
 {
     reader: R,
     writer: W,

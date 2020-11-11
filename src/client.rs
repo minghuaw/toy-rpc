@@ -4,36 +4,66 @@ use async_std::task;
 use erased_serde as erased;
 use serde;
 use std::sync::atomic::Ordering;
+use std::marker::PhantomData;
+use futures::channel::mpsc::{
+    // channel, 
+    Receiver, Sender
+};
+use futures::{
+    // AsyncWrite, 
+    StreamExt, SinkExt
+};
+use surf;
 
 use crate::codec::{ClientCodec, DefaultCodec};
 use crate::error::{Error, RpcError};
 use crate::message::{AtomicMessageId, MessageId, RequestHeader, ResponseHeader};
 
-pub struct Client {
+// const CHANNEL_BUF_SIZE: usize = 64;
+
+pub struct NotConnected {}
+pub struct Connected {}
+
+pub struct Client<Mode> {
     count: AtomicMessageId,
     codec: Arc<Mutex<Box<dyn ClientCodec>>>,
+
+    mode: PhantomData<Mode>,
 }
 
-impl Client {
-    pub fn new(stream: TcpStream) -> Self {
+impl<Mode> Client<Mode> {
+    pub fn new(stream: TcpStream) -> Client<Connected> {
         let box_codec: Box<dyn ClientCodec> = Box::new(DefaultCodec::new(stream));
 
-        Self {
+        Client::<Connected> {
             count: AtomicMessageId::new(0u16),
             codec: Arc::new(Mutex::new(box_codec)),
+
+            mode: PhantomData,
         }
     }
 
-    pub fn dial(addr: impl ToSocketAddrs) -> Result<Self, std::io::Error> {
+    pub fn dial(addr: impl ToSocketAddrs) -> Result<Client<Connected>, std::io::Error> {
         let stream = task::block_on(TcpStream::connect(addr))?;
 
         Ok(Self::new(stream))
     }
 
-    // pub fn dial_http(addr: impl ToSocketAddrs) -> Self {
-    //     unimplemented!()
-    // }
+    // pub fn dial_http(addr: &'static str) -> Client<Connected> {
+    //     // spawn a task to receive inputs from channel and send message as http request
+    //     let (mut req_sender, mut req_recver) = channel::<Vec<u8>>(CHANNEL_BUF_SIZE);
+    //     let (mut res_sender, mut res_recver) = channel::<Vec<u8>>(CHANNEL_BUF_SIZE);
 
+    //     let handle = task::spawn(Client::<Connected>::_http_client_loop(addr, req_recver, res_sender));
+    //     let codec = DefaultCodec::from_reader_writer(
+    //         res_recver,
+    //         req_sender
+    //     );
+    //     // unimplemented!()
+    // }
+}
+
+impl Client<Connected> {
     pub fn call<Req, Res>(&self, service_method: impl ToString, args: Req) -> Result<Res, Error>
     where
         Req: serde::Serialize + Send + Sync,
@@ -124,5 +154,25 @@ impl Client {
         }
 
         Err(Error::NoneError)
+    }
+
+    async fn _http_client_loop(addr: &str, mut req_recver: Receiver<Vec<u8>>, mut res_sender: Sender<Vec<u8>>) -> Result<(), Error> {
+        let mut http_client = surf::Client::new();
+        http_client.set_base_url(surf::Url::parse(addr)?); // the url::ParseError will be converted to toy_rpc::error::Error
+
+        while let Some(encoded_req) = req_recver.next().await {
+            let body = surf::Body::from_bytes(encoded_req);
+            let http_req = surf::post("").body(body);
+            let mut http_res = http_client.send(http_req).await
+                .map_err(|e| Error::TransportError{msg: format!("{}", e)})?;
+            let encoded_res = http_res.take_body().into_bytes().await
+                .map_err(|e| Error::TransportError{msg: format!("{}", e)})?;
+            
+            // send back result
+            res_sender.send(encoded_res).await
+                .map_err(|e| Error::TransportError{msg: format!("{}", e)})?;
+        }
+        
+        Ok(())
     }
 }

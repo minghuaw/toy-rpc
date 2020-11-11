@@ -6,7 +6,7 @@ use tide::prelude::*;
 use toy_rpc::macros::{export_impl, service};
 use toy_rpc::server::Server;
 
-use tide_integration::rpc;
+// use tide_integration::rpc;
 use tide_integration::rpc::{FooRequest, FooResponse, Rpc};
 
 pub struct FooService {
