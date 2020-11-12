@@ -1,6 +1,8 @@
 use async_trait::async_trait;
 use erased_serde as erased;
 use futures::io::{AsyncBufRead, AsyncBufReadExt, AsyncRead, AsyncWrite, AsyncWriteExt, BufReader, BufWriter};
+use futures::{Stream, Sink, StreamExt, SinkExt};
+use futures::channel::mpsc::{Sender, Receiver};
 use serde;
 use serde::de::Visitor;
 use std::io::Cursor; // serde doesn't support AsyncRead
@@ -121,8 +123,8 @@ where
 
 impl<R, W> Marshal for Codec<R, W>
 where
-    R: AsyncBufRead + Send + Sync,
-    W: AsyncWrite + Send + Sync
+    R: Send + Sync,
+    W: Send + Sync
 {
     fn marshal<S: serde::Serialize>(val: &S) -> Result<Vec<u8>, Error> {
         serde_json::to_vec(val).map_err(|e| e.into())
@@ -131,13 +133,23 @@ where
 
 impl<R, W> Unmarshal for Codec<R, W>
 where
-    R: AsyncBufRead + Send + Sync,
-    W: AsyncWrite + Send + Sync
+    R: Send + Sync,
+    W: Send + Sync
 {
     fn unmarshal<'de, D: serde::Deserialize<'de>>(buf: &'de [u8]) -> Result<D, Error> {
         serde_json::from_slice(buf).map_err(|e| e.into())
     }
 }
+
+// impl<R, W> Codec<R, W> 
+// where 
+//     R: Stream + Send + Sync + Unpin,
+//     W: Sink<Vec<u8>> + Send + Sync + Unpin
+// {
+//     pub fn from_stream_sink(reader: R, writer: W) -> Self {
+//         Self { reader, writer }
+//     }
+// }
 
 #[cfg(test)]
 mod tests {

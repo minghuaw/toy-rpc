@@ -7,7 +7,7 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [features]
-default = ["std", "codec_bincode", "http_tide"]
+default = ["std", "codec_json", "http_tide"]
 
 std = ["serde/std"]
 
