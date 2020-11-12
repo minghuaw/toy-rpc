@@ -157,7 +157,7 @@ impl<W: AsyncWrite + AsyncWriteExt + Unpin + Send + Sync> FrameWrite for W {
         // check if buf length exceed maximum
         if buf.len() > PayloadLen::MAX as usize {
             return Err(Error::TransportError {
-                msg: format!("Expected {}, found {}", PayloadLen::MAX, buf.len())
+                msg: format!("Expected {}, found {}", PayloadLen::MAX, buf.len()),
             });
         }
 

@@ -5,7 +5,7 @@ use erased_serde as erased;
 use futures::StreamExt;
 use std::collections::HashMap;
 
-#[cfg(features="http_tide")]
+#[cfg(features = "http_tide")]
 use tide;
 
 use crate::codec::{DefaultCodec, ServerCodec};
@@ -16,7 +16,7 @@ use crate::service::{
 };
 
 #[cfg(feature = "http_tide")]
-const DEFAULT_PATH: &str = "/_rpc_";
+pub const RPC_PATH: &str = "/_rpc_/";
 
 #[derive(Clone)]
 pub struct Server {
@@ -68,9 +68,12 @@ impl Server {
         Ok(())
     }
 
-    async fn _serve_codec_once<C>(codec: &mut C, services: &Arc<AsyncServiceMap>) -> Result<(), Error>
-    where 
-        C: ServerCodec + Send + Sync 
+    async fn _serve_codec_once<C>(
+        codec: &mut C,
+        services: &Arc<AsyncServiceMap>,
+    ) -> Result<(), Error>
+    where
+        C: ServerCodec + Send + Sync,
     {
         if let Some(header) = codec.read_request_header().await {
             // destructure header
@@ -82,7 +85,12 @@ impl Server {
             let service_name = &service_method[..pos];
             let method_name = service_method[pos + 1..].to_owned();
 
-            log::info!("Message {}, service: {}, method: {}", id, service_name, method_name);
+            log::info!(
+                "Message {}, service: {}, method: {}",
+                id,
+                service_name,
+                method_name
+            );
 
             // look up the service
             // TODO; consider adding a new error type
@@ -162,30 +170,28 @@ impl Server {
 impl Server {
     #[cfg(feature = "http_tide")]
     pub fn handle_http(self) -> tide::Server<Self> {
-        use futures::io::{
-            // BufReader, 
-            BufWriter
-        };
+        use futures::io::BufWriter;
 
         let mut app = tide::Server::with_state(self);
-        app.at(DEFAULT_PATH).all(|mut req: tide::Request<Server>| async move {
-            // let input = req.body_bytes().await?;
-            let input = req.take_body().into_reader();
-            // log::debug!("http body {:?}", )
-            let mut output: Vec<u8> = Vec::new();
-            
-            let mut codec = DefaultCodec::from_reader_writer(
-                // BufReader::new(&input[..]),
-                input, 
-                BufWriter::new(&mut output)
-            );
-            let services = req.state().services.clone();
+        app.at(RPC_PATH)
+            .all(|mut req: tide::Request<Server>| async move {
+                // let input = req.body_bytes().await?;
+                let input = req.take_body().into_reader();
+                // log::debug!("http body {:?}", )
+                let mut output: Vec<u8> = Vec::new();
 
-            Self::_serve_codec_once(&mut codec, &services).await?;
+                let mut codec = DefaultCodec::from_reader_writer(
+                    // BufReader::new(&input[..]),
+                    input,
+                    BufWriter::new(&mut output),
+                );
+                let services = req.state().services.clone();
 
-            // construct tide::Response 
-            Ok(tide::Body::from_bytes(output))
-        });
+                Self::_serve_codec_once(&mut codec, &services).await?;
+
+                // construct tide::Response
+                Ok(tide::Body::from_bytes(output))
+            });
 
         app
     }

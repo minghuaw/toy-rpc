@@ -1,4 +1,2 @@
 #[async_std::main]
-async fn main() {
-
-}
+async fn main() {}

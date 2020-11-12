@@ -1,7 +1,7 @@
 use async_std::sync::{Arc, Mutex};
 use async_trait::async_trait;
-use tide::Request;
 use tide::prelude::*;
+use tide::Request;
 
 use toy_rpc::macros::{export_impl, service};
 use toy_rpc::server::Server;
@@ -22,7 +22,7 @@ impl Rpc for FooService {
         *counter += 1;
 
         let res = FooResponse { a: req.a, b: req.b };
-        
+
         Ok(res)
         // Err("echo error".into())
     }
@@ -74,8 +74,8 @@ async fn main() -> tide::Result<()> {
     env_logger::init();
 
     let addr = "127.0.0.1:23333";
-    let foo_service = Arc::new(FooService{
-        counter: Mutex::new(0)
+    let foo_service = Arc::new(FooService {
+        counter: Mutex::new(0),
     });
     let server = Server::builder()
         .register("foo_service", service!(foo_service, FooService))
@@ -83,9 +83,7 @@ async fn main() -> tide::Result<()> {
 
     let mut app = tide::new();
     app.at("/orders/shoes").post(order_shoes);
-    app.at("/rpc").nest( {
-        server.handle_http()
-    });
+    app.at("/rpc").nest({ server.handle_http() });
 
     app.listen(addr).await?;
     Ok(())

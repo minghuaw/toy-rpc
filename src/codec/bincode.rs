@@ -26,8 +26,8 @@ where
 
 pub struct Codec<R, W>
 where
-    // R: FrameRead + Send + Sync + Unpin,
-    // W: FrameWrite + Send + Sync + Unpin,
+// R: FrameRead + Send + Sync + Unpin,
+// W: FrameWrite + Send + Sync + Unpin,
 {
     reader: R,
     writer: W,

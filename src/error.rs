@@ -10,7 +10,7 @@ pub enum Error {
     },
     // ParseError{ source: &'static (dyn std::error::Error + Send) },
     TransportError {
-        msg: String
+        msg: String,
     },
 
     NoneError,
@@ -35,9 +35,7 @@ impl std::fmt::Display for Error {
         match self {
             Error::IoError(ref err) => err.fmt(f),
             Error::ParseError { source } => std::fmt::Display::fmt(&*source, f),
-            Error::TransportError { msg } => {
-                write!(f, "Transport Error Message: {}", msg)
-            }
+            Error::TransportError { msg } => write!(f, "Transport Error Message: {}", msg),
             Error::NoneError => write!(f, "None error"),
             Error::RpcError(ref err) => std::fmt::Display::fmt(err, f),
         }
@@ -110,7 +108,9 @@ impl From<bincode::Error> for Error {
 
 impl From<surf::http::url::ParseError> for Error {
     fn from(err: surf::http::url::ParseError) -> Self {
-        Error::ParseError { source: Box::new(err) }
+        Error::ParseError {
+            source: Box::new(err),
+        }
     }
 }
 

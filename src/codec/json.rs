@@ -1,8 +1,10 @@
 use async_trait::async_trait;
 use erased_serde as erased;
-use futures::io::{AsyncBufRead, AsyncBufReadExt, AsyncRead, AsyncWrite, AsyncWriteExt, BufReader, BufWriter};
-use futures::{Stream, Sink, StreamExt, SinkExt};
-use futures::channel::mpsc::{Sender, Receiver};
+use futures::channel::mpsc::{Receiver, Sender};
+use futures::io::{
+    AsyncBufRead, AsyncBufReadExt, AsyncRead, AsyncWrite, AsyncWriteExt, BufReader, BufWriter,
+};
+use futures::{Sink, SinkExt, Stream, StreamExt};
 use serde;
 use serde::de::Visitor;
 use std::io::Cursor; // serde doesn't support AsyncRead
@@ -25,8 +27,8 @@ where
 
 pub struct Codec<R, W>
 where
-    // R: AsyncBufRead + Send + Sync,
-    // W: AsyncWrite + Send + Sync,
+// R: AsyncBufRead + Send + Sync,
+// W: AsyncWrite + Send + Sync,
 {
     reader: R,
     writer: W,
@@ -92,7 +94,7 @@ where
 impl<R, W> CodecWrite for Codec<R, W>
 where
     R: AsyncBufRead + Send + Sync + Unpin,
-    W: AsyncWrite + Send + Sync + Unpin
+    W: AsyncWrite + Send + Sync + Unpin,
 {
     async fn write_header<H>(&mut self, header: H) -> Result<usize, Error>
     where
@@ -124,7 +126,7 @@ where
 impl<R, W> Marshal for Codec<R, W>
 where
     R: Send + Sync,
-    W: Send + Sync
+    W: Send + Sync,
 {
     fn marshal<S: serde::Serialize>(val: &S) -> Result<Vec<u8>, Error> {
         serde_json::to_vec(val).map_err(|e| e.into())
@@ -134,15 +136,15 @@ where
 impl<R, W> Unmarshal for Codec<R, W>
 where
     R: Send + Sync,
-    W: Send + Sync
+    W: Send + Sync,
 {
     fn unmarshal<'de, D: serde::Deserialize<'de>>(buf: &'de [u8]) -> Result<D, Error> {
         serde_json::from_slice(buf).map_err(|e| e.into())
     }
 }
 
-// impl<R, W> Codec<R, W> 
-// where 
+// impl<R, W> Codec<R, W>
+// where
 //     R: Stream + Send + Sync + Unpin,
 //     W: Sink<Vec<u8>> + Send + Sync + Unpin
 // {
@@ -153,8 +155,8 @@ where
 
 #[cfg(test)]
 mod tests {
-    use serde::{Serialize, Deserialize};
     use crate::message::RequestHeader;
+    use serde::{Deserialize, Serialize};
 
     #[derive(Debug, Serialize, Deserialize)]
     pub struct FooRequest {
@@ -164,8 +166,11 @@ mod tests {
 
     #[test]
     fn json_request() {
-        let header = RequestHeader {id: 0, service_method: "service.method".to_string()};
-        let body = FooRequest{a: 3, b: 6};
+        let header = RequestHeader {
+            id: 0,
+            service_method: "service.method".to_string(),
+        };
+        let body = FooRequest { a: 3, b: 6 };
 
         let header_buf = serde_json::to_string(&header).unwrap();
         let body_buf = serde_json::to_string(&body).unwrap();
