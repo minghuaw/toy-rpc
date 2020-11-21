@@ -15,10 +15,7 @@ pub struct FooResponse {
     pub b: u32,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct BarRequest {
-    pub content: String,
-}
+
 
 #[async_trait]
 pub trait Rpc {
@@ -26,6 +23,11 @@ pub trait Rpc {
     async fn increment_a(&self, req: FooRequest) -> Result<FooResponse, String>;
     async fn increment_b(&self, req: FooRequest) -> Result<FooResponse, String>;
     async fn get_counter(&self, _: ()) -> Result<u32, String>;
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct BarRequest {
+    pub content: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

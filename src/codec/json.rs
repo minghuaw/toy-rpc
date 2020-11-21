@@ -1,10 +1,8 @@
 use async_trait::async_trait;
 use erased_serde as erased;
-use futures::channel::mpsc::{Receiver, Sender};
 use futures::io::{
     AsyncBufRead, AsyncBufReadExt, AsyncRead, AsyncWrite, AsyncWriteExt, BufReader, BufWriter,
 };
-use futures::{Sink, SinkExt, Stream, StreamExt};
 use serde;
 use serde::de::Visitor;
 use std::io::Cursor; // serde doesn't support AsyncRead

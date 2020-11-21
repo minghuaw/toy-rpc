@@ -16,7 +16,7 @@ use crate::service::{
 };
 
 #[cfg(feature = "http_tide")]
-pub const RPC_PATH: &str = "/_rpc_/";
+pub const DEFAULT_RPC_PATH: &str = "_rpc_";
 
 #[derive(Clone)]
 pub struct Server {
@@ -173,7 +173,7 @@ impl Server {
         use futures::io::BufWriter;
 
         let mut app = tide::Server::with_state(self);
-        app.at(RPC_PATH)
+        app.at(DEFAULT_RPC_PATH)
             .all(|mut req: tide::Request<Server>| async move {
                 // let input = req.body_bytes().await?;
                 let input = req.take_body().into_reader();

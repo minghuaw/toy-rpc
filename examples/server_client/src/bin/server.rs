@@ -22,8 +22,8 @@ impl Rpc for FooService {
         *counter += 1;
 
         let res = FooResponse { a: req.a, b: req.b };
-        // Ok(res)
-        Err("echo error".into())
+        Ok(res)
+        // Err("echo error".into())
     }
 
     #[export_method]
@@ -35,8 +35,8 @@ impl Rpc for FooService {
             a: req.a + 1,
             b: req.b,
         };
-        // Ok(res)
-        Err("increment_a error".into())
+        Ok(res)
+        // Err("increment_a error".into())
     }
 
     #[export_method]
@@ -49,8 +49,8 @@ impl Rpc for FooService {
             b: req.b + 1,
         };
 
-        // Ok(res)
-        Err("increment_b error".into())
+        Ok(res)
+        // Err("increment_b error".into())
     }
 
     #[export_method]

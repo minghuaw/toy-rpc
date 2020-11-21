@@ -7,7 +7,9 @@ use toy_rpc::macros::{export_impl, service};
 use toy_rpc::server::Server;
 
 // use tide_integration::rpc;
-use tide_integration::rpc::{FooRequest, FooResponse, Rpc};
+use tide_integration::rpc::{BarService, FooRequest, FooResponse, Rpc};
+
+use tide_integration::rpc;
 
 pub struct FooService {
     counter: Mutex<u32>,
@@ -77,13 +79,16 @@ async fn main() -> tide::Result<()> {
     let foo_service = Arc::new(FooService {
         counter: Mutex::new(0),
     });
+    let bar_service = Arc::new(BarService {});
+
     let server = Server::builder()
         .register("foo_service", service!(foo_service, FooService))
+        .register("bar_service", service!(bar_service, rpc::BarService))
         .build();
 
     let mut app = tide::new();
     app.at("/orders/shoes").post(order_shoes);
-    app.at("/rpc").nest({ server.handle_http() });
+    app.at("/rpc/").nest(server.handle_http());
 
     app.listen(addr).await?;
     Ok(())
@@ -93,7 +98,7 @@ async fn order_shoes(mut req: Request<()>) -> tide::Result {
     let body = req.body_string().await?;
     println!("{:?}", body);
 
-    Ok("".into())
+    Ok("hahahah".into())
     // let Animal { name, legs } = req.body_json().await?;
     // Ok(format!("Hello, {}! I've put in an order for {} shoes", name, legs).into())
 }
