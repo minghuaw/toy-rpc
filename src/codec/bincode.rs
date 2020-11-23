@@ -19,7 +19,6 @@ where
 {
     type Error = <&'de mut bincode::Deserializer<R, O> as serde::Deserializer<'de>>::Error;
 
-    // the rest is simply calling self.inner.deserialize_xxx()
     // use a macro to generate the code
     impl_inner_deserializer!();
 }
@@ -38,7 +37,7 @@ where
     R: AsyncBufRead + Send + Sync + Unpin,
     W: AsyncWrite + AsyncWriteExt + Send + Sync + Unpin,
 {
-    pub fn from_reader_writer(reader: R, writer: W) -> Self {
+    pub fn with_reader_writer(reader: R, writer: W) -> Self {
         Self { reader, writer }
     }
 }
@@ -48,10 +47,7 @@ where
     T: AsyncRead + AsyncWrite + Send + Sync + Unpin + Clone,
 {
     pub fn new(stream: T) -> Self {
-        Self::from_reader_writer(
-            BufReader::new(stream.clone()),
-            BufWriter::new(stream.clone()),
-        )
+        Self::with_reader_writer(BufReader::new(stream.clone()), BufWriter::new(stream))
     }
 }
 

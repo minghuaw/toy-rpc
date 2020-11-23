@@ -80,7 +80,7 @@ impl Server {
             let RequestHeader { id, service_method } = header?;
             // let service_method = &service_method[..];
             let pos = service_method
-                .rfind(".")
+                .rfind('.')
                 .ok_or(Error::RpcError(RpcError::MethodNotFound))?;
             let service_name = &service_method[..pos];
             let method_name = service_method[pos + 1..].to_owned();
@@ -180,7 +180,7 @@ impl Server {
                 // log::debug!("http body {:?}", )
                 let mut output: Vec<u8> = Vec::new();
 
-                let mut codec = DefaultCodec::from_reader_writer(
+                let mut codec = DefaultCodec::with_reader_writer(
                     // BufReader::new(&input[..]),
                     input,
                     BufWriter::new(&mut output),
@@ -226,5 +226,11 @@ impl ServerBuilder {
         Server {
             services: Arc::new(self.services),
         }
+    }
+}
+
+impl Default for ServerBuilder {
+    fn default() -> Self {
+        Self::new()
     }
 }

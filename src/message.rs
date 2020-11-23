@@ -16,7 +16,7 @@ pub struct RequestHeader {
 
 impl Metadata for RequestHeader {
     fn get_id(&self) -> MessageId {
-        self.id.clone()
+        self.id
     }
 }
 
@@ -28,6 +28,6 @@ pub struct ResponseHeader {
 
 impl Metadata for ResponseHeader {
     fn get_id(&self) -> MessageId {
-        self.id.clone()
+        self.id
     }
 }

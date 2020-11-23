@@ -3,7 +3,6 @@ use erased_serde as erased;
 use futures::io::{
     AsyncBufRead, AsyncBufReadExt, AsyncRead, AsyncWrite, AsyncWriteExt, BufReader, BufWriter,
 };
-use serde;
 use serde::de::Visitor;
 use std::io::Cursor; // serde doesn't support AsyncRead
 
@@ -37,10 +36,7 @@ where
     T: AsyncRead + AsyncWrite + Send + Sync + Unpin + Clone,
 {
     pub fn new(stream: T) -> Self {
-        Self::from_reader_writer(
-            BufReader::new(stream.clone()),
-            BufWriter::new(stream.clone()),
-        )
+        Self::with_reader_writer(BufReader::new(stream.clone()), BufWriter::new(stream))
     }
 }
 
@@ -49,7 +45,7 @@ where
     R: AsyncBufRead + Send + Sync + Unpin,
     W: AsyncWrite + AsyncWriteExt + Send + Sync + Unpin,
 {
-    pub fn from_reader_writer(reader: R, writer: W) -> Self {
+    pub fn with_reader_writer(reader: R, writer: W) -> Self {
         Self { reader, writer }
     }
 }

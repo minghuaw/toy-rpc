@@ -5,7 +5,6 @@ use futures::ready;
 use futures::task::{Context, Poll};
 use futures::Stream;
 use lazy_static::lazy_static;
-use log;
 use pin_project::pin_project;
 use serde::{Deserialize, Serialize};
 use std::pin::Pin;
@@ -199,7 +198,7 @@ impl<'r, T: AsyncBufRead + Unpin + Send + Sync> Stream for FrameStream<'r, T> {
             match header {
                 None => {
                     let buf = ready!(reader.as_mut().poll_fill_buf(cx)?);
-                    if buf.len() == 0 {
+                    if buf.is_empty() {
                         return Poll::Ready(None);
                     }
 
@@ -241,7 +240,7 @@ impl<'r, T: AsyncBufRead + Unpin + Send + Sync> Stream for FrameStream<'r, T> {
                     }
 
                     let buf = ready!(reader.as_mut().poll_fill_buf(cx)?);
-                    if buf.len() == 0 {
+                    if buf.is_empty() {
                         return Poll::Ready(None);
                     }
 
@@ -273,11 +272,11 @@ pub trait FrameStreamExt<T>
 where
     T: AsyncBufRead + Unpin + Send + Sync,
 {
-    fn frames<'a>(&'a mut self) -> FrameStream<'a, T>;
+    fn frames(&mut self) -> FrameStream<T>;
 }
 
 impl<T: AsyncBufRead + Send + Sync + Unpin> FrameStreamExt<T> for T {
-    fn frames<'a>(&'a mut self) -> FrameStream<'a, T> {
+    fn frames(&mut self) -> FrameStream<T> {
         FrameStream {
             inner: self,
             header: None,

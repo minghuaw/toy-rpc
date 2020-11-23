@@ -1,15 +1,11 @@
 use async_std::net::{TcpStream, ToSocketAddrs};
+use async_std::sync::{channel, Receiver, Sender};
 use async_std::sync::{Arc, Mutex};
 use async_std::task;
 use erased_serde as erased;
-// use futures::channel::mpsc::{channel, Receiver, Sender};
-use async_std::sync::{channel, Receiver, Sender};
 use futures::io::{BufReader, BufWriter};
-// use futures::{SinkExt, StreamExt};
-use serde;
 use std::marker::PhantomData;
 use std::sync::atomic::Ordering;
-use surf;
 
 use crate::codec::{ClientCodec, DefaultCodec};
 use crate::error::{Error, RpcError};
@@ -32,7 +28,7 @@ pub struct Client<T, Mode> {
 }
 
 impl Client<Codec, NotConnected> {
-    pub fn new(stream: TcpStream) -> Client<Codec, Connected> {
+    pub fn with_stream(stream: TcpStream) -> Client<Codec, Connected> {
         let box_codec: Box<dyn ClientCodec> = Box::new(DefaultCodec::new(stream));
 
         Client::<Codec, Connected> {
@@ -44,9 +40,9 @@ impl Client<Codec, NotConnected> {
     }
 
     pub fn dial(addr: impl ToSocketAddrs) -> Result<Client<Codec, Connected>, Error> {
-        let stream = task::block_on(TcpStream::connect(addr)).map_err(|e| Error::IoError(e))?;
+        let stream = task::block_on(TcpStream::connect(addr))?;
 
-        Ok(Self::new(stream))
+        Ok(Self::with_stream(stream))
     }
 }
 
@@ -84,7 +80,7 @@ impl Client<Codec, Connected> {
         task::block_on(self.async_call(service_method, args))
     }
 
-    pub fn task<'a, Req, Res>(
+    pub fn task<Req, Res>(
         &mut self,
         service_method: impl ToString + Send + 'static,
         args: Req,
@@ -225,7 +221,7 @@ impl Client<Channel, Connected> {
         let req = &args as &(dyn erased::Serialize + Send + Sync);
 
         // create temp codec
-        let mut codec = DefaultCodec::from_reader_writer(
+        let mut codec = DefaultCodec::with_reader_writer(
             BufReader::new(&res_buf[..]),
             BufWriter::new(&mut req_buf),
         );
@@ -247,7 +243,7 @@ impl Client<Channel, Connected> {
         let res_buf = encoded_res;
 
         // create a new codec to parse response
-        let mut codec = DefaultCodec::from_reader_writer(
+        let mut codec = DefaultCodec::with_reader_writer(
             BufReader::new(&res_buf[..]),
             BufWriter::new(&mut req_buf),
         );

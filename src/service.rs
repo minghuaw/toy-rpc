@@ -61,10 +61,8 @@ where
             None => return Box::pin(async move { Err(Error::RpcError(RpcError::MethodNotFound)) }),
         };
 
-        // execute handler method
-        let fut = _method(_state, deserializer);
-
-        fut
+        // return future of method execution
+        _method(_state, deserializer)
     }
 }
 
@@ -77,7 +75,8 @@ where
     }
 
     fn get_method(&self, name: &str) -> Option<ArcAsyncHandler<State>> {
-        self.handlers.get(name).map(|m| m.clone())
+        // self.handlers.get(name).map(|m| m.clone())
+        self.handlers.get(name).cloned()
     }
 }
 
@@ -118,6 +117,15 @@ where
 
             mode: PhantomData,
         }
+    }
+}
+
+impl<State> Default for ServiceBuilder<State, BuilderUninitialized>
+where
+    State: Send + Sync + 'static,
+{
+    fn default() -> Self {
+        Self::new()
     }
 }
 

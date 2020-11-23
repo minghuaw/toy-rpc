@@ -15,8 +15,6 @@ pub struct FooResponse {
     pub b: u32,
 }
 
-
-
 #[async_trait]
 pub trait Rpc {
     async fn echo(&self, req: FooRequest) -> Result<FooResponse, String>;
