@@ -1789,11 +1789,11 @@ dependencies = [
  "serde_json",
  "surf",
  "tide",
- "toy_rpc_macros",
+ "toy-rpc-macros",
 ]
 
 [[package]]
-name = "toy_rpc_macros"
+name = "toy-rpc-macros"
 version = "0.1.0"
 dependencies = [
  "quote",
