@@ -19,7 +19,7 @@ use crate::service::{
 pub const DEFAULT_RPC_PATH: &str = "_rpc_";
 
 /// RPC Server
-/// 
+///
 /// ```
 /// const DEFAULT_RPC_PATH: &str = "_rpc_";
 /// ```
@@ -36,9 +36,9 @@ impl Server {
 
     /// Accepts connections on the listener and serves requests to default
     /// server for each incoming connection
-    /// 
+    ///
     /// # Example
-    /// 
+    ///
     /// See `toy-rpc/examples/server_client/` for the example
     pub async fn accept(&self, listener: TcpListener) -> Result<(), Error> {
         let mut incoming = listener.incoming();
@@ -185,28 +185,28 @@ impl Server {
 // integration with http frameworks
 impl Server {
     /// Creates a `tide::Endpoint` that handles http connections
-    /// 
-    /// The endpoint will be created with `DEFAULT_RPC_PATH` appended to the 
+    ///
+    /// The endpoint will be created with `DEFAULT_RPC_PATH` appended to the
     /// end of the nested `tide` endpoint
-    /// 
+    ///
     /// # Example
     /// ```
     /// use toy_rpc::server::Server;
-    /// 
+    ///
     /// #[async_std::main]
     /// async fn main() -> tide::Result<()> {
     ///     let addr = "127.0.0.1:8888";
     ///     let foo_service = Arc::new(FooService { });
-    /// 
+    ///
     ///     let server = Server::builder()
     ///         .build();
     ///     
     ///     let mut app = tide::new();
-    /// 
-    ///     // If a network path were to be supplpied, 
+    ///
+    ///     // If a network path were to be supplpied,
     ///     // the network path must end with a slash "/"
     ///     app.at("/rpc/").nest(server.into_endpoint());
-    /// 
+    ///
     ///     app.listen(addr).await?;
     ///     Ok(())
     /// }
@@ -223,10 +223,8 @@ impl Server {
                 let input = req.take_body().into_reader();
                 let mut output: Vec<u8> = Vec::new();
 
-                let mut codec = DefaultCodec::with_reader_writer(
-                    input,
-                    BufWriter::new(&mut output),
-                );
+                let mut codec =
+                    DefaultCodec::with_reader_writer(input, BufWriter::new(&mut output));
                 let services = req.state().services.clone();
 
                 Self::_serve_codec_once(&mut codec, &services).await?;
@@ -240,7 +238,7 @@ impl Server {
 
     // #[cfg(feature = "tide")]
     // pub fn handle_http(self) -> tide::Server<Self> {
-        
+
     // }
 }
 
@@ -257,16 +255,16 @@ impl ServerBuilder {
     }
 
     /// Registers a new service to the `Server`
-    /// 
+    ///
     /// # Example
-    /// 
+    ///
     /// ```
     /// use async_std::net::TcpListener;
     /// use toy_rpc_macros::{export_impl, service};
     /// use toy_rpc::server::Server;
-    /// 
+    ///
     /// EchoService { }
-    /// 
+    ///
     /// #[export_impl]
     /// impl EchoService {
     ///     #[export_method]
@@ -274,7 +272,7 @@ impl ServerBuilder {
     ///         Ok(req)
     ///     }
     /// }
-    /// 
+    ///
     /// #[async_std::main]
     /// async fn main() {
     ///     let addr = "127.0.0.1:8888";
@@ -285,11 +283,11 @@ impl ServerBuilder {
     ///         build();
     ///     
     ///     let listener = TcpListener::bind(addr).await.unwrap();
-    /// 
+    ///
     ///     let handle = task::spawn(async move {
     ///         server.accept(listener).await.unwrap();
     ///     });
-    /// 
+    ///
     ///     handle.await;
     /// }
     /// ```

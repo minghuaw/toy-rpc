@@ -1,9 +1,11 @@
 use async_std::net::{TcpStream, ToSocketAddrs};
-use async_std::sync::{channel, Receiver, Sender};
+// use async_std::sync::{channel, Receiver, Sender};
 use async_std::sync::{Arc, Mutex};
 use async_std::task;
 use erased_serde as erased;
+use futures::channel::mpsc::{channel, Receiver, Sender};
 use futures::io::{BufReader, BufWriter};
+use futures::{SinkExt, StreamExt};
 use std::marker::PhantomData;
 use std::sync::atomic::Ordering;
 
@@ -35,11 +37,11 @@ pub struct Client<T, Mode> {
 
 impl Client<Codec, NotConnected> {
     /// Creates an RPC `Client` over socket with a specified `async_std::net::TcpStream` and the default codec
-    /// 
+    ///
     /// # Example
     /// ```
     /// use async_std::net::TcpStream;
-    /// 
+    ///
     /// #[async_std::main]
     /// async fn main() {
     ///     let stream = TcpStream::connect("127.0.0.1:8888").unwrap();
@@ -53,9 +55,9 @@ impl Client<Codec, NotConnected> {
     }
 
     /// Creates an RPC 'Client` over socket with a specified codec
-    pub fn with_codec<C>(codec: C) -> Client<Codec, Connected> 
-    where 
-        C: ClientCodec + Send + Sync + 'static
+    pub fn with_codec<C>(codec: C) -> Client<Codec, Connected>
+    where
+        C: ClientCodec + Send + Sync + 'static,
     {
         let box_codec: Box<dyn ClientCodec> = Box::new(codec);
 
@@ -78,25 +80,25 @@ impl Client<Codec, NotConnected> {
 #[cfg(feature = "surf")]
 impl Client<Channel, NotConnected> {
     /// Connects to an HTTP RPC server at the specified network address using the defatul codec
-    /// 
+    ///
     /// If a network path were to be supplpied, the network path must end with a slash "/"
-    /// 
+    ///
     /// # Example
-    /// 
+    ///
     /// ```
     /// use toy_rpc::client::Client;
-    /// 
+    ///
     /// #[async_std::main]
     /// async fn main() {
     ///     let addr = "http://127.0.0.1:8888/rpc/";
     ///     let client = Client::dial_http(addr).unwrap();
-    /// 
+    ///
     ///     let args = "arguments"
     ///     let reply: Result<String, String> = client.call_http("echo_service.echo", &args);
     ///     println!("{:?}", reply);
     /// }
     /// ```
-    /// 
+    ///
     /// TODO: check if the path ends with a slash
     /// TODO: add a check to test the connection
     /// TODO: try send and recv trait object
@@ -150,7 +152,7 @@ impl Client<Codec, Connected> {
         task::spawn(async move { Self::_async_call(service_method, &args, id, codec).await })
     }
 
-    /// Invokes the named function asynchronously 
+    /// Invokes the named function asynchronously
     pub async fn async_call<Req, Res>(
         &mut self,
         service_method: impl ToString,
@@ -185,7 +187,6 @@ impl Client<Codec, Connected> {
         // send request
         let bytes_sent = _codec.write_request(header, req).await?;
         log::info!("Request sent with {} bytes", bytes_sent);
-        
 
         Client::<Codec, Connected>::_handle_response(_codec.as_mut()).await
     }
@@ -251,7 +252,7 @@ impl Client<Channel, Connected> {
         service_method: impl ToString + Send + 'static,
         args: Req,
     ) -> task::JoinHandle<Result<Res, Error>>
-    where 
+    where
         Req: serde::Serialize + Send + Sync + 'static,
         Res: serde::de::DeserializeOwned + Send + 'static,
     {
@@ -269,8 +270,8 @@ impl Client<Channel, Connected> {
         Req: serde::Serialize + Send + Sync,
         Res: serde::de::DeserializeOwned,
     {
-        let req_sender = &self.inner_codec.0;
-        let res_recver = &self.inner_codec.1;
+        let req_sender = &mut self.inner_codec.0;
+        let res_recver = &mut self.inner_codec.1;
 
         let id = self.count.fetch_add(1u16, Ordering::Relaxed);
         Self::_async_call_http(service_method, &args, id, req_sender, res_recver).await
@@ -280,8 +281,8 @@ impl Client<Channel, Connected> {
         service_method: impl ToString,
         args: &Req,
         id: MessageId,
-        req_sender: &Sender<Vec<u8>>,
-        res_recver: &Receiver<Vec<u8>>,
+        req_sender: &mut Sender<Vec<u8>>,
+        res_recver: &mut Receiver<Vec<u8>>,
     ) -> Result<Res, Error>
     where
         Req: serde::Serialize + Send + Sync,
@@ -307,13 +308,14 @@ impl Client<Channel, Connected> {
         log::info!("Request sent with {} bytes", bytes_sent);
 
         // send req buffer to client_loop
-        req_sender.send(req_buf).await;
-
-        // wait for response
-        let encoded_res = res_recver
-            .recv()
+        req_sender
+            .send(req_buf)
             .await
             .map_err(|e| Error::TransportError { msg: e.to_string() })?;
+
+        // wait for response
+        let encoded_res = res_recver.next().await.ok_or(Error::NoneError)?;
+        // .map_err(|e| Error::TransportError { msg: e.to_string() })?;
 
         let mut req_buf = Vec::with_capacity(0);
         let res_buf = encoded_res;
@@ -330,14 +332,12 @@ impl Client<Channel, Connected> {
     /// TODO: try send and recv trait object over the channel instead of `Vec<u8>`
     async fn _http_client_loop(
         http_client: surf::Client,
-        req_recver: Receiver<Vec<u8>>,
-        res_sender: Sender<Vec<u8>>,
+        mut req_recver: Receiver<Vec<u8>>,
+        mut res_sender: Sender<Vec<u8>>,
     ) -> Result<(), Error> {
         loop {
-            let encoded_req = req_recver
-                .recv()
-                .await
-                .map_err(|e| Error::TransportError { msg: e.to_string() })?;
+            let encoded_req = req_recver.next().await.ok_or(Error::NoneError)?;
+            // .map_err(|e| Error::TransportError { msg: e.to_string() })?;
 
             let body = surf::Body::from_bytes(encoded_req);
             let http_req = http_client.post(DEFAULT_RPC_PATH).body(body).build();
@@ -359,7 +359,10 @@ impl Client<Channel, Connected> {
                     })?;
 
             // send back result
-            res_sender.send(encoded_res).await;
+            res_sender
+                .send(encoded_res)
+                .await
+                .map_err(|e| Error::TransportError { msg: e.to_string() })?;
         }
     }
 }
