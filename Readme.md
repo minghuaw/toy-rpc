@@ -315,7 +315,7 @@ async fn main() {
 }
 ```
 
-## TODO:
+## TODO
 
 - [x] Add `tide` integration
 - [ ] Add `actix` integration
