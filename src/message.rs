@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::sync::atomic::AtomicU16;
+// use erased_serde as erased;
+// use futures::channel::oneshot;
 
 pub type MessageId = u16;
 pub type AtomicMessageId = AtomicU16;
@@ -20,6 +22,11 @@ impl Metadata for RequestHeader {
     }
 }
 
+// pub struct Request {
+//     header: RequestHeader,
+//     body: Box<dyn erased::Serialize>,
+// }
+
 #[derive(Serialize, Deserialize, Debug, Default)]
 pub struct ResponseHeader {
     pub id: MessageId,
@@ -31,3 +38,13 @@ impl Metadata for ResponseHeader {
         self.id
     }
 }
+
+// pub struct Response {
+//     header: ResponseHeader,
+//     body: Box<dyn erased::Deserializer<'static>>,
+// }
+
+// enum ClientEvent {
+//     Call(Request, oneshot::Sender<Response>),
+//     Reply(Response),
+// }

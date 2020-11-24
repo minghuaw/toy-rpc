@@ -21,7 +21,7 @@ pub trait ServerCodec: Send + Sync {
     async fn read_request_header(&mut self) -> Option<Result<RequestHeader, Error>>;
     async fn read_request_body(
         &mut self,
-    ) -> Option<Result<Box<dyn erased::Deserializer<'static> + Send + Sync + 'static>, Error>>;
+    ) -> Option<Result<Box<dyn erased::Deserializer<'static> + Send + 'static>, Error>>;
 
     async fn write_response(
         &mut self,
@@ -35,7 +35,7 @@ pub trait ClientCodec: Send + Sync {
     async fn read_response_header(&mut self) -> Option<Result<ResponseHeader, Error>>;
     async fn read_response_body(
         &mut self,
-    ) -> Option<Result<Box<dyn erased::Deserializer<'static> + Send + Sync + 'static>, Error>>;
+    ) -> Option<Result<Box<dyn erased::Deserializer<'static> + Send + 'static>, Error>>;
 
     async fn write_request(
         &mut self,
@@ -52,7 +52,7 @@ pub trait CodecRead: Unmarshal {
 
     async fn read_body(
         &mut self,
-    ) -> Option<Result<Box<dyn erased::Deserializer<'static> + Send + Sync + 'static>, Error>>;
+    ) -> Option<Result<Box<dyn erased::Deserializer<'static> + Send + 'static>, Error>>;
 }
 
 #[async_trait]
@@ -87,7 +87,7 @@ where
 
     async fn read_request_body(
         &mut self,
-    ) -> Option<Result<Box<dyn erased::Deserializer<'static> + Send + Sync + 'static>, Error>> {
+    ) -> Option<Result<Box<dyn erased::Deserializer<'static> + Send + 'static>, Error>> {
         self.read_body().await
     }
 
@@ -116,7 +116,7 @@ where
 
     async fn read_response_body(
         &mut self,
-    ) -> Option<Result<Box<dyn erased::Deserializer<'static> + Send + Sync + 'static>, Error>> {
+    ) -> Option<Result<Box<dyn erased::Deserializer<'static> + Send + 'static>, Error>> {
         self.read_body().await
     }
 

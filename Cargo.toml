@@ -15,6 +15,7 @@ default = [
 ]
 
 std = ["serde/std"]
+logging = []
 
 [dependencies]
 # local imports

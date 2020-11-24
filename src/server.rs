@@ -45,7 +45,9 @@ impl Server {
 
         while let Some(conn) = incoming.next().await {
             let stream = conn?;
-            log::trace!("Accepting incoming connection from {}", stream.peer_addr()?);
+
+            #[cfg(feature="logging")]
+            log::info!("Accepting incoming connection from {}", stream.peer_addr()?);
 
             task::spawn(Self::_serve_conn(stream, self.services.clone()));
         }
@@ -56,7 +58,7 @@ impl Server {
     /// Serves a single connection
     async fn _serve_conn(stream: TcpStream, services: Arc<AsyncServiceMap>) -> Result<(), Error> {
         // let _stream = stream;
-        let peer_addr = stream.peer_addr()?;
+        let _peer_addr = stream.peer_addr()?;
 
         // using feature flag controlled default codec
         let codec = DefaultCodec::new(stream);
@@ -65,7 +67,10 @@ impl Server {
         let fut = Self::_serve_codec(codec, services);
 
         let ret = fut.await;
-        log::trace!("Client disconnected from {}", peer_addr);
+
+        #[cfg(feature="logging")]
+        log::info!("Client disconnected from {}", _peer_addr);
+        
         ret
     }
 
@@ -100,7 +105,8 @@ impl Server {
             let service_name = &service_method[..pos];
             let method_name = service_method[pos + 1..].to_owned();
 
-            log::trace!(
+            #[cfg(feature="logging")]
+            log::info!(
                 "Message {}, service: {}, method: {}",
                 id,
                 service_name,
@@ -116,17 +122,23 @@ impl Server {
 
             // read body
             let res = {
+                #[cfg(feature="logging")]
                 log::debug!("Reading request body");
+
                 let deserializer = codec.read_request_body().await.unwrap()?;
 
+                #[cfg(feature="logging")]
                 log::debug!("Calling handler");
+
                 // pass ownership to the `call`
                 call(method_name, deserializer).await
             };
 
             // send back result
-            let bytes_sent = Self::_send_response(codec, id, res).await?;
-            log::debug!("Response sent with {} bytes", bytes_sent);
+            let _bytes_sent = Self::_send_response(codec, id, res).await?;
+
+            #[cfg(feature="logging")]
+            log::debug!("Response sent with {} bytes", _bytes_sent);
         }
 
         Ok(())
@@ -143,7 +155,9 @@ impl Server {
     {
         match res {
             Ok(b) => {
-                log::trace!("Message {} Success", id.clone());
+                #[cfg(feature="logging")]
+                log::info!("Message {} Success", id.clone());
+
                 let header = ResponseHeader {
                     id,
                     is_error: false,
@@ -153,9 +167,10 @@ impl Server {
                 Ok(bytes_sent)
             }
             Err(e) => {
-                log::trace!("Message {} Error", id.clone());
-                let header = ResponseHeader { id, is_error: true };
+                #[cfg(feature="logging")]
+                log::info!("Message {} Error", id.clone());
 
+                let header = ResponseHeader { id, is_error: true };
                 let body = match e {
                     Error::RpcError(rpc_err) => Box::new(rpc_err),
                     _ => Box::new(RpcError::ServerError(e.to_string())),

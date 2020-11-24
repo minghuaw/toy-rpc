@@ -4,13 +4,15 @@ use async_std::sync::{Arc, Mutex};
 use async_std::task;
 use erased_serde as erased;
 use futures::channel::mpsc::{channel, Receiver, Sender};
+use futures::channel::oneshot;
 use futures::io::{BufReader, BufWriter};
 use futures::{SinkExt, StreamExt};
 use std::marker::PhantomData;
 use std::sync::atomic::Ordering;
+use std::collections::HashMap;
 
 use crate::codec::{ClientCodec, DefaultCodec};
-use crate::error::{Error, RpcError};
+use crate::error::{Error};
 use crate::message::{AtomicMessageId, MessageId, RequestHeader, ResponseHeader};
 
 // #[cfg(feature = "tide")]
@@ -26,11 +28,13 @@ pub struct Connected {}
 
 type Codec = Arc<Mutex<Box<dyn ClientCodec>>>;
 type Channel = (Sender<Vec<u8>>, Receiver<Vec<u8>>);
+type ResponseBody = Box<dyn erased::Deserializer<'static> + Send>;
 
 /// RPC Client
 pub struct Client<T, Mode> {
     count: AtomicMessageId,
     inner_codec: T,
+    pending: HashMap<u16, oneshot::Sender<Result<ResponseBody, ResponseBody>>>,
 
     mode: PhantomData<Mode>,
 }
@@ -64,6 +68,7 @@ impl Client<Codec, NotConnected> {
         Client::<Codec, Connected> {
             count: AtomicMessageId::new(0u16),
             inner_codec: Arc::new(Mutex::new(box_codec)),
+            pending: HashMap::new(),
 
             mode: PhantomData,
         }
@@ -120,6 +125,7 @@ impl Client<Channel, NotConnected> {
         Ok(Client::<Channel, Connected> {
             count: AtomicMessageId::new(0u16),
             inner_codec: channel_codec,
+            pending: HashMap::new(),
 
             mode: PhantomData,
         })
@@ -138,7 +144,7 @@ impl Client<Codec, Connected> {
 
     /// Invokes the named function asynchronously by spawning a new task and returns the `JoinHandle`
     pub fn spawn_task<Req, Res>(
-        &mut self,
+        &'static mut self,
         service_method: impl ToString + Send + 'static,
         args: Req,
     ) -> task::JoinHandle<Result<Res, Error>>
@@ -149,7 +155,17 @@ impl Client<Codec, Connected> {
         let codec = self.inner_codec.clone();
         let id = self.count.fetch_add(1u16, Ordering::Relaxed);
 
-        task::spawn(async move { Self::_async_call(service_method, &args, id, codec).await })
+        task::spawn(
+            async move { 
+                Self::_async_call(
+                    service_method, 
+                    &args, 
+                    id, 
+                    codec,
+                    &mut self.pending,
+                ).await 
+            }
+        )
     }
 
     /// Invokes the named function asynchronously
@@ -164,7 +180,7 @@ impl Client<Codec, Connected> {
     {
         let codec = self.inner_codec.clone();
         let id = self.count.fetch_add(1u16, Ordering::Relaxed);
-        Self::_async_call(service_method, &args, id, codec).await
+        Self::_async_call(service_method, &args, id, codec, &mut self.pending).await
     }
 
     async fn _async_call<Req, Res>(
@@ -172,6 +188,7 @@ impl Client<Codec, Connected> {
         args: &Req,
         id: MessageId,
         codec: Arc<Mutex<Box<dyn ClientCodec>>>,
+        pending: &mut HashMap<u16, oneshot::Sender<Result<ResponseBody, ResponseBody>>>,
     ) -> Result<Res, Error>
     where
         Req: serde::Serialize + Send + Sync,
@@ -185,49 +202,96 @@ impl Client<Codec, Connected> {
         let req = &args as &(dyn erased::Serialize + Send + Sync);
 
         // send request
-        let bytes_sent = _codec.write_request(header, req).await?;
-        log::trace!("Request sent with {} bytes", bytes_sent);
+        let _bytes_sent = _codec.write_request(header, req).await?;
+        #[cfg(feature="logging")]
+        log::info!("Request id {} sent with {} bytes", &id, _bytes_sent);
 
-        // use channel 
+        // creates channel for receiving response
+        let (done_sender, done) = oneshot::channel::<Result<ResponseBody, ResponseBody>>();
 
-        Client::<Codec, Connected>::_handle_response(_codec.as_mut()).await
+        // insert sender to pending map
+        pending.insert(id, done_sender);
+
+        Client::<Codec, Connected>::_wait_for_response(_codec.as_mut(), pending).await?;
+
+        Client::<Codec, Connected>::_handle_response(done, &id)
     }
 }
 
 impl<T> Client<T, Connected> {
-    async fn _handle_response<Res>(codec: &mut dyn ClientCodec) -> Result<Res, Error>
-    where
-        Res: serde::de::DeserializeOwned,
+    async fn _wait_for_response(
+        codec: &mut dyn ClientCodec, 
+        pending: &mut HashMap<u16, oneshot::Sender<Result<ResponseBody, ResponseBody>>>
+    ) -> Result<(), Error>
     {
         // wait for response
         if let Some(header) = codec.read_response_header().await {
-            let ResponseHeader { id: _, is_error } = header?;
+            let ResponseHeader { id, is_error } = header?;
             let deserializer = codec.read_response_body().await.ok_or(Error::NoneError)?;
-            let mut deserializer = deserializer?;
+            let deserializer = deserializer?;
 
             let res = match is_error {
-                false => {
-                    let res: Res =
-                        erased::deserialize(&mut deserializer).map_err(|e| Error::ParseError {
-                            source: Box::new(e),
-                        })?;
-
-                    Ok(res)
-                }
-                true => {
-                    let err: RpcError =
-                        erased::deserialize(&mut deserializer).map_err(|e| Error::ParseError {
-                            source: Box::new(e),
-                        })?;
-
-                    Err(Error::RpcError(err))
-                }
+                false => Ok(deserializer),
+                true => Err(deserializer)
             };
 
-            return res;
+            // send back response
+            if let Some(done_sender) = pending.remove(&id) {
+                #[cfg(feature="logging")]
+                log::debug!("Sending ResponseBody over oneshot channel {}", &id);
+                done_sender.send(res)
+                    .map_err(
+                        |_| Error::TransportError{
+                            msg: format!("Failed to send ResponseBody over oneshot channel {}", &id)
+                        }
+                    )?;
+            }
         }
 
-        Err(Error::NoneError)
+        Ok(())
+    }
+
+    fn _handle_response<Res>(mut done: oneshot::Receiver<Result<ResponseBody, ResponseBody>>, id: &MessageId) -> Result<Res, Error>
+    where
+        Res: serde::de::DeserializeOwned,
+    {
+        #[cfg(feature="logging")]
+        log::info!("Received response id: {}", &id);
+
+        let res = match done.try_recv() {
+            Ok(o) => {
+                match o {
+                    Some(r) => r,
+                    None => return Err(Error::TransportError{
+                        msg: format!("Done channel for id {} is out of date", &id)
+                    })
+                }
+            },
+            _ => return Err(
+                Error::TransportError{
+                    msg: format!("Done channel for id {} is canceled", &id)
+                }
+            )
+        };
+
+        match res {
+            Ok(mut resp_body) => {
+                let resp = erased::deserialize(&mut resp_body)
+                    .map_err(|e| Error::ParseError {
+                        source: Box::new(e),
+                    })?;
+                
+                Ok(resp)
+            },
+            Err(mut err_body) => {
+                let err = erased::deserialize(&mut err_body)
+                    .map_err(|e| Error::ParseError {
+                        source: Box::new(e),
+                    })?;
+
+                Err(Error::RpcError(err))
+            }
+        }
     }
 }
 
@@ -258,7 +322,24 @@ impl Client<Channel, Connected> {
         Req: serde::Serialize + Send + Sync + 'static,
         Res: serde::de::DeserializeOwned + Send + 'static,
     {
-        task::spawn(self.async_call_http(service_method, args))
+        // task::spawn(self.async_call_http(service_method, args))
+        let req_sender = &mut self.inner_codec.0;
+        let res_recver = &mut self.inner_codec.1;
+        let pending = &mut self.pending;
+
+        let id = self.count.fetch_add(1u16, Ordering::Relaxed);
+        task::spawn(
+            async move {
+                Self::_async_call_http(
+                    service_method, 
+                    &args, 
+                    id, 
+                    req_sender, 
+                    res_recver,
+                    pending,
+                ).await
+            }
+        )
     }
 
     /// Similar to `async_call()`, it invokes the named function asynchronously,
@@ -276,7 +357,7 @@ impl Client<Channel, Connected> {
         let res_recver = &mut self.inner_codec.1;
 
         let id = self.count.fetch_add(1u16, Ordering::Relaxed);
-        Self::_async_call_http(service_method, &args, id, req_sender, res_recver).await
+        Self::_async_call_http(service_method, &args, id, req_sender, res_recver, &mut self.pending).await
     }
 
     async fn _async_call_http<Req, Res>(
@@ -285,6 +366,7 @@ impl Client<Channel, Connected> {
         id: MessageId,
         req_sender: &mut Sender<Vec<u8>>,
         res_recver: &mut Receiver<Vec<u8>>,
+        pending: &mut HashMap<u16, oneshot::Sender<Result<ResponseBody, ResponseBody>>>,
     ) -> Result<Res, Error>
     where
         Req: serde::Serialize + Send + Sync,
@@ -306,8 +388,10 @@ impl Client<Channel, Connected> {
         );
 
         // write request to buffer
-        let bytes_sent = codec.write_request(header, req).await?;
-        log::trace!("Request sent with {} bytes", bytes_sent);
+        let _bytes_sent = codec.write_request(header, req).await?;
+        
+        #[cfg(feature="logging")]
+        log::info!("Request id {} sent with {} bytes", &id, _bytes_sent);
 
         // send req buffer to client_loop
         req_sender
@@ -328,7 +412,15 @@ impl Client<Channel, Connected> {
             BufWriter::new(&mut req_buf),
         );
 
-        return Client::<Channel, Connected>::_handle_response(&mut codec).await;
+        // creates channel for receiving response
+        let (done_sender, done) = oneshot::channel::<Result<ResponseBody, ResponseBody>>();
+
+        // insert sender to pending map
+        pending.insert(id, done_sender);
+
+        Client::<Channel, Connected>::_wait_for_response(&mut codec, pending).await?;
+
+        Client::<Codec, Connected>::_handle_response(done, &id)
     }
 
     /// TODO: try send and recv trait object over the channel instead of `Vec<u8>`
