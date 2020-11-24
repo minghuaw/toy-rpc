@@ -15,19 +15,31 @@ use crate::service::{
     ArcAsyncServiceCall, AsyncServiceMap, HandleService, HandlerResult, HandlerResultFut,
 };
 
-#[cfg(feature = "http_tide")]
+// #[cfg(feature = "tide")]
 pub const DEFAULT_RPC_PATH: &str = "_rpc_";
 
+/// RPC Server
+/// 
+/// ```
+/// const DEFAULT_RPC_PATH: &str = "_rpc_";
+/// ```
 #[derive(Clone)]
 pub struct Server {
     services: Arc<AsyncServiceMap>,
 }
 
 impl Server {
+    /// Creates a `ServerBuilder`
     pub fn builder() -> ServerBuilder {
         ServerBuilder::new()
     }
 
+    /// Accepts connections on the listener and serves requests to default
+    /// server for each incoming connection
+    /// 
+    /// # Example
+    /// 
+    /// See `toy-rpc/examples/server_client/` for the example
     pub async fn accept(&self, listener: TcpListener) -> Result<(), Error> {
         let mut incoming = listener.incoming();
 
@@ -41,6 +53,7 @@ impl Server {
         Ok(())
     }
 
+    /// Serves a single connection
     async fn _serve_conn(stream: TcpStream, services: Arc<AsyncServiceMap>) -> Result<(), Error> {
         // let _stream = stream;
         let peer_addr = stream.peer_addr()?;
@@ -56,6 +69,7 @@ impl Server {
         ret
     }
 
+    /// Serves using a specified codec
     async fn _serve_codec<C>(mut codec: C, services: Arc<AsyncServiceMap>) -> Result<(), Error>
     where
         C: ServerCodec + Send + Sync,
@@ -68,6 +82,7 @@ impl Server {
         Ok(())
     }
 
+    /// Serves using the specified codec only once
     async fn _serve_codec_once<C>(
         codec: &mut C,
         services: &Arc<AsyncServiceMap>,
@@ -117,8 +132,7 @@ impl Server {
         Ok(())
     }
 
-    // async fn _handle_request<C>()
-
+    /// Sends back the response with the specified codec
     async fn _send_response<C>(
         _codec: &mut C,
         id: MessageId,
@@ -154,10 +168,12 @@ impl Server {
         }
     }
 
+    /// Serves a single connection using the default codec
     pub async fn serve_conn(&self, stream: TcpStream) -> Result<(), Error> {
         Self::_serve_conn(stream, self.services.clone()).await
     }
 
+    /// This is like serve_conn except that it uses a specified codec
     pub async fn serve_codec<C>(&self, codec: C) -> Result<(), Error>
     where
         C: ServerCodec + Send + Sync,
@@ -168,20 +184,46 @@ impl Server {
 
 // integration with http frameworks
 impl Server {
-    #[cfg(feature = "http_tide")]
-    pub fn handle_http(self) -> tide::Server<Self> {
+    /// Creates a `tide::Endpoint` that handles http connections
+    /// 
+    /// The endpoint will be created with `DEFAULT_RPC_PATH` appended to the 
+    /// end of the nested `tide` endpoint
+    /// 
+    /// # Example
+    /// ```
+    /// use toy_rpc::server::Server;
+    /// 
+    /// #[async_std::main]
+    /// async fn main() -> tide::Result<()> {
+    ///     let addr = "127.0.0.1:8888";
+    ///     let foo_service = Arc::new(FooService { });
+    /// 
+    ///     let server = Server::builder()
+    ///         .build();
+    ///     
+    ///     let mut app = tide::new();
+    /// 
+    ///     // If a network path were to be supplpied, 
+    ///     // the network path must end with a slash "/"
+    ///     app.at("/rpc/").nest(server.into_endpoint());
+    /// 
+    ///     app.listen(addr).await?;
+    ///     Ok(())
+    /// }
+    /// ```
+    ///  
+    /// TODO: add a handler to test the connection
+    #[cfg(feature = "tide")]
+    pub fn into_endpoint(self) -> tide::Server<Self> {
         use futures::io::BufWriter;
 
         let mut app = tide::Server::with_state(self);
         app.at(DEFAULT_RPC_PATH)
             .all(|mut req: tide::Request<Server>| async move {
-                // let input = req.body_bytes().await?;
                 let input = req.take_body().into_reader();
-                // log::debug!("http body {:?}", )
                 let mut output: Vec<u8> = Vec::new();
 
                 let mut codec = DefaultCodec::with_reader_writer(
-                    // BufReader::new(&input[..]),
                     input,
                     BufWriter::new(&mut output),
                 );
@@ -195,6 +237,11 @@ impl Server {
 
         app
     }
+
+    // #[cfg(feature = "tide")]
+    // pub fn handle_http(self) -> tide::Server<Self> {
+        
+    // }
 }
 
 pub struct ServerBuilder {
@@ -202,12 +249,50 @@ pub struct ServerBuilder {
 }
 
 impl ServerBuilder {
+    /// Creates a new `ServerBuilder`
     pub fn new() -> Self {
         ServerBuilder {
             services: HashMap::new(),
         }
     }
 
+    /// Registers a new service to the `Server`
+    /// 
+    /// # Example
+    /// 
+    /// ```
+    /// use async_std::net::TcpListener;
+    /// use toy_rpc_macros::{export_impl, service};
+    /// use toy_rpc::server::Server;
+    /// 
+    /// EchoService { }
+    /// 
+    /// #[export_impl]
+    /// impl EchoService {
+    ///     #[export_method]
+    ///     async fn echo(&self, req: String) -> Result<String, String> {
+    ///         Ok(req)
+    ///     }
+    /// }
+    /// 
+    /// #[async_std::main]
+    /// async fn main() {
+    ///     let addr = "127.0.0.1:8888";
+    ///     
+    ///     let echo_service = Arc::new(EchoService { });
+    ///     let server = Server::builder()
+    ///         .register("echo_service", service!(echo_service, EchoService))
+    ///         build();
+    ///     
+    ///     let listener = TcpListener::bind(addr).await.unwrap();
+    /// 
+    ///     let handle = task::spawn(async move {
+    ///         server.accept(listener).await.unwrap();
+    ///     });
+    /// 
+    ///     handle.await;
+    /// }
+    /// ```
     pub fn register<S, T>(self, service_name: &'static str, service: S) -> Self
     where
         S: HandleService<T> + Send + Sync + 'static,
@@ -222,6 +307,7 @@ impl ServerBuilder {
         ret
     }
 
+    /// Creates an RPC `Server`
     pub fn build(self) -> Server {
         Server {
             services: Arc::new(self.services),

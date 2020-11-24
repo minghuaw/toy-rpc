@@ -9,7 +9,7 @@ async fn main() {
     env_logger::init();
 
     let addr = "http://127.0.0.1:23333/rpc/";
-    let client = Client::dial_http(addr).unwrap();
+    let mut client = Client::dial_http(addr).unwrap();
 
     let args = FooRequest { a: 1, b: 3 };
     let reply: Result<FooResponse, Error> = client.call_http("foo_service.echo", &args);

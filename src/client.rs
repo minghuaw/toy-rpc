@@ -10,16 +10,22 @@ use std::sync::atomic::Ordering;
 use crate::codec::{ClientCodec, DefaultCodec};
 use crate::error::{Error, RpcError};
 use crate::message::{AtomicMessageId, MessageId, RequestHeader, ResponseHeader};
+
+// #[cfg(feature = "tide")]
 use crate::server::DEFAULT_RPC_PATH;
 
 const CHANNEL_BUF_SIZE: usize = 64;
 
+/// Type state for creating `Client`
 pub struct NotConnected {}
+
+/// Type state for creating `Client`
 pub struct Connected {}
 
 type Codec = Arc<Mutex<Box<dyn ClientCodec>>>;
 type Channel = (Sender<Vec<u8>>, Receiver<Vec<u8>>);
 
+/// RPC Client
 pub struct Client<T, Mode> {
     count: AtomicMessageId,
     inner_codec: T,
@@ -28,8 +34,30 @@ pub struct Client<T, Mode> {
 }
 
 impl Client<Codec, NotConnected> {
+    /// Creates an RPC `Client` over socket with a specified `async_std::net::TcpStream` and the default codec
+    /// 
+    /// # Example
+    /// ```
+    /// use async_std::net::TcpStream;
+    /// 
+    /// #[async_std::main]
+    /// async fn main() {
+    ///     let stream = TcpStream::connect("127.0.0.1:8888").unwrap();
+    ///     let client = Client::with_stream(stream);
+    /// }
+    /// ```
     pub fn with_stream(stream: TcpStream) -> Client<Codec, Connected> {
-        let box_codec: Box<dyn ClientCodec> = Box::new(DefaultCodec::new(stream));
+        let codec = DefaultCodec::new(stream);
+
+        Self::with_codec(codec)
+    }
+
+    /// Creates an RPC 'Client` over socket with a specified codec
+    pub fn with_codec<C>(codec: C) -> Client<Codec, Connected> 
+    where 
+        C: ClientCodec + Send + Sync + 'static
+    {
+        let box_codec: Box<dyn ClientCodec> = Box::new(codec);
 
         Client::<Codec, Connected> {
             count: AtomicMessageId::new(0u16),
@@ -39,6 +67,7 @@ impl Client<Codec, NotConnected> {
         }
     }
 
+    /// Connects the an RPC server over socket at the specified network address
     pub fn dial(addr: impl ToSocketAddrs) -> Result<Client<Codec, Connected>, Error> {
         let stream = task::block_on(TcpStream::connect(addr))?;
 
@@ -46,7 +75,31 @@ impl Client<Codec, NotConnected> {
     }
 }
 
+#[cfg(feature = "surf")]
 impl Client<Channel, NotConnected> {
+    /// Connects to an HTTP RPC server at the specified network address using the defatul codec
+    /// 
+    /// If a network path were to be supplpied, the network path must end with a slash "/"
+    /// 
+    /// # Example
+    /// 
+    /// ```
+    /// use toy_rpc::client::Client;
+    /// 
+    /// #[async_std::main]
+    /// async fn main() {
+    ///     let addr = "http://127.0.0.1:8888/rpc/";
+    ///     let client = Client::dial_http(addr).unwrap();
+    /// 
+    ///     let args = "arguments"
+    ///     let reply: Result<String, String> = client.call_http("echo_service.echo", &args);
+    ///     println!("{:?}", reply);
+    /// }
+    /// ```
+    /// 
+    /// TODO: check if the path ends with a slash
+    /// TODO: add a check to test the connection
+    /// TODO: try send and recv trait object
     pub fn dial_http(addr: &'static str) -> Result<Client<Channel, Connected>, Error> {
         let (req_sender, req_recver) = channel::<Vec<u8>>(CHANNEL_BUF_SIZE);
         let (res_sender, res_recver) = channel::<Vec<u8>>(CHANNEL_BUF_SIZE);
@@ -72,7 +125,8 @@ impl Client<Channel, NotConnected> {
 }
 
 impl Client<Codec, Connected> {
-    pub fn call<Req, Res>(&self, service_method: impl ToString, args: Req) -> Result<Res, Error>
+    /// Invokes the named function and wait synchronously
+    pub fn call<Req, Res>(&mut self, service_method: impl ToString, args: Req) -> Result<Res, Error>
     where
         Req: serde::Serialize + Send + Sync,
         Res: serde::de::DeserializeOwned,
@@ -80,7 +134,8 @@ impl Client<Codec, Connected> {
         task::block_on(self.async_call(service_method, args))
     }
 
-    pub fn task<Req, Res>(
+    /// Invokes the named function asynchronously by spawning a new task and returns the `JoinHandle`
+    pub fn spawn_task<Req, Res>(
         &mut self,
         service_method: impl ToString + Send + 'static,
         args: Req,
@@ -95,8 +150,9 @@ impl Client<Codec, Connected> {
         task::spawn(async move { Self::_async_call(service_method, &args, id, codec).await })
     }
 
+    /// Invokes the named function asynchronously 
     pub async fn async_call<Req, Res>(
-        &self,
+        &mut self,
         service_method: impl ToString,
         args: Req,
     ) -> Result<Res, Error>
@@ -129,6 +185,7 @@ impl Client<Codec, Connected> {
         // send request
         let bytes_sent = _codec.write_request(header, req).await?;
         log::info!("Request sent with {} bytes", bytes_sent);
+        
 
         Client::<Codec, Connected>::_handle_response(_codec.as_mut()).await
     }
@@ -171,9 +228,12 @@ impl<T> Client<T, Connected> {
     }
 }
 
+#[cfg(feature = "surf")]
 impl Client<Channel, Connected> {
+    /// Similar to `call()`, it invokes the named function and wait synchronously,
+    /// but this is for `Client` connected to a HTTP RPC server
     pub fn call_http<Req, Res>(
-        &self,
+        &mut self,
         service_method: impl ToString,
         args: Req,
     ) -> Result<Res, Error>
@@ -184,8 +244,24 @@ impl Client<Channel, Connected> {
         task::block_on(self.async_call_http(service_method, args))
     }
 
+    /// Similar to `spawn_task()`. It invokes the named function asynchronously by spawning a new task and returns the `JoinHandle`,
+    /// but this is for `Client` connected to a HTTP RPC server
+    pub fn spawn_task_http<Req, Res>(
+        &'static mut self,
+        service_method: impl ToString + Send + 'static,
+        args: Req,
+    ) -> task::JoinHandle<Result<Res, Error>>
+    where 
+        Req: serde::Serialize + Send + Sync + 'static,
+        Res: serde::de::DeserializeOwned + Send + 'static,
+    {
+        task::spawn(self.async_call_http(service_method, args))
+    }
+
+    /// Similar to `async_call()`, it invokes the named function asynchronously,
+    /// but this is for `Client` connected to a HTTP RPC server
     pub async fn async_call_http<Req, Res>(
-        &self,
+        &mut self,
         service_method: impl ToString,
         args: Req,
     ) -> Result<Res, Error>
@@ -251,6 +327,7 @@ impl Client<Channel, Connected> {
         return Client::<Channel, Connected>::_handle_response(&mut codec).await;
     }
 
+    /// TODO: try send and recv trait object over the channel instead of `Vec<u8>`
     async fn _http_client_loop(
         http_client: surf::Client,
         req_recver: Receiver<Vec<u8>>,

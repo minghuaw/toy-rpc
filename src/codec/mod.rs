@@ -4,16 +4,16 @@ use erased_serde as erased;
 use crate::error::Error;
 use crate::message::{MessageId, Metadata, RequestHeader, ResponseHeader};
 
-#[cfg(all(feature = "codec_json", not(feauture = "codec_bincode")))]
+#[cfg(all(feature = "serde_json", not(feauture = "bincode")))]
 mod json;
 
-#[cfg(all(feature = "codec_json", not(feauture = "codec_bincode")))]
+#[cfg(all(feature = "serde_json", not(feauture = "bincode")))]
 pub use crate::codec::json::Codec as DefaultCodec;
 
-#[cfg(all(feature = "codec_bincode", not(feature = "codec_json")))]
+#[cfg(all(feature = "bincode", not(feature = "serde_json")))]
 mod bincode;
 
-#[cfg(all(feature = "codec_bincode", not(feature = "codec_json")))]
+#[cfg(all(feature = "bincode", not(feature = "serde_json")))]
 pub use crate::codec::bincode::Codec as DefaultCodec;
 
 #[async_trait]
