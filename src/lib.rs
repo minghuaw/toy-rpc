@@ -18,6 +18,8 @@
 //! - `serde_json`: the default codec will use `serde_json`
 //! for `json` serialization/deserialization
 //! - `logging`: enables logging
+//! - `tide`: enables `tide` integration on the server side
+//! - `surf`: enables HTTP client on the client side
 //!
 //! ### Default Features
 //!
