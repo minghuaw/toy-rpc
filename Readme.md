@@ -134,7 +134,7 @@ use async_std::task;
 use serde::{Serialize, Deserialize};
 
 use toy_rpc::macros::{export_impl, service};
-use toy_rpc::server::Server;
+use toy_rpc::Server;
 
 pub struct ExampleService {
     counter: Mutex<i32>
@@ -195,7 +195,7 @@ async fn main() {
 client.rs
 
 ```rust
-use toy_rpc::client::Client;
+use toy_rpc::Client;
 use toy_rpc::error::Error;
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -230,7 +230,7 @@ use tide::prelude::*;
 use serde::{Serialize, Deserialize};
 
 use toy_rpc::macros::{export_impl, service};
-use toy_rpc::server::Server;
+use toy_rpc::Server;
 
 
 pub struct ExampleService {
@@ -290,7 +290,7 @@ async fn main() -> tide::Result<()> {
 client.rs
 
 ```rust
-use toy_rpc::client::Client;
+use toy_rpc::Client;
 use toy_rpc::error::Error;
 
 #[derive(Debug, Serialize, Deserialize)]

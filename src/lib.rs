@@ -134,7 +134,7 @@
 //! use serde::{Serialize, Deserialize};
 //!
 //! use toy_rpc::macros::{export_impl, service};
-//! use toy_rpc::server::Server;
+//! use toy_rpc::Server;
 //!
 //! pub struct ExampleService {
 //!     counter: Mutex<i32>
@@ -195,7 +195,7 @@
 //! client.rs
 //!
 //! ```rust
-//! use toy_rpc::client::Client;
+//! use toy_rpc::Client;
 //! use toy_rpc::error::Error;
 //!
 //! #[derive(Debug, Serialize, Deserialize)]
@@ -230,7 +230,7 @@
 //! use serde::{Serialize, Deserialize};
 //!
 //! use toy_rpc::macros::{export_impl, service};
-//! use toy_rpc::server::Server;
+//! use toy_rpc::Server;
 //!
 //!
 //! pub struct ExampleService {
@@ -290,7 +290,7 @@
 //! client.rs
 //!
 //! ```rust
-//! use toy_rpc::client::Client;
+//! use toy_rpc::Client;
 //! use toy_rpc::error::Error;
 //!
 //! #[derive(Debug, Serialize, Deserialize)]
@@ -334,6 +334,9 @@ pub mod macros {
     pub(crate) use toy_rpc_macros::impl_inner_deserializer;
     pub use toy_rpc_macros::{export_impl, service};
 }
+
+pub use server::{Server, ServerBuilder};
+pub use client::{Client};
 
 // re-export
 pub use erased_serde;

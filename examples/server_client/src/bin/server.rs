@@ -4,7 +4,7 @@ use async_std::task;
 use async_trait::async_trait;
 
 use toy_rpc::macros::{export_impl, service};
-use toy_rpc::server::Server;
+use toy_rpc::Server;
 
 use server_client::rpc;
 use server_client::rpc::{BarService, FooRequest, FooResponse, Rpc};

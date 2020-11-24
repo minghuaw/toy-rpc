@@ -1,4 +1,4 @@
-use toy_rpc::client::Client;
+use toy_rpc::Client;
 use toy_rpc::error::Error;
 
 use server_client::rpc::{BarRequest, BarResponse, FooRequest, FooResponse};
