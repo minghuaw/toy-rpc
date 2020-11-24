@@ -45,7 +45,7 @@ impl Server {
 
         while let Some(conn) = incoming.next().await {
             let stream = conn?;
-            log::info!("Accepting incoming connection from {}", stream.peer_addr()?);
+            log::trace!("Accepting incoming connection from {}", stream.peer_addr()?);
 
             task::spawn(Self::_serve_conn(stream, self.services.clone()));
         }
@@ -65,7 +65,7 @@ impl Server {
         let fut = Self::_serve_codec(codec, services);
 
         let ret = fut.await;
-        log::info!("Client disconnected from {}", peer_addr);
+        log::trace!("Client disconnected from {}", peer_addr);
         ret
     }
 
@@ -100,7 +100,7 @@ impl Server {
             let service_name = &service_method[..pos];
             let method_name = service_method[pos + 1..].to_owned();
 
-            log::info!(
+            log::trace!(
                 "Message {}, service: {}, method: {}",
                 id,
                 service_name,
@@ -143,7 +143,7 @@ impl Server {
     {
         match res {
             Ok(b) => {
-                log::info!("Message {} Success", id.clone());
+                log::trace!("Message {} Success", id.clone());
                 let header = ResponseHeader {
                     id,
                     is_error: false,
@@ -153,7 +153,7 @@ impl Server {
                 Ok(bytes_sent)
             }
             Err(e) => {
-                log::info!("Message {} Error", id.clone());
+                log::trace!("Message {} Error", id.clone());
                 let header = ResponseHeader { id, is_error: true };
 
                 let body = match e {

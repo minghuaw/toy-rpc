@@ -186,7 +186,9 @@ impl Client<Codec, Connected> {
 
         // send request
         let bytes_sent = _codec.write_request(header, req).await?;
-        log::info!("Request sent with {} bytes", bytes_sent);
+        log::trace!("Request sent with {} bytes", bytes_sent);
+
+        // use channel 
 
         Client::<Codec, Connected>::_handle_response(_codec.as_mut()).await
     }
@@ -305,7 +307,7 @@ impl Client<Channel, Connected> {
 
         // write request to buffer
         let bytes_sent = codec.write_request(header, req).await?;
-        log::info!("Request sent with {} bytes", bytes_sent);
+        log::trace!("Request sent with {} bytes", bytes_sent);
 
         // send req buffer to client_loop
         req_sender
