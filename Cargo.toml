@@ -10,6 +10,9 @@ repository = "https://github.com/minghuaw/toy-rpc"
 keywords = ["async", "rpc", "go", "golang", "async-std"]
 categories = ["network-programming", "asynchronous"]
 readme = "Readme.md"
+exclude = [
+    "examples/*",
+]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
