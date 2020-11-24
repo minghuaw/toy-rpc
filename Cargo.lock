@@ -1789,12 +1789,22 @@ dependencies = [
  "serde_json",
  "surf",
  "tide",
- "toy-rpc-macros",
+ "toy-rpc-macros 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
 name = "toy-rpc-macros"
 version = "0.1.0"
+dependencies = [
+ "quote",
+ "syn",
+]
+
+[[package]]
+name = "toy-rpc-macros"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a6d2fa12b5666c1191febf7058acf8e0a6ea2e14cd7f2438c577b4c7287e6e9a"
 dependencies = [
  "quote",
  "syn",
