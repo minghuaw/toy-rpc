@@ -7,12 +7,12 @@ use futures::channel::mpsc::{channel, Receiver, Sender};
 use futures::channel::oneshot;
 use futures::io::{BufReader, BufWriter};
 use futures::{SinkExt, StreamExt};
+use std::collections::HashMap;
 use std::marker::PhantomData;
 use std::sync::atomic::Ordering;
-use std::collections::HashMap;
 
 use crate::codec::{ClientCodec, DefaultCodec};
-use crate::error::{Error};
+use crate::error::Error;
 use crate::message::{AtomicMessageId, MessageId, RequestHeader, ResponseHeader};
 
 // #[cfg(feature = "tide")]
@@ -155,17 +155,9 @@ impl Client<Codec, Connected> {
         let codec = self.inner_codec.clone();
         let id = self.count.fetch_add(1u16, Ordering::Relaxed);
 
-        task::spawn(
-            async move { 
-                Self::_async_call(
-                    service_method, 
-                    &args, 
-                    id, 
-                    codec,
-                    &mut self.pending,
-                ).await 
-            }
-        )
+        task::spawn(async move {
+            Self::_async_call(service_method, &args, id, codec, &mut self.pending).await
+        })
     }
 
     /// Invokes the named function asynchronously
@@ -203,7 +195,7 @@ impl Client<Codec, Connected> {
 
         // send request
         let _bytes_sent = _codec.write_request(header, req).await?;
-        #[cfg(feature="logging")]
+        #[cfg(feature = "logging")]
         log::info!("Request id {} sent with {} bytes", &id, _bytes_sent);
 
         // creates channel for receiving response
@@ -220,10 +212,9 @@ impl Client<Codec, Connected> {
 
 impl<T> Client<T, Connected> {
     async fn _wait_for_response(
-        codec: &mut dyn ClientCodec, 
-        pending: &mut HashMap<u16, oneshot::Sender<Result<ResponseBody, ResponseBody>>>
-    ) -> Result<(), Error>
-    {
+        codec: &mut dyn ClientCodec,
+        pending: &mut HashMap<u16, oneshot::Sender<Result<ResponseBody, ResponseBody>>>,
+    ) -> Result<(), Error> {
         // wait for response
         if let Some(header) = codec.read_response_header().await {
             let ResponseHeader { id, is_error } = header?;
@@ -232,62 +223,60 @@ impl<T> Client<T, Connected> {
 
             let res = match is_error {
                 false => Ok(deserializer),
-                true => Err(deserializer)
+                true => Err(deserializer),
             };
 
             // send back response
             if let Some(done_sender) = pending.remove(&id) {
-                #[cfg(feature="logging")]
+                #[cfg(feature = "logging")]
                 log::debug!("Sending ResponseBody over oneshot channel {}", &id);
-                done_sender.send(res)
-                    .map_err(
-                        |_| Error::TransportError{
-                            msg: format!("Failed to send ResponseBody over oneshot channel {}", &id)
-                        }
-                    )?;
+                done_sender.send(res).map_err(|_| Error::TransportError {
+                    msg: format!("Failed to send ResponseBody over oneshot channel {}", &id),
+                })?;
             }
         }
 
         Ok(())
     }
 
-    fn _handle_response<Res>(mut done: oneshot::Receiver<Result<ResponseBody, ResponseBody>>, id: &MessageId) -> Result<Res, Error>
+    fn _handle_response<Res>(
+        mut done: oneshot::Receiver<Result<ResponseBody, ResponseBody>>,
+        id: &MessageId,
+    ) -> Result<Res, Error>
     where
         Res: serde::de::DeserializeOwned,
     {
-        #[cfg(feature="logging")]
+        #[cfg(feature = "logging")]
         log::info!("Received response id: {}", &id);
 
         let res = match done.try_recv() {
-            Ok(o) => {
-                match o {
-                    Some(r) => r,
-                    None => return Err(Error::TransportError{
-                        msg: format!("Done channel for id {} is out of date", &id)
+            Ok(o) => match o {
+                Some(r) => r,
+                None => {
+                    return Err(Error::TransportError {
+                        msg: format!("Done channel for id {} is out of date", &id),
                     })
                 }
             },
-            _ => return Err(
-                Error::TransportError{
-                    msg: format!("Done channel for id {} is canceled", &id)
-                }
-            )
+            _ => {
+                return Err(Error::TransportError {
+                    msg: format!("Done channel for id {} is canceled", &id),
+                })
+            }
         };
 
         match res {
             Ok(mut resp_body) => {
-                let resp = erased::deserialize(&mut resp_body)
-                    .map_err(|e| Error::ParseError {
-                        source: Box::new(e),
-                    })?;
-                
+                let resp = erased::deserialize(&mut resp_body).map_err(|e| Error::ParseError {
+                    source: Box::new(e),
+                })?;
+
                 Ok(resp)
-            },
+            }
             Err(mut err_body) => {
-                let err = erased::deserialize(&mut err_body)
-                    .map_err(|e| Error::ParseError {
-                        source: Box::new(e),
-                    })?;
+                let err = erased::deserialize(&mut err_body).map_err(|e| Error::ParseError {
+                    source: Box::new(e),
+                })?;
 
                 Err(Error::RpcError(err))
             }
@@ -328,18 +317,9 @@ impl Client<Channel, Connected> {
         let pending = &mut self.pending;
 
         let id = self.count.fetch_add(1u16, Ordering::Relaxed);
-        task::spawn(
-            async move {
-                Self::_async_call_http(
-                    service_method, 
-                    &args, 
-                    id, 
-                    req_sender, 
-                    res_recver,
-                    pending,
-                ).await
-            }
-        )
+        task::spawn(async move {
+            Self::_async_call_http(service_method, &args, id, req_sender, res_recver, pending).await
+        })
     }
 
     /// Similar to `async_call()`, it invokes the named function asynchronously,
@@ -357,7 +337,15 @@ impl Client<Channel, Connected> {
         let res_recver = &mut self.inner_codec.1;
 
         let id = self.count.fetch_add(1u16, Ordering::Relaxed);
-        Self::_async_call_http(service_method, &args, id, req_sender, res_recver, &mut self.pending).await
+        Self::_async_call_http(
+            service_method,
+            &args,
+            id,
+            req_sender,
+            res_recver,
+            &mut self.pending,
+        )
+        .await
     }
 
     async fn _async_call_http<Req, Res>(
@@ -389,8 +377,8 @@ impl Client<Channel, Connected> {
 
         // write request to buffer
         let _bytes_sent = codec.write_request(header, req).await?;
-        
-        #[cfg(feature="logging")]
+
+        #[cfg(feature = "logging")]
         log::info!("Request id {} sent with {} bytes", &id, _bytes_sent);
 
         // send req buffer to client_loop

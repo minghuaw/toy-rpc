@@ -212,6 +212,8 @@ pub fn impl_inner_deserializer(_: TokenStream) -> TokenStream {
     output.into()
 }
 
+/// Export methods in the impl block with #[export_method] attribute. Methods without
+/// the attribute will not be affected
 #[proc_macro_attribute]
 pub fn export_impl(_attr: TokenStream, item: TokenStream) -> TokenStream {
     // parse item
@@ -367,6 +369,7 @@ impl syn::parse::Parse for ServiceExport {
     }
 }
 
+/// Find the exported methods with the provided path
 #[proc_macro]
 pub fn service(input: TokenStream) -> TokenStream {
     let ServiceExport {

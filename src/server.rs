@@ -46,7 +46,7 @@ impl Server {
         while let Some(conn) = incoming.next().await {
             let stream = conn?;
 
-            #[cfg(feature="logging")]
+            #[cfg(feature = "logging")]
             log::info!("Accepting incoming connection from {}", stream.peer_addr()?);
 
             task::spawn(Self::_serve_conn(stream, self.services.clone()));
@@ -66,12 +66,10 @@ impl Server {
         // let fut = task::spawn_blocking(|| Self::_serve_codec(codec, services)).await;
         let fut = Self::_serve_codec(codec, services);
 
-        let ret = fut.await;
-
-        #[cfg(feature="logging")]
+        #[cfg(feature = "logging")]
         log::info!("Client disconnected from {}", _peer_addr);
-        
-        ret
+
+        fut.await
     }
 
     /// Serves using a specified codec
@@ -105,7 +103,7 @@ impl Server {
             let service_name = &service_method[..pos];
             let method_name = service_method[pos + 1..].to_owned();
 
-            #[cfg(feature="logging")]
+            #[cfg(feature = "logging")]
             log::info!(
                 "Message {}, service: {}, method: {}",
                 id,
@@ -122,12 +120,12 @@ impl Server {
 
             // read body
             let res = {
-                #[cfg(feature="logging")]
+                #[cfg(feature = "logging")]
                 log::debug!("Reading request body");
 
                 let deserializer = codec.read_request_body().await.unwrap()?;
 
-                #[cfg(feature="logging")]
+                #[cfg(feature = "logging")]
                 log::debug!("Calling handler");
 
                 // pass ownership to the `call`
@@ -137,7 +135,7 @@ impl Server {
             // send back result
             let _bytes_sent = Self::_send_response(codec, id, res).await?;
 
-            #[cfg(feature="logging")]
+            #[cfg(feature = "logging")]
             log::debug!("Response sent with {} bytes", _bytes_sent);
         }
 
@@ -155,7 +153,7 @@ impl Server {
     {
         match res {
             Ok(b) => {
-                #[cfg(feature="logging")]
+                #[cfg(feature = "logging")]
                 log::info!("Message {} Success", id.clone());
 
                 let header = ResponseHeader {
@@ -167,7 +165,7 @@ impl Server {
                 Ok(bytes_sent)
             }
             Err(e) => {
-                #[cfg(feature="logging")]
+                #[cfg(feature = "logging")]
                 log::info!("Message {} Error", id.clone());
 
                 let header = ResponseHeader { id, is_error: true };
