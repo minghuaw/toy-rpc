@@ -197,6 +197,7 @@
 //! client.rs
 //!
 //! ```rust
+//! use serde::{Serialize, Deserialize};
 //! use toy_rpc::Client;
 //! use toy_rpc::error::Error;
 //!
@@ -227,8 +228,6 @@
 //!
 //! ```rust
 //! use async_std::sync::{Arc, Mutex};
-//! use async_std::task;
-//! use tide::prelude::*;
 //! use serde::{Serialize, Deserialize};
 //!
 //! use toy_rpc::macros::{export_impl, service};
@@ -292,6 +291,7 @@
 //! client.rs
 //!
 //! ```rust
+//! use serde::{Serialize, Deserialize};
 //! use toy_rpc::Client;
 //! use toy_rpc::error::Error;
 //!
@@ -308,7 +308,7 @@
 //! #[async_std::main]
 //! async fn main() {
 //!     // note that the endpoint path must be specified
-//!     let path = "127.0.0.1:8888/rpc/";
+//!     let path = "http://127.0.0.1:8888/rpc/";
 //!     let mut client = Client::dial_http(path).await.unwrap();
 //!
 //!     let args = ExampleRequest{a: 1};
