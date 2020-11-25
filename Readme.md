@@ -55,12 +55,12 @@ struct ExampleService { }
 #[export_impl]
 impl ExampleService {
     #[export_method]
-    async fn exported_method(&self, args: ()) -> Result<(), String> {
-        "This is an exported method".to_string()
+    async fn exported_method(&self, args: ()) -> Result<String, String> {
+        Ok("This is an exported method".to_string())
     }
 
-    async fn not_exported_method(&self, args: ()) -> Result<(), String> {
-        "This method is NOT exported".to_string()
+    async fn not_exported_method(&self, args: ()) -> Result<String, String> {
+        Ok("This method is NOT exported".to_string())
     }
 }
 ```
