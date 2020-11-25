@@ -291,14 +291,14 @@ impl Client<Codec, Connected> {
         // insert sender to pending map
         pending.insert(id, done_sender);
 
-        Client::<Codec, Connected>::_wait_for_response(_codec.as_mut(), pending).await?;
+        Client::<Codec, Connected>::_read_response(_codec.as_mut(), pending).await?;
 
         Client::<Codec, Connected>::_handle_response(done, &id)
     }
 }
 
 impl<T> Client<T, Connected> {
-    async fn _wait_for_response(
+    async fn _read_response(
         codec: &mut dyn ClientCodec,
         pending: &mut HashMap<u16, oneshot::Sender<Result<ResponseBody, ResponseBody>>>,
     ) -> Result<(), Error> {
@@ -527,7 +527,7 @@ impl Client<Channel, Connected> {
         // insert sender to pending map
         pending.insert(id, done_sender);
 
-        Client::<Channel, Connected>::_wait_for_response(&mut codec, pending).await?;
+        Client::<Channel, Connected>::_read_response(&mut codec, pending).await?;
 
         Client::<Codec, Connected>::_handle_response(done, &id)
     }
