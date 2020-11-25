@@ -213,7 +213,7 @@ struct ExampleResponse {
 #[async_std::main]
 async fn main() {
     let addr = "127.0.0.1:8888";
-    let mut client = Client::dial(addr).unwrap();
+    let mut client = Client::dial(addr).await.unwrap();
 
     let args = ExampleRequest{a: 1};
     let reply: Result<ExampleResponse, Error> = client.call("example.echo", &args);
@@ -309,7 +309,7 @@ struct ExampleResponse {
 async fn main() {
     // note that the endpoint path must be specified
     let path = "127.0.0.1:8888/rpc/";
-    let mut client = Client::dial_http(path).unwrap();
+    let mut client = Client::dial_http(path).await.unwrap();
 
     let args = ExampleRequest{a: 1};
     let reply: Result<ExampleResponse, Error> = client.call_http("example.echo", &args);
@@ -322,5 +322,6 @@ async fn main() {
 - [x] Add `tide` integration
 - [ ] Add `actix` integration
 - [ ] Add `warp` integration
-- [ ] Sends an initial check to verify the http connection when `Client::dial_http()`
+- [x] change `dial` and `dial_http` to be async
+- [x] Sends an initial check to verify the http connection when `Client::dial_http()`
 - [ ] unify `call`, `async_call`, and `spawn_task` for raw connection and HTTP connection

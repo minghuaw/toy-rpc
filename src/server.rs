@@ -232,6 +232,9 @@ impl Server {
 
         let mut app = tide::Server::with_state(self);
         app.at(DEFAULT_RPC_PATH)
+            .connect(|_| async move {
+                Ok("CONNECT request is received")
+            })
             .post(|mut req: tide::Request<Server>| async move {
                 let input = req.take_body().into_reader();
                 let mut output: Vec<u8> = Vec::new();

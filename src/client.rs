@@ -48,7 +48,7 @@ impl Client<Codec, NotConnected> {
     ///
     /// #[async_std::main]
     /// async fn main() {
-    ///     let stream = TcpStream::connect("127.0.0.1:8888").unwrap();
+    ///     let stream = TcpStream::connect("127.0.0.1:8888").await.unwrap();
     ///     let client = Client::with_stream(stream);
     /// }
     /// ```
@@ -59,6 +59,22 @@ impl Client<Codec, NotConnected> {
     }
 
     /// Creates an RPC 'Client` over socket with a specified codec
+    /// 
+    /// Example
+    /// 
+    /// ```rust 
+    /// use async_std::net::TcpStream;
+    /// use toy_rpc::codec::bincode::Codec;
+    /// use toy_rpc::Client;
+    /// 
+    /// #[async_std::main]
+    /// async fn main() {
+    ///     let addr = "127.0.0.1:8888";
+    ///     let stream = TcpStream::connect(addr).await.unwrap();
+    ///     let codec = Codec::new(stream);
+    ///     let client = Client::with_codec(codec);
+    /// }
+    /// ```
     pub fn with_codec<C>(codec: C) -> Client<Codec, Connected>
     where
         C: ClientCodec + Send + Sync + 'static,
@@ -75,8 +91,21 @@ impl Client<Codec, NotConnected> {
     }
 
     /// Connects the an RPC server over socket at the specified network address
-    pub fn dial(addr: impl ToSocketAddrs) -> Result<Client<Codec, Connected>, Error> {
-        let stream = task::block_on(TcpStream::connect(addr))?;
+    /// 
+    /// Example
+    /// 
+    /// ```rust
+    /// use toy_rpc::Client;
+    /// 
+    /// #[async_std::main]
+    /// async fn main() {
+    ///     let addr = "127.0.0.1";
+    ///     let client = Client::dial(addr).await;
+    /// }
+    /// 
+    /// ```
+    pub async fn dial(addr: impl ToSocketAddrs) -> Result<Client<Codec, Connected>, Error> {
+        let stream = TcpStream::connect(addr).await?;
 
         Ok(Self::with_stream(stream))
     }
@@ -90,13 +119,13 @@ impl Client<Channel, NotConnected> {
     ///
     /// # Example
     ///
-    /// ```
+    /// ```rust
     /// use toy_rpc::client::Client;
     ///
     /// #[async_std::main]
     /// async fn main() {
     ///     let addr = "http://127.0.0.1:8888/rpc/";
-    ///     let client = Client::dial_http(addr).unwrap();
+    ///     let mut client = Client::dial_http(addr).await.unwrap();
     ///
     ///     let args = "arguments"
     ///     let reply: Result<String, String> = client.call_http("echo_service.echo", &args);
@@ -105,9 +134,8 @@ impl Client<Channel, NotConnected> {
     /// ```
     ///
     /// TODO: check if the path ends with a slash
-    /// TODO: add a check to test the connection
     /// TODO: try send and recv trait object
-    pub fn dial_http(addr: &'static str) -> Result<Client<Channel, Connected>, Error> {
+    pub async fn dial_http(addr: &'static str) -> Result<Client<Channel, Connected>, Error> {
         let (req_sender, req_recver) = channel::<Vec<u8>>(CHANNEL_BUF_SIZE);
         let (res_sender, res_recver) = channel::<Vec<u8>>(CHANNEL_BUF_SIZE);
 
@@ -115,6 +143,13 @@ impl Client<Channel, NotConnected> {
 
         let mut http_client = surf::Client::new();
         http_client.set_base_url(surf::Url::parse(addr)?); // the url::ParseError will be converted to toy_rpc::error::Error
+
+        // test connection with a CONNECT request
+        let _conn_res = http_client.connect(DEFAULT_RPC_PATH).recv_string().await
+            .map_err(|e| Error::TransportError{ msg: e.to_string() })?;
+
+        #[cfg(feature = "logging")]
+        log::info!("{}", _conn_res);
 
         task::spawn(Client::_http_client_loop(
             http_client,
@@ -134,6 +169,25 @@ impl Client<Channel, NotConnected> {
 
 impl Client<Codec, Connected> {
     /// Invokes the named function and wait synchronously
+    /// 
+    /// This function internally calls `task::block_on` to wait for the response. 
+    /// Do NOT use this function inside another `task::block_on`.async_std
+    /// 
+    /// Example
+    /// 
+    /// ```rust
+    /// use toy_rpc::client::Client;
+    ///
+    /// #[async_std::main]
+    /// async fn main() {
+    ///     let addr = "127.0.0.1:8888";
+    ///     let mut client = Client::dial(addr).await.unwrap();
+    ///
+    ///     let args = "arguments"
+    ///     let reply: Result<String, String> = client.call("echo_service.echo", &args);
+    ///     println!("{:?}", reply);
+    /// }
+    /// ```
     pub fn call<Req, Res>(&mut self, service_method: impl ToString, args: Req) -> Result<Res, Error>
     where
         Req: serde::Serialize + Send + Sync,
@@ -143,6 +197,22 @@ impl Client<Codec, Connected> {
     }
 
     /// Invokes the named function asynchronously by spawning a new task and returns the `JoinHandle`
+    /// 
+    /// ```rust
+    /// use toy_rpc::client::Client;
+    /// use async_std::task;
+    ///
+    /// #[async_std::main]
+    /// async fn main() {
+    ///     let addr = "127.0.0.1:8888";
+    ///     let mut client = Client::dial(addr).await.unwrap();
+    ///
+    ///     let args = "arguments"
+    ///     let handle: task::JoinHandle<Result<Res, Error>> = client.spawn_task("echo_service.echo", &args);
+    ///     let reply: Result<String, String> = handle.await;
+    ///     println!("{:?}", reply);
+    /// }
+    /// ```
     pub fn spawn_task<Req, Res>(
         &'static mut self,
         service_method: impl ToString + Send + 'static,
@@ -161,6 +231,23 @@ impl Client<Codec, Connected> {
     }
 
     /// Invokes the named function asynchronously
+    /// 
+    /// Example 
+    /// 
+    /// ```rust
+    /// use toy_rpc::client::Client;
+    /// use async_std::task;
+    ///
+    /// #[async_std::main]
+    /// async fn main() {
+    ///     let addr = "127.0.0.1:8888";
+    ///     let mut client = Client::dial(addr).await.unwrap();
+    ///
+    ///     let args = "arguments"
+    ///     let reply: Result<String, String> = client.spawn_task("echo_service.echo", &args).await;
+    ///     println!("{:?}", reply);
+    /// }
+    /// ```
     pub async fn async_call<Req, Res>(
         &mut self,
         service_method: impl ToString,
@@ -249,6 +336,7 @@ impl<T> Client<T, Connected> {
         #[cfg(feature = "logging")]
         log::info!("Received response id: {}", &id);
 
+        // wait for result from oneshot channel
         let res = match done.try_recv() {
             Ok(o) => match o {
                 Some(r) => r,
@@ -265,6 +353,7 @@ impl<T> Client<T, Connected> {
             }
         };
 
+        // deserialize Ok message and Err message
         match res {
             Ok(mut resp_body) => {
                 let resp = erased::deserialize(&mut resp_body).map_err(|e| Error::ParseError {
@@ -288,6 +377,23 @@ impl<T> Client<T, Connected> {
 impl Client<Channel, Connected> {
     /// Similar to `call()`, it invokes the named function and wait synchronously,
     /// but this is for `Client` connected to a HTTP RPC server
+    /// 
+    /// Example
+    /// 
+    /// This example assumes that there is a 
+    /// 
+    /// ```rust
+    /// use toy_rpc::client::Client;
+    ///
+    /// #[async_std::main]
+    /// async fn main() {
+    ///     let addr = "http://127.0.0.1:8888/rpc/";
+    ///     let mut client = Client::dial(addr).await.unwrap();
+    ///
+    ///     let args = "arguments"
+    ///     let reply: Result<String, String> = client.call("echo_service.echo", &args);
+    ///     println!("{:?}", reply);
+    /// }
     pub fn call_http<Req, Res>(
         &mut self,
         service_method: impl ToString,
@@ -324,6 +430,21 @@ impl Client<Channel, Connected> {
 
     /// Similar to `async_call()`, it invokes the named function asynchronously,
     /// but this is for `Client` connected to a HTTP RPC server
+    /// 
+    /// Example 
+    /// 
+    /// ```rust
+    /// use toy_rpc::client::Client;
+    ///
+    /// #[async_std::main]
+    /// async fn main() {
+    ///     let addr = "http://127.0.0.1:8888/rpc/";
+    ///     let mut client = Client::dial_http(addr).await.unwrap();
+    ///
+    ///     let args = "arguments"
+    ///     let reply: Result<String, String> = client.call_http("echo_service.echo", &args);
+    ///     println!("{:?}", reply);
+    /// }
     pub async fn async_call_http<Req, Res>(
         &mut self,
         service_method: impl ToString,
