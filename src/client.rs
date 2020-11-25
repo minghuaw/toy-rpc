@@ -128,7 +128,7 @@ impl Client<Channel, NotConnected> {
     ///     let mut client = Client::dial_http(addr).await.unwrap();
     ///
     ///     let args = "arguments"
-    ///     let reply: Result<String, String> = client.call_http("echo_service.echo", &args);
+    ///     let reply: Result<String, Error> = client.call_http("echo_service.echo", &args);
     ///     println!("{:?}", reply);
     /// }
     /// ```
@@ -184,7 +184,7 @@ impl Client<Codec, Connected> {
     ///     let mut client = Client::dial(addr).await.unwrap();
     ///
     ///     let args = "arguments"
-    ///     let reply: Result<String, String> = client.call("echo_service.echo", &args);
+    ///     let reply: Result<String, Error> = client.call("echo_service.echo", &args);
     ///     println!("{:?}", reply);
     /// }
     /// ```
@@ -209,7 +209,7 @@ impl Client<Codec, Connected> {
     ///
     ///     let args = "arguments"
     ///     let handle: task::JoinHandle<Result<Res, Error>> = client.spawn_task("echo_service.echo", &args);
-    ///     let reply: Result<String, String> = handle.await;
+    ///     let reply: Result<String, Error> = handle.await;
     ///     println!("{:?}", reply);
     /// }
     /// ```
@@ -244,7 +244,7 @@ impl Client<Codec, Connected> {
     ///     let mut client = Client::dial(addr).await.unwrap();
     ///
     ///     let args = "arguments"
-    ///     let reply: Result<String, String> = client.spawn_task("echo_service.echo", &args).await;
+    ///     let reply: Result<String, Error> = client.spawn_task("echo_service.echo", &args).await;
     ///     println!("{:?}", reply);
     /// }
     /// ```
@@ -391,7 +391,7 @@ impl Client<Channel, Connected> {
     ///     let mut client = Client::dial(addr).await.unwrap();
     ///
     ///     let args = "arguments"
-    ///     let reply: Result<String, String> = client.call("echo_service.echo", &args);
+    ///     let reply: Result<String, Error> = client.call("echo_service.echo", &args);
     ///     println!("{:?}", reply);
     /// }
     pub fn call_http<Req, Res>(
@@ -442,7 +442,7 @@ impl Client<Channel, Connected> {
     ///     let mut client = Client::dial_http(addr).await.unwrap();
     ///
     ///     let args = "arguments"
-    ///     let reply: Result<String, String> = client.call_http("echo_service.echo", &args);
+    ///     let reply: Result<String, Error> = client.call_http("echo_service.echo", &args);
     ///     println!("{:?}", reply);
     /// }
     pub async fn async_call_http<Req, Res>(
