@@ -8,7 +8,14 @@ names and functionalities. Certain function names are changed to be more rusty.
 Because `rust` doesn't have reflection, attribute macros are used to make certain
 method 'exported'.
 
-## Crate features tags
+## Change Log
+
+### From 0.2.1 to 0.3
+
+- Added `serde_cbor` feature flag
+- Changed `bincode` feature flag to `serde_bincode`
+
+## Crate features flags
 
 This crate offers the following features tags
 

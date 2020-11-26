@@ -8,9 +8,16 @@
 //! Because `rust` doesn't have reflection, attribute macros are used to make certain
 //! method 'exported'.
 //!
+//! ## Change Log
+//! 
+//! ### From 0.2.1 to 0.3
+//! 
+//! - Added `serde_cbor` feature flag
+//! - Changed `bincode` feature flag to `serde_bincode`
+//! 
 //! ## Crate features tags
 //!
-//! This crate offers the following features tags
+//! This crate offers the following features flag
 //!
 //! - `std`: enables `serde/std`
 //! - `bincode`: the default codec will use `bincode`
