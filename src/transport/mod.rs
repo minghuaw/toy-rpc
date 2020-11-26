@@ -1,2 +1,2 @@
-#[cfg(all(feature = "bincode", not(feature = "serde_json")))]
+#[cfg(any(feature = "serde_bincode", feature = "serde_cbor"))]
 pub(crate) mod frame;

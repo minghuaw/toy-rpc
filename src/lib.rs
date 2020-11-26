@@ -17,6 +17,8 @@
 //! for serialization/deserialization
 //! - `serde_json`: the default codec will use `serde_json`
 //! for `json` serialization/deserialization
+//! - `serde_cbor`: the default codec will use `serde_cbor`
+//! for serialization/deserialization
 //! - `logging`: enables logging
 //! - `tide`: enables `tide` integration on the server side
 //! - `surf`: enables HTTP client on the client side
@@ -27,7 +29,7 @@
 //! [features]
 //! default = [
 //!     "std",
-//!     "bincode",
+//!     "serde_bincode",
 //!     "tide",
 //!     "surf",
 //! ]
@@ -337,8 +339,8 @@ pub mod macros {
     pub use toy_rpc_macros::{export_impl, service};
 }
 
+pub use client::Client;
 pub use server::{Server, ServerBuilder};
-pub use client::{Client};
 
 // re-export
 pub use erased_serde;

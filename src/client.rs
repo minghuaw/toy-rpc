@@ -3,21 +3,28 @@ use async_std::net::{TcpStream, ToSocketAddrs};
 use async_std::sync::{Arc, Mutex};
 use async_std::task;
 use erased_serde as erased;
-use futures::channel::mpsc::{channel, Receiver, Sender};
 use futures::channel::oneshot;
-use futures::io::{BufReader, BufWriter};
-use futures::{SinkExt, StreamExt};
 use std::collections::HashMap;
 use std::marker::PhantomData;
 use std::sync::atomic::Ordering;
+
+#[cfg(feature = "surf")]
+use futures::channel::mpsc::{channel, Receiver, Sender};
+
+#[cfg(feature = "surf")]
+use futures::io::{BufReader, BufWriter};
+
+#[cfg(feature = "surf")]
+use futures::{SinkExt, StreamExt};
 
 use crate::codec::{ClientCodec, DefaultCodec};
 use crate::error::Error;
 use crate::message::{AtomicMessageId, MessageId, RequestHeader, ResponseHeader};
 
-// #[cfg(feature = "tide")]
+#[cfg(feature = "surf")]
 use crate::server::DEFAULT_RPC_PATH;
 
+#[cfg(feature = "surf")]
 const CHANNEL_BUF_SIZE: usize = 64;
 
 /// Type state for creating `Client`
@@ -27,7 +34,10 @@ pub struct NotConnected {}
 pub struct Connected {}
 
 type Codec = Arc<Mutex<Box<dyn ClientCodec>>>;
+
+#[cfg(feature = "surf")]
 type Channel = (Sender<Vec<u8>>, Receiver<Vec<u8>>);
+
 type ResponseBody = Box<dyn erased::Deserializer<'static> + Send>;
 
 /// RPC Client
@@ -59,14 +69,14 @@ impl Client<Codec, NotConnected> {
     }
 
     /// Creates an RPC 'Client` over socket with a specified codec
-    /// 
+    ///
     /// Example
-    /// 
-    /// ```rust 
+    ///
+    /// ```rust
     /// use async_std::net::TcpStream;
     /// use toy_rpc::codec::bincode::Codec;
     /// use toy_rpc::Client;
-    /// 
+    ///
     /// #[async_std::main]
     /// async fn main() {
     ///     let addr = "127.0.0.1:8888";
@@ -91,18 +101,18 @@ impl Client<Codec, NotConnected> {
     }
 
     /// Connects the an RPC server over socket at the specified network address
-    /// 
+    ///
     /// Example
-    /// 
+    ///
     /// ```rust
     /// use toy_rpc::Client;
-    /// 
+    ///
     /// #[async_std::main]
     /// async fn main() {
     ///     let addr = "127.0.0.1";
     ///     let client = Client::dial(addr).await;
     /// }
-    /// 
+    ///
     /// ```
     pub async fn dial(addr: impl ToSocketAddrs) -> Result<Client<Codec, Connected>, Error> {
         let stream = TcpStream::connect(addr).await?;
@@ -145,8 +155,11 @@ impl Client<Channel, NotConnected> {
         http_client.set_base_url(surf::Url::parse(addr)?); // the url::ParseError will be converted to toy_rpc::error::Error
 
         // test connection with a CONNECT request
-        let _conn_res = http_client.connect(DEFAULT_RPC_PATH).recv_string().await
-            .map_err(|e| Error::TransportError{ msg: e.to_string() })?;
+        let _conn_res = http_client
+            .connect(DEFAULT_RPC_PATH)
+            .recv_string()
+            .await
+            .map_err(|e| Error::TransportError { msg: e.to_string() })?;
 
         #[cfg(feature = "logging")]
         log::info!("{}", _conn_res);
@@ -169,12 +182,12 @@ impl Client<Channel, NotConnected> {
 
 impl Client<Codec, Connected> {
     /// Invokes the named function and wait synchronously
-    /// 
-    /// This function internally calls `task::block_on` to wait for the response. 
+    ///
+    /// This function internally calls `task::block_on` to wait for the response.
     /// Do NOT use this function inside another `task::block_on`.async_std
-    /// 
+    ///
     /// Example
-    /// 
+    ///
     /// ```rust
     /// use toy_rpc::client::Client;
     ///
@@ -197,7 +210,7 @@ impl Client<Codec, Connected> {
     }
 
     /// Invokes the named function asynchronously by spawning a new task and returns the `JoinHandle`
-    /// 
+    ///
     /// ```rust
     /// use toy_rpc::client::Client;
     /// use async_std::task;
@@ -231,9 +244,9 @@ impl Client<Codec, Connected> {
     }
 
     /// Invokes the named function asynchronously
-    /// 
-    /// Example 
-    /// 
+    ///
+    /// Example
+    ///
     /// ```rust
     /// use toy_rpc::client::Client;
     /// use async_std::task;
@@ -377,11 +390,11 @@ impl<T> Client<T, Connected> {
 impl Client<Channel, Connected> {
     /// Similar to `call()`, it invokes the named function and wait synchronously,
     /// but this is for `Client` connected to a HTTP RPC server
-    /// 
+    ///
     /// Example
-    /// 
-    /// This example assumes that there is a 
-    /// 
+    ///
+    /// This example assumes that there is a
+    ///
     /// ```rust
     /// use toy_rpc::client::Client;
     ///
@@ -430,9 +443,9 @@ impl Client<Channel, Connected> {
 
     /// Similar to `async_call()`, it invokes the named function asynchronously,
     /// but this is for `Client` connected to a HTTP RPC server
-    /// 
-    /// Example 
-    /// 
+    ///
+    /// Example
+    ///
     /// ```rust
     /// use toy_rpc::client::Client;
     ///

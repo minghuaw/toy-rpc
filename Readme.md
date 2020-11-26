@@ -13,10 +13,12 @@ method 'exported'.
 This crate offers the following features tags
 
 - `std`: enables `serde/std`
-- `bincode`: the default codec will use `bincode`
+- `serde_bincode`: the default codec will use `bincode`
 for serialization/deserialization
 - `serde_json`: the default codec will use `serde_json`
 for `json` serialization/deserialization
+- `serde_cbor`: the defatul codec will use `serde_cbor`
+for serialization/deserialization
 - `logging`: enables logging
 - `tide`: enables `tide` integration on the server side
 - `surf`: enables HTTP client on the client side
@@ -27,7 +29,7 @@ for `json` serialization/deserialization
 [features]
     default = [
     "std",
-    "bincode",
+    "serde_bincode",
     "tide",
     "surf",
 ]

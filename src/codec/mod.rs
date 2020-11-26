@@ -4,17 +4,47 @@ use erased_serde as erased;
 use crate::error::Error;
 use crate::message::{MessageId, Metadata, RequestHeader, ResponseHeader};
 
-#[cfg(all(feature = "serde_json", not(feauture = "bincode")))]
+#[cfg(all(
+    feature = "serde_json",
+    not(feature = "serde_bincode"),
+    not(feature = "serde_cbor")
+))]
 mod json;
 
-#[cfg(all(feature = "serde_json", not(feauture = "bincode")))]
+#[cfg(all(
+    feature = "serde_json",
+    not(feature = "serde_bincode"),
+    not(feature = "serde_cbor")
+))]
 pub use crate::codec::json::Codec as DefaultCodec;
 
-#[cfg(all(feature = "bincode", not(feature = "serde_json")))]
+#[cfg(all(
+    feature = "serde_bincode",
+    not(feature = "serde_json"),
+    not(feature = "serde_cbor")
+))]
 mod bincode;
 
-#[cfg(all(feature = "bincode", not(feature = "serde_json")))]
+#[cfg(all(
+    feature = "serde_bincode",
+    not(feature = "serde_json"),
+    not(feature = "serde_cbor")
+))]
 pub use crate::codec::bincode::Codec as DefaultCodec;
+
+#[cfg(all(
+    feature = "serde_cbor",
+    not(feature = "serde_json"),
+    not(feature = "serde_bincode")
+))]
+mod cbor;
+
+#[cfg(all(
+    feature = "serde_cbor",
+    not(feature = "serde_json"),
+    not(feature = "serde_bincode")
+))]
+pub use crate::codec::cbor::Codec as DefaultCodec;
 
 #[async_trait]
 pub trait ServerCodec: Send + Sync {

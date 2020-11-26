@@ -137,16 +137,6 @@ where
     }
 }
 
-// impl<R, W> Codec<R, W>
-// where
-//     R: Stream + Send + Sync + Unpin,
-//     W: Sink<Vec<u8>> + Send + Sync + Unpin
-// {
-//     pub fn from_stream_sink(reader: R, writer: W) -> Self {
-//         Self { reader, writer }
-//     }
-// }
-
 #[cfg(test)]
 mod tests {
     use crate::message::RequestHeader;
