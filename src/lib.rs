@@ -20,7 +20,7 @@
 //! This crate offers the following features flag
 //!
 //! - `std`: enables `serde/std`
-//! - `bincode`: the default codec will use `bincode`
+//! - `serde_bincode`: the default codec will use `bincode`
 //! for serialization/deserialization
 //! - `serde_json`: the default codec will use `serde_json`
 //! for `json` serialization/deserialization
