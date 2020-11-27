@@ -100,7 +100,6 @@ impl From<serde_json::error::Error> for Error {
 }
 
 /// Convert from bincode::Error to the custom Error
-#[cfg(feature = "serde_bincode")]
 impl From<bincode::Error> for Error {
     fn from(err: bincode::Error) -> Self {
         Error::ParseError { source: err }
@@ -121,6 +120,24 @@ impl From<surf::http::url::ParseError> for Error {
     fn from(err: surf::http::url::ParseError) -> Self {
         Error::ParseError {
             source: Box::new(err),
+        }
+    }
+}
+
+#[cfg(feature = "serde_rmp")]
+impl From<rmp_serde::decode::Error> for Error {
+    fn from(err: rmp_serde::decode::Error) -> Self {
+        Error::ParseError {
+            source: Box::new(err)
+        }
+    }
+}
+
+#[cfg(feature = "serde_rmp")]
+impl From<rmp_serde::encode::Error> for Error {
+    fn from(err: rmp_serde::encode::Error) -> Self {
+        Error::ParseError {
+            source: Box::new(err)
         }
     }
 }

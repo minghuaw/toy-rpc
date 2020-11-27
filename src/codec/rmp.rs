@@ -11,12 +11,15 @@ use crate::macros::impl_inner_deserializer;
 use crate::message::{MessageId, Metadata};
 use crate::transport::frame::{FrameRead, FrameStreamExt, FrameWrite, PayloadType};
 
-impl<'de, R> serde::Deserializer<'de> for DeserializerOwned<serde_cbor::Deserializer<R>>
-where
-    R: serde_cbor::de::Read<'de>,
+impl<'de, R> serde::Deserializer<'de> for
+    DeserializerOwned<rmp_serde::Deserializer<rmp_serde::decode::ReadReader<R>>>
+where 
+    R: std::io::Read,
 {
-    type Error = <&'de mut serde_cbor::Deserializer<R> as serde::Deserializer<'de>>::Error;
-
+    type Error = <&'de mut rmp_serde::Deserializer<rmp_serde::decode::ReadReader<R>> 
+        as 
+        serde::Deserializer<'de>>::Error;
+    
     // use a macro to generate the code
     impl_inner_deserializer!();
 }
@@ -50,7 +53,9 @@ where
         let de = match reader.frames().next().await? {
             Ok(frame) => {
                 log::debug!("frame: {:?}", frame);
-                serde_cbor::Deserializer::from_reader(Cursor::new(frame.payload))
+                rmp_serde::Deserializer::new(
+                    Cursor::new(frame.payload)
+                )
             }
             Err(e) => return Some(Err(e)),
         };
@@ -104,7 +109,11 @@ where
     W: AsyncWrite + Send + Sync + Unpin,
 {
     fn marshal<S: serde::Serialize>(val: &S) -> Result<Vec<u8>, Error> {
-        serde_cbor::to_vec(val).map_err(|e| e.into())
+        let mut buf = Vec::new();
+        match val.serialize(&mut rmp_serde::Serializer::new(&mut buf)) {
+            Ok(_) => Ok(buf),
+            Err(e) => Err(e.into())
+        }
     }
 }
 
@@ -114,6 +123,8 @@ where
     W: AsyncWrite + Send + Sync + Unpin,
 {
     fn unmarshal<'de, D: serde::Deserialize<'de>>(buf: &'de [u8]) -> Result<D, Error> {
-        serde_cbor::from_slice(buf).map_err(|e| e.into())
+        let mut de = rmp_serde::Deserializer::new(buf);
+        serde::Deserialize::deserialize(&mut de)
+            .map_err(|e| e.into())
     }
 }

@@ -1,5 +1,6 @@
 use async_trait::async_trait;
 use erased_serde as erased;
+use futures::io::{AsyncBufRead, AsyncRead, AsyncWrite, AsyncWriteExt, BufReader, BufWriter};
 
 use crate::error::Error;
 use crate::message::{MessageId, Metadata, RequestHeader, ResponseHeader};
@@ -7,44 +8,60 @@ use crate::message::{MessageId, Metadata, RequestHeader, ResponseHeader};
 #[cfg(all(
     feature = "serde_json",
     not(feature = "serde_bincode"),
-    not(feature = "serde_cbor")
+    not(feature = "serde_cbor"),
+    not(feature = "serde_rmp"),
 ))]
 mod json;
 
 #[cfg(all(
-    feature = "serde_json",
-    not(feature = "serde_bincode"),
-    not(feature = "serde_cbor")
-))]
-pub use crate::codec::json::Codec as DefaultCodec;
-
-#[cfg(all(
-    feature = "serde_bincode",
-    not(feature = "serde_json"),
-    not(feature = "serde_cbor")
-))]
-mod bincode;
-
-#[cfg(all(
-    feature = "serde_bincode",
-    not(feature = "serde_json"),
-    not(feature = "serde_cbor")
-))]
-pub use crate::codec::bincode::Codec as DefaultCodec;
-
-#[cfg(all(
     feature = "serde_cbor",
     not(feature = "serde_json"),
-    not(feature = "serde_bincode")
+    not(feature = "serde_bincode"),
+    not(feature = "serde_rmp"),
 ))]
 mod cbor;
 
 #[cfg(all(
-    feature = "serde_cbor",
+    feature = "serde_rmp",
+    not(feature = "serde_cbor"),
     not(feature = "serde_json"),
-    not(feature = "serde_bincode")
+    not(feature = "serde_bincode"),
 ))]
-pub use crate::codec::cbor::Codec as DefaultCodec;
+mod rmp;
+
+#[cfg(all(
+    feature = "serde_bincode",
+    not(feature = "serde_json"),
+    not(feature = "serde_cbor"),
+    not(feature = "serde_rmp"),
+))]
+mod bincode;
+
+/// Default codec
+pub struct Codec<R, W> {
+    pub reader: R,
+    pub writer: W,
+}
+pub use Codec as DefaultCodec;
+
+impl<R, W> Codec<R, W>
+where
+    R: AsyncBufRead + Send + Sync + Unpin,
+    W: AsyncWrite + AsyncWriteExt + Send + Sync + Unpin,
+{
+    pub fn with_reader_writer(reader: R, writer: W) -> Self {
+        Self { reader, writer }
+    }
+}
+
+impl<T> Codec<BufReader<T>, BufWriter<T>>
+where
+    T: AsyncRead + AsyncWrite + Send + Sync + Unpin + Clone,
+{
+    pub fn new(stream: T) -> Self {
+        Self::with_reader_writer(BufReader::new(stream.clone()), BufWriter::new(stream))
+    }
+}
 
 #[async_trait]
 pub trait ServerCodec: Send + Sync {

@@ -1,11 +1,11 @@
 [package]
 name = "toy-rpc"
-version = "0.3.0"
+version = "0.3.1"
 authors = ["Minghua Wu <michael.wu1107@gmail.com>"]
 edition = "2018"
 description = "An async-std based RPC library that mimics the API of golang net/rpc"
 license = "MIT/Apache-2.0"
-documentation = "https://docs.rs/toy-rpc/0.3.0/toy_rpc/"
+documentation = "https://docs.rs/toy-rpc/0.3.1/toy_rpc/"
 homepage = "https://github.com/minghuaw/toy-rpc"
 repository = "https://github.com/minghuaw/toy-rpc"
 keywords = ["async", "rpc", "go", "golang", "async-std"]
@@ -22,7 +22,7 @@ exclude = [
 [features]
 default = [
     "std", 
-    "serde_bincode", 
+    "serde_bincode",
     "tide",
     "surf",
 ]
@@ -30,6 +30,7 @@ default = [
 std = ["serde/std"]
 logging = []
 serde_bincode = []
+serde_rmp = ["rmp-serde"]
 
 [dependencies]
 # local imports
@@ -41,6 +42,7 @@ serde_json = { version = "1.0.59", optional = true }
 serde_cbor = { version = "0.11.1", optional = true }
 tide = { version = "0.15.0", optional = true }
 surf = { version = "2.1.0", optional = true }
+rmp-serde = { version = "0.14.4", optional = true }
 
 bincode = { version = "1.3.1" }
 serde = { version = "1.0.117", features = ["derive"] }

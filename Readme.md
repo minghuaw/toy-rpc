@@ -1,4 +1,6 @@
-# A toy RPC crate based on `async-std` that mimics the `golang`'s `net/rpc` package
+# toy-rpc
+
+## A toy RPC crate based on `async-std` that mimics the `golang`'s `net/rpc` package
 
 This crate aims at providing an easy-to-use RPC that is similar to `golang`'s
 `net/rpc`.
@@ -8,33 +10,40 @@ names and functionalities. Certain function names are changed to be more rusty.
 Because `rust` doesn't have reflection, attribute macros are used to make certain
 method 'exported'.
 
-## Change Log
+### Change Log
 
-### From 0.2.1 to 0.3
+#### From 0.3 to 0.3.1
+
+- Added `serde_rmp` features flag
+- Updated and corrected examples in the documentation
+
+#### From 0.2.1 to 0.3
 
 - Added `serde_cbor` feature flag
 - Changed `bincode` feature flag to `serde_bincode`
 
-## Crate features flags
+### Crate features tags
 
-This crate offers the following features tags
+This crate offers the following features flag
 
 - `std`: enables `serde/std`
 - `serde_bincode`: the default codec will use `bincode`
 for serialization/deserialization
 - `serde_json`: the default codec will use `serde_json`
 for `json` serialization/deserialization
-- `serde_cbor`: the defatul codec will use `serde_cbor`
+- `serde_cbor`: the default codec will use `serde_cbor`
+for serialization/deserialization
+- `serde_rmp`: the default codec will use `rmp-serde`
 for serialization/deserialization
 - `logging`: enables logging
 - `tide`: enables `tide` integration on the server side
 - `surf`: enables HTTP client on the client side
 
-### Default Features
+#### Default Features
 
 ```toml
 [features]
-    default = [
+default = [
     "std",
     "serde_bincode",
     "tide",
@@ -42,7 +51,7 @@ for serialization/deserialization
 ]
 ```
 
-## Documentation
+### Documentation
 
 The following documentation is adapted based on `golang`'s documentation.
 
@@ -79,19 +88,28 @@ The methods to export must meet the following criteria on the server side
 - the method resides in an impl block marked with `#[export_impl]`
 - the method is marked with `#[export_method]` attribute
 - the method takes one argument other than `&self` and returns a `Result<T, E>`
-  
+
   - the argument must implement trait `serde::Deserialize`
   - the `Ok` type `T` of the result must implement trait `serde::Serialize`
   - the `Err` type `E` of the result must implement trait `ToString`
-  
+
 - the method is essentially in the form
 
 ```rust
-async fn method_name(&self, args: Req) -> Result<Res, Msg>
-where
-    Req: serde::Deserialize,
-    Res: serde::Serialize,
-    Msg: ToString
+struct ServiceState { }
+
+#[export_impl]
+impl ServiceState {
+    #[export_method]
+    async fn method_name(&self, args: Req) -> Result<Res, Msg>
+    where
+        Req: serde::Deserialize,
+        Res: serde::Serialize,
+        Msg: ToString,
+    {
+        unimplemented!()
+    }
+}
 ```
 
 `Req` and `Res` are marshaled/unmarshaled (serialized/deserialized) by `serde`.
@@ -129,12 +147,12 @@ Unless an explicity codec is set up (with `serve_codec`, HTTP is *NOT* supported
 the default codec specified by one of the following features tags (`bincode`, `serde_json`)
 will be used to transport data.
 
-## Examples
+### Examples
 
 A few simple examples are shown below. More examples can be found in the `examples`
 directory in the repo.
 
-### RPC over socket
+#### RPC over socket
 
 server.rs
 
@@ -231,7 +249,7 @@ async fn main() {
 }
 ```
 
-### RPC over HTTP with `tide`
+#### RPC over HTTP with `tide`
 
 server.rs
 
@@ -326,11 +344,11 @@ async fn main() {
 }
 ```
 
-## TODO
+### Future Plan
 
-- [x] Add `tide` integration
-- [ ] Add `actix` integration
-- [ ] Add `warp` integration
-- [x] change `dial` and `dial_http` to be async
-- [x] Sends an initial check to verify the http connection when `Client::dial_http()`
+- [ ] `actix` integration
+- [ ] `warp` integration
+- [ ] other I/O connection
 - [ ] unify `call`, `async_call`, and `spawn_task` for raw connection and HTTP connection
+
+License: MIT/Apache-2.0

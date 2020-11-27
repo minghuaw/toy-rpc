@@ -1,12 +1,12 @@
 use async_trait::async_trait;
 use bincode::{DefaultOptions, Options};
 use erased_serde as erased;
-use futures::io::{AsyncBufRead, AsyncRead, AsyncWrite, AsyncWriteExt, BufReader, BufWriter};
+use futures::io::{AsyncBufRead, AsyncWrite, AsyncWriteExt};
 use futures::StreamExt;
 use serde::de::Visitor;
 use std::io::Cursor; // serde doesn't support AsyncRead
 
-use super::{CodecRead, CodecWrite, DeserializerOwned, Marshal, Unmarshal};
+use super::{Codec, CodecRead, CodecWrite, DeserializerOwned, Marshal, Unmarshal};
 use crate::error::Error;
 use crate::macros::impl_inner_deserializer;
 use crate::message::{MessageId, Metadata};
@@ -21,34 +21,6 @@ where
 
     // use a macro to generate the code
     impl_inner_deserializer!();
-}
-
-pub struct Codec<R, W>
-where
-// R: FrameRead + Send + Sync + Unpin,
-// W: FrameWrite + Send + Sync + Unpin,
-{
-    reader: R,
-    writer: W,
-}
-
-impl<R, W> Codec<R, W>
-where
-    R: AsyncBufRead + Send + Sync + Unpin,
-    W: AsyncWrite + AsyncWriteExt + Send + Sync + Unpin,
-{
-    pub fn with_reader_writer(reader: R, writer: W) -> Self {
-        Self { reader, writer }
-    }
-}
-
-impl<T> Codec<BufReader<T>, BufWriter<T>>
-where
-    T: AsyncRead + AsyncWrite + Send + Sync + Unpin + Clone,
-{
-    pub fn new(stream: T) -> Self {
-        Self::with_reader_writer(BufReader::new(stream.clone()), BufWriter::new(stream))
-    }
 }
 
 #[async_trait]

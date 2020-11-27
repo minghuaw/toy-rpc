@@ -1,5 +1,4 @@
 use async_std::net::{TcpStream, ToSocketAddrs};
-// use async_std::sync::{channel, Receiver, Sender};
 use async_std::sync::{Arc, Mutex};
 use async_std::task;
 use erased_serde as erased;
@@ -131,13 +130,14 @@ impl Client<Channel, NotConnected> {
     ///
     /// ```rust
     /// use toy_rpc::client::Client;
+    /// use toy_rpc::error::Error;
     ///
     /// #[async_std::main]
     /// async fn main() {
     ///     let addr = "http://127.0.0.1:8888/rpc/";
     ///     let mut client = Client::dial_http(addr).await.unwrap();
     ///
-    ///     let args = "arguments"
+    ///     let args = "arguments";
     ///     let reply: Result<String, Error> = client.call_http("echo_service.echo", &args);
     ///     println!("{:?}", reply);
     /// }
@@ -190,13 +190,14 @@ impl Client<Codec, Connected> {
     ///
     /// ```rust
     /// use toy_rpc::client::Client;
+    /// use toy_rpc::error::Error;
     ///
     /// #[async_std::main]
     /// async fn main() {
     ///     let addr = "127.0.0.1:8888";
     ///     let mut client = Client::dial(addr).await.unwrap();
     ///
-    ///     let args = "arguments"
+    ///     let args = "arguments";
     ///     let reply: Result<String, Error> = client.call("echo_service.echo", &args);
     ///     println!("{:?}", reply);
     /// }
@@ -212,15 +213,17 @@ impl Client<Codec, Connected> {
     /// Invokes the named function asynchronously by spawning a new task and returns the `JoinHandle`
     ///
     /// ```rust
-    /// use toy_rpc::client::Client;
     /// use async_std::task;
+    ///
+    /// use toy_rpc::client::Client;
+    /// use toy_rpc::error::Error;
     ///
     /// #[async_std::main]
     /// async fn main() {
     ///     let addr = "127.0.0.1:8888";
     ///     let mut client = Client::dial(addr).await.unwrap();
     ///
-    ///     let args = "arguments"
+    ///     let args = "arguments";
     ///     let handle: task::JoinHandle<Result<Res, Error>> = client.spawn_task("echo_service.echo", &args);
     ///     let reply: Result<String, Error> = handle.await;
     ///     println!("{:?}", reply);
@@ -248,15 +251,17 @@ impl Client<Codec, Connected> {
     /// Example
     ///
     /// ```rust
-    /// use toy_rpc::client::Client;
     /// use async_std::task;
+    ///
+    /// use toy_rpc::client::Client;
+    /// use toy_rpc::error::Error;
     ///
     /// #[async_std::main]
     /// async fn main() {
     ///     let addr = "127.0.0.1:8888";
     ///     let mut client = Client::dial(addr).await.unwrap();
     ///
-    ///     let args = "arguments"
+    ///     let args = "arguments";
     ///     let reply: Result<String, Error> = client.spawn_task("echo_service.echo", &args).await;
     ///     println!("{:?}", reply);
     /// }
@@ -545,7 +550,7 @@ impl Client<Channel, Connected> {
         Client::<Codec, Connected>::_handle_response(done, &id)
     }
 
-    /// TODO: try send and recv trait object over the channel instead of `Vec<u8>`
+    /// TODO: try send and receive trait object over the channel instead of `Vec<u8>`
     async fn _http_client_loop(
         http_client: surf::Client,
         mut req_recver: Receiver<Vec<u8>>,

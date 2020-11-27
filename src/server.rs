@@ -205,6 +205,7 @@ impl Server {
     /// # Example
     /// ```
     /// use toy_rpc::server::Server;
+    /// use async_std::sync::Arc;
     ///
     /// #[async_std::main]
     /// async fn main() -> tide::Result<()> {
@@ -212,11 +213,12 @@ impl Server {
     ///     let foo_service = Arc::new(FooService { });
     ///
     ///     let server = Server::builder()
+    ///         .register("foo", service!(foo_service, FooService))
     ///         .build();
     ///     
     ///     let mut app = tide::new();
     ///
-    ///     // If a network path were to be supplpied,
+    ///     // If a network path were to be supplied,
     ///     // the network path must end with a slash "/"
     ///     app.at("/rpc/").nest(server.into_endpoint());
     ///
@@ -274,10 +276,11 @@ impl ServerBuilder {
     ///
     /// ```
     /// use async_std::net::TcpListener;
+    /// use async_std::sync::Arc;
     /// use toy_rpc_macros::{export_impl, service};
     /// use toy_rpc::server::Server;
     ///
-    /// EchoService { }
+    /// struct EchoService { }
     ///
     /// #[export_impl]
     /// impl EchoService {
@@ -294,7 +297,7 @@ impl ServerBuilder {
     ///     let echo_service = Arc::new(EchoService { });
     ///     let server = Server::builder()
     ///         .register("echo_service", service!(echo_service, EchoService))
-    ///         build();
+    ///         .build();
     ///     
     ///     let listener = TcpListener::bind(addr).await.unwrap();
     ///

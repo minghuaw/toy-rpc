@@ -1,2 +1,6 @@
 /target
 Notes.md
+.idea/aws.xml
+.idea/modules.xml
+.idea/toy-rpc.iml
+.idea/vcs.xml

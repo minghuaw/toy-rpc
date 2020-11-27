@@ -10,11 +10,16 @@
 //!
 //! ## Change Log
 //! 
-//! ### From 0.2.1 to 0.3
+//! ### From 0.3 to 0.3.1
 //! 
+//! - Added `serde_rmp` features flag
+//! - Updated and corrected examples in the documentation
+//! 
+//! ### From 0.2.1 to 0.3
+//!
 //! - Added `serde_cbor` feature flag
 //! - Changed `bincode` feature flag to `serde_bincode`
-//! 
+//!
 //! ## Crate features tags
 //!
 //! This crate offers the following features flag
@@ -25,6 +30,8 @@
 //! - `serde_json`: the default codec will use `serde_json`
 //! for `json` serialization/deserialization
 //! - `serde_cbor`: the default codec will use `serde_cbor`
+//! for serialization/deserialization
+//! - `serde_rmp`: the default codec will use `rmp-serde` 
 //! for serialization/deserialization
 //! - `logging`: enables logging
 //! - `tide`: enables `tide` integration on the server side
@@ -87,11 +94,20 @@
 //! - the method is essentially in the form
 //!
 //! ```rust
-//! async fn method_name(&self, args: Req) -> Result<Res, Msg>
-//! where
-//!     Req: serde::Deserialize,
-//!     Res: serde::Serialize,
-//!     Msg: ToString
+//! struct ServiceState { }
+//!
+//! #[export_impl]
+//! impl ServiceState {
+//!     #[export_method]
+//!     async fn method_name(&self, args: Req) -> Result<Res, Msg>
+//!     where
+//!         Req: serde::Deserialize,
+//!         Res: serde::Serialize,
+//!         Msg: ToString,
+//!     {
+//!         unimplemented!()
+//!     }
+//! }
 //! ```
 //!
 //! `Req` and `Res` are marshaled/unmarshaled (serialized/deserialized) by `serde`.
@@ -326,7 +342,7 @@
 //! }
 //! ```
 //!
-//! ## Future Plan:
+//! ## Future Plan
 //!
 //! - [ ] `actix` integration
 //! - [ ] `warp` integration
