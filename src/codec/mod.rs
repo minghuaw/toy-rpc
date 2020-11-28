@@ -6,12 +6,12 @@ use crate::error::Error;
 use crate::message::{MessageId, Metadata, RequestHeader, ResponseHeader};
 
 #[cfg(all(
-    feature = "serde_json",
-    not(feature = "serde_bincode"),
+    feature = "serde_bincode",
+    not(feature = "serde_json"),
     not(feature = "serde_cbor"),
     not(feature = "serde_rmp"),
 ))]
-mod json;
+mod bincode;
 
 #[cfg(all(
     feature = "serde_cbor",
@@ -22,20 +22,20 @@ mod json;
 mod cbor;
 
 #[cfg(all(
+    feature = "serde_json",
+    not(feature = "serde_bincode"),
+    not(feature = "serde_cbor"),
+    not(feature = "serde_rmp"),
+))]
+mod json;
+
+#[cfg(all(
     feature = "serde_rmp",
     not(feature = "serde_cbor"),
     not(feature = "serde_json"),
     not(feature = "serde_bincode"),
 ))]
 mod rmp;
-
-#[cfg(all(
-    feature = "serde_bincode",
-    not(feature = "serde_json"),
-    not(feature = "serde_cbor"),
-    not(feature = "serde_rmp"),
-))]
-mod bincode;
 
 /// Default codec
 pub struct Codec<R, W> {
