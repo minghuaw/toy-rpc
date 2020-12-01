@@ -142,6 +142,18 @@ impl From<rmp_serde::encode::Error> for Error {
     }
 }
 
+#[cfg(feature = "actix-web")]
+impl From<Error> for actix_web::Error {
+    fn from(err: crate::error::Error) -> Self {
+        // wrap error with actix_web::error::InternalError for now
+        // TODO: imporve error handling
+        actix_web::error::InternalError::new(
+            err, 
+            actix_web::http::StatusCode::OK
+        ).into()
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;

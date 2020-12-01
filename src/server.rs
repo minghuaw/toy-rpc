@@ -5,8 +5,14 @@ use erased_serde as erased;
 use futures::StreamExt;
 use std::collections::HashMap;
 
-#[cfg(features = "http_tide")]
+#[cfg(feature = "tide")]
 use tide;
+
+#[cfg(all(
+    feature = "actix-web",
+    not(feature = "tide")
+))]
+use actix_web::web;
 
 use crate::codec::{DefaultCodec, ServerCodec};
 use crate::error::{Error, RpcError};
@@ -14,6 +20,10 @@ use crate::message::{MessageId, RequestHeader, ResponseHeader};
 use crate::service::{
     ArcAsyncServiceCall, AsyncServiceMap, HandleService, HandlerResult, HandlerResultFut,
 };
+
+#[cfg(feature = "actix-web" )]
+type ActixHandler = Box<dyn Fn(actix_web::web::Data<Server>, actix_web::web::Bytes) -> actix_web::web::Bytes>;
+
 
 // #[cfg(feature = "tide")]
 pub const DEFAULT_RPC_PATH: &str = "_rpc_";
@@ -228,7 +238,10 @@ impl Server {
     /// ```
     ///  
     /// TODO: add a handler to test the connection
-    #[cfg(feature = "tide")]
+    #[cfg(all(
+        feature = "tide",
+        not(feature = "actix-web")
+    ))]
     pub fn into_endpoint(self) -> tide::Server<Self> {
         use futures::io::BufWriter;
 
@@ -252,10 +265,43 @@ impl Server {
         app
     }
 
-    // #[cfg(feature = "tide")]
-    // pub fn handle_http(self) -> tide::Server<Self> {
+    #[cfg(all(
+        feature = "actix-web",
+        not(feature = "tide")
+    ))]
+    async fn _handle_http(state: web::Data<Server>, req_body: web::Bytes) -> Result<web::Bytes, actix_web::Error> {
+        use futures::io::{BufReader, BufWriter};
 
-    // }
+        let input = req_body.to_vec();
+        let mut output: Vec<u8> = Vec::new();
+
+        let mut codec = 
+            DefaultCodec::with_reader_writer(
+                BufReader::new(&*input), 
+                BufWriter::new(&mut output)
+            );
+        let services = state.services.clone();
+
+        Self::_serve_codec_once(&mut codec, &services).await
+            .map_err(|e| actix_web::Error::from(e))?;
+
+        // construct response
+        Ok(web::Bytes::from(output))
+    }
+
+    #[cfg(all(
+        feature = "actix-web",
+        not(feature = "tide")
+    ))]
+    pub fn into_handler(self) -> actix_web::Scope {
+        web::scope("/")
+            .data(self)
+            .service(
+                web::resource(DEFAULT_RPC_PATH).route(
+                    web::post().to(Self::_handle_http)
+                )
+            )
+    }
 }
 
 pub struct ServerBuilder {
