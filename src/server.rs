@@ -5,7 +5,7 @@ use erased_serde as erased;
 use futures::StreamExt;
 use std::collections::HashMap;
 
-#[cfg(all(feature = "actix-web", not(feature = "tide")))]
+#[cfg(feature = "actix-web")]
 use actix_web::web;
 
 use crate::codec::{DefaultCodec, ServerCodec};
@@ -32,96 +32,6 @@ impl Server {
     /// Creates a `ServerBuilder`
     pub fn builder() -> ServerBuilder {
         ServerBuilder::new()
-    }
-
-    /// Accepts connections on the listener and serves requests to default
-    /// server for each incoming connection
-    ///
-    /// # Example
-    ///
-    /// See `toy-rpc/examples/server_client/` for the example
-    #[cfg(any(
-        all(
-            feature = "serde_bincode",
-            not(feature = "serde_json"),
-            not(feature = "serde_cbor"),
-            not(feature = "serde_rmp"),
-        ),
-        all(
-            feature = "serde_cbor",
-            not(feature = "serde_json"),
-            not(feature = "serde_bincode"),
-            not(feature = "serde_rmp"),
-        ),
-        all(
-            feature = "serde_json",
-            not(feature = "serde_bincode"),
-            not(feature = "serde_cbor"),
-            not(feature = "serde_rmp"),
-        ),
-        all(
-            feature = "serde_rmp",
-            not(feature = "serde_cbor"),
-            not(feature = "serde_json"),
-            not(feature = "serde_bincode"),
-        )
-    ))]
-    pub async fn accept(&self, listener: TcpListener) -> Result<(), Error> {
-        let mut incoming = listener.incoming();
-
-        while let Some(conn) = incoming.next().await {
-            let stream = conn?;
-
-            #[cfg(feature = "logging")]
-            log::info!("Accepting incoming connection from {}", stream.peer_addr()?);
-
-            task::spawn(Self::_serve_conn(stream, self.services.clone()));
-        }
-
-        Ok(())
-    }
-
-    /// Serves a single connection
-    #[cfg(any(
-        all(
-            feature = "serde_bincode",
-            not(feature = "serde_json"),
-            not(feature = "serde_cbor"),
-            not(feature = "serde_rmp"),
-        ),
-        all(
-            feature = "serde_cbor",
-            not(feature = "serde_json"),
-            not(feature = "serde_bincode"),
-            not(feature = "serde_rmp"),
-        ),
-        all(
-            feature = "serde_json",
-            not(feature = "serde_bincode"),
-            not(feature = "serde_cbor"),
-            not(feature = "serde_rmp"),
-        ),
-        all(
-            feature = "serde_rmp",
-            not(feature = "serde_cbor"),
-            not(feature = "serde_json"),
-            not(feature = "serde_bincode"),
-        )
-    ))]
-    async fn _serve_conn(stream: TcpStream, services: Arc<AsyncServiceMap>) -> Result<(), Error> {
-        // let _stream = stream;
-        let _peer_addr = stream.peer_addr()?;
-
-        // using feature flag controlled default codec
-        let codec = DefaultCodec::new(stream);
-
-        // let fut = task::spawn_blocking(|| Self::_serve_codec(codec, services)).await;
-        let fut = Self::_serve_codec(codec, services);
-
-        #[cfg(feature = "logging")]
-        log::info!("Client disconnected from {}", _peer_addr);
-
-        fut.await
     }
 
     /// Serves using a specified codec
@@ -233,36 +143,6 @@ impl Server {
         }
     }
 
-    /// Serves a single connection using the default codec
-    #[cfg(any(
-        all(
-            feature = "serde_bincode",
-            not(feature = "serde_json"),
-            not(feature = "serde_cbor"),
-            not(feature = "serde_rmp"),
-        ),
-        all(
-            feature = "serde_cbor",
-            not(feature = "serde_json"),
-            not(feature = "serde_bincode"),
-            not(feature = "serde_rmp"),
-        ),
-        all(
-            feature = "serde_json",
-            not(feature = "serde_bincode"),
-            not(feature = "serde_cbor"),
-            not(feature = "serde_rmp"),
-        ),
-        all(
-            feature = "serde_rmp",
-            not(feature = "serde_cbor"),
-            not(feature = "serde_json"),
-            not(feature = "serde_bincode"),
-        )
-    ))]
-    pub async fn serve_conn(&self, stream: TcpStream) -> Result<(), Error> {
-        Self::_serve_conn(stream, self.services.clone()).await
-    }
 
     /// This is like serve_conn except that it uses a specified codec
     pub async fn serve_codec<C>(&self, codec: C) -> Result<(), Error>
@@ -273,8 +153,76 @@ impl Server {
     }
 }
 
-// integration with http frameworks
+#[cfg(any(
+    all(
+        feature = "serde_bincode",
+        not(feature = "serde_json"),
+        not(feature = "serde_cbor"),
+        not(feature = "serde_rmp"),
+    ),
+    all(
+        feature = "serde_cbor",
+        not(feature = "serde_json"),
+        not(feature = "serde_bincode"),
+        not(feature = "serde_rmp"),
+    ),
+    all(
+        feature = "serde_json",
+        not(feature = "serde_bincode"),
+        not(feature = "serde_cbor"),
+        not(feature = "serde_rmp"),
+    ),
+    all(
+        feature = "serde_rmp",
+        not(feature = "serde_cbor"),
+        not(feature = "serde_json"),
+        not(feature = "serde_bincode"),
+    )
+))]
 impl Server {
+    /// Accepts connections on the listener and serves requests to default
+    /// server for each incoming connection
+    ///
+    /// # Example
+    ///
+    /// See `toy-rpc/examples/server_client/` for the example
+    pub async fn accept(&self, listener: TcpListener) -> Result<(), Error> {
+        let mut incoming = listener.incoming();
+
+        while let Some(conn) = incoming.next().await {
+            let stream = conn?;
+
+            #[cfg(feature = "logging")]
+            log::info!("Accepting incoming connection from {}", stream.peer_addr()?);
+
+            task::spawn(Self::_serve_conn(stream, self.services.clone()));
+        }
+
+        Ok(())
+    }
+
+    /// Serves a single connection
+    async fn _serve_conn(stream: TcpStream, services: Arc<AsyncServiceMap>) -> Result<(), Error> {
+        // let _stream = stream;
+        let _peer_addr = stream.peer_addr()?;
+
+        // using feature flag controlled default codec
+        let codec = DefaultCodec::new(stream);
+
+        // let fut = task::spawn_blocking(|| Self::_serve_codec(codec, services)).await;
+        let fut = Self::_serve_codec(codec, services);
+
+        #[cfg(feature = "logging")]
+        log::info!("Client disconnected from {}", _peer_addr);
+
+        fut.await
+    }
+
+    /// Serves a single connection using the default codec
+    pub async fn serve_conn(&self, stream: TcpStream) -> Result<(), Error> {
+        Self::_serve_conn(stream, self.services.clone()).await
+    }
+
     /// Creates a `tide::Endpoint` that handles http connections
     ///
     /// The endpoint will be created with `DEFAULT_RPC_PATH` appended to the
@@ -306,7 +254,7 @@ impl Server {
     /// ```
     ///  
     /// TODO: add a handler to test the connection
-    #[cfg(all(feature = "tide", not(feature = "actix-web")))]
+    #[cfg(feature = "tide")]
     pub fn into_endpoint(self) -> tide::Server<Self> {
         use futures::io::BufWriter;
 
@@ -330,7 +278,7 @@ impl Server {
         app
     }
 
-    #[cfg(all(feature = "actix-web", not(feature = "tide")))]
+    #[cfg(feature = "actix-web")]
     async fn _handle_http(
         state: web::Data<Server>,
         req_body: web::Bytes,
@@ -352,18 +300,34 @@ impl Server {
         Ok(web::Bytes::from(output))
     }
 
-    #[cfg(all(feature = "actix-web", not(feature = "tide")))]
+    #[cfg(feature = "actix-web")]
+    async fn _handle_connect() -> Result<String, actix_web::Error> {
+        Ok("CONNECT request is received".to_string())
+    }
+
+    #[cfg(feature = "actix-web")]
     pub fn into_handler(self) -> actix_web::Scope {
         web::scope("/")
             .data(self)
-            .service(web::resource(DEFAULT_RPC_PATH).route(web::post().to(Self::_handle_http)))
+            .service(web::resource(DEFAULT_RPC_PATH)
+                .route(web::post().to(Self::_handle_http))
+                .route(web::method(actix_web::http::Method::CONNECT)
+                    .to(|| actix_web::HttpResponse::Ok().body("CONNECT request is received")))
+            )
     }
 }
 
-#[cfg(all(feature = "tide", not(feature = "actix-web")))]
+#[cfg(feature = "tide")]
 impl From<Server> for tide::Server<Server> {
     fn from(server: Server) -> Self {
         server.into_endpoint()
+    }
+}
+
+#[cfg(feature = "actix-web")]
+impl From<Server> for actix_web::Scope {
+    fn from(server: Server) -> Self {
+        server.into_handler()
     }
 }
 

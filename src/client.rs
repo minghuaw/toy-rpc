@@ -48,6 +48,32 @@ pub struct Client<T, Mode> {
     mode: PhantomData<Mode>,
 }
 
+#[cfg(any(
+    all(
+        feature = "serde_bincode",
+        not(feature = "serde_json"),
+        not(feature = "serde_cbor"),
+        not(feature = "serde_rmp"),
+    ),
+    all(
+        feature = "serde_cbor",
+        not(feature = "serde_json"),
+        not(feature = "serde_bincode"),
+        not(feature = "serde_rmp"),
+    ),
+    all(
+        feature = "serde_json",
+        not(feature = "serde_bincode"),
+        not(feature = "serde_cbor"),
+        not(feature = "serde_rmp"),
+    ),
+    all(
+        feature = "serde_rmp",
+        not(feature = "serde_cbor"),
+        not(feature = "serde_json"),
+        not(feature = "serde_bincode"),
+    )
+))]
 impl Client<Codec, NotConnected> {
     /// Creates an RPC `Client` over socket with a specified `async_std::net::TcpStream` and the default codec
     ///
@@ -61,37 +87,35 @@ impl Client<Codec, NotConnected> {
     ///     let client = Client::with_stream(stream);
     /// }
     /// ```
-    #[cfg(any(
-        all(
-            feature = "serde_bincode",
-            not(feature = "serde_json"),
-            not(feature = "serde_cbor"),
-            not(feature = "serde_rmp"),
-        ),
-        all(
-            feature = "serde_cbor",
-            not(feature = "serde_json"),
-            not(feature = "serde_bincode"),
-            not(feature = "serde_rmp"),
-        ),
-        all(
-            feature = "serde_json",
-            not(feature = "serde_bincode"),
-            not(feature = "serde_cbor"),
-            not(feature = "serde_rmp"),
-        ),
-        all(
-            feature = "serde_rmp",
-            not(feature = "serde_cbor"),
-            not(feature = "serde_json"),
-            not(feature = "serde_bincode"),
-        )
-    ))]
     pub fn with_stream(stream: TcpStream) -> Client<Codec, Connected> {
         let codec = DefaultCodec::new(stream);
 
         Self::with_codec(codec)
     }
+
+        /// Connects the an RPC server over socket at the specified network address
+    ///
+    /// Example
+    ///
+    /// ```rust
+    /// use toy_rpc::Client;
+    ///
+    /// #[async_std::main]
+    /// async fn main() {
+    ///     let addr = "127.0.0.1";
+    ///     let client = Client::dial(addr).await;
+    /// }
+    ///
+    /// ```
+    pub async fn dial(addr: impl ToSocketAddrs) -> Result<Client<Codec, Connected>, Error> {
+        let stream = TcpStream::connect(addr).await?;
+
+        Ok(Self::with_stream(stream))
+    }
+}
+
+impl Client<Codec, NotConnected> {
+
 
     /// Creates an RPC 'Client` over socket with a specified codec
     ///
@@ -125,51 +149,7 @@ impl Client<Codec, NotConnected> {
         }
     }
 
-    /// Connects the an RPC server over socket at the specified network address
-    ///
-    /// Example
-    ///
-    /// ```rust
-    /// use toy_rpc::Client;
-    ///
-    /// #[async_std::main]
-    /// async fn main() {
-    ///     let addr = "127.0.0.1";
-    ///     let client = Client::dial(addr).await;
-    /// }
-    ///
-    /// ```
-    #[cfg(any(
-        all(
-            feature = "serde_bincode",
-            not(feature = "serde_json"),
-            not(feature = "serde_cbor"),
-            not(feature = "serde_rmp"),
-        ),
-        all(
-            feature = "serde_cbor",
-            not(feature = "serde_json"),
-            not(feature = "serde_bincode"),
-            not(feature = "serde_rmp"),
-        ),
-        all(
-            feature = "serde_json",
-            not(feature = "serde_bincode"),
-            not(feature = "serde_cbor"),
-            not(feature = "serde_rmp"),
-        ),
-        all(
-            feature = "serde_rmp",
-            not(feature = "serde_cbor"),
-            not(feature = "serde_json"),
-            not(feature = "serde_bincode"),
-        )
-    ))]
-    pub async fn dial(addr: impl ToSocketAddrs) -> Result<Client<Codec, Connected>, Error> {
-        let stream = TcpStream::connect(addr).await?;
 
-        Ok(Self::with_stream(stream))
-    }
 }
 
 #[cfg(feature = "surf")]
@@ -203,21 +183,22 @@ impl Client<Channel, NotConnected> {
 
         let channel_codec = (req_sender, res_recver);
 
-        let mut http_client = surf::Client::new();
-        http_client.set_base_url(surf::Url::parse(addr)?); // the url::ParseError will be converted to toy_rpc::error::Error
+        let base = surf::Url::parse(addr)?;
+        let path = base.join(DEFAULT_RPC_PATH)?;
 
         // test connection with a CONNECT request
-        let _conn_res = http_client
-            .connect(DEFAULT_RPC_PATH)
-            .recv_string()
-            .await
-            .map_err(|e| Error::TransportError { msg: e.to_string() })?;
+        // let _conn_res = surf::connect(&path)
+        //     .recv_string()
+        //     .await
+        //     .map_err(|e| Error::TransportError { msg: e.to_string() })?;
 
-        #[cfg(feature = "logging")]
+        let _conn_res = Self::_dial_connect(base).await?;
+
+        // #[cfg(feature = "logging")]
         log::info!("{}", _conn_res);
 
         task::spawn(Client::_http_client_loop(
-            http_client,
+            path,
             req_recver,
             res_sender,
         ));
@@ -229,6 +210,17 @@ impl Client<Channel, NotConnected> {
 
             mode: PhantomData,
         })
+    }
+
+    async fn _dial_connect(base: surf::Url) -> Result<String, Error> {
+        let mut client = surf::Client::new();
+        client.set_base_url(base);
+        let res = client.connect(DEFAULT_RPC_PATH).recv_string().await
+            .map_err(|e| Error::TransportError { msg: e.to_string() })?;
+
+        // log::info!("{}", res);
+
+        Ok(res)
     }
 }
 
@@ -444,6 +436,32 @@ impl<T> Client<T, Connected> {
 }
 
 #[cfg(feature = "surf")]
+#[cfg(any(
+    all(
+        feature = "serde_bincode",
+        not(feature = "serde_json"),
+        not(feature = "serde_cbor"),
+        not(feature = "serde_rmp"),
+    ),
+    all(
+        feature = "serde_cbor",
+        not(feature = "serde_json"),
+        not(feature = "serde_bincode"),
+        not(feature = "serde_rmp"),
+    ),
+    all(
+        feature = "serde_json",
+        not(feature = "serde_bincode"),
+        not(feature = "serde_cbor"),
+        not(feature = "serde_rmp"),
+    ),
+    all(
+        feature = "serde_rmp",
+        not(feature = "serde_cbor"),
+        not(feature = "serde_json"),
+        not(feature = "serde_bincode"),
+    )
+))]
 impl Client<Channel, Connected> {
     /// Similar to `call()`, it invokes the named function and wait synchronously,
     /// but this is for `Client` connected to a HTTP RPC server
@@ -464,32 +482,6 @@ impl Client<Channel, Connected> {
     ///     let reply: Result<String, Error> = client.call("echo_service.echo", &args);
     ///     println!("{:?}", reply);
     /// }
-    #[cfg(any(
-        all(
-            feature = "serde_bincode",
-            not(feature = "serde_json"),
-            not(feature = "serde_cbor"),
-            not(feature = "serde_rmp"),
-        ),
-        all(
-            feature = "serde_cbor",
-            not(feature = "serde_json"),
-            not(feature = "serde_bincode"),
-            not(feature = "serde_rmp"),
-        ),
-        all(
-            feature = "serde_json",
-            not(feature = "serde_bincode"),
-            not(feature = "serde_cbor"),
-            not(feature = "serde_rmp"),
-        ),
-        all(
-            feature = "serde_rmp",
-            not(feature = "serde_cbor"),
-            not(feature = "serde_json"),
-            not(feature = "serde_bincode"),
-        )
-    ))]
     pub fn call_http<Req, Res>(
         &mut self,
         service_method: impl ToString,
@@ -504,32 +496,6 @@ impl Client<Channel, Connected> {
 
     /// Similar to `spawn_task()`. It invokes the named function asynchronously by spawning a new task and returns the `JoinHandle`,
     /// but this is for `Client` connected to a HTTP RPC server
-    #[cfg(any(
-        all(
-            feature = "serde_bincode",
-            not(feature = "serde_json"),
-            not(feature = "serde_cbor"),
-            not(feature = "serde_rmp"),
-        ),
-        all(
-            feature = "serde_cbor",
-            not(feature = "serde_json"),
-            not(feature = "serde_bincode"),
-            not(feature = "serde_rmp"),
-        ),
-        all(
-            feature = "serde_json",
-            not(feature = "serde_bincode"),
-            not(feature = "serde_cbor"),
-            not(feature = "serde_rmp"),
-        ),
-        all(
-            feature = "serde_rmp",
-            not(feature = "serde_cbor"),
-            not(feature = "serde_json"),
-            not(feature = "serde_bincode"),
-        )
-    ))]
     pub fn spawn_task_http<Req, Res>(
         &'static mut self,
         service_method: impl ToString + Send + 'static,
@@ -567,32 +533,6 @@ impl Client<Channel, Connected> {
     ///     let reply: Result<String, Error> = client.call_http("echo_service.echo", &args);
     ///     println!("{:?}", reply);
     /// }
-    #[cfg(any(
-        all(
-            feature = "serde_bincode",
-            not(feature = "serde_json"),
-            not(feature = "serde_cbor"),
-            not(feature = "serde_rmp"),
-        ),
-        all(
-            feature = "serde_cbor",
-            not(feature = "serde_json"),
-            not(feature = "serde_bincode"),
-            not(feature = "serde_rmp"),
-        ),
-        all(
-            feature = "serde_json",
-            not(feature = "serde_bincode"),
-            not(feature = "serde_cbor"),
-            not(feature = "serde_rmp"),
-        ),
-        all(
-            feature = "serde_rmp",
-            not(feature = "serde_cbor"),
-            not(feature = "serde_json"),
-            not(feature = "serde_bincode"),
-        )
-    ))]
     pub async fn async_call_http<Req, Res>(
         &mut self,
         service_method: impl ToString,
@@ -617,32 +557,6 @@ impl Client<Channel, Connected> {
         .await
     }
 
-    #[cfg(any(
-        all(
-            feature = "serde_bincode",
-            not(feature = "serde_json"),
-            not(feature = "serde_cbor"),
-            not(feature = "serde_rmp"),
-        ),
-        all(
-            feature = "serde_cbor",
-            not(feature = "serde_json"),
-            not(feature = "serde_bincode"),
-            not(feature = "serde_rmp"),
-        ),
-        all(
-            feature = "serde_json",
-            not(feature = "serde_bincode"),
-            not(feature = "serde_cbor"),
-            not(feature = "serde_rmp"),
-        ),
-        all(
-            feature = "serde_rmp",
-            not(feature = "serde_cbor"),
-            not(feature = "serde_json"),
-            not(feature = "serde_bincode"),
-        )
-    ))]
     async fn _async_call_http<Req, Res>(
         service_method: impl ToString,
         args: &Req,
@@ -708,36 +622,23 @@ impl Client<Channel, Connected> {
 
     /// TODO: try send and receive trait object over the channel instead of `Vec<u8>`
     async fn _http_client_loop(
-        http_client: surf::Client,
+        // http_client: surf::Client,
+        path: surf::Url,
         mut req_recver: Receiver<Vec<u8>>,
         mut res_sender: Sender<Vec<u8>>,
     ) -> Result<(), Error> {
         loop {
             let encoded_req = req_recver.next().await.ok_or(Error::NoneError)?;
             // .map_err(|e| Error::TransportError { msg: e.to_string() })?;
-
-            let body = surf::Body::from_bytes(encoded_req);
-            let http_req = http_client.post(DEFAULT_RPC_PATH).body(body).build();
-
-            let mut http_res =
-                http_client
-                    .send(http_req)
-                    .await
-                    .map_err(|e| Error::TransportError {
-                        msg: format!("{}", e),
-                    })?;
-            let encoded_res =
-                http_res
-                    .take_body()
-                    .into_bytes()
-                    .await
-                    .map_err(|e| Error::TransportError {
-                        msg: format!("{}", e),
-                    })?;
+    
+            let res_body = surf::post(&path)
+                .content_type("application/octet-stream")
+                .body(encoded_req).recv_bytes().await
+                .map_err(|e| Error::TransportError {msg: format!("{}", e)})?;
 
             // send back result
             res_sender
-                .send(encoded_res)
+                .send(res_body)
                 .await
                 .map_err(|e| Error::TransportError { msg: e.to_string() })?;
         }

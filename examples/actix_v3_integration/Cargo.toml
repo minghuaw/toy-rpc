@@ -6,12 +6,9 @@ edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
-[dev-dependencies]
-toy-rpc = { version = "0.3.1", path = "../..", default-features = false, features = ["std", "serde_bincode", "actix-web", "surf"]}
-
 
 [dependencies]
-toy-rpc = { version = "0.3.1", path = "../..", default-features = false, features = ["std", "serde_bincode", "actix-web", "surf"]}
+toy-rpc = { version = "0.3.1", path = "../..", default-features = false, features = ["std", "serde_json", "actix-web", "surf", "logging"]}
 actix-web = "3.3.1"
 async-std = "1.7.0"
 
