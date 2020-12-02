@@ -224,14 +224,6 @@ impl Server {
     }
 
     #[cfg(feature = "actix-web")]
-    pub async fn handle_http(
-        state: web::Data<Server>,
-        req_body: web::Bytes,
-    ) -> Result<web::Bytes, actix_web::Error> {
-        Server::_handle_http(state, req_body).await
-    }
-
-    #[cfg(feature = "actix-web")]
     async fn _handle_http(
         state: web::Data<Server>,
         req_body: web::Bytes,
@@ -291,7 +283,7 @@ impl Server {
     ///  
     /// TODO: add a handler to test the connection
     #[cfg(feature = "tide")]
-    pub fn into_tide_endpoint(self) -> tide::Server<Server> {
+    pub fn into_endpoint(self) -> tide::Server<Server> {
         use futures::io::BufWriter;
         // let server = self.build();
 
@@ -316,19 +308,16 @@ impl Server {
     }
 
     #[cfg(feature = "actix-web")]
-    pub fn into_actix_scope() -> actix_web::Scope {
-        // use std::sync::Mutex;
-
-        // let services = self.services;
-        // let data = web::Data::new(Mutex::new(self.services));
-
-        web::scope("/")
-            // .app_data(data)
-            .service(web::resource(DEFAULT_RPC_PATH)
-                .route(web::post().to(Server::_handle_http))
-                .route(web::method(actix_web::http::Method::CONNECT)
-                    .to(|| actix_web::HttpResponse::Ok().body("CONNECT request is received")))
-            )
+    pub fn actix_config(cfg: &mut web::ServiceConfig) {
+        cfg.service(
+            web::scope("/")
+                // .app_data(data)
+                .service(web::resource(DEFAULT_RPC_PATH)
+                    .route(web::post().to(Server::_handle_http))
+                    .route(web::method(actix_web::http::Method::CONNECT)
+                        .to(|| actix_web::HttpResponse::Ok().body("CONNECT request is received")))
+                )
+        );
     }
 
     // #[cfg(all(
@@ -336,15 +325,15 @@ impl Server {
     //     not(feature = "actix-web"),
     // ))]
     // pub fn handle_http(self) -> tide::Server<Server> {
-    //     self.into_tide_endpoint()
+    //     self.into_endpoint()
     // }
 
     // #[cfg(all(
     //     feature = "actix-web",
     //     not(feature = "tide"),
     // ))]
-    // pub fn handle_http(self) -> actix_web::Scope {
-    //     self.into_actix_scope()
+    // pub fn handle_http() -> actix_web::Scope {
+    //     Self::handle_actix_scope()
     // }
 }
 

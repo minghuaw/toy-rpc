@@ -72,12 +72,6 @@ async fn main() -> std::io::Result<()> {
 
     let addr = "127.0.0.1:23333";
 
-    // let app = App::new().service(
-    //     server.into_handler()
-    // );
-
-    // let mut app = App::new();
-
     let foo_service = Arc::new(FooService {
         counter: Mutex::new(0),
     });
@@ -92,14 +86,12 @@ async fn main() -> std::io::Result<()> {
 
     HttpServer::new(
         move || {
-            println!("HttpServer::new");
-
             App::new()
                 .service(hello)
                 .service(
                     web::scope("/rpc/")
                         .app_data(app_data.clone())
-                        .service(Server::into_actix_scope())
+                        .configure(Server::actix_config)
                 )
         }
     )
