@@ -78,23 +78,28 @@ async fn main() -> std::io::Result<()> {
 
     // let mut app = App::new();
 
+    let foo_service = Arc::new(FooService {
+        counter: Mutex::new(0),
+    });
+    let bar_service = Arc::new(BarService {});
+
+    let server = Server::builder()
+        .register("foo_service", service!(foo_service, FooService))
+        .register("bar_service", service!(bar_service, actix_v3_integration::rpc::BarService))
+        .build();
+
+    let app_data = web::Data::new(server);
+
     HttpServer::new(
-        || {
-            let foo_service = Arc::new(FooService {
-                counter: Mutex::new(0),
-            });
-            let bar_service = Arc::new(BarService {});
-        
-            let server = Server::builder()
-                .register("foo_service", service!(foo_service, FooService))
-                .register("bar_service", service!(bar_service, actix_v3_integration::rpc::BarService))
-                .build();
+        move || {
+            println!("HttpServer::new");
 
             App::new()
                 .service(hello)
                 .service(
                     web::scope("/rpc/")
-                        .service(server.into_handler())
+                        .app_data(app_data.clone())
+                        .service(Server::into_actix_scope())
                 )
         }
     )

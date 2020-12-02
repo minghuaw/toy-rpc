@@ -223,6 +223,42 @@ impl Server {
         Self::_serve_conn(stream, self.services.clone()).await
     }
 
+    #[cfg(feature = "actix-web")]
+    pub async fn handle_http(
+        state: web::Data<Server>,
+        req_body: web::Bytes,
+    ) -> Result<web::Bytes, actix_web::Error> {
+        Server::_handle_http(state, req_body).await
+    }
+
+    #[cfg(feature = "actix-web")]
+    async fn _handle_http(
+        state: web::Data<Server>,
+        req_body: web::Bytes,
+    ) -> Result<web::Bytes, actix_web::Error> {
+        use futures::io::{BufReader, BufWriter};
+
+        let input = req_body.to_vec();
+        let mut output: Vec<u8> = Vec::new();
+
+        let mut codec =
+            DefaultCodec::with_reader_writer(BufReader::new(&*input), BufWriter::new(&mut output));
+        let services = state.services.clone();
+
+        Self::_serve_codec_once(&mut codec, &services)
+            .await
+            .map_err(|e| actix_web::Error::from(e))?;
+
+        // construct response
+        Ok(web::Bytes::from(output))
+    }
+
+    #[cfg(feature = "actix-web")]
+    async fn _handle_connect() -> Result<String, actix_web::Error> {
+        Ok("CONNECT request is received".to_string())
+    }
+
+
     /// Creates a `tide::Endpoint` that handles http connections
     ///
     /// The endpoint will be created with `DEFAULT_RPC_PATH` appended to the
@@ -255,8 +291,9 @@ impl Server {
     ///  
     /// TODO: add a handler to test the connection
     #[cfg(feature = "tide")]
-    pub fn into_endpoint(self) -> tide::Server<Self> {
+    pub fn into_tide_endpoint(self) -> tide::Server<Server> {
         use futures::io::BufWriter;
+        // let server = self.build();
 
         let mut app = tide::Server::with_state(self);
         app.at(DEFAULT_RPC_PATH)
@@ -269,7 +306,7 @@ impl Server {
                     DefaultCodec::with_reader_writer(input, BufWriter::new(&mut output));
                 let services = req.state().services.clone();
 
-                Self::_serve_codec_once(&mut codec, &services).await?;
+                Server::_serve_codec_once(&mut codec, &services).await?;
 
                 // construct tide::Response
                 Ok(tide::Body::from_bytes(output))
@@ -279,56 +316,36 @@ impl Server {
     }
 
     #[cfg(feature = "actix-web")]
-    async fn _handle_http(
-        state: web::Data<Server>,
-        req_body: web::Bytes,
-    ) -> Result<web::Bytes, actix_web::Error> {
-        use futures::io::{BufReader, BufWriter};
+    pub fn into_actix_scope() -> actix_web::Scope {
+        // use std::sync::Mutex;
 
-        let input = req_body.to_vec();
-        let mut output: Vec<u8> = Vec::new();
+        // let services = self.services;
+        // let data = web::Data::new(Mutex::new(self.services));
 
-        let mut codec =
-            DefaultCodec::with_reader_writer(BufReader::new(&*input), BufWriter::new(&mut output));
-        let services = state.services.clone();
-
-        Self::_serve_codec_once(&mut codec, &services)
-            .await
-            .map_err(|e| actix_web::Error::from(e))?;
-
-        // construct response
-        Ok(web::Bytes::from(output))
-    }
-
-    #[cfg(feature = "actix-web")]
-    async fn _handle_connect() -> Result<String, actix_web::Error> {
-        Ok("CONNECT request is received".to_string())
-    }
-
-    #[cfg(feature = "actix-web")]
-    pub fn into_handler(self) -> actix_web::Scope {
         web::scope("/")
-            .data(self)
+            // .app_data(data)
             .service(web::resource(DEFAULT_RPC_PATH)
-                .route(web::post().to(Self::_handle_http))
+                .route(web::post().to(Server::_handle_http))
                 .route(web::method(actix_web::http::Method::CONNECT)
                     .to(|| actix_web::HttpResponse::Ok().body("CONNECT request is received")))
             )
     }
-}
 
-#[cfg(feature = "tide")]
-impl From<Server> for tide::Server<Server> {
-    fn from(server: Server) -> Self {
-        server.into_endpoint()
-    }
-}
+    // #[cfg(all(
+    //     feature = "tide",
+    //     not(feature = "actix-web"),
+    // ))]
+    // pub fn handle_http(self) -> tide::Server<Server> {
+    //     self.into_tide_endpoint()
+    // }
 
-#[cfg(feature = "actix-web")]
-impl From<Server> for actix_web::Scope {
-    fn from(server: Server) -> Self {
-        server.into_handler()
-    }
+    // #[cfg(all(
+    //     feature = "actix-web",
+    //     not(feature = "tide"),
+    // ))]
+    // pub fn handle_http(self) -> actix_web::Scope {
+    //     self.into_actix_scope()
+    // }
 }
 
 pub struct ServerBuilder {
@@ -408,3 +425,34 @@ impl Default for ServerBuilder {
         Self::new()
     }
 }
+
+#[cfg(any(
+    all(
+        feature = "serde_bincode",
+        not(feature = "serde_json"),
+        not(feature = "serde_cbor"),
+        not(feature = "serde_rmp"),
+    ),
+    all(
+        feature = "serde_cbor",
+        not(feature = "serde_json"),
+        not(feature = "serde_bincode"),
+        not(feature = "serde_rmp"),
+    ),
+    all(
+        feature = "serde_json",
+        not(feature = "serde_bincode"),
+        not(feature = "serde_cbor"),
+        not(feature = "serde_rmp"),
+    ),
+    all(
+        feature = "serde_rmp",
+        not(feature = "serde_cbor"),
+        not(feature = "serde_json"),
+        not(feature = "serde_bincode"),
+    )
+))]
+impl ServerBuilder{
+
+}
+
