@@ -9,12 +9,12 @@
 //! method 'exported'.
 //!
 //! ## Change Log
-//! 
+//!
 //! ### From 0.3 to 0.3.1
-//! 
+//!
 //! - Added `serde_rmp` features flag
 //! - Updated and corrected examples in the documentation
-//! 
+//!
 //! ### From 0.2.1 to 0.3
 //!
 //! - Added `serde_cbor` feature flag
@@ -31,7 +31,7 @@
 //! for `json` serialization/deserialization
 //! - `serde_cbor`: the default codec will use `serde_cbor`
 //! for serialization/deserialization
-//! - `serde_rmp`: the default codec will use `rmp-serde` 
+//! - `serde_rmp`: the default codec will use `rmp-serde`
 //! for serialization/deserialization
 //! - `logging`: enables logging
 //! - `tide`: enables `tide` integration on the server side

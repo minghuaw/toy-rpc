@@ -62,5 +62,6 @@ lazy_static = "1.4.0"
 members = [
     "macros",
     "examples/server_client",
-    "examples/tide_integration"
+    "examples/tide_integration",
+    "examples/actix_v3_integration"
 ]

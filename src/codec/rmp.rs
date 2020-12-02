@@ -11,15 +11,13 @@ use crate::macros::impl_inner_deserializer;
 use crate::message::{MessageId, Metadata};
 use crate::transport::frame::{FrameRead, FrameStreamExt, FrameWrite, PayloadType};
 
-impl<'de, R> serde::Deserializer<'de> for
-    DeserializerOwned<rmp_serde::Deserializer<rmp_serde::decode::ReadReader<R>>>
-where 
+impl<'de, R> serde::Deserializer<'de>
+    for DeserializerOwned<rmp_serde::Deserializer<rmp_serde::decode::ReadReader<R>>>
+where
     R: std::io::Read,
 {
-    type Error = <&'de mut rmp_serde::Deserializer<rmp_serde::decode::ReadReader<R>> 
-        as 
-        serde::Deserializer<'de>>::Error;
-    
+    type Error = <&'de mut rmp_serde::Deserializer<rmp_serde::decode::ReadReader<R>> as serde::Deserializer<'de>>::Error;
+
     // use a macro to generate the code
     impl_inner_deserializer!();
 }
@@ -53,9 +51,7 @@ where
         let de = match reader.frames().next().await? {
             Ok(frame) => {
                 log::debug!("frame: {:?}", frame);
-                rmp_serde::Deserializer::new(
-                    Cursor::new(frame.payload)
-                )
+                rmp_serde::Deserializer::new(Cursor::new(frame.payload))
             }
             Err(e) => return Some(Err(e)),
         };
@@ -112,7 +108,7 @@ where
         let mut buf = Vec::new();
         match val.serialize(&mut rmp_serde::Serializer::new(&mut buf)) {
             Ok(_) => Ok(buf),
-            Err(e) => Err(e.into())
+            Err(e) => Err(e.into()),
         }
     }
 }
@@ -124,7 +120,6 @@ where
 {
     fn unmarshal<'de, D: serde::Deserialize<'de>>(buf: &'de [u8]) -> Result<D, Error> {
         let mut de = rmp_serde::Deserializer::new(buf);
-        serde::Deserialize::deserialize(&mut de)
-            .map_err(|e| e.into())
+        serde::Deserialize::deserialize(&mut de).map_err(|e| e.into())
     }
 }

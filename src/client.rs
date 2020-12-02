@@ -61,6 +61,32 @@ impl Client<Codec, NotConnected> {
     ///     let client = Client::with_stream(stream);
     /// }
     /// ```
+    #[cfg(any(
+        all(
+            feature = "serde_bincode",
+            not(feature = "serde_json"),
+            not(feature = "serde_cbor"),
+            not(feature = "serde_rmp"),
+        ),
+        all(
+            feature = "serde_cbor",
+            not(feature = "serde_json"),
+            not(feature = "serde_bincode"),
+            not(feature = "serde_rmp"),
+        ),
+        all(
+            feature = "serde_json",
+            not(feature = "serde_bincode"),
+            not(feature = "serde_cbor"),
+            not(feature = "serde_rmp"),
+        ),
+        all(
+            feature = "serde_rmp",
+            not(feature = "serde_cbor"),
+            not(feature = "serde_json"),
+            not(feature = "serde_bincode"),
+        )
+    ))]
     pub fn with_stream(stream: TcpStream) -> Client<Codec, Connected> {
         let codec = DefaultCodec::new(stream);
 
@@ -113,6 +139,32 @@ impl Client<Codec, NotConnected> {
     /// }
     ///
     /// ```
+    #[cfg(any(
+        all(
+            feature = "serde_bincode",
+            not(feature = "serde_json"),
+            not(feature = "serde_cbor"),
+            not(feature = "serde_rmp"),
+        ),
+        all(
+            feature = "serde_cbor",
+            not(feature = "serde_json"),
+            not(feature = "serde_bincode"),
+            not(feature = "serde_rmp"),
+        ),
+        all(
+            feature = "serde_json",
+            not(feature = "serde_bincode"),
+            not(feature = "serde_cbor"),
+            not(feature = "serde_rmp"),
+        ),
+        all(
+            feature = "serde_rmp",
+            not(feature = "serde_cbor"),
+            not(feature = "serde_json"),
+            not(feature = "serde_bincode"),
+        )
+    ))]
     pub async fn dial(addr: impl ToSocketAddrs) -> Result<Client<Codec, Connected>, Error> {
         let stream = TcpStream::connect(addr).await?;
 
@@ -412,6 +464,32 @@ impl Client<Channel, Connected> {
     ///     let reply: Result<String, Error> = client.call("echo_service.echo", &args);
     ///     println!("{:?}", reply);
     /// }
+    #[cfg(any(
+        all(
+            feature = "serde_bincode",
+            not(feature = "serde_json"),
+            not(feature = "serde_cbor"),
+            not(feature = "serde_rmp"),
+        ),
+        all(
+            feature = "serde_cbor",
+            not(feature = "serde_json"),
+            not(feature = "serde_bincode"),
+            not(feature = "serde_rmp"),
+        ),
+        all(
+            feature = "serde_json",
+            not(feature = "serde_bincode"),
+            not(feature = "serde_cbor"),
+            not(feature = "serde_rmp"),
+        ),
+        all(
+            feature = "serde_rmp",
+            not(feature = "serde_cbor"),
+            not(feature = "serde_json"),
+            not(feature = "serde_bincode"),
+        )
+    ))]
     pub fn call_http<Req, Res>(
         &mut self,
         service_method: impl ToString,
@@ -426,6 +504,32 @@ impl Client<Channel, Connected> {
 
     /// Similar to `spawn_task()`. It invokes the named function asynchronously by spawning a new task and returns the `JoinHandle`,
     /// but this is for `Client` connected to a HTTP RPC server
+    #[cfg(any(
+        all(
+            feature = "serde_bincode",
+            not(feature = "serde_json"),
+            not(feature = "serde_cbor"),
+            not(feature = "serde_rmp"),
+        ),
+        all(
+            feature = "serde_cbor",
+            not(feature = "serde_json"),
+            not(feature = "serde_bincode"),
+            not(feature = "serde_rmp"),
+        ),
+        all(
+            feature = "serde_json",
+            not(feature = "serde_bincode"),
+            not(feature = "serde_cbor"),
+            not(feature = "serde_rmp"),
+        ),
+        all(
+            feature = "serde_rmp",
+            not(feature = "serde_cbor"),
+            not(feature = "serde_json"),
+            not(feature = "serde_bincode"),
+        )
+    ))]
     pub fn spawn_task_http<Req, Res>(
         &'static mut self,
         service_method: impl ToString + Send + 'static,
@@ -463,6 +567,32 @@ impl Client<Channel, Connected> {
     ///     let reply: Result<String, Error> = client.call_http("echo_service.echo", &args);
     ///     println!("{:?}", reply);
     /// }
+    #[cfg(any(
+        all(
+            feature = "serde_bincode",
+            not(feature = "serde_json"),
+            not(feature = "serde_cbor"),
+            not(feature = "serde_rmp"),
+        ),
+        all(
+            feature = "serde_cbor",
+            not(feature = "serde_json"),
+            not(feature = "serde_bincode"),
+            not(feature = "serde_rmp"),
+        ),
+        all(
+            feature = "serde_json",
+            not(feature = "serde_bincode"),
+            not(feature = "serde_cbor"),
+            not(feature = "serde_rmp"),
+        ),
+        all(
+            feature = "serde_rmp",
+            not(feature = "serde_cbor"),
+            not(feature = "serde_json"),
+            not(feature = "serde_bincode"),
+        )
+    ))]
     pub async fn async_call_http<Req, Res>(
         &mut self,
         service_method: impl ToString,
@@ -487,6 +617,32 @@ impl Client<Channel, Connected> {
         .await
     }
 
+    #[cfg(any(
+        all(
+            feature = "serde_bincode",
+            not(feature = "serde_json"),
+            not(feature = "serde_cbor"),
+            not(feature = "serde_rmp"),
+        ),
+        all(
+            feature = "serde_cbor",
+            not(feature = "serde_json"),
+            not(feature = "serde_bincode"),
+            not(feature = "serde_rmp"),
+        ),
+        all(
+            feature = "serde_json",
+            not(feature = "serde_bincode"),
+            not(feature = "serde_cbor"),
+            not(feature = "serde_rmp"),
+        ),
+        all(
+            feature = "serde_rmp",
+            not(feature = "serde_cbor"),
+            not(feature = "serde_json"),
+            not(feature = "serde_bincode"),
+        )
+    ))]
     async fn _async_call_http<Req, Res>(
         service_method: impl ToString,
         args: &Req,

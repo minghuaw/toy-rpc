@@ -128,7 +128,7 @@ impl From<surf::http::url::ParseError> for Error {
 impl From<rmp_serde::decode::Error> for Error {
     fn from(err: rmp_serde::decode::Error) -> Self {
         Error::ParseError {
-            source: Box::new(err)
+            source: Box::new(err),
         }
     }
 }
@@ -137,7 +137,7 @@ impl From<rmp_serde::decode::Error> for Error {
 impl From<rmp_serde::encode::Error> for Error {
     fn from(err: rmp_serde::encode::Error) -> Self {
         Error::ParseError {
-            source: Box::new(err)
+            source: Box::new(err),
         }
     }
 }
@@ -147,10 +147,7 @@ impl From<Error> for actix_web::Error {
     fn from(err: crate::error::Error) -> Self {
         // wrap error with actix_web::error::InternalError for now
         // TODO: imporve error handling
-        actix_web::error::InternalError::new(
-            err, 
-            actix_web::http::StatusCode::OK
-        ).into()
+        actix_web::error::InternalError::new(err, actix_web::http::StatusCode::OK).into()
     }
 }
 

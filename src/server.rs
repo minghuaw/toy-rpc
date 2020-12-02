@@ -5,13 +5,7 @@ use erased_serde as erased;
 use futures::StreamExt;
 use std::collections::HashMap;
 
-#[cfg(feature = "tide")]
-use tide;
-
-#[cfg(all(
-    feature = "actix-web",
-    not(feature = "tide")
-))]
+#[cfg(all(feature = "actix-web", not(feature = "tide")))]
 use actix_web::web;
 
 use crate::codec::{DefaultCodec, ServerCodec};
@@ -21,11 +15,7 @@ use crate::service::{
     ArcAsyncServiceCall, AsyncServiceMap, HandleService, HandlerResult, HandlerResultFut,
 };
 
-#[cfg(feature = "actix-web" )]
-type ActixHandler = Box<dyn Fn(actix_web::web::Data<Server>, actix_web::web::Bytes) -> actix_web::web::Bytes>;
-
-
-// #[cfg(feature = "tide")]
+/// Default RPC path for http handler
 pub const DEFAULT_RPC_PATH: &str = "_rpc_";
 
 /// RPC Server
@@ -50,6 +40,32 @@ impl Server {
     /// # Example
     ///
     /// See `toy-rpc/examples/server_client/` for the example
+    #[cfg(any(
+        all(
+            feature = "serde_bincode",
+            not(feature = "serde_json"),
+            not(feature = "serde_cbor"),
+            not(feature = "serde_rmp"),
+        ),
+        all(
+            feature = "serde_cbor",
+            not(feature = "serde_json"),
+            not(feature = "serde_bincode"),
+            not(feature = "serde_rmp"),
+        ),
+        all(
+            feature = "serde_json",
+            not(feature = "serde_bincode"),
+            not(feature = "serde_cbor"),
+            not(feature = "serde_rmp"),
+        ),
+        all(
+            feature = "serde_rmp",
+            not(feature = "serde_cbor"),
+            not(feature = "serde_json"),
+            not(feature = "serde_bincode"),
+        )
+    ))]
     pub async fn accept(&self, listener: TcpListener) -> Result<(), Error> {
         let mut incoming = listener.incoming();
 
@@ -66,6 +82,32 @@ impl Server {
     }
 
     /// Serves a single connection
+    #[cfg(any(
+        all(
+            feature = "serde_bincode",
+            not(feature = "serde_json"),
+            not(feature = "serde_cbor"),
+            not(feature = "serde_rmp"),
+        ),
+        all(
+            feature = "serde_cbor",
+            not(feature = "serde_json"),
+            not(feature = "serde_bincode"),
+            not(feature = "serde_rmp"),
+        ),
+        all(
+            feature = "serde_json",
+            not(feature = "serde_bincode"),
+            not(feature = "serde_cbor"),
+            not(feature = "serde_rmp"),
+        ),
+        all(
+            feature = "serde_rmp",
+            not(feature = "serde_cbor"),
+            not(feature = "serde_json"),
+            not(feature = "serde_bincode"),
+        )
+    ))]
     async fn _serve_conn(stream: TcpStream, services: Arc<AsyncServiceMap>) -> Result<(), Error> {
         // let _stream = stream;
         let _peer_addr = stream.peer_addr()?;
@@ -192,6 +234,32 @@ impl Server {
     }
 
     /// Serves a single connection using the default codec
+    #[cfg(any(
+        all(
+            feature = "serde_bincode",
+            not(feature = "serde_json"),
+            not(feature = "serde_cbor"),
+            not(feature = "serde_rmp"),
+        ),
+        all(
+            feature = "serde_cbor",
+            not(feature = "serde_json"),
+            not(feature = "serde_bincode"),
+            not(feature = "serde_rmp"),
+        ),
+        all(
+            feature = "serde_json",
+            not(feature = "serde_bincode"),
+            not(feature = "serde_cbor"),
+            not(feature = "serde_rmp"),
+        ),
+        all(
+            feature = "serde_rmp",
+            not(feature = "serde_cbor"),
+            not(feature = "serde_json"),
+            not(feature = "serde_bincode"),
+        )
+    ))]
     pub async fn serve_conn(&self, stream: TcpStream) -> Result<(), Error> {
         Self::_serve_conn(stream, self.services.clone()).await
     }
@@ -238,10 +306,7 @@ impl Server {
     /// ```
     ///  
     /// TODO: add a handler to test the connection
-    #[cfg(all(
-        feature = "tide",
-        not(feature = "actix-web")
-    ))]
+    #[cfg(all(feature = "tide", not(feature = "actix-web")))]
     pub fn into_endpoint(self) -> tide::Server<Self> {
         use futures::io::BufWriter;
 
@@ -265,42 +330,40 @@ impl Server {
         app
     }
 
-    #[cfg(all(
-        feature = "actix-web",
-        not(feature = "tide")
-    ))]
-    async fn _handle_http(state: web::Data<Server>, req_body: web::Bytes) -> Result<web::Bytes, actix_web::Error> {
+    #[cfg(all(feature = "actix-web", not(feature = "tide")))]
+    async fn _handle_http(
+        state: web::Data<Server>,
+        req_body: web::Bytes,
+    ) -> Result<web::Bytes, actix_web::Error> {
         use futures::io::{BufReader, BufWriter};
 
         let input = req_body.to_vec();
         let mut output: Vec<u8> = Vec::new();
 
-        let mut codec = 
-            DefaultCodec::with_reader_writer(
-                BufReader::new(&*input), 
-                BufWriter::new(&mut output)
-            );
+        let mut codec =
+            DefaultCodec::with_reader_writer(BufReader::new(&*input), BufWriter::new(&mut output));
         let services = state.services.clone();
 
-        Self::_serve_codec_once(&mut codec, &services).await
+        Self::_serve_codec_once(&mut codec, &services)
+            .await
             .map_err(|e| actix_web::Error::from(e))?;
 
         // construct response
         Ok(web::Bytes::from(output))
     }
 
-    #[cfg(all(
-        feature = "actix-web",
-        not(feature = "tide")
-    ))]
+    #[cfg(all(feature = "actix-web", not(feature = "tide")))]
     pub fn into_handler(self) -> actix_web::Scope {
         web::scope("/")
             .data(self)
-            .service(
-                web::resource(DEFAULT_RPC_PATH).route(
-                    web::post().to(Self::_handle_http)
-                )
-            )
+            .service(web::resource(DEFAULT_RPC_PATH).route(web::post().to(Self::_handle_http)))
+    }
+}
+
+#[cfg(all(feature = "tide", not(feature = "actix-web")))]
+impl From<Server> for tide::Server<Server> {
+    fn from(server: Server) -> Self {
+        server.into_endpoint()
     }
 }
 

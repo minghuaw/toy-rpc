@@ -42,6 +42,13 @@ pub struct Codec<R, W> {
     pub reader: R,
     pub writer: W,
 }
+
+#[cfg(any(
+    feature = "serde_bincode",
+    feature = "serde_json",
+    feature = "serde_rmp",
+    feature = "serde_cbor"
+))]
 pub use Codec as DefaultCodec;
 
 impl<R, W> Codec<R, W>

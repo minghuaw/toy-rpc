@@ -88,7 +88,8 @@ async fn main() -> tide::Result<()> {
 
     let mut app = tide::new();
     app.at("/orders/shoes").post(order_shoes);
-    app.at("/rpc/").nest(server.into_endpoint());
+    // app.at("/rpc/").nest(server.into_endpoint());
+    app.at("/rpc/").nest(server.into());
 
     app.listen(addr).await?;
     Ok(())
