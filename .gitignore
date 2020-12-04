@@ -1,4 +1,5 @@
 /target
+**/target
 Notes.md
 .idea/aws.xml
 .idea/modules.xml

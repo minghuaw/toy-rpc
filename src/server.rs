@@ -307,8 +307,9 @@ impl Server {
         app
     }
 
+    /// Configuration for integration with actix-web sca
     #[cfg(feature = "actix-web")]
-    pub fn actix_config(cfg: &mut web::ServiceConfig) {
+    pub fn scope_config(cfg: &mut web::ServiceConfig) {
         cfg.service(
             web::scope("/")
                 // .app_data(data)
@@ -320,21 +321,21 @@ impl Server {
         );
     }
 
-    // #[cfg(all(
-    //     feature = "tide",
-    //     not(feature = "actix-web"),
-    // ))]
-    // pub fn handle_http(self) -> tide::Server<Server> {
-    //     self.into_endpoint()
-    // }
+    #[cfg(all(
+        feature = "tide",
+        not(feature = "actix-web"),
+    ))]
+    pub fn handle_http(self) -> tide::Server<Server> {
+        self.into_endpoint()
+    }
 
-    // #[cfg(all(
-    //     feature = "actix-web",
-    //     not(feature = "tide"),
-    // ))]
-    // pub fn handle_http() -> actix_web::Scope {
-    //     Self::handle_actix_scope()
-    // }
+    #[cfg(all(
+        feature = "actix-web",
+        not(feature = "tide"),
+    ))]
+    pub fn handle_http() -> fn(&mut web::ServiceConfig) {
+        Self::scope_config
+    }
 }
 
 pub struct ServerBuilder {
@@ -414,34 +415,3 @@ impl Default for ServerBuilder {
         Self::new()
     }
 }
-
-#[cfg(any(
-    all(
-        feature = "serde_bincode",
-        not(feature = "serde_json"),
-        not(feature = "serde_cbor"),
-        not(feature = "serde_rmp"),
-    ),
-    all(
-        feature = "serde_cbor",
-        not(feature = "serde_json"),
-        not(feature = "serde_bincode"),
-        not(feature = "serde_rmp"),
-    ),
-    all(
-        feature = "serde_json",
-        not(feature = "serde_bincode"),
-        not(feature = "serde_cbor"),
-        not(feature = "serde_rmp"),
-    ),
-    all(
-        feature = "serde_rmp",
-        not(feature = "serde_cbor"),
-        not(feature = "serde_json"),
-        not(feature = "serde_bincode"),
-    )
-))]
-impl ServerBuilder{
-
-}
-
