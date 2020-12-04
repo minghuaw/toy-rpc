@@ -457,16 +457,16 @@
 //! 
 //! ## Change Log
 //!
-//! ### From 0.3.1 to 0.4.0
+//! ### 0.4.0
 //! 
 //! - Added `actix-web` feature flag to support integration with `actix-web`
 //! 
-//! ### From 0.3 to 0.3.1
+//! ### 0.3.1
 //!
 //! - Added `serde_rmp` features flag
 //! - Updated and corrected examples in the documentation
 //!
-//! ### From 0.2.1 to 0.3
+//! ### 0.3.0
 //!
 //! - Added `serde_cbor` feature flag
 //! - Changed `bincode` feature flag to `serde_bincode`

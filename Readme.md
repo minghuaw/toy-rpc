@@ -12,21 +12,15 @@ method "exported".
 
 ### Content
 
-- [toy-rpc](#toy-rpc)
-  - [A toy RPC crate based on `async-std` that mimics the `golang`'s `net/rpc` package](#a-toy-rpc-crate-based-on-async-std-that-mimics-the-golangs-netrpc-package)
-    - [Content](#content)
-    - [Crate Feature Flags](#crate-feature-flags)
-      - [Default Features](#default-features)
-    - [Documentation](#documentation)
-    - [Examples](#examples)
-      - [RPC over socket](#rpc-over-socket)
-      - [RPC over HTTP with `tide`](#rpc-over-http-with-tide)
-      - [RPC over HTTP with `actix-web`](#rpc-over-http-with-actix-web)
-    - [Change Log](#change-log)
-      - [From 0.3.1 to 0.4.0](#from-031-to-040)
-      - [From 0.3 to 0.3.1](#from-03-to-031)
-      - [From 0.2.1 to 0.3](#from-021-to-03)
-    - [Future Plan](#future-plan)
+- [Crate Feature Flags](#crate-feature-flags)
+  - [Default Features](#default-features)
+- [Documentation](#documentation)
+- [Examples](#examples)
+  - [RPC over socket](rpc-over-socket)
+  - [RPC over HTTP with `tide`](rpc-over-http-with-tide)
+  - [RPC over HTTP with `actix-web`](rpc-over-http-with-actix-web)
+- [Change Log](change-log)
+- [Future Plan](future-plan)
 
 
 ### Crate Feature Flags
@@ -465,16 +459,16 @@ async fn main() {
 
 ### Change Log
 
-#### From 0.3.1 to 0.4.0
+#### 0.4.0
 
 - Added `actix-web` feature flag to support integration with `actix-web`
 
-#### From 0.3 to 0.3.1
+#### 0.3.1
 
 - Added `serde_rmp` features flag
 - Updated and corrected examples in the documentation
 
-#### From 0.2.1 to 0.3
+#### 0.3.0
 
 - Added `serde_cbor` feature flag
 - Changed `bincode` feature flag to `serde_bincode`
