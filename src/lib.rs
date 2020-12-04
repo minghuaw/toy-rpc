@@ -6,21 +6,22 @@
 //! The usage is similar to that of `golang`'s `net/rpc` with functions sharing similar
 //! names and functionalities. Certain function names are changed to be more rusty.
 //! Because `rust` doesn't have reflection, attribute macros are used to make certain
-//! method 'exported'.
+//! method "exported".
 //!
-//! ## Change Log
+//! ## Content
+//! 
+//! - [Crate Feature Flags](#crate-feature-flags)
+//!   - [Default Features](#default-features)
+//! - [Documentation](#documentation)
+//! - [Examples](#examples)
+//!   - [RPC over socket](rpc-over-socket)
+//!   - [RPC over HTTP with `tide`](rpc-over-http-with-tide)
+//!   - [RPC over HTTP with `actix-web`](rpc-over-http-with-actix-web)
+//! - [Change Log](change-log)
+//! - [Future Plan](future-plan)
+//! 
 //!
-//! ### From 0.3 to 0.3.1
-//!
-//! - Added `serde_rmp` features flag
-//! - Updated and corrected examples in the documentation
-//!
-//! ### From 0.2.1 to 0.3
-//!
-//! - Added `serde_cbor` feature flag
-//! - Changed `bincode` feature flag to `serde_bincode`
-//!
-//! ## Crate features tags
+//! ## Crate Feature Flags
 //!
 //! This crate offers the following features flag
 //!
@@ -35,6 +36,7 @@
 //! for serialization/deserialization
 //! - `logging`: enables logging
 //! - `tide`: enables `tide` integration on the server side
+//! - `actix-web`: enables `actix-web` integration on the server side
 //! - `surf`: enables HTTP client on the client side
 //!
 //! ### Default Features
@@ -56,7 +58,7 @@
 //! This crate provides access to the methods marked with `#[export_impl]`
 //! and `#[export_method]` of an object across a network connection. A server
 //! registers an object, making it visible as a service with a name provided by the user.
-//! After the registration, the 'exported' methods will be accessible remotely.
+//! After the registration, the "exported" methods will be accessible remotely.
 //! A server may register multiple objects as multiple services, and multiple
 //! objects of the same type or different types could be registered on the same
 //! `Server` object.
@@ -306,6 +308,9 @@
 //!
 //!     let mut app = tide::new();
 //!     app.at("/rpc/").nest(server.into_endpoint());
+//!     "handle_http" is a conenience function that calls "into_endpoint"
+//!     // with the "tide" feature turned on and "actix-web" feature disabled
+//!     //app.at("/rpc/").nest(server.handle_http()); 
 //!
 //!     app.listen(addr).await?;
 //!     Ok(())
@@ -342,12 +347,136 @@
 //! }
 //! ```
 //!
+//! ### RPC over HTTP with `actix-web`
+//! 
+//! server.rs
+//!
+//! ```rust
+//! use async_std::sync::{Arc, Mutex};
+//! use serde::{Serialize, Deserialize};
+//! use actix_web::{App, HttpServer, web};
+//!
+//! use toy_rpc::macros::{export_impl, service};
+//! use toy_rpc::Server;
+//!
+//!
+//! pub struct ExampleService {
+//!     counter: Mutex<i32>
+//! }
+//!
+//! #[derive(Debug, Serialize, Deserialize)]
+//! pub struct ExampleRequest {
+//!     pub a: u32,
+//! }
+//!
+//! #[derive(Debug, Serialize, Deserialize)]
+//! pub struct ExampleResponse {
+//!     a: u32,
+//! }
+//!
+//! #[async_trait::async_trait]
+//! trait Rpc {
+//!     async fn echo(&self, req: ExampleRequest) -> Result<ExampleResponse, String>;
+//! }
+//!
+//! #[async_trait::async_trait]
+//! #[export_impl]
+//! impl Rpc for ExampleService {
+//!     #[export_method]
+//!     async fn echo(&self, req: ExampleRequest) -> Result<ExampleResponse, String> {
+//!         let mut counter = self.counter.lock().await;
+//!         *counter += 1;
+//!
+//!         let res = ExampleResponse{ a: req.a };
+//!         Ok(res)
+//!     }
+//! }
+//!
+//! #[actix_web::main]
+//! async fn main() -> std::io::Result<()> {
+//!     let addr = "127.0.0.1:8888";
+//!     let example_service = Arc::new(
+//!         ExampleService {
+//!             counter: Mutex::new(0),
+//!         }
+//!     );
+//!
+//!     let server = Server::builder()
+//!         .register("example", service!(example_service, ExampleService))
+//!         .build();
+//!
+//!     HttpServer::new(
+//!         move || {
+//!             App::new()
+//!                 .service(
+//!                     web::scope("/rpc/")
+//!                         .app_data(app_data.clone())
+//!                         .configure(Server::scope_config)
+//!                         // The line above may be replaced with line below if "actix-web" 
+//!                         // is enabled and "tide" is disabled
+//!                         //.configure(Server::handle_http()) // use the convenience "handle_http"
+//!                 )
+//!         }
+//!     )
+//!     .bind(addr)?
+//!     .run()
+//!     .await
+//! }
+//!
+//! ```
+//!
+//! client.rs
+//!
+//! ```rust
+//! use serde::{Serialize, Deserialize};
+//! use toy_rpc::Client;
+//! use toy_rpc::error::Error;
+//!
+//! #[derive(Debug, Serialize, Deserialize)]
+//! struct ExampleRequest {
+//!     a: u32
+//! }
+//!
+//! #[derive(Debug, Serialize, Deserialize)]
+//! struct ExampleResponse {
+//!     a: u32
+//! }
+//!
+//! #[async_std::main]
+//! async fn main() {
+//!     // note that the endpoint path must be specified
+//!     let path = "http://127.0.0.1:8888/rpc/";
+//!     let mut client = Client::dial_http(path).await.unwrap();
+//!
+//!     let args = ExampleRequest{a: 1};
+//!     let reply: Result<ExampleResponse, Error> = client.call_http("example.echo", &args);
+//!     println!("{:?}", reply);
+//! }
+//! 
+//! ```
+//! 
+//! ## Change Log
+//!
+//! ### From 0.3.1 to 0.4.0
+//! 
+//! - Added `actix-web` feature flag to support integration with `actix-web`
+//! 
+//! ### From 0.3 to 0.3.1
+//!
+//! - Added `serde_rmp` features flag
+//! - Updated and corrected examples in the documentation
+//!
+//! ### From 0.2.1 to 0.3
+//!
+//! - Added `serde_cbor` feature flag
+//! - Changed `bincode` feature flag to `serde_bincode`
+//!
+//! 
 //! ## Future Plan
 //!
-//! - [ ] `actix` integration
-//! - [ ] `warp` integration
-//! - [ ] other I/O connection
-//! - [ ] unify `call`, `async_call`, and `spawn_task` for raw connection and HTTP connection
+//! - `warp` integration
+//! - support other I/O connection
+//! - unify `call`, `async_call`, and `spawn_task` for raw connection and HTTP connection
 //!
 
 pub mod client;
