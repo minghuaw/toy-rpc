@@ -74,9 +74,22 @@ pub struct Client<T, Mode> {
         not(feature = "serde_bincode"),
     )
 ))]
+/// The following impl block is controlled by feature flag. It is enabled 
+/// if and only if **exactly one** of the the following feature flag is turned on
+/// - `serde_bincode`
+/// - `serde_json`
+/// - `serde_cbor`
+/// - `serde_rmp`
 impl Client<Codec, NotConnected> {
     /// Creates an RPC `Client` over socket with a specified `async_std::net::TcpStream` and the default codec
     ///
+    /// This is enabled 
+    /// if and only if **exactly one** of the the following feature flag is turned on
+    /// - `serde_bincode`
+    /// - `serde_json`
+    /// - `serde_cbor`
+    /// - `serde_rmp`
+    /// 
     /// # Example
     /// ```
     /// use async_std::net::TcpStream;
@@ -93,8 +106,15 @@ impl Client<Codec, NotConnected> {
         Self::with_codec(codec)
     }
 
-        /// Connects the an RPC server over socket at the specified network address
+    /// Connects the an RPC server over socket at the specified network address
     ///
+    /// This is enabled 
+    /// if and only if **exactly one** of the the following feature flag is turned on
+    /// - `serde_bincode`
+    /// - `serde_json`
+    /// - `serde_cbor`
+    /// - `serde_rmp`
+    /// 
     /// Example
     ///
     /// ```rust
@@ -115,8 +135,6 @@ impl Client<Codec, NotConnected> {
 }
 
 impl Client<Codec, NotConnected> {
-
-
     /// Creates an RPC 'Client` over socket with a specified codec
     ///
     /// Example
@@ -435,7 +453,7 @@ impl<T> Client<T, Connected> {
     }
 }
 
-#[cfg(feature = "surf")]
+#[cfg(any(feature = "surf", feature = "docs"))]
 #[cfg(any(
     all(
         feature = "serde_bincode",
@@ -462,9 +480,23 @@ impl<T> Client<T, Connected> {
         not(feature = "serde_bincode"),
     )
 ))]
+#[cfg_attr(feature = "docs", doc(cfg(feature = "surf")))]
+/// The following impl block is controlled by feature flag. It is enabled 
+/// if and only if **exactly one** of the the following feature flag is turned on
+/// - `serde_bincode`
+/// - `serde_json`
+/// - `serde_cbor`
+/// - `serde_rmp`
 impl Client<Channel, Connected> {
     /// Similar to `call()`, it invokes the named function and wait synchronously,
     /// but this is for `Client` connected to a HTTP RPC server
+    /// 
+    /// This is enabled 
+    /// if and only if **exactly one** of the the following feature flag is turned on
+    /// - `serde_bincode`
+    /// - `serde_json`
+    /// - `serde_cbor`
+    /// - `serde_rmp`
     ///
     /// Example
     ///
@@ -496,6 +528,14 @@ impl Client<Channel, Connected> {
 
     /// Similar to `spawn_task()`. It invokes the named function asynchronously by spawning a new task and returns the `JoinHandle`,
     /// but this is for `Client` connected to a HTTP RPC server
+    /// 
+    /// This is enabled 
+    /// if and only if **exactly one** of the the following feature flag is turned on
+    /// - `serde_bincode`
+    /// - `serde_json`
+    /// - `serde_cbor`
+    /// - `serde_rmp`
+    /// 
     pub fn spawn_task_http<Req, Res>(
         &'static mut self,
         service_method: impl ToString + Send + 'static,
@@ -518,6 +558,13 @@ impl Client<Channel, Connected> {
 
     /// Similar to `async_call()`, it invokes the named function asynchronously,
     /// but this is for `Client` connected to a HTTP RPC server
+    /// 
+    /// This is enabled 
+    /// if and only if **exactly one** of the the following feature flag is turned on
+    /// - `serde_bincode`
+    /// - `serde_json`
+    /// - `serde_cbor`
+    /// - `serde_rmp`
     ///
     /// Example
     ///

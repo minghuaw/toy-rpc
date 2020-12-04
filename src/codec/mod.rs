@@ -11,7 +11,18 @@ use crate::message::{MessageId, Metadata, RequestHeader, ResponseHeader};
     not(feature = "serde_cbor"),
     not(feature = "serde_rmp"),
 ))]
-mod bincode;
+#[cfg_attr(
+    feature = "docs", 
+    doc(cfg(
+        all(
+            feature = "serde_bincode",
+            not(feature = "serde_json"),
+            not(feature = "serde_cbor"),
+            not(feature = "serde_rmp"),
+        )
+    ))
+)]
+pub mod bincode;
 
 #[cfg(all(
     feature = "serde_cbor",
@@ -19,7 +30,18 @@ mod bincode;
     not(feature = "serde_bincode"),
     not(feature = "serde_rmp"),
 ))]
-mod cbor;
+#[cfg_attr(
+    feature = "docs", 
+    doc(cfg(
+        all(
+            feature = "serde_cbor",
+            not(feature = "serde_json"),
+            not(feature = "serde_bincode"),
+            not(feature = "serde_rmp"),
+        )
+    ))
+)]
+pub mod cbor;
 
 #[cfg(all(
     feature = "serde_json",
@@ -27,7 +49,18 @@ mod cbor;
     not(feature = "serde_cbor"),
     not(feature = "serde_rmp"),
 ))]
-mod json;
+#[cfg_attr(
+    feature = "docs", 
+    doc(cfg(
+        all(
+            feature = "serde_json",
+            not(feature = "serde_bincode"),
+            not(feature = "serde_cbor"),
+            not(feature = "serde_rmp"),
+        )
+    ))
+)]
+pub mod json;
 
 #[cfg(all(
     feature = "serde_rmp",
@@ -35,7 +68,18 @@ mod json;
     not(feature = "serde_json"),
     not(feature = "serde_bincode"),
 ))]
-mod rmp;
+#[cfg_attr(
+    feature = "docs", 
+    doc(cfg(
+        all(
+            feature = "serde_rmp",
+            not(feature = "serde_cbor"),
+            not(feature = "serde_json"),
+            not(feature = "serde_bincode"),
+        )
+    ))
+)]
+pub mod rmp;
 
 /// Default codec
 pub struct Codec<R, W> {
@@ -44,10 +88,31 @@ pub struct Codec<R, W> {
 }
 
 #[cfg(any(
-    feature = "serde_bincode",
-    feature = "serde_json",
-    feature = "serde_rmp",
-    feature = "serde_cbor"
+    all(
+        feature = "serde_bincode",
+        not(feature = "serde_json"),
+        not(feature = "serde_cbor"),
+        not(feature = "serde_rmp"),
+    ),
+    all(
+        feature = "serde_cbor",
+        not(feature = "serde_json"),
+        not(feature = "serde_bincode"),
+        not(feature = "serde_rmp"),
+    ),
+    all(
+        feature = "serde_json",
+        not(feature = "serde_bincode"),
+        not(feature = "serde_cbor"),
+        not(feature = "serde_rmp"),
+    ),
+    all(
+        feature = "serde_rmp",
+        not(feature = "serde_cbor"),
+        not(feature = "serde_json"),
+        not(feature = "serde_bincode"),
+    ),
+    feature = "docs"
 ))]
 pub use Codec as DefaultCodec;
 

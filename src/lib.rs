@@ -1,3 +1,5 @@
+#![cfg_attr(feature = "docs", feature(doc_cfg))]
+
 //! # A toy RPC crate based on `async-std` that mimics the `golang`'s `net/rpc` package
 //!
 //! This crate aims at providing an easy-to-use RPC that is similar to `golang`'s

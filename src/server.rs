@@ -186,12 +186,7 @@ impl Server {
 }
 
 
-/// The following impl block is controlled by feature flag. It is enabled 
-/// if and only if **exactly one** of the the following feature flag is turned on
-/// - `serde_bincode`
-/// - `serde_json`
-/// - `serde_cbor`
-/// - `serde_rmp`
+
 #[cfg(any(
     all(
         feature = "serde_bincode",
@@ -216,11 +211,25 @@ impl Server {
         not(feature = "serde_cbor"),
         not(feature = "serde_json"),
         not(feature = "serde_bincode"),
-    )
+    ),
+    feature = "docs"
 ))]
+/// The following impl block is controlled by feature flag. It is enabled 
+/// if and only if **exactly one** of the the following feature flag is turned on
+/// - `serde_bincode`
+/// - `serde_json`
+/// - `serde_cbor`
+/// - `serde_rmp`
 impl Server {
     /// Accepts connections on the listener and serves requests to default
     /// server for each incoming connection
+    /// 
+    /// This is enabled 
+    /// if and only if **exactly one** of the the following feature flag is turned on
+    /// - `serde_bincode`
+    /// - `serde_json`
+    /// - `serde_cbor`
+    /// - `serde_rmp`
     ///
     /// # Example
     ///
@@ -278,6 +287,13 @@ impl Server {
 
     /// Serves a single connection using the default codec
     /// 
+    /// This is enabled 
+    /// if and only if **exactly one** of the the following feature flag is turned on
+    /// - `serde_bincode`
+    /// - `serde_json`
+    /// - `serde_cbor`
+    /// - `serde_rmp`
+    /// 
     /// Example 
     /// 
     /// ```rust
@@ -329,13 +345,21 @@ impl Server {
         Ok("CONNECT request is received".to_string())
     }
 
-
+    #[cfg(any(feature = "tide", feature = "docs"))]
+    #[cfg_attr(feature="docs", doc(cfg(feature = "tide")))]
     /// Creates a `tide::Endpoint` that handles http connections. 
     /// A convienient function `handle_http` can be used to achieve the same thing
     /// with `tide` feature turned on
     ///
     /// The endpoint will be created with `DEFAULT_RPC_PATH` appended to the
-    /// end of the nested `tide` endpoint
+    /// end of the nested `tide` endpoint. 
+    /// 
+    /// This is enabled 
+    /// if and only if **exactly one** of the the following feature flag is turned on
+    /// - `serde_bincode`
+    /// - `serde_json`
+    /// - `serde_cbor`
+    /// - `serde_rmp`
     ///
     /// # Example
     /// ```
@@ -374,7 +398,6 @@ impl Server {
     /// }
     /// ```
     ///
-    #[cfg(feature = "tide")]
     pub fn into_endpoint(self) -> tide::Server<Server> {
         use futures::io::BufWriter;
         // let server = self.build();
@@ -399,11 +422,20 @@ impl Server {
         app
     }
 
+    #[cfg(any(feature = "actix-web", feature="docs"))]
+    #[cfg_attr(feature="docs", doc(cfg(feature = "actix-web")))]
     /// Configuration for integration with an actix-web scope. 
     /// A convenient funciont "handle_http" may be used to achieve the same thing
     /// with the `actix-web` feature turned on.
     /// 
-    /// The `DEFAULT_RPC_PATH` will be appended to the end of the scope's path
+    /// The `DEFAULT_RPC_PATH` will be appended to the end of the scope's path.
+    /// 
+    /// This is enabled 
+    /// if and only if **exactly one** of the the following feature flag is turned on
+    /// - `serde_bincode`
+    /// - `serde_json`
+    /// - `serde_cbor`
+    /// - `serde_rmp`
     /// 
     /// Example
     /// 
@@ -449,7 +481,6 @@ impl Server {
     /// }
     /// ```
     /// 
-    #[cfg(feature = "actix-web")]
     pub fn scope_config(cfg: &mut web::ServiceConfig) {
         cfg.service(
             web::scope("/")
@@ -462,6 +493,14 @@ impl Server {
         );
     }
 
+    #[cfg(any(all(
+        feature = "tide",
+        not(feature = "actix-web"),
+    ), feature = "docs"))]
+    #[cfg_attr(
+        feature="docs", 
+        doc(cfg(all(feature = "tide", not(feature = "actix-web"))))
+    )]
     /// A conevience function that calls the corresponding http handling 
     /// function depending on the enabled feature flag
     /// 
@@ -469,6 +508,13 @@ impl Server {
     /// | ------------ |---|
     /// | `tide`| [`into_endpoint`](#method.into_endpoint) |
     /// | `actix-web` | [`scope_config`](#method.scope_config) |
+    /// 
+    /// This is enabled 
+    /// if and only if **exactly one** of the the following feature flag is turned on
+    /// - `serde_bincode`
+    /// - `serde_json`
+    /// - `serde_cbor`
+    /// - `serde_rmp`
     /// 
     /// # Example
     /// ```
@@ -504,21 +550,32 @@ impl Server {
     ///     Ok(())
     /// }
     /// ```
-    #[cfg(all(
-        feature = "tide",
-        not(feature = "actix-web"),
-    ))]
     pub fn handle_http(self) -> tide::Server<Server> {
         self.into_endpoint()
     }
 
+    #[cfg(any(all(
+        feature = "actix-web",
+        not(feature = "tide"),
+    ), feature = "docs"))]
+    #[cfg_attr(
+        feature="docs", 
+        doc(cfg(all(feature = "actix-web", not(feature = "tide"))))
+    )]
     /// A conevience function that calls the corresponding http handling 
     /// function depending on the enabled feature flag
     /// 
-    /// | feature flag |   |
+    /// | feature flag | function name  |
     /// | ------------ |---|
-    /// | `tide`| `into_endpoint` |
-    /// | `actix-web` | `scope_config` |
+    /// | `tide`| [`into_endpoint`](#method.into_endpoint) |
+    /// | `actix-web` | [`scope_config`](#method.scope_config) |
+    /// 
+    /// This is enabled 
+    /// if and only if **exactly one** of the the following feature flag is turned on
+    /// - `serde_bincode`
+    /// - `serde_json`
+    /// - `serde_cbor`
+    /// - `serde_rmp`
     /// 
     /// Example
     /// 
@@ -562,10 +619,6 @@ impl Server {
     ///     .await
     /// }
     /// ```
-    #[cfg(all(
-        feature = "actix-web",
-        not(feature = "tide"),
-    ))]
     pub fn handle_http() -> fn(&mut web::ServiceConfig) {
         Self::scope_config
     }

@@ -21,6 +21,11 @@ exclude = [
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[package.metadata.docs.rs]
+features = ["docs"]
+rustdoc-args = ["--cfg", "feature=\"docs\""]
+# rustdoc-args = ["--cfg", "docsrs"]
+
 [features]
 default = [
     "std", 
@@ -29,10 +34,16 @@ default = [
     "surf",
 ]
 
+docs = ["default", "actix-web"]
+
 std = ["serde/std"]
 logging = []
 serde_bincode = []
 serde_rmp = ["rmp-serde"]
+
+[dev-dependecies]
+actix-web = { version = "3.3.2"}
+
 
 [dependencies]
 # local imports

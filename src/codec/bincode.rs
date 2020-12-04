@@ -1,3 +1,5 @@
+//! Impplementation of `CodecRead`, `CodecWrite`, `Marshal` and `Unmarshal` traits with `bincode` 
+
 use async_trait::async_trait;
 use bincode::{DefaultOptions, Options};
 use erased_serde as erased;

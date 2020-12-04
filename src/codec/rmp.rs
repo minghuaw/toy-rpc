@@ -1,3 +1,5 @@
+//! Impplementation of `CodecRead`, `CodecWrite`, `Marshal` and `Unmarshal` traits with `rmp-serde` 
+
 use async_trait::async_trait;
 use erased_serde as erased;
 use futures::io::{AsyncBufRead, AsyncWrite, AsyncWriteExt};
