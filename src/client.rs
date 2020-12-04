@@ -170,77 +170,7 @@ impl Client<Codec, NotConnected> {
 
 }
 
-#[cfg(feature = "surf")]
-impl Client<Channel, NotConnected> {
-    /// Connects to an HTTP RPC server at the specified network address using the defatul codec
-    ///
-    /// If a network path were to be supplpied, the network path must end with a slash "/"
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// use toy_rpc::client::Client;
-    /// use toy_rpc::error::Error;
-    ///
-    /// #[async_std::main]
-    /// async fn main() {
-    ///     let addr = "http://127.0.0.1:8888/rpc/";
-    ///     let mut client = Client::dial_http(addr).await.unwrap();
-    ///
-    ///     let args = "arguments";
-    ///     let reply: Result<String, Error> = client.call_http("echo_service.echo", &args);
-    ///     println!("{:?}", reply);
-    /// }
-    /// ```
-    ///
-    /// TODO: check if the path ends with a slash
-    /// TODO: try send and recv trait object
-    pub async fn dial_http(addr: &'static str) -> Result<Client<Channel, Connected>, Error> {
-        let (req_sender, req_recver) = channel::<Vec<u8>>(CHANNEL_BUF_SIZE);
-        let (res_sender, res_recver) = channel::<Vec<u8>>(CHANNEL_BUF_SIZE);
 
-        let channel_codec = (req_sender, res_recver);
-
-        let base = surf::Url::parse(addr)?;
-        let path = base.join(DEFAULT_RPC_PATH)?;
-
-        // test connection with a CONNECT request
-        // let _conn_res = surf::connect(&path)
-        //     .recv_string()
-        //     .await
-        //     .map_err(|e| Error::TransportError { msg: e.to_string() })?;
-
-        let _conn_res = Self::_dial_connect(base).await?;
-
-        // #[cfg(feature = "logging")]
-        log::info!("{}", _conn_res);
-
-        task::spawn(Client::_http_client_loop(
-            path,
-            req_recver,
-            res_sender,
-        ));
-
-        Ok(Client::<Channel, Connected> {
-            count: AtomicMessageId::new(0u16),
-            inner_codec: channel_codec,
-            pending: HashMap::new(),
-
-            mode: PhantomData,
-        })
-    }
-
-    async fn _dial_connect(base: surf::Url) -> Result<String, Error> {
-        let mut client = surf::Client::new();
-        client.set_base_url(base);
-        let res = client.connect(DEFAULT_RPC_PATH).recv_string().await
-            .map_err(|e| Error::TransportError { msg: e.to_string() })?;
-
-        // log::info!("{}", res);
-
-        Ok(res)
-    }
-}
 
 impl Client<Codec, Connected> {
     /// Invokes the named function and wait synchronously
@@ -324,7 +254,7 @@ impl Client<Codec, Connected> {
     ///     let mut client = Client::dial(addr).await.unwrap();
     ///
     ///     let args = "arguments";
-    ///     let reply: Result<String, Error> = client.spawn_task("echo_service.echo", &args).await;
+    ///     let reply: Result<String, Error> = client.async_call("echo_service.echo", &args).await;
     ///     println!("{:?}", reply);
     /// }
     /// ```
@@ -487,6 +417,108 @@ impl<T> Client<T, Connected> {
 /// - `serde_json`
 /// - `serde_cbor`
 /// - `serde_rmp`
+impl Client<Channel, NotConnected> {
+    /// Connects to an HTTP RPC server at the specified network address using the defatul codec
+    ///
+    /// If a network path were to be supplpied, the network path must end with a slash "/"
+    /// 
+    /// This is enabled 
+    /// if and only if **exactly one** of the the following feature flag is turned on
+    /// - `serde_bincode`
+    /// - `serde_json`
+    /// - `serde_cbor`
+    /// - `serde_rmp`
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use toy_rpc::client::Client;
+    /// use toy_rpc::error::Error;
+    ///
+    /// #[async_std::main]
+    /// async fn main() {
+    ///     let addr = "http://127.0.0.1:8888/rpc/";
+    ///     let mut client = Client::dial_http(addr).await.unwrap();
+    /// }
+    /// ```
+    ///
+    /// TODO: check if the path ends with a slash
+    /// TODO: try send and recv trait object
+    pub async fn dial_http(addr: &'static str) -> Result<Client<Channel, Connected>, Error> {
+        let (req_sender, req_recver) = channel::<Vec<u8>>(CHANNEL_BUF_SIZE);
+        let (res_sender, res_recver) = channel::<Vec<u8>>(CHANNEL_BUF_SIZE);
+
+        let channel_codec = (req_sender, res_recver);
+
+        let base = surf::Url::parse(addr)?;
+        let path = base.join(DEFAULT_RPC_PATH)?;
+
+        let _conn_res = Self::_dial_connect(base).await?;
+
+        // #[cfg(feature = "logging")]
+        log::info!("{}", _conn_res);
+
+        task::spawn(Client::_http_client_loop(
+            path,
+            req_recver,
+            res_sender,
+        ));
+
+        Ok(Client::<Channel, Connected> {
+            count: AtomicMessageId::new(0u16),
+            inner_codec: channel_codec,
+            pending: HashMap::new(),
+
+            mode: PhantomData,
+        })
+    }
+
+    async fn _dial_connect(base: surf::Url) -> Result<String, Error> {
+        let mut client = surf::Client::new();
+        client.set_base_url(base);
+        let res = client.connect(DEFAULT_RPC_PATH).recv_string().await
+            .map_err(|e| Error::TransportError { msg: e.to_string() })?;
+
+        // log::info!("{}", res);
+
+        Ok(res)
+    }
+}
+
+#[cfg(any(feature = "surf", feature = "docs"))]
+#[cfg(any(
+    all(
+        feature = "serde_bincode",
+        not(feature = "serde_json"),
+        not(feature = "serde_cbor"),
+        not(feature = "serde_rmp"),
+    ),
+    all(
+        feature = "serde_cbor",
+        not(feature = "serde_json"),
+        not(feature = "serde_bincode"),
+        not(feature = "serde_rmp"),
+    ),
+    all(
+        feature = "serde_json",
+        not(feature = "serde_bincode"),
+        not(feature = "serde_cbor"),
+        not(feature = "serde_rmp"),
+    ),
+    all(
+        feature = "serde_rmp",
+        not(feature = "serde_cbor"),
+        not(feature = "serde_json"),
+        not(feature = "serde_bincode"),
+    )
+))]
+#[cfg_attr(feature = "docs", doc(cfg(feature = "surf")))]
+/// The following impl block is controlled by feature flag. It is enabled 
+/// if and only if **exactly one** of the the following feature flag is turned on
+/// - `serde_bincode`
+/// - `serde_json`
+/// - `serde_cbor`
+/// - `serde_rmp`
 impl Client<Channel, Connected> {
     /// Similar to `call()`, it invokes the named function and wait synchronously,
     /// but this is for `Client` connected to a HTTP RPC server
@@ -504,16 +536,18 @@ impl Client<Channel, Connected> {
     ///
     /// ```rust
     /// use toy_rpc::client::Client;
+    /// use toy_rpc::error::Error;
     ///
     /// #[async_std::main]
     /// async fn main() {
     ///     let addr = "http://127.0.0.1:8888/rpc/";
-    ///     let mut client = Client::dial(addr).await.unwrap();
+    ///     let mut client = Client::dial_http(addr).await.unwrap();
     ///
-    ///     let args = "arguments"
-    ///     let reply: Result<String, Error> = client.call("echo_service.echo", &args);
+    ///     let args = "arguments";
+    ///     let reply: Result<String, Error> = client.call_http("echo_service.echo", &args);
     ///     println!("{:?}", reply);
     /// }
+    /// ```
     pub fn call_http<Req, Res>(
         &mut self,
         service_method: impl ToString,
@@ -535,6 +569,20 @@ impl Client<Channel, Connected> {
     /// - `serde_json`
     /// - `serde_cbor`
     /// - `serde_rmp`
+    /// 
+    /// Example
+    /// ```rust
+    /// use toy_rpc::client::Client;
+    ///
+    /// #[async_std::main]
+    /// async fn main() {
+    ///     let addr = "http://127.0.0.1:8888/rpc/";
+    ///     let mut client = Client::dial_http(addr).await.unwrap();
+    ///
+    ///     let args = "arguments"
+    ///     let reply: Result<String, Error> = client.spawn_task_http("echo_service.echo", &args).await;
+    ///     println!("{:?}", reply);
+    /// }
     /// 
     pub fn spawn_task_http<Req, Res>(
         &'static mut self,
@@ -577,9 +625,10 @@ impl Client<Channel, Connected> {
     ///     let mut client = Client::dial_http(addr).await.unwrap();
     ///
     ///     let args = "arguments"
-    ///     let reply: Result<String, Error> = client.call_http("echo_service.echo", &args);
+    ///     let reply: Result<String, Error> = client.async_call_http("echo_service.echo", &args).await;
     ///     println!("{:?}", reply);
     /// }
+    /// 
     pub async fn async_call_http<Req, Res>(
         &mut self,
         service_method: impl ToString,
