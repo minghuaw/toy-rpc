@@ -16,11 +16,11 @@
 //!   - [Default Features](#default-features)
 //! - [Documentation](#documentation)
 //! - [Examples](#examples)
-//!   - [RPC over socket](rpc-over-socket)
-//!   - [RPC over HTTP with `tide`](rpc-over-http-with-tide)
-//!   - [RPC over HTTP with `actix-web`](rpc-over-http-with-actix-web)
-//! - [Change Log](change-log)
-//! - [Future Plan](future-plan)
+//!   - [RPC over socket](#rpc-over-socket)
+//!   - [RPC over HTTP with `tide`](#rpc-over-http-with-tide)
+//!   - [RPC over HTTP with `actix-web`](#rpc-over-http-with-actix-web)
+//! - [Change Log](#change-log)
+//! - [Future Plan](#future-plan)
 //! 
 //!
 //! ## Crate Feature Flags
