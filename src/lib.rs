@@ -156,6 +156,8 @@
 //!
 //! ### RPC over socket
 //!
+//! The default feature flags will work with the example below.
+//! 
 //! server.rs
 //!
 //! ```rust
@@ -253,6 +255,8 @@
 //!
 //! ### RPC over HTTP with `tide`
 //!
+//! The default feature flags will work with the example below.
+//! 
 //! server.rs
 //!
 //! ```rust
@@ -350,6 +354,10 @@
 //! ```
 //!
 //! ### RPC over HTTP with `actix-web`
+//! 
+//! ```toml
+//! toy-rpc = { version = "0.4.2", default-features = false, features = ["std", "serde_bincode", "actix-web", "surf"] }
+//! ```
 //! 
 //! server.rs
 //!
