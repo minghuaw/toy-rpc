@@ -20,7 +20,7 @@ async fn main() {
     //     a: reply.a,
     //     b: reply.b,
     // };
-    let reply: Result<FooResponse, Error> = client.call("foo_service.increment_a", &args);
+    let reply: Result<FooResponse, Error> = client.async_call("foo_service.increment_a", &args).await;
     println!("{:?}", reply);
 
     // second request, increment_b
@@ -28,7 +28,8 @@ async fn main() {
     //     a: reply.a,
     //     b: reply.b,
     // };
-    let reply: Result<FooResponse, Error> = client.call("foo_service.increment_b", &args);
+    let handle = client.spawn_task("foo_service.increment_b", args);
+    let reply: Result<FooResponse, Error> = handle.await;
     println!("{:?}", reply);
 
     // third request, bar echo
@@ -39,11 +40,12 @@ async fn main() {
     println!("{:?}", reply);
 
     // fourth request, bar exclaim
-    let reply: BarResponse = client.call("bar_service.exclaim", &args).unwrap();
+    let reply: BarResponse = client.async_call("bar_service.exclaim", &args).await.unwrap();
     println!("{:?}", reply);
 
     // third request, get_counter
     let args = ();
-    let reply: u32 = client.call("foo_service.get_counter", &args).unwrap();
+    let handle = client.spawn_task("foo_service.get_counter", args);
+    let reply: u32 = handle.await.unwrap();
     println!("{:?}", reply);
 }
