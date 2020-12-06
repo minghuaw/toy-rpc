@@ -62,28 +62,34 @@ where
     R: AsyncBufRead + Send + Sync + Unpin,
     W: AsyncWrite + Send + Sync + Unpin,
 {
-    async fn write_header<H>(&mut self, header: H) -> Result<usize, Error>
+    async fn write_header<H>(&mut self, header: H) -> Result<(), Error>
     where
         H: serde::Serialize + Metadata + Send,
     {
-        let _ = header.get_id();
+        let id = header.get_id();
         let buf = Self::marshal(&header)?;
 
         let bytes_sent = self.writer.write(&buf).await?;
         self.writer.flush().await?;
-        Ok(bytes_sent)
+
+        log::trace!("Header id: {} written with {} bytes", &id, &bytes_sent);
+
+        Ok(())
     }
 
     async fn write_body(
         &mut self,
-        _: MessageId,
+        id: &MessageId,
         body: &(dyn erased::Serialize + Send + Sync),
-    ) -> Result<usize, Error> {
+    ) -> Result<(), Error> {
         let buf = Self::marshal(&body)?;
 
         let bytes_sent = self.writer.write(&buf).await?;
         self.writer.flush().await?;
-        Ok(bytes_sent)
+
+        log::trace!("Body id: {} written with {} bytes", id, &bytes_sent);
+
+        Ok(())
     }
 }
 

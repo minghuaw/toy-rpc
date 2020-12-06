@@ -141,7 +141,7 @@ pub trait ServerCodec: Send + Sync {
         &mut self,
         header: ResponseHeader,
         body: &(dyn erased::Serialize + Send + Sync),
-    ) -> Result<usize, Error>;
+    ) -> Result<(), Error>;
 }
 
 #[async_trait]
@@ -155,7 +155,7 @@ pub trait ClientCodec: Send + Sync {
         &mut self,
         header: RequestHeader,
         body: &(dyn erased::Serialize + Send + Sync),
-    ) -> Result<usize, Error>;
+    ) -> Result<(), Error>;
 }
 
 #[async_trait]
@@ -171,15 +171,15 @@ pub trait CodecRead: Unmarshal {
 
 #[async_trait]
 pub trait CodecWrite: Marshal {
-    async fn write_header<H>(&mut self, header: H) -> Result<usize, Error>
+    async fn write_header<H>(&mut self, header: H) -> Result<(), Error>
     where
         H: serde::Serialize + Metadata + Send;
 
     async fn write_body(
         &mut self,
-        message_id: MessageId,
+        id: &MessageId,
         body: &(dyn erased::Serialize + Send + Sync),
-    ) -> Result<usize, Error>;
+    ) -> Result<(), Error>;
 }
 
 pub trait Marshal {
@@ -209,13 +209,15 @@ where
         &mut self,
         header: ResponseHeader,
         body: &(dyn erased::Serialize + Send + Sync),
-    ) -> Result<usize, Error> {
+    ) -> Result<(), Error> {
         let id = header.get_id();
 
-        let h = self.write_header(header).await?;
-        let b = self.write_body(id, body).await?;
+        log::trace!("Writing response id: {}", &id);
 
-        Ok(h + b)
+        self.write_header(header).await?;
+        self.write_body(&id, body).await?;
+
+        Ok(())
     }
 }
 
@@ -238,13 +240,15 @@ where
         &mut self,
         header: RequestHeader,
         body: &(dyn erased::Serialize + Send + Sync),
-    ) -> Result<usize, Error> {
+    ) -> Result<(), Error> {
         let id = header.get_id();
 
-        let h = self.write_header(header).await?;
-        let b = self.write_body(id, body).await?;
+        log::trace!("Writing request id: {}", &id);
 
-        Ok(h + b)
+        self.write_header(header).await?;
+        self.write_body(&id, body).await?;
+
+        Ok(())
     }
 }
 

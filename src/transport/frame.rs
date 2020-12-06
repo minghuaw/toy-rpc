@@ -30,7 +30,7 @@ pub trait FrameRead: AsyncBufRead {
 pub trait FrameWrite: AsyncWrite {
     async fn write_frame(
         &mut self,
-        message_id: MessageId,
+        message_id: &MessageId,
         frame_id: FrameId,
         payload_type: PayloadType,
         buf: &[u8],
@@ -148,7 +148,7 @@ impl<R: AsyncBufRead + Unpin + Send + Sync> FrameRead for R {
 impl<W: AsyncWrite + AsyncWriteExt + Unpin + Send + Sync> FrameWrite for W {
     async fn write_frame(
         &mut self,
-        message_id: MessageId,
+        message_id: &MessageId,
         frame_id: FrameId,
         payload_type: PayloadType,
         buf: &[u8],
@@ -161,7 +161,7 @@ impl<W: AsyncWrite + AsyncWriteExt + Unpin + Send + Sync> FrameWrite for W {
         }
 
         // construct frame header
-        let header = FrameHeader::new(message_id, frame_id, payload_type, buf.len() as u32);
+        let header = FrameHeader::new(*message_id, frame_id, payload_type, buf.len() as u32);
 
         // log::debug!("FrameHeader {:?}", &header);
         // write header

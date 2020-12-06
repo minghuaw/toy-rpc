@@ -117,7 +117,7 @@ impl Server {
         _codec: &mut C,
         id: MessageId,
         res: HandlerResult,
-    ) -> Result<usize, Error>
+    ) -> Result<(), Error>
     where
         C: ServerCodec + Send + Sync,
     {
@@ -131,8 +131,8 @@ impl Server {
                     is_error: false,
                 };
 
-                let bytes_sent = _codec.write_response(header, &b).await?;
-                Ok(bytes_sent)
+                _codec.write_response(header, &b).await?;
+                Ok(())
             }
             Err(e) => {
                 #[cfg(feature = "logging")]
