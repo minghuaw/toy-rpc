@@ -1,9 +1,9 @@
 use async_trait::async_trait;
 use erased_serde as erased;
 use futures::io::{AsyncBufRead, AsyncRead, AsyncWrite, AsyncWriteExt, BufReader, BufWriter};
-use futures::channel::mpsc::{Receiver, Sender};
-use futures::{SinkExt, StreamExt};
-use std::marker::PhantomData;
+// use futures::channel::mpsc::{Receiver, Sender};
+// use futures::{SinkExt, StreamExt};
+// use std::marker::PhantomData;
 
 use crate::error::Error;
 use crate::message::{MessageId, Metadata, RequestHeader, ResponseHeader};
@@ -140,7 +140,7 @@ pub trait ServerCodec: Send + Sync {
     async fn write_response(
         &mut self,
         header: ResponseHeader,
-        body: Box<(dyn erased::Serialize + Send + Sync)>,
+        body: &(dyn erased::Serialize + Send + Sync),
     ) -> Result<(), Error>;
 }
 
@@ -154,7 +154,7 @@ pub trait ClientCodec: Send + Sync {
     async fn write_request(
         &mut self,
         header: RequestHeader,
-        body: Box<(dyn erased::Serialize + Send + Sync)>,
+        body: &(dyn erased::Serialize + Send + Sync),
     ) -> Result<(), Error>;
 }
 
@@ -173,12 +173,12 @@ pub trait CodecRead: Unmarshal {
 pub trait CodecWrite: Marshal {
     async fn write_header<H>(&mut self, header: H) -> Result<(), Error>
     where
-        H: serde::Serialize + Metadata + Send + Sync + 'static;
+        H: serde::Serialize + Metadata + Send;
 
     async fn write_body(
         &mut self,
-        id: MessageId,
-        body: Box<(dyn erased::Serialize + Send + Sync)>,
+        id: &MessageId,
+        body: &(dyn erased::Serialize + Send + Sync),
     ) -> Result<(), Error>;
 }
 
@@ -208,14 +208,14 @@ where
     async fn write_response(
         &mut self,
         header: ResponseHeader,
-        body: Box<(dyn erased::Serialize + Send + Sync)>,
+        body: &(dyn erased::Serialize + Send + Sync),
     ) -> Result<(), Error> {
         let id = header.get_id();
 
         log::trace!("Writing response id: {}", &id);
 
         self.write_header(header).await?;
-        self.write_body(id, body).await?;
+        self.write_body(&id, body).await?;
 
         Ok(())
     }
@@ -239,14 +239,14 @@ where
     async fn write_request(
         &mut self,
         header: RequestHeader,
-        body: Box<(dyn erased::Serialize + Send + Sync)>,
+        body: &(dyn erased::Serialize + Send + Sync),
     ) -> Result<(), Error> {
         let id = header.get_id();
 
         log::trace!("Writing request id: {}", &id);
 
         self.write_header(header).await?;
-        self.write_body(id, body).await?;
+        self.write_body(&id, body).await?;
 
         Ok(())
     }
@@ -261,49 +261,3 @@ impl<D> DeserializerOwned<D> {
         Self { inner }
     }
 }
-
-pub struct ChannelCodec<C> {
-    pub codec: PhantomData<C>,
-    pub sender: Sender<(MessageId, Box<(dyn erased::Serialize + Send + Sync)>)>,
-    pub recver: Receiver<Box<(dyn erased::Deserializer<'static> + Send + Sync)>>
-}
-
-#[async_trait]
-impl<C: Marshal + Send + Sync> CodecWrite for ChannelCodec<C> {
-    async fn write_header<H>(&mut self, header: H) -> Result<(), Error>
-    where
-            H: serde::Serialize + Metadata + Send + Sync + 'static
-    {
-        let id = header.get_id();
-        let mut sender = self.sender.clone();
-
-        sender.send(
-            (id, Box::new(header))
-        ).await 
-        .map_err(|e| Error::TransportError { msg: e.to_string() })
-    }
-
-    async fn write_body(&mut self, id: MessageId, body: Box<(dyn erased::Serialize + Send + Sync + 'static)>) -> Result<(), Error> {
-        let id = id.clone();
-        let mut sender = self.sender.clone();
-
-        sender.send(
-            (id, body)
-        ).await 
-        .map_err(|e| Error::TransportError { msg: e.to_string() })
-    }
-}
-
-impl<C: Marshal> Marshal for ChannelCodec<C> {
-    fn marshal<S: serde::Serialize>(val: &S) -> Result<Vec<u8>, Error> {
-        C::marshal(val)
-    }
-}
-
-impl<C: Unmarshal> Unmarshal for ChannelCodec<C> {
-    fn unmarshal<'de, D: serde::Deserialize<'de>>(buf: &'de [u8]) -> Result<D, Error> {
-        C::unmarshal(buf)
-    }
-}
-
-

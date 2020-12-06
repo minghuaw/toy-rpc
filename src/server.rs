@@ -131,7 +131,7 @@ impl Server {
                     is_error: false,
                 };
 
-                _codec.write_response(header, b).await?;
+                _codec.write_response(header, &b).await?;
                 Ok(())
             }
             Err(e) => {
@@ -145,7 +145,7 @@ impl Server {
                 };
 
                 //
-                let bytes_sent = _codec.write_response(header, body).await?;
+                let bytes_sent = _codec.write_response(header, &body).await?;
                 Ok(bytes_sent)
             }
         }
