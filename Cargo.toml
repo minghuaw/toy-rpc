@@ -24,7 +24,6 @@ exclude = [
 [package.metadata.docs.rs]
 features = ["docs"]
 rustdoc-args = ["--cfg", "feature=\"docs\""]
-# rustdoc-args = ["--cfg", "docsrs"]
 
 [features]
 default = [
