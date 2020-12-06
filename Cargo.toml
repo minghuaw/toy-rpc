@@ -40,6 +40,10 @@ logging = []
 serde_bincode = []
 serde_rmp = ["rmp-serde"]
 
+[dev-dependecies]
+actix-web = { version = "3.3.2"}
+
+
 [dependencies]
 # local imports
 # toy-rpc-macros = { path="macros", version = "0.1.0" }
