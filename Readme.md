@@ -12,15 +12,23 @@ method "exported".
 
 ### Content
 
-- [Crate Feature Flags](#crate-feature-flags)
-  - [Default Features](#default-features)
-- [Documentation](#documentation)
-- [Examples](#examples)
-  - [RPC over socket](#rpc-over-socket)
-  - [RPC over HTTP with `tide`](#rpc-over-http-with-tide)
-  - [RPC over HTTP with `actix-web`](#rpc-over-http-with-actix-web)
-- [Change Log](#change-log)
-- [Future Plan](#future-plan)
+- [toy-rpc](#toy-rpc)
+  - [A toy RPC crate based on `async-std` that mimics the `golang`'s `net/rpc` package](#a-toy-rpc-crate-based-on-async-std-that-mimics-the-golangs-netrpc-package)
+    - [Content](#content)
+    - [Crate Feature Flags](#crate-feature-flags)
+      - [Default Features](#default-features)
+    - [Documentation](#documentation)
+    - [Examples](#examples)
+      - [RPC over socket](#rpc-over-socket)
+      - [RPC over HTTP with `tide`](#rpc-over-http-with-tide)
+      - [RPC over HTTP with `actix-web`](#rpc-over-http-with-actix-web)
+    - [Change Log](#change-log)
+      - [0.4.2](#042)
+      - [0.4.1](#041)
+      - [0.4.0](#040)
+      - [0.3.1](#031)
+      - [0.3.0](#030)
+    - [Future Plan](#future-plan)
 
 
 ### Crate Feature Flags
@@ -460,10 +468,12 @@ async fn main() {
 ### Change Log
 
 #### 0.4.2
+
 - Temporary fix of `spawn_task()` and `spawn_task_http()` with `Arc<Mutex<_>>` until
 lifetime with async task is figured out. As a result, `Client` no longer needs to be declared `mut`.
 
 #### 0.4.1
+
 - Updated documentation
 
 #### 0.4.0

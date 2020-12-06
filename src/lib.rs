@@ -460,10 +460,12 @@
 //! ## Change Log
 //!
 //! ### 0.4.2
+//! 
 //! - Temporary fix of `spawn_task()` and `spawn_task_http()` with `Arc<Mutex<_>>` until 
 //! lifetime with async task is figured out. As a result, `Client` no longer needs to be declared `mut`.
 //! 
 //! ### 0.4.1
+//! 
 //! - Updated documentation
 //! 
 //! ### 0.4.0
