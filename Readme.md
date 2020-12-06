@@ -357,7 +357,7 @@ async fn main() {
 #### RPC over HTTP with `actix-web`
 
 ```toml
-toy-rpc = { version = "0.4.2", default-features = false, features = ["std", "serde_bincode", "actix-web", "surf"] }
+toy-rpc = { version = "0.4.4", default-features = false, features = ["std", "serde_bincode", "actix-web", "surf"] }
 ```
 
 server.rs
