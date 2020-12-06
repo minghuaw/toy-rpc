@@ -12,15 +12,13 @@ use crate::message::{MessageId, Metadata, RequestHeader, ResponseHeader};
     not(feature = "serde_rmp"),
 ))]
 #[cfg_attr(
-    feature = "docs", 
-    doc(cfg(
-        all(
-            feature = "serde_bincode",
-            not(feature = "serde_json"),
-            not(feature = "serde_cbor"),
-            not(feature = "serde_rmp"),
-        )
-    ))
+    feature = "docs",
+    doc(cfg(all(
+        feature = "serde_bincode",
+        not(feature = "serde_json"),
+        not(feature = "serde_cbor"),
+        not(feature = "serde_rmp"),
+    )))
 )]
 pub mod bincode;
 
@@ -31,15 +29,13 @@ pub mod bincode;
     not(feature = "serde_rmp"),
 ))]
 #[cfg_attr(
-    feature = "docs", 
-    doc(cfg(
-        all(
-            feature = "serde_cbor",
-            not(feature = "serde_json"),
-            not(feature = "serde_bincode"),
-            not(feature = "serde_rmp"),
-        )
-    ))
+    feature = "docs",
+    doc(cfg(all(
+        feature = "serde_cbor",
+        not(feature = "serde_json"),
+        not(feature = "serde_bincode"),
+        not(feature = "serde_rmp"),
+    )))
 )]
 pub mod cbor;
 
@@ -50,15 +46,13 @@ pub mod cbor;
     not(feature = "serde_rmp"),
 ))]
 #[cfg_attr(
-    feature = "docs", 
-    doc(cfg(
-        all(
-            feature = "serde_json",
-            not(feature = "serde_bincode"),
-            not(feature = "serde_cbor"),
-            not(feature = "serde_rmp"),
-        )
-    ))
+    feature = "docs",
+    doc(cfg(all(
+        feature = "serde_json",
+        not(feature = "serde_bincode"),
+        not(feature = "serde_cbor"),
+        not(feature = "serde_rmp"),
+    )))
 )]
 pub mod json;
 
@@ -69,15 +63,13 @@ pub mod json;
     not(feature = "serde_bincode"),
 ))]
 #[cfg_attr(
-    feature = "docs", 
-    doc(cfg(
-        all(
-            feature = "serde_rmp",
-            not(feature = "serde_cbor"),
-            not(feature = "serde_json"),
-            not(feature = "serde_bincode"),
-        )
-    ))
+    feature = "docs",
+    doc(cfg(all(
+        feature = "serde_rmp",
+        not(feature = "serde_cbor"),
+        not(feature = "serde_json"),
+        not(feature = "serde_bincode"),
+    )))
 )]
 pub mod rmp;
 

@@ -13,7 +13,6 @@ pub enum Error {
     },
 
     // NoneError,
-
     RpcError(RpcError),
 }
 
@@ -157,7 +156,10 @@ mod test {
 
     #[test]
     fn err_to_string() {
-        let e = Error::IoError(std::io::Error::new(std::io::ErrorKind::UnexpectedEof, "Unexpected eof"));
+        let e = Error::IoError(std::io::Error::new(
+            std::io::ErrorKind::UnexpectedEof,
+            "Unexpected eof",
+        ));
 
         println!("{}", e.to_string());
     }

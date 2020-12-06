@@ -11,7 +11,7 @@
 //! method "exported".
 //!
 //! ## Content
-//! 
+//!
 //! - [Crate Feature Flags](#crate-feature-flags)
 //!   - [Default Features](#default-features)
 //! - [Documentation](#documentation)
@@ -21,7 +21,7 @@
 //!   - [RPC over HTTP with `actix-web`](#rpc-over-http-with-actix-web)
 //! - [Change Log](#change-log)
 //! - [Future Plan](#future-plan)
-//! 
+//!
 //!
 //! ## Crate Feature Flags
 //!
@@ -157,7 +157,7 @@
 //! ### RPC over socket
 //!
 //! The default feature flags will work with the example below.
-//! 
+//!
 //! server.rs
 //!
 //! ```rust
@@ -256,7 +256,7 @@
 //! ### RPC over HTTP with `tide`
 //!
 //! The default feature flags will work with the example below.
-//! 
+//!
 //! server.rs
 //!
 //! ```rust
@@ -316,7 +316,7 @@
 //!     app.at("/rpc/").nest(server.into_endpoint());
 //!     "handle_http" is a conenience function that calls "into_endpoint"
 //!     // with the "tide" feature turned on and "actix-web" feature disabled
-//!     //app.at("/rpc/").nest(server.handle_http()); 
+//!     //app.at("/rpc/").nest(server.handle_http());
 //!
 //!     app.listen(addr).await?;
 //!     Ok(())
@@ -354,11 +354,11 @@
 //! ```
 //!
 //! ### RPC over HTTP with `actix-web`
-//! 
+//!
 //! ```toml
 //! toy-rpc = { version = "0.4.2", default-features = false, features = ["std", "serde_bincode", "actix-web", "surf"] }
 //! ```
-//! 
+//!
 //! server.rs
 //!
 //! ```rust
@@ -422,7 +422,7 @@
 //!                     web::scope("/rpc/")
 //!                         .app_data(app_data.clone())
 //!                         .configure(Server::scope_config)
-//!                         // The line above may be replaced with line below if "actix-web" 
+//!                         // The line above may be replaced with line below if "actix-web"
 //!                         // is enabled and "tide" is disabled
 //!                         //.configure(Server::handle_http()) // use the convenience "handle_http"
 //!                 )
@@ -462,24 +462,24 @@
 //!     let reply: Result<ExampleResponse, Error> = client.call_http("example.echo", &args);
 //!     println!("{:?}", reply);
 //! }
-//! 
+//!
 //! ```
-//! 
+//!
 //! ## Change Log
 //!
 //! ### 0.4.2
-//! 
-//! - Temporary fix of `spawn_task()` and `spawn_task_http()` with `Arc<Mutex<_>>` until 
+//!
+//! - Temporary fix of `spawn_task()` and `spawn_task_http()` with `Arc<Mutex<_>>` until
 //! lifetime with async task is figured out. As a result, `Client` no longer needs to be declared `mut`.
-//! 
+//!
 //! ### 0.4.1
-//! 
+//!
 //! - Updated documentation
-//! 
+//!
 //! ### 0.4.0
-//! 
+//!
 //! - Added `actix-web` feature flag to support integration with `actix-web`
-//! 
+//!
 //! ### 0.3.1
 //!
 //! - Added `serde_rmp` features flag
@@ -490,7 +490,7 @@
 //! - Added `serde_cbor` feature flag
 //! - Changed `bincode` feature flag to `serde_bincode`
 //!
-//! 
+//!
 //! ## Future Plan
 //!
 //! - `warp` integration

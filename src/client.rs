@@ -35,7 +35,7 @@ pub struct Connected {}
 type Codec = Arc<Mutex<Box<dyn ClientCodec>>>;
 
 #[cfg(feature = "surf")]
-type Channel = (Arc<Mutex<Sender<Vec<u8>>>>, Arc<Mutex<Receiver<Vec<u8>>>>);
+type Channel = (Sender<Vec<u8>>, Arc<Mutex<Receiver<Vec<u8>>>>);
 
 type ResponseBody = Box<dyn erased::Deserializer<'static> + Send>;
 
@@ -76,7 +76,7 @@ pub struct Client<T, Mode> {
         not(feature = "serde_bincode"),
     )
 ))]
-/// The following impl block is controlled by feature flag. It is enabled 
+/// The following impl block is controlled by feature flag. It is enabled
 /// if and only if **exactly one** of the the following feature flag is turned on
 /// - `serde_bincode`
 /// - `serde_json`
@@ -85,13 +85,13 @@ pub struct Client<T, Mode> {
 impl Client<Codec, NotConnected> {
     /// Creates an RPC `Client` over socket with a specified `async_std::net::TcpStream` and the default codec
     ///
-    /// This is enabled 
+    /// This is enabled
     /// if and only if **exactly one** of the the following feature flag is turned on
     /// - `serde_bincode`
     /// - `serde_json`
     /// - `serde_cbor`
     /// - `serde_rmp`
-    /// 
+    ///
     /// # Example
     /// ```
     /// use async_std::net::TcpStream;
@@ -110,13 +110,13 @@ impl Client<Codec, NotConnected> {
 
     /// Connects the an RPC server over socket at the specified network address
     ///
-    /// This is enabled 
+    /// This is enabled
     /// if and only if **exactly one** of the the following feature flag is turned on
     /// - `serde_bincode`
     /// - `serde_json`
     /// - `serde_cbor`
     /// - `serde_rmp`
-    /// 
+    ///
     /// Example
     ///
     /// ```rust
@@ -168,11 +168,7 @@ impl Client<Codec, NotConnected> {
             mode: PhantomData,
         }
     }
-
-
 }
-
-
 
 impl Client<Codec, Connected> {
     /// Invokes the named function and wait synchronously
@@ -236,9 +232,9 @@ impl Client<Codec, Connected> {
         let pending = self.pending.clone();
         let id = self.count.fetch_add(1u16, Ordering::Relaxed);
 
-        task::spawn(async move {
-            Self::_async_call(service_method, &args, id, codec, pending).await
-        })
+        task::spawn(
+            async move { Self::_async_call(service_method, &args, id, codec, pending).await },
+        )
     }
 
     /// Invokes the named function asynchronously
@@ -323,12 +319,14 @@ impl<T> Client<T, Connected> {
         // wait for response
         if let Some(header) = codec.read_response_header().await {
             let ResponseHeader { id, is_error } = header?;
-            let deserializer = codec.read_response_body().await
-                .ok_or(
-                    Error::IoError(
-                        std::io::Error::new(std::io::ErrorKind::UnexpectedEof, "Unexpected EOF reading response body")
-                    )
-                )?;
+            let deserializer =
+                codec
+                    .read_response_body()
+                    .await
+                    .ok_or(Error::IoError(std::io::Error::new(
+                        std::io::ErrorKind::UnexpectedEof,
+                        "Unexpected EOF reading response body",
+                    )))?;
             let deserializer = deserializer?;
 
             let res = match is_error {
@@ -425,7 +423,7 @@ impl<T> Client<T, Connected> {
     )
 ))]
 #[cfg_attr(feature = "docs", doc(cfg(feature = "surf")))]
-/// The following impl block is controlled by feature flag. It is enabled 
+/// The following impl block is controlled by feature flag. It is enabled
 /// if and only if **exactly one** of the the following feature flag is turned on
 /// - `serde_bincode`
 /// - `serde_json`
@@ -435,8 +433,8 @@ impl Client<Channel, NotConnected> {
     /// Connects to an HTTP RPC server at the specified network address using the defatul codec
     ///
     /// If a network path were to be supplpied, the network path must end with a slash "/"
-    /// 
-    /// This is enabled 
+    ///
+    /// This is enabled
     /// if and only if **exactly one** of the the following feature flag is turned on
     /// - `serde_bincode`
     /// - `serde_json`
@@ -462,7 +460,7 @@ impl Client<Channel, NotConnected> {
         let (req_sender, req_recver) = channel::<Vec<u8>>(CHANNEL_BUF_SIZE);
         let (res_sender, res_recver) = channel::<Vec<u8>>(CHANNEL_BUF_SIZE);
 
-        let channel_codec = (Arc::new(Mutex::new(req_sender)), Arc::new(Mutex::new(res_recver)));
+        let channel_codec = (req_sender, Arc::new(Mutex::new(res_recver)));
 
         let base = surf::Url::parse(addr)?;
         let path = base.join(DEFAULT_RPC_PATH)?;
@@ -472,11 +470,7 @@ impl Client<Channel, NotConnected> {
         // #[cfg(feature = "logging")]
         log::info!("{}", _conn_res);
 
-        task::spawn(Client::_http_client_loop(
-            path,
-            req_recver,
-            res_sender,
-        ));
+        task::spawn(Client::_http_client_loop(path, req_recver, res_sender));
 
         Ok(Client::<Channel, Connected> {
             count: AtomicMessageId::new(0u16),
@@ -490,7 +484,10 @@ impl Client<Channel, NotConnected> {
     async fn _dial_connect(base: surf::Url) -> Result<String, Error> {
         let mut client = surf::Client::new();
         client.set_base_url(base);
-        let res = client.connect(DEFAULT_RPC_PATH).recv_string().await
+        let res = client
+            .connect(DEFAULT_RPC_PATH)
+            .recv_string()
+            .await
             .map_err(|e| Error::TransportError { msg: e.to_string() })?;
 
         // log::info!("{}", res);
@@ -527,7 +524,7 @@ impl Client<Channel, NotConnected> {
     )
 ))]
 #[cfg_attr(feature = "docs", doc(cfg(feature = "surf")))]
-/// The following impl block is controlled by feature flag. It is enabled 
+/// The following impl block is controlled by feature flag. It is enabled
 /// if and only if **exactly one** of the the following feature flag is turned on
 /// - `serde_bincode`
 /// - `serde_json`
@@ -536,8 +533,8 @@ impl Client<Channel, NotConnected> {
 impl Client<Channel, Connected> {
     /// Similar to `call()`, it invokes the named function and wait synchronously,
     /// but this is for `Client` connected to a HTTP RPC server
-    /// 
-    /// This is enabled 
+    ///
+    /// This is enabled
     /// if and only if **exactly one** of the the following feature flag is turned on
     /// - `serde_bincode`
     /// - `serde_json`
@@ -576,14 +573,14 @@ impl Client<Channel, Connected> {
 
     /// Similar to `spawn_task()`. It invokes the named function asynchronously by spawning a new task and returns the `JoinHandle`,
     /// but this is for `Client` connected to a HTTP RPC server
-    /// 
-    /// This is enabled 
+    ///
+    /// This is enabled
     /// if and only if **exactly one** of the the following feature flag is turned on
     /// - `serde_bincode`
     /// - `serde_json`
     /// - `serde_cbor`
     /// - `serde_rmp`
-    /// 
+    ///
     /// Example
     /// ```rust
     /// use toy_rpc::client::Client;
@@ -597,7 +594,7 @@ impl Client<Channel, Connected> {
     ///     let reply: Result<String, Error> = client.spawn_task_http("echo_service.echo", args).await;
     ///     println!("{:?}", reply);
     /// }
-    /// 
+    ///
     pub fn spawn_task_http<Req, Res>(
         &self,
         service_method: impl ToString + Send + 'static,
@@ -620,8 +617,8 @@ impl Client<Channel, Connected> {
 
     /// Similar to `async_call()`, it invokes the named function asynchronously,
     /// but this is for `Client` connected to a HTTP RPC server
-    /// 
-    /// This is enabled 
+    ///
+    /// This is enabled
     /// if and only if **exactly one** of the the following feature flag is turned on
     /// - `serde_bincode`
     /// - `serde_json`
@@ -642,7 +639,7 @@ impl Client<Channel, Connected> {
     ///     let reply: Result<String, Error> = client.async_call_http("echo_service.echo", &args).await;
     ///     println!("{:?}", reply);
     /// }
-    /// 
+    ///
     pub async fn async_call_http<Req, Res>(
         &self,
         service_method: impl ToString,
@@ -657,22 +654,14 @@ impl Client<Channel, Connected> {
         let pending = self.pending.clone();
 
         let id = self.count.fetch_add(1u16, Ordering::Relaxed);
-        Self::_async_call_http(
-            service_method,
-            &args,
-            id,
-            req_sender,
-            res_recver,
-            pending,
-        )
-        .await
+        Self::_async_call_http(service_method, &args, id, req_sender, res_recver, pending).await
     }
 
     async fn _async_call_http<Req, Res>(
         service_method: impl ToString,
         args: &Req,
         id: MessageId,
-        req_sender: Arc<Mutex<Sender<Vec<u8>>>>,
+        mut req_sender: Sender<Vec<u8>>,
         res_recver: Arc<Mutex<Receiver<Vec<u8>>>>,
         pending: Arc<Mutex<ResponseMap>>,
     ) -> Result<Res, Error>
@@ -702,24 +691,21 @@ impl Client<Channel, Connected> {
         log::info!("Request id {} sent with {} bytes", &id, _bytes_sent);
 
         // send req buffer to client_loop
-        {
-            let mut _req_sender = req_sender.lock().await;
-
-            _req_sender
-                .send(req_buf)
-                .await
-                .map_err(|e| Error::TransportError { msg: e.to_string() })?;
-        }
+        req_sender
+            .send(req_buf)
+            .await
+            .map_err(|e| Error::TransportError { msg: e.to_string() })?;
 
         // wait for response
         let encoded_res = {
             let mut _res_recver = res_recver.lock().await;
-            _res_recver.next().await
-                .ok_or(
-                    Error::IoError(
-                        std::io::Error::new(std::io::ErrorKind::UnexpectedEof, "EOF reading response")
-                    )
-                )?
+            _res_recver
+                .next()
+                .await
+                .ok_or(Error::IoError(std::io::Error::new(
+                    std::io::ErrorKind::UnexpectedEof,
+                    "EOF reading response",
+                )))?
         };
         // .map_err(|e| Error::TransportError { msg: e.to_string() })?;
 
@@ -756,22 +742,23 @@ impl Client<Channel, Connected> {
         loop {
             let encoded_req = req_recver.next().await?;
             // .map_err(|e| Error::TransportError { msg: e.to_string() })?;
-    
+
             let res_body = match surf::post(&path)
                 .content_type("application/octet-stream")
-                .body(encoded_req).recv_bytes().await {
-                    Ok(v) => v,
-                    Err(e) => return Some(Err(Error::TransportError {msg: e.to_string()} )),
-                };
+                .body(encoded_req)
+                .recv_bytes()
+                .await
+            {
+                Ok(v) => v,
+                Err(e) => return Some(Err(Error::TransportError { msg: e.to_string() })),
+            };
 
             // send back result
-            match res_sender
-                .send(res_body)
-                .await {
-                    Err(e) => return Some(Err(Error::TransportError {msg: e.to_string()} )),
-                    // Ok(()) => { },
-                    _ => { },
-                };
-            }
+            match res_sender.send(res_body).await {
+                Err(e) => return Some(Err(Error::TransportError { msg: e.to_string() })),
+                // Ok(()) => { },
+                _ => {}
+            };
+        }
     }
 }

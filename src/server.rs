@@ -30,12 +30,12 @@ pub struct Server {
 
 impl Server {
     /// Creates a `ServerBuilder`
-    /// 
+    ///
     /// Example
-    /// 
+    ///
     /// ```rust
     /// use toy_rpc::server::{ServerBuilder, Server};
-    /// 
+    ///
     /// let builder: ServerBuilder = Server::builder();
     /// ```
     pub fn builder() -> ServerBuilder {
@@ -151,16 +151,15 @@ impl Server {
         }
     }
 
-
     /// This is like serve_conn except that it uses a specified codec
-    /// 
+    ///
     /// Example
-    /// 
+    ///
     /// ```rust
     /// use async_std::net::TcpStream;
     /// // the default `Codec` will be used as an example
     /// use toy_rpc::codec::Codec;
-    /// 
+    ///
     /// #[async_std::main]
     /// async fn main() {
     ///     // assume the following connection can be established
@@ -184,8 +183,6 @@ impl Server {
         Self::_serve_codec(codec, self.services.clone()).await
     }
 }
-
-
 
 #[cfg(any(
     all(
@@ -214,7 +211,7 @@ impl Server {
     ),
     feature = "docs"
 ))]
-/// The following impl block is controlled by feature flag. It is enabled 
+/// The following impl block is controlled by feature flag. It is enabled
 /// if and only if **exactly one** of the the following feature flag is turned on
 /// - `serde_bincode`
 /// - `serde_json`
@@ -223,8 +220,8 @@ impl Server {
 impl Server {
     /// Accepts connections on the listener and serves requests to default
     /// server for each incoming connection
-    /// 
-    /// This is enabled 
+    ///
+    /// This is enabled
     /// if and only if **exactly one** of the the following feature flag is turned on
     /// - `serde_bincode`
     /// - `serde_json`
@@ -235,14 +232,14 @@ impl Server {
     ///
     /// ```rust
     /// use async_std::net::TcpListener;
-    /// 
+    ///
     /// async fn main() {
     ///     // assume `ExampleService` exist
     ///     let example_service = ExampleService {};
     ///     let server = Server::builder()
     ///         .register("example", service!(example_service, ExampleService))
     ///         .build();
-    /// 
+    ///
     ///     let listener = TcpListener::bind(addr).await.unwrap();
     ///
     ///     let handle = task::spawn(async move {
@@ -286,26 +283,26 @@ impl Server {
     }
 
     /// Serves a single connection using the default codec
-    /// 
-    /// This is enabled 
+    ///
+    /// This is enabled
     /// if and only if **exactly one** of the the following feature flag is turned on
     /// - `serde_bincode`
     /// - `serde_json`
     /// - `serde_cbor`
     /// - `serde_rmp`
-    /// 
-    /// Example 
-    /// 
+    ///
+    /// Example
+    ///
     /// ```rust
     /// use async_std::net::TcpStream;
-    /// 
+    ///
     /// async fn main() {
     ///     // assume `ExampleService` exist
     ///     let example_service = ExampleService {};
     ///     let server = Server::builder()
     ///         .register("example", service!(example_service, ExampleService))
     ///         .build();
-    /// 
+    ///
     ///     let conn = TcpStream::connect(addr).await.unwrap();
     ///
     ///     let handle = task::spawn(async move {
@@ -346,15 +343,15 @@ impl Server {
     }
 
     #[cfg(any(feature = "tide", feature = "docs"))]
-    #[cfg_attr(feature="docs", doc(cfg(feature = "tide")))]
-    /// Creates a `tide::Endpoint` that handles http connections. 
+    #[cfg_attr(feature = "docs", doc(cfg(feature = "tide")))]
+    /// Creates a `tide::Endpoint` that handles http connections.
     /// A convienient function `handle_http` can be used to achieve the same thing
     /// with `tide` feature turned on
     ///
     /// The endpoint will be created with `DEFAULT_RPC_PATH` appended to the
-    /// end of the nested `tide` endpoint. 
-    /// 
-    /// This is enabled 
+    /// end of the nested `tide` endpoint.
+    ///
+    /// This is enabled
     /// if and only if **exactly one** of the the following feature flag is turned on
     /// - `serde_bincode`
     /// - `serde_json`
@@ -366,14 +363,14 @@ impl Server {
     /// use toy_rpc::server::Server;
     /// use toy_rpc::macros::{export_impl, service};
     /// use async_std::sync::Arc;
-    /// 
+    ///
     /// struct FooService { }
-    /// 
+    ///
     /// #[export_impl]
     /// impl FooService {
     ///     // define some "exported" functions
     /// }
-    /// 
+    ///
     /// #[async_std::main]
     /// async fn main() -> tide::Result<()> {
     ///     let addr = "127.0.0.1:8888";
@@ -388,10 +385,10 @@ impl Server {
     ///     // If a network path were to be supplied,
     ///     // the network path must end with a slash "/"
     ///     app.at("/rpc/").nest(server.into_endpoint());
-    /// 
-    ///     // `handle_http` is a conenient function that calls `into_endpoint` 
+    ///
+    ///     // `handle_http` is a conenient function that calls `into_endpoint`
     ///     // with the `tide` feature turned on
-    ///     //app.at("/rpc/").nest(server.handle_http()); 
+    ///     //app.at("/rpc/").nest(server.handle_http());
     ///
     ///     app.listen(addr).await?;
     ///     Ok(())
@@ -422,47 +419,47 @@ impl Server {
         app
     }
 
-    #[cfg(any(feature = "actix-web", feature="docs"))]
-    #[cfg_attr(feature="docs", doc(cfg(feature = "actix-web")))]
-    /// Configuration for integration with an actix-web scope. 
+    #[cfg(any(feature = "actix-web", feature = "docs"))]
+    #[cfg_attr(feature = "docs", doc(cfg(feature = "actix-web")))]
+    /// Configuration for integration with an actix-web scope.
     /// A convenient funciont "handle_http" may be used to achieve the same thing
     /// with the `actix-web` feature turned on.
-    /// 
+    ///
     /// The `DEFAULT_RPC_PATH` will be appended to the end of the scope's path.
-    /// 
-    /// This is enabled 
+    ///
+    /// This is enabled
     /// if and only if **exactly one** of the the following feature flag is turned on
     /// - `serde_bincode`
     /// - `serde_json`
     /// - `serde_cbor`
     /// - `serde_rmp`
-    /// 
+    ///
     /// Example
-    /// 
+    ///
     /// ```rust
     /// use toy_rpc::Server;
     /// use toy_rpc::macros::{export_impl, service};
     /// use actix_web::{App, HttpServer, web};
-    /// 
+    ///
     /// struct FooService { }
-    /// 
+    ///
     /// #[export_impl]
     /// impl FooService {
     ///     // define some "exported" functions
     /// }
-    /// 
+    ///
     /// #[actix::main]
     /// async fn main() -> std::io::Result<()> {
     ///     let addr = "127.0.0.1:8888";
     ///     
     ///     let foo_service = Arc::new(FooService { });
-    /// 
+    ///
     ///     let server = Server::builder()
     ///         .register("foo_service", service!(foo_servicem FooService))
     ///         .build();
-    /// 
+    ///
     ///     let app_data = web::Data::new(server);
-    /// 
+    ///
     ///     HttpServer::new(
     ///         move || {
     ///             App::new()
@@ -470,7 +467,7 @@ impl Server {
     ///                     web::scope("/rpc/")
     ///                         .app_data(app_data.clone())
     ///                         .configure(Server::scope_config)
-    ///                         // The line above may be replaced with line below 
+    ///                         // The line above may be replaced with line below
     ///                         //.configure(Server::handle_http()) // use the convenience `handle_http`
     ///                 )
     ///         }
@@ -480,55 +477,54 @@ impl Server {
     ///     .await
     /// }
     /// ```
-    /// 
+    ///
     pub fn scope_config(cfg: &mut web::ServiceConfig) {
         cfg.service(
             web::scope("/")
                 // .app_data(data)
-                .service(web::resource(DEFAULT_RPC_PATH)
-                    .route(web::post().to(Server::_handle_http))
-                    .route(web::method(actix_web::http::Method::CONNECT)
-                        .to(|| actix_web::HttpResponse::Ok().body("CONNECT request is received")))
-                )
+                .service(
+                    web::resource(DEFAULT_RPC_PATH)
+                        .route(web::post().to(Server::_handle_http))
+                        .route(web::method(actix_web::http::Method::CONNECT).to(|| {
+                            actix_web::HttpResponse::Ok().body("CONNECT request is received")
+                        })),
+                ),
         );
     }
 
-    #[cfg(any(all(
-        feature = "tide",
-        not(feature = "actix-web"),
-    ), feature = "docs"))]
+    #[cfg(any(all(feature = "tide", not(feature = "actix-web"),), feature = "docs"))]
     #[cfg_attr(
-        feature="docs", 
+        feature = "docs",
         doc(cfg(all(feature = "tide", not(feature = "actix-web"))))
     )]
-    /// A conevience function that calls the corresponding http handling 
+    /// A conevience function that calls the corresponding http handling
     /// function depending on the enabled feature flag
-    /// 
+    ///
     /// | feature flag | function name  |
     /// | ------------ |---|
     /// | `tide`| [`into_endpoint`](#method.into_endpoint) |
     /// | `actix-web` | [`scope_config`](#method.scope_config) |
-    /// 
-    /// This is enabled 
+    ///
+    /// This is enabled
     /// if and only if **exactly one** of the the following feature flag is turned on
     /// - `serde_bincode`
     /// - `serde_json`
     /// - `serde_cbor`
     /// - `serde_rmp`
-    /// 
+    ///
     /// # Example
     /// ```
     /// use toy_rpc::server::Server;
     /// use toy_rpc::macros::{export_impl, service};
     /// use async_std::sync::Arc;
-    /// 
+    ///
     /// struct FooService { }
-    /// 
+    ///
     /// #[export_impl]
     /// impl FooService {
     ///     // define some "exported" functions
     /// }
-    /// 
+    ///
     /// #[async_std::main]
     /// async fn main() -> tide::Result<()> {
     ///     let addr = "127.0.0.1:8888";
@@ -541,10 +537,10 @@ impl Server {
     ///     let mut app = tide::new();
     ///
     ///     // If a network path were to be supplied,
-    ///     // the network path must end with a slash "/" 
-    ///     // `handle_http` is a conenience function that calls `into_endpoint` 
+    ///     // the network path must end with a slash "/"
+    ///     // `handle_http` is a conenience function that calls `into_endpoint`
     ///     // with the `tide` feature turned on
-    ///     app.at("/rpc/").nest(server.handle_http()); 
+    ///     app.at("/rpc/").nest(server.handle_http());
     ///
     ///     app.listen(addr).await?;
     ///     Ok(())
@@ -554,55 +550,52 @@ impl Server {
         self.into_endpoint()
     }
 
-    #[cfg(any(all(
-        feature = "actix-web",
-        not(feature = "tide"),
-    ), feature = "docs"))]
+    #[cfg(any(all(feature = "actix-web", not(feature = "tide"),), feature = "docs"))]
     #[cfg_attr(
-        feature="docs", 
+        feature = "docs",
         doc(cfg(all(feature = "actix-web", not(feature = "tide"))))
     )]
-    /// A conevience function that calls the corresponding http handling 
+    /// A conevience function that calls the corresponding http handling
     /// function depending on the enabled feature flag
-    /// 
+    ///
     /// | feature flag | function name  |
     /// | ------------ |---|
     /// | `tide`| [`into_endpoint`](#method.into_endpoint) |
     /// | `actix-web` | [`scope_config`](#method.scope_config) |
-    /// 
-    /// This is enabled 
+    ///
+    /// This is enabled
     /// if and only if **exactly one** of the the following feature flag is turned on
     /// - `serde_bincode`
     /// - `serde_json`
     /// - `serde_cbor`
     /// - `serde_rmp`
-    /// 
+    ///
     /// Example
-    /// 
+    ///
     /// ```rust
     /// use toy_rpc::Server;
     /// use toy_rpc::macros::{export_impl, service};
     /// use actix_web::{App, web};
-    /// 
+    ///
     /// struct FooService { }
-    /// 
+    ///
     /// #[export_impl]
     /// impl FooService {
     ///     // define some "exported" functions
     /// }
-    /// 
+    ///
     /// #[actix::main]
     /// async fn main() -> std::io::Result<()> {
     ///     let addr = "127.0.0.1:8888";
     ///     
     ///     let foo_service = Arc::new(FooService { });
-    /// 
+    ///
     ///     let server = Server::builder()
     ///         .register("foo_service", service!(foo_servicem FooService))
     ///         .build();
-    /// 
+    ///
     ///     let app_data = web::Data::new(server);
-    /// 
+    ///
     ///     HttpServer::new(
     ///         move || {
     ///             App::new()

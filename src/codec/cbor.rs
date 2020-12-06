@@ -1,4 +1,4 @@
-//! Impplementation of `CodecRead`, `CodecWrite`, `Marshal` and `Unmarshal` traits with `serde_cbor` 
+//! Impplementation of `CodecRead`, `CodecWrite`, `Marshal` and `Unmarshal` traits with `serde_cbor`
 
 use async_trait::async_trait;
 use erased_serde as erased;
