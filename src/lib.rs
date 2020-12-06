@@ -243,7 +243,7 @@
 //! #[async_std::main]
 //! async fn main() {
 //!     let addr = "127.0.0.1:8888";
-//!     let mut client = Client::dial(addr).await.unwrap();
+//!     let client = Client::dial(addr).await.unwrap();
 //!
 //!     let args = ExampleRequest{a: 1};
 //!     let reply: Result<ExampleResponse, Error> = client.call("example.echo", &args);
@@ -341,7 +341,7 @@
 //! async fn main() {
 //!     // note that the endpoint path must be specified
 //!     let path = "http://127.0.0.1:8888/rpc/";
-//!     let mut client = Client::dial_http(path).await.unwrap();
+//!     let client = Client::dial_http(path).await.unwrap();
 //!
 //!     let args = ExampleRequest{a: 1};
 //!     let reply: Result<ExampleResponse, Error> = client.call_http("example.echo", &args);
@@ -448,7 +448,7 @@
 //! async fn main() {
 //!     // note that the endpoint path must be specified
 //!     let path = "http://127.0.0.1:8888/rpc/";
-//!     let mut client = Client::dial_http(path).await.unwrap();
+//!     let client = Client::dial_http(path).await.unwrap();
 //!
 //!     let args = ExampleRequest{a: 1};
 //!     let reply: Result<ExampleResponse, Error> = client.call_http("example.echo", &args);
@@ -459,6 +459,13 @@
 //! 
 //! ## Change Log
 //!
+//! ### 0.4.2
+//! - Temporary fix of `spawn_task()` and `spawn_task_http()` with `Arc<Mutex<_>>` until 
+//! lifetime with async task is figured out. As a result, `Client` no longer needs to be declared `mut`.
+//! 
+//! ### 0.4.1
+//! - Updated documentation
+//! 
 //! ### 0.4.0
 //! 
 //! - Added `actix-web` feature flag to support integration with `actix-web`

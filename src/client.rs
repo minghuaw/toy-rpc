@@ -189,7 +189,7 @@ impl Client<Codec, Connected> {
     /// #[async_std::main]
     /// async fn main() {
     ///     let addr = "127.0.0.1:8888";
-    ///     let mut client = Client::dial(addr).await.unwrap();
+    ///     let client = Client::dial(addr).await.unwrap();
     ///
     ///     let args = "arguments";
     ///     let reply: Result<String, Error> = client.call("echo_service.echo", &args);
@@ -215,10 +215,10 @@ impl Client<Codec, Connected> {
     /// #[async_std::main]
     /// async fn main() {
     ///     let addr = "127.0.0.1:8888";
-    ///     let mut client = Client::dial(addr).await.unwrap();
+    ///     let client = Client::dial(addr).await.unwrap();
     ///
     ///     let args = "arguments";
-    ///     let handle: task::JoinHandle<Result<Res, Error>> = client.spawn_task("echo_service.echo", &args);
+    ///     let handle: task::JoinHandle<Result<Res, Error>> = client.spawn_task("echo_service.echo", args);
     ///     let reply: Result<String, Error> = handle.await;
     ///     println!("{:?}", reply);
     /// }
@@ -254,7 +254,7 @@ impl Client<Codec, Connected> {
     /// #[async_std::main]
     /// async fn main() {
     ///     let addr = "127.0.0.1:8888";
-    ///     let mut client = Client::dial(addr).await.unwrap();
+    ///     let client = Client::dial(addr).await.unwrap();
     ///
     ///     let args = "arguments";
     ///     let reply: Result<String, Error> = client.async_call("echo_service.echo", &args).await;
@@ -447,7 +447,7 @@ impl Client<Channel, NotConnected> {
     /// #[async_std::main]
     /// async fn main() {
     ///     let addr = "http://127.0.0.1:8888/rpc/";
-    ///     let mut client = Client::dial_http(addr).await.unwrap();
+    ///     let client = Client::dial_http(addr).await.unwrap();
     /// }
     /// ```
     ///
@@ -550,7 +550,7 @@ impl Client<Channel, Connected> {
     /// #[async_std::main]
     /// async fn main() {
     ///     let addr = "http://127.0.0.1:8888/rpc/";
-    ///     let mut client = Client::dial_http(addr).await.unwrap();
+    ///     let client = Client::dial_http(addr).await.unwrap();
     ///
     ///     let args = "arguments";
     ///     let reply: Result<String, Error> = client.call_http("echo_service.echo", &args);
@@ -586,10 +586,10 @@ impl Client<Channel, Connected> {
     /// #[async_std::main]
     /// async fn main() {
     ///     let addr = "http://127.0.0.1:8888/rpc/";
-    ///     let mut client = Client::dial_http(addr).await.unwrap();
+    ///     let client = Client::dial_http(addr).await.unwrap();
     ///
     ///     let args = "arguments"
-    ///     let reply: Result<String, Error> = client.spawn_task_http("echo_service.echo", &args).await;
+    ///     let reply: Result<String, Error> = client.spawn_task_http("echo_service.echo", args).await;
     ///     println!("{:?}", reply);
     /// }
     /// 
@@ -631,7 +631,7 @@ impl Client<Channel, Connected> {
     /// #[async_std::main]
     /// async fn main() {
     ///     let addr = "http://127.0.0.1:8888/rpc/";
-    ///     let mut client = Client::dial_http(addr).await.unwrap();
+    ///     let client = Client::dial_http(addr).await.unwrap();
     ///
     ///     let args = "arguments"
     ///     let reply: Result<String, Error> = client.async_call_http("echo_service.echo", &args).await;
