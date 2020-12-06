@@ -12,23 +12,15 @@ method "exported".
 
 ### Content
 
-- [toy-rpc](#toy-rpc)
-  - [A toy RPC crate based on `async-std` that mimics the `golang`'s `net/rpc` package](#a-toy-rpc-crate-based-on-async-std-that-mimics-the-golangs-netrpc-package)
-    - [Content](#content)
-    - [Crate Feature Flags](#crate-feature-flags)
-      - [Default Features](#default-features)
-    - [Documentation](#documentation)
-    - [Examples](#examples)
-      - [RPC over socket](#rpc-over-socket)
-      - [RPC over HTTP with `tide`](#rpc-over-http-with-tide)
-      - [RPC over HTTP with `actix-web`](#rpc-over-http-with-actix-web)
-    - [Change Log](#change-log)
-      - [0.4.2](#042)
-      - [0.4.1](#041)
-      - [0.4.0](#040)
-      - [0.3.1](#031)
-      - [0.3.0](#030)
-    - [Future Plan](#future-plan)
+- [Crate Feature Flags](#crate-feature-flags)
+  - [Default Features](#default-features)
+- [Documentation](#documentation)
+- [Examples](#examples)
+  - [RPC over socket](#rpc-over-socket)
+  - [RPC over HTTP with `tide`](#rpc-over-http-with-tide)
+  - [RPC over HTTP with `actix-web`](#rpc-over-http-with-actix-web)
+- [Change Log](#change-log)
+- [Future Plan](#future-plan)
 
 
 ### Crate Feature Flags
@@ -140,20 +132,21 @@ and call `accept`. Integration with HTTP currently only supports `tide` by calli
 A client wishing to use the service establishes a `async_std::net::TcpStream` connection
 and then creates `Client` over the connection. The convenience function `dial` performs
 this step for raw TCP socket connection, and `dial_http` performs this for an HTTP
-connection. A client with raw TCP connection has three methods, `call`, `async_call`,
-and `spawn_task`. A client with HTTP connection has three equivalent methods,
-`call_http`, `async_call_http`, and `spawn_task_http`. All six functions have the
-same signature that specifies the service and method to call and the argument.
+connection. A `Client` with HTTP connection or socket connection has three methods, `call`, `async_call`,
+and `spawn_task`, to specify the service and method to call and the argument.
 
-- the `call` and `call_http` methods are synchronous and waits for the remote call
+Please note that `call_http`, `async_call_http` and `spawn_task_http` are becoming deprecated
+as the same API now can be called for both a socket client and an HTTP client.
+
+- `call` method is synchronous and waits for the remote call
 to complete and then returns the result.
-- the `async_call` and `async_call_http` are `async` versions of `call` and `call_http`,
+- `async_call` is the `async` versions of `call` and `call_http`,
 respectively. Because they are `async` functions, they must be called with `.await` to
 be executed.
-- the `spawn_task` and `spawn_task_http` spawn an `async` task and return a `JoinHandle`.
+- `spawn_task` method spawns an `async` task and returns a `JoinHandle`.
 The result can be obtained using the `JoinHandle`.
 
-Unless an explicity codec is set up (with `serve_codec`, HTTP is *NOT* supported yet),
+Unless an explicity codec is set up (with `serve_codec` method, HTTP is *NOT* supported yet),
 the default codec specified by one of the following features tags (`bincode`, `serde_json`)
 will be used to transport data.
 
@@ -356,7 +349,7 @@ async fn main() {
     let client = Client::dial_http(path).await.unwrap();
 
     let args = ExampleRequest{a: 1};
-    let reply: Result<ExampleResponse, Error> = client.call_http("example.echo", &args);
+    let reply: Result<ExampleResponse, Error> = client.call("example.echo", &args);
     println!("{:?}", reply);
 }
 ```
@@ -467,13 +460,20 @@ async fn main() {
     let client = Client::dial_http(path).await.unwrap();
 
     let args = ExampleRequest{a: 1};
-    let reply: Result<ExampleResponse, Error> = client.call_http("example.echo", &args);
+    let reply: Result<ExampleResponse, Error> = client.call("example.echo", &args);
     println!("{:?}", reply);
 }
 
 ```
 
 ### Change Log
+
+#### 0.4.2
+
+- Removed previously unused NoneError
+- Unified `call`, `async_call` and `spawn_task` for socket client
+and HTTP client. The `call_http`, `async_call_http`, and `spawn_task_http`
+methods are kept for compatibility.
 
 #### 0.4.2
 

@@ -555,7 +555,7 @@ impl Client<Channel, Connected> {
     ///     let client = Client::dial_http(addr).await.unwrap();
     ///
     ///     let args = "arguments";
-    ///     let reply: Result<String, Error> = client.call_http("echo_service.echo", &args);
+    ///     let reply: Result<String, Error> = client.call("echo_service.echo", &args);
     ///     println!("{:?}", reply);
     /// }
     /// ```
@@ -601,7 +601,7 @@ impl Client<Channel, Connected> {
     ///     let client = Client::dial_http(addr).await.unwrap();
     ///
     ///     let args = "arguments"
-    ///     let reply: Result<String, Error> = client.spawn_task_http("echo_service.echo", args).await;
+    ///     let reply: Result<String, Error> = client.spawn_task("echo_service.echo", args).await;
     ///     println!("{:?}", reply);
     /// }
     ///
@@ -660,7 +660,7 @@ impl Client<Channel, Connected> {
     ///     let client = Client::dial_http(addr).await.unwrap();
     ///
     ///     let args = "arguments"
-    ///     let reply: Result<String, Error> = client.async_call_http("echo_service.echo", &args).await;
+    ///     let reply: Result<String, Error> = client.async_call("echo_service.echo", &args).await;
     ///     println!("{:?}", reply);
     /// }
     ///

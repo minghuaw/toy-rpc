@@ -1,11 +1,11 @@
 [package]
 name = "toy-rpc"
-version = "0.4.2"
+version = "0.4.3"
 authors = ["Minghua Wu <michael.wu1107@gmail.com>"]
 edition = "2018"
 description = "An async-std based RPC library that mimics the API of golang net/rpc"
 license = "MIT/Apache-2.0"
-documentation = "https://docs.rs/toy-rpc/0.4.2/toy_rpc/"
+documentation = "https://docs.rs/toy-rpc/0.4.3/toy_rpc/"
 homepage = "https://github.com/minghuaw/toy-rpc"
 repository = "https://github.com/minghuaw/toy-rpc"
 keywords = ["async", "rpc", "go", "golang", "async-std"]
