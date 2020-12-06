@@ -9,7 +9,7 @@ async fn main() {
     env_logger::init();
 
     let addr = "http://127.0.0.1:23333/rpc/";
-    let mut client = Client::dial_http(addr).await.unwrap();
+    let client = Client::dial_http(addr).await.unwrap();
 
     let args = FooRequest { a: 1, b: 3 };
     let reply: Result<FooResponse, Error> = client.call_http("foo_service.echo", &args);
@@ -18,7 +18,7 @@ async fn main() {
     let reply: Result<FooResponse, Error> = client.async_call_http("foo_service.increment_a", &args).await;
     println!("{:?}", reply);
 
-    let handle = client.spawn_task_http("foo_service.increment_b", &args);
+    let handle = client.spawn_task_http("foo_service.increment_b", args);
     let reply: Result<FooResponse, Error> = handle.await;
     println!("{:?}", reply);
 
@@ -35,7 +35,7 @@ async fn main() {
 
     // third request, get_counter
     let args = ();
-    let handle = client.spawn_task_http("foo_service.get_counter", &args);
+    let handle = client.spawn_task_http("foo_service.get_counter", args);
     let reply: u32 = handle.await.unwrap();
     println!("{:?}", reply);
 }

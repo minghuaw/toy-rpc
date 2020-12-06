@@ -35,7 +35,7 @@ pub struct Connected {}
 type Codec = Arc<Mutex<Box<dyn ClientCodec>>>;
 
 #[cfg(feature = "surf")]
-type Channel = (Sender<Vec<u8>>, Receiver<Vec<u8>>);
+type Channel = (Arc<Mutex<Sender<Vec<u8>>>>, Arc<Mutex<Receiver<Vec<u8>>>>);
 
 type ResponseBody = Box<dyn erased::Deserializer<'static> + Send>;
 
@@ -196,7 +196,7 @@ impl Client<Codec, Connected> {
     ///     println!("{:?}", reply);
     /// }
     /// ```
-    pub fn call<Req, Res>(&mut self, service_method: impl ToString, args: Req) -> Result<Res, Error>
+    pub fn call<Req, Res>(&self, service_method: impl ToString, args: Req) -> Result<Res, Error>
     where
         Req: serde::Serialize + Send + Sync,
         Res: serde::de::DeserializeOwned,
@@ -224,7 +224,7 @@ impl Client<Codec, Connected> {
     /// }
     /// ```
     pub fn spawn_task<Req, Res>(
-        &mut self,
+        &self,
         service_method: impl ToString + Send + 'static,
         args: Req,
     ) -> task::JoinHandle<Result<Res, Error>>
@@ -262,7 +262,7 @@ impl Client<Codec, Connected> {
     /// }
     /// ```
     pub async fn async_call<Req, Res>(
-        &mut self,
+        &self,
         service_method: impl ToString,
         args: Req,
     ) -> Result<Res, Error>
@@ -457,7 +457,7 @@ impl Client<Channel, NotConnected> {
         let (req_sender, req_recver) = channel::<Vec<u8>>(CHANNEL_BUF_SIZE);
         let (res_sender, res_recver) = channel::<Vec<u8>>(CHANNEL_BUF_SIZE);
 
-        let channel_codec = (req_sender, res_recver);
+        let channel_codec = (Arc::new(Mutex::new(req_sender)), Arc::new(Mutex::new(res_recver)));
 
         let base = surf::Url::parse(addr)?;
         let path = base.join(DEFAULT_RPC_PATH)?;
@@ -558,7 +558,7 @@ impl Client<Channel, Connected> {
     /// }
     /// ```
     pub fn call_http<Req, Res>(
-        &mut self,
+        &self,
         service_method: impl ToString,
         args: Req,
     ) -> Result<Res, Error>
@@ -594,7 +594,7 @@ impl Client<Channel, Connected> {
     /// }
     /// 
     pub fn spawn_task_http<Req, Res>(
-        &'static mut self,
+        &self,
         service_method: impl ToString + Send + 'static,
         args: Req,
     ) -> task::JoinHandle<Result<Res, Error>>
@@ -603,8 +603,8 @@ impl Client<Channel, Connected> {
         Res: serde::de::DeserializeOwned + Send + 'static,
     {
         // task::spawn(self.async_call_http(service_method, args))
-        let req_sender = &mut self.inner_codec.0;
-        let res_recver = &mut self.inner_codec.1;
+        let req_sender = self.inner_codec.0.clone();
+        let res_recver = self.inner_codec.1.clone();
         let pending = self.pending.clone();
 
         let id = self.count.fetch_add(1u16, Ordering::Relaxed);
@@ -639,7 +639,7 @@ impl Client<Channel, Connected> {
     /// }
     /// 
     pub async fn async_call_http<Req, Res>(
-        &mut self,
+        &self,
         service_method: impl ToString,
         args: Req,
     ) -> Result<Res, Error>
@@ -647,8 +647,8 @@ impl Client<Channel, Connected> {
         Req: serde::Serialize + Send + Sync,
         Res: serde::de::DeserializeOwned,
     {
-        let req_sender = &mut self.inner_codec.0;
-        let res_recver = &mut self.inner_codec.1;
+        let req_sender = self.inner_codec.0.clone();
+        let res_recver = self.inner_codec.1.clone();
         let pending = self.pending.clone();
 
         let id = self.count.fetch_add(1u16, Ordering::Relaxed);
@@ -667,8 +667,8 @@ impl Client<Channel, Connected> {
         service_method: impl ToString,
         args: &Req,
         id: MessageId,
-        req_sender: &mut Sender<Vec<u8>>,
-        res_recver: &mut Receiver<Vec<u8>>,
+        req_sender: Arc<Mutex<Sender<Vec<u8>>>>,
+        res_recver: Arc<Mutex<Receiver<Vec<u8>>>>,
         pending: Arc<Mutex<ResponseMap>>,
     ) -> Result<Res, Error>
     where
@@ -697,13 +697,20 @@ impl Client<Channel, Connected> {
         log::info!("Request id {} sent with {} bytes", &id, _bytes_sent);
 
         // send req buffer to client_loop
-        req_sender
-            .send(req_buf)
-            .await
-            .map_err(|e| Error::TransportError { msg: e.to_string() })?;
+        {
+            let mut _req_sender = req_sender.lock().await;
+
+            _req_sender
+                .send(req_buf)
+                .await
+                .map_err(|e| Error::TransportError { msg: e.to_string() })?;
+        }
 
         // wait for response
-        let encoded_res = res_recver.next().await.ok_or(Error::NoneError)?;
+        let encoded_res = {
+            let mut _res_recver = res_recver.lock().await;
+            _res_recver.next().await.ok_or(Error::NoneError)?
+        };
         // .map_err(|e| Error::TransportError { msg: e.to_string() })?;
 
         let mut req_buf = Vec::with_capacity(0);
