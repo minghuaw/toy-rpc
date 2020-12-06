@@ -559,6 +559,20 @@ impl Client<Channel, Connected> {
     ///     println!("{:?}", reply);
     /// }
     /// ```
+    pub fn call<Req, Res>(
+        &self,
+        service_method: impl ToString,
+        args: Req,
+    ) -> Result<Res, Error>
+    where
+        Req: serde::Serialize + Send + Sync,
+        Res: serde::de::DeserializeOwned,
+    {
+        task::block_on(self.async_call(service_method, args))
+    }
+    
+    #[deprecated = "Please use `call` instead"]
+    /// Same as `call`. This is kept for backward compatibility
     pub fn call_http<Req, Res>(
         &self,
         service_method: impl ToString,
@@ -568,7 +582,8 @@ impl Client<Channel, Connected> {
         Req: serde::Serialize + Send + Sync,
         Res: serde::de::DeserializeOwned,
     {
-        task::block_on(self.async_call_http(service_method, args))
+        // task::block_on(self.async_call_http(service_method, args))
+        self.call(service_method, args)
     }
 
     /// Similar to `spawn_task()`. It invokes the named function asynchronously by spawning a new task and returns the `JoinHandle`,
@@ -595,6 +610,28 @@ impl Client<Channel, Connected> {
     ///     println!("{:?}", reply);
     /// }
     ///
+    pub fn spawn_task<Req, Res>(
+        &self,
+        service_method: impl ToString + Send + 'static,
+        args: Req,
+    ) -> task::JoinHandle<Result<Res, Error>>
+    where
+    Req: serde::Serialize + Send + Sync + 'static,
+    Res: serde::de::DeserializeOwned + Send + 'static,
+    {
+        // task::spawn(self.async_call_http(service_method, args))
+        let req_sender = self.inner_codec.0.clone();
+        let res_recver = self.inner_codec.1.clone();
+        let pending = self.pending.clone();
+        
+        let id = self.count.fetch_add(1u16, Ordering::Relaxed);
+        task::spawn(async move {
+            Self::_async_call_http(service_method, &args, id, req_sender, res_recver, pending).await
+        })
+    }
+    
+    #[deprecated = "Please use `spawn_task` instead"]
+    /// Same as `spawn_task`. This is kept for compatibility
     pub fn spawn_task_http<Req, Res>(
         &self,
         service_method: impl ToString + Send + 'static,
@@ -604,15 +641,16 @@ impl Client<Channel, Connected> {
         Req: serde::Serialize + Send + Sync + 'static,
         Res: serde::de::DeserializeOwned + Send + 'static,
     {
-        // task::spawn(self.async_call_http(service_method, args))
-        let req_sender = self.inner_codec.0.clone();
-        let res_recver = self.inner_codec.1.clone();
-        let pending = self.pending.clone();
+        // // task::spawn(self.async_call_http(service_method, args))
+        // let req_sender = self.inner_codec.0.clone();
+        // let res_recver = self.inner_codec.1.clone();
+        // let pending = self.pending.clone();
 
-        let id = self.count.fetch_add(1u16, Ordering::Relaxed);
-        task::spawn(async move {
-            Self::_async_call_http(service_method, &args, id, req_sender, res_recver, pending).await
-        })
+        // let id = self.count.fetch_add(1u16, Ordering::Relaxed);
+        // task::spawn(async move {
+        //     Self::_async_call_http(service_method, &args, id, req_sender, res_recver, pending).await
+        // })
+        self.spawn_task(service_method, args)
     }
 
     /// Similar to `async_call()`, it invokes the named function asynchronously,
@@ -640,7 +678,7 @@ impl Client<Channel, Connected> {
     ///     println!("{:?}", reply);
     /// }
     ///
-    pub async fn async_call_http<Req, Res>(
+    pub async fn async_call<Req, Res>(
         &self,
         service_method: impl ToString,
         args: Req,
@@ -656,6 +694,28 @@ impl Client<Channel, Connected> {
         let id = self.count.fetch_add(1u16, Ordering::Relaxed);
         Self::_async_call_http(service_method, &args, id, req_sender, res_recver, pending).await
     }
+
+    #[deprecated = "Please use `async_call` instead"]
+    /// This is the same as `async_call` for an HTTP client. It is kept for backward compatibility
+    pub async fn async_call_http<Req, Res>(
+        &self,
+        service_method: impl ToString,
+        args: Req,
+    ) -> Result<Res, Error>
+    where
+        Req: serde::Serialize + Send + Sync,
+        Res: serde::de::DeserializeOwned,
+    {
+        // let req_sender = self.inner_codec.0.clone();
+        // let res_recver = self.inner_codec.1.clone();
+        // let pending = self.pending.clone();
+
+        // let id = self.count.fetch_add(1u16, Ordering::Relaxed);
+        // Self::_async_call_http(service_method, &args, id, req_sender, res_recver, pending).await
+
+        self.async_call(service_method, args).await
+    }
+
 
     async fn _async_call_http<Req, Res>(
         service_method: impl ToString,
