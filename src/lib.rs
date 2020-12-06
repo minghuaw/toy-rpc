@@ -468,6 +468,12 @@
 //!
 //! ## Change Log
 //! 
+//! ### 0.4.4
+//! 
+//! - Modified traits `CodecRead`, `CodecWrite`, `ServerCodec`, `ClientCodec` to no longer 
+//! return number of bytes written
+//! - The number of bytes written for header and body will be logged separately
+//! 
 //! ### 0.4.3
 //! 
 //! - Removed previously unused NoneError
