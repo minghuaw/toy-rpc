@@ -12,7 +12,7 @@ pub enum Error {
         msg: String,
     },
 
-    NoneError,
+    // NoneError,
 
     RpcError(RpcError),
 }
@@ -23,7 +23,7 @@ impl std::error::Error for Error {
             Error::IoError(ref e) => Some(e),
             Error::ParseError { source } => Some(&**source),
             Error::TransportError { .. } => None,
-            Error::NoneError => None,
+            // Error::NoneError => None,
             Error::RpcError(ref e) => Some(e),
         }
     }
@@ -35,7 +35,7 @@ impl std::fmt::Display for Error {
             Error::IoError(ref err) => err.fmt(f),
             Error::ParseError { source } => std::fmt::Display::fmt(&*source, f),
             Error::TransportError { msg } => write!(f, "Transport Error Message: {}", msg),
-            Error::NoneError => write!(f, "None error"),
+            // Error::NoneError => write!(f, "None error"),
             Error::RpcError(ref err) => std::fmt::Display::fmt(err, f),
         }
     }
@@ -157,7 +157,7 @@ mod test {
 
     #[test]
     fn err_to_string() {
-        let e = Error::NoneError;
+        let e = Error::IoError(std::io::Error::new(std::io::ErrorKind::UnexpectedEof, "Unexpected eof"));
 
         println!("{}", e.to_string());
     }

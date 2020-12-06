@@ -323,7 +323,12 @@ impl<T> Client<T, Connected> {
         // wait for response
         if let Some(header) = codec.read_response_header().await {
             let ResponseHeader { id, is_error } = header?;
-            let deserializer = codec.read_response_body().await.ok_or(Error::NoneError)?;
+            let deserializer = codec.read_response_body().await
+                .ok_or(
+                    Error::IoError(
+                        std::io::Error::new(std::io::ErrorKind::UnexpectedEof, "Unexpected EOF reading response body")
+                    )
+                )?;
             let deserializer = deserializer?;
 
             let res = match is_error {
@@ -709,7 +714,12 @@ impl Client<Channel, Connected> {
         // wait for response
         let encoded_res = {
             let mut _res_recver = res_recver.lock().await;
-            _res_recver.next().await.ok_or(Error::NoneError)?
+            _res_recver.next().await
+                .ok_or(
+                    Error::IoError(
+                        std::io::Error::new(std::io::ErrorKind::UnexpectedEof, "EOF reading response")
+                    )
+                )?
         };
         // .map_err(|e| Error::TransportError { msg: e.to_string() })?;
 
@@ -742,21 +752,26 @@ impl Client<Channel, Connected> {
         path: surf::Url,
         mut req_recver: Receiver<Vec<u8>>,
         mut res_sender: Sender<Vec<u8>>,
-    ) -> Result<(), Error> {
+    ) -> Option<Result<(), Error>> {
         loop {
-            let encoded_req = req_recver.next().await.ok_or(Error::NoneError)?;
+            let encoded_req = req_recver.next().await?;
             // .map_err(|e| Error::TransportError { msg: e.to_string() })?;
     
-            let res_body = surf::post(&path)
+            let res_body = match surf::post(&path)
                 .content_type("application/octet-stream")
-                .body(encoded_req).recv_bytes().await
-                .map_err(|e| Error::TransportError {msg: format!("{}", e)})?;
+                .body(encoded_req).recv_bytes().await {
+                    Ok(v) => v,
+                    Err(e) => return Some(Err(Error::TransportError {msg: e.to_string()} )),
+                };
 
             // send back result
-            res_sender
+            match res_sender
                 .send(res_body)
-                .await
-                .map_err(|e| Error::TransportError { msg: e.to_string() })?;
-        }
+                .await {
+                    Err(e) => return Some(Err(Error::TransportError {msg: e.to_string()} )),
+                    // Ok(()) => { },
+                    _ => { },
+                };
+            }
     }
 }
