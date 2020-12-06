@@ -292,9 +292,7 @@ impl Client<Codec, Connected> {
         let req = &args as &(dyn erased::Serialize + Send + Sync);
 
         // send request
-        let _bytes_sent = _codec.write_request(header, req).await?;
-        #[cfg(feature = "logging")]
-        log::info!("Request id {} sent with {} bytes", &id, _bytes_sent);
+        _codec.write_request(header, req).await?;
 
         // creates channel for receiving response
         let (done_sender, done) = oneshot::channel::<Result<ResponseBody, ResponseBody>>();
@@ -467,7 +465,7 @@ impl Client<Channel, NotConnected> {
 
         let _conn_res = Self::_dial_connect(base).await?;
 
-        // #[cfg(feature = "logging")]
+        #[cfg(feature = "logging")]
         log::info!("{}", _conn_res);
 
         task::spawn(Client::_http_client_loop(path, req_recver, res_sender));
@@ -723,10 +721,7 @@ impl Client<Channel, Connected> {
         );
 
         // write request to buffer
-        let _bytes_sent = codec.write_request(header, req).await?;
-
-        #[cfg(feature = "logging")]
-        log::info!("Request id {} sent with {} bytes", &id, _bytes_sent);
+        codec.write_request(header, req).await?;
 
         // send req buffer to client_loop
         req_sender

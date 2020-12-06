@@ -103,10 +103,7 @@ impl Server {
             };
 
             // send back result
-            let _bytes_sent = Self::_send_response(codec, id, res).await?;
-
-            #[cfg(feature = "logging")]
-            log::debug!("Response sent with {} bytes", _bytes_sent);
+            Self::_send_response(codec, id, res).await?;
         }
 
         Ok(())
@@ -130,6 +127,8 @@ impl Server {
                     id,
                     is_error: false,
                 };
+
+                log::trace!("Writing response id: {}", &id);
 
                 _codec.write_response(header, &b).await?;
                 Ok(())
