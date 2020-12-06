@@ -89,15 +89,15 @@ where
 
     async fn write_body(
         &mut self,
-        id: &MessageId,
-        body: &(dyn erased::Serialize + Send + Sync),
+        id: MessageId,
+        body: Box<(dyn erased::Serialize + Send + Sync)>,
     ) -> Result<(), Error> {
         let writer = &mut self.writer;
 
         let buf = Self::marshal(&body)?;
 
         let bytes_sent = writer
-            .write_frame(id, 1, PayloadType::Data, &buf)
+            .write_frame(&id, 1, PayloadType::Data, &buf)
             .await?;
 
         log::trace!("Body id: {} written with {} bytes", id, &bytes_sent);

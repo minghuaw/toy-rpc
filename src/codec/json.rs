@@ -79,8 +79,8 @@ where
 
     async fn write_body(
         &mut self,
-        id: &MessageId,
-        body: &(dyn erased::Serialize + Send + Sync),
+        id: MessageId,
+        body: Box<(dyn erased::Serialize + Send + Sync)>,
     ) -> Result<(), Error> {
         let buf = Self::marshal(&body)?;
 

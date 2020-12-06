@@ -28,7 +28,7 @@ rustdoc-args = ["--cfg", "feature=\"docs\""]
 [features]
 default = [
     "std", 
-    "serde_bincode",
+    "serde_rmp",
     "tide",
     "surf",
 ]

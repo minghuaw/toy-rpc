@@ -194,7 +194,7 @@ impl Client<Codec, Connected> {
     /// ```
     pub fn call<Req, Res>(&self, service_method: impl ToString, args: Req) -> Result<Res, Error>
     where
-        Req: serde::Serialize + Send + Sync,
+        Req: serde::Serialize + Send + Sync + 'static,
         Res: serde::de::DeserializeOwned,
     {
         task::block_on(self.async_call(service_method, args))
@@ -233,7 +233,7 @@ impl Client<Codec, Connected> {
         let id = self.count.fetch_add(1u16, Ordering::Relaxed);
 
         task::spawn(
-            async move { Self::_async_call(service_method, &args, id, codec, pending).await },
+            async move { Self::_async_call(service_method, args, id, codec, pending).await },
         )
     }
 
@@ -263,25 +263,25 @@ impl Client<Codec, Connected> {
         args: Req,
     ) -> Result<Res, Error>
     where
-        Req: serde::Serialize + Send + Sync,
+        Req: serde::Serialize + Send + Sync + 'static,
         Res: serde::de::DeserializeOwned,
     {
         let codec = self.inner_codec.clone();
         let pending = self.pending.clone();
         let id = self.count.fetch_add(1u16, Ordering::Relaxed);
 
-        Self::_async_call(service_method, &args, id, codec, pending).await
+        Self::_async_call(service_method, args, id, codec, pending).await
     }
 
     async fn _async_call<Req, Res>(
         service_method: impl ToString,
-        args: &Req,
+        args: Req,
         id: MessageId,
         codec: Arc<Mutex<Box<dyn ClientCodec>>>,
         pending: Arc<Mutex<ResponseMap>>,
     ) -> Result<Res, Error>
     where
-        Req: serde::Serialize + Send + Sync,
+        Req: serde::Serialize + Send + Sync + 'static,
         Res: serde::de::DeserializeOwned,
     {
         let _codec = &mut *codec.lock().await;
@@ -289,12 +289,11 @@ impl Client<Codec, Connected> {
             id,
             service_method: service_method.to_string(),
         };
-        let req = &args as &(dyn erased::Serialize + Send + Sync);
+        // let req = &args as &(dyn erased::Serialize + Send + Sync);
+        let req = Box::new(args);
 
         // send request
-        let _bytes_sent = _codec.write_request(header, req).await?;
-        #[cfg(feature = "logging")]
-        log::info!("Request id {} sent with {} bytes", &id, _bytes_sent);
+        _codec.write_request(header, req).await?;
 
         // creates channel for receiving response
         let (done_sender, done) = oneshot::channel::<Result<ResponseBody, ResponseBody>>();
@@ -561,7 +560,7 @@ impl Client<Channel, Connected> {
     /// ```
     pub fn call<Req, Res>(&self, service_method: impl ToString, args: Req) -> Result<Res, Error>
     where
-        Req: serde::Serialize + Send + Sync,
+        Req: serde::Serialize + Send + Sync + 'static,
         Res: serde::de::DeserializeOwned,
     {
         task::block_on(self.async_call(service_method, args))
@@ -575,7 +574,7 @@ impl Client<Channel, Connected> {
         args: Req,
     ) -> Result<Res, Error>
     where
-        Req: serde::Serialize + Send + Sync,
+        Req: serde::Serialize + Send + Sync + 'static,
         Res: serde::de::DeserializeOwned,
     {
         self.call(service_method, args)
@@ -621,7 +620,7 @@ impl Client<Channel, Connected> {
 
         let id = self.count.fetch_add(1u16, Ordering::Relaxed);
         task::spawn(async move {
-            Self::_async_call_http(service_method, &args, id, req_sender, res_recver, pending).await
+            Self::_async_call_http(service_method, args, id, req_sender, res_recver, pending).await
         })
     }
 
@@ -670,7 +669,7 @@ impl Client<Channel, Connected> {
         args: Req,
     ) -> Result<Res, Error>
     where
-        Req: serde::Serialize + Send + Sync,
+        Req: serde::Serialize + Send + Sync + 'static,
         Res: serde::de::DeserializeOwned,
     {
         let req_sender = self.inner_codec.0.clone();
@@ -678,7 +677,7 @@ impl Client<Channel, Connected> {
         let pending = self.pending.clone();
 
         let id = self.count.fetch_add(1u16, Ordering::Relaxed);
-        Self::_async_call_http(service_method, &args, id, req_sender, res_recver, pending).await
+        Self::_async_call_http(service_method, args, id, req_sender, res_recver, pending).await
     }
 
     #[deprecated = "Please use `async_call` instead"]
@@ -689,7 +688,7 @@ impl Client<Channel, Connected> {
         args: Req,
     ) -> Result<Res, Error>
     where
-        Req: serde::Serialize + Send + Sync,
+        Req: serde::Serialize + Send + Sync + 'static,
         Res: serde::de::DeserializeOwned,
     {
         self.async_call(service_method, args).await
@@ -697,14 +696,14 @@ impl Client<Channel, Connected> {
 
     async fn _async_call_http<Req, Res>(
         service_method: impl ToString,
-        args: &Req,
+        args: Req,
         id: MessageId,
         mut req_sender: Sender<Vec<u8>>,
         res_recver: Arc<Mutex<Receiver<Vec<u8>>>>,
         pending: Arc<Mutex<ResponseMap>>,
     ) -> Result<Res, Error>
     where
-        Req: serde::Serialize + Send + Sync,
+        Req: serde::Serialize + Send + Sync + 'static,
         Res: serde::de::DeserializeOwned,
     {
         let mut req_buf: Vec<u8> = Vec::new();
@@ -714,7 +713,8 @@ impl Client<Channel, Connected> {
             id,
             service_method: service_method.to_string(),
         };
-        let req = &args as &(dyn erased::Serialize + Send + Sync);
+        // let req = &args as &(dyn erased::Serialize + Send + Sync);
+        let req = Box::new(args);
 
         // create temp codec
         let mut codec = DefaultCodec::with_reader_writer(
@@ -723,10 +723,7 @@ impl Client<Channel, Connected> {
         );
 
         // write request to buffer
-        let _bytes_sent = codec.write_request(header, req).await?;
-
-        #[cfg(feature = "logging")]
-        log::info!("Request id {} sent with {} bytes", &id, _bytes_sent);
+        codec.write_request(header, req).await?;
 
         // send req buffer to client_loop
         req_sender
