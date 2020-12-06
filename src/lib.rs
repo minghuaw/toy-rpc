@@ -468,7 +468,7 @@
 //!
 //! ## Change Log
 //! 
-//! ### 0.4.2
+//! ### 0.4.3
 //! 
 //! - Removed previously unused NoneError
 //! - Unified `call`, `async_call` and `spawn_task` for socket client 
