@@ -1750,7 +1750,7 @@ checksum = "cda74da7e1a664f795bb1f8a87ec406fb89a02522cf6e50620d016add6dbbf5c"
 
 [[package]]
 name = "toy-rpc"
-version = "0.4.1"
+version = "0.4.2"
 dependencies = [
  "async-std",
  "async-trait",
@@ -1761,6 +1761,7 @@ dependencies = [
  "log",
  "pin-project 1.0.2",
  "serde",
+ "serde_json",
  "surf",
  "tide",
  "toy-rpc-macros",

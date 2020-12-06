@@ -70,7 +70,6 @@ where
         let buf = Self::marshal(&header)?;
 
         let bytes_sent = self.writer.write(&buf).await?;
-        self.writer.write(b"\n").await?;
         self.writer.flush().await?;
         Ok(bytes_sent)
     }
@@ -83,7 +82,6 @@ where
         let buf = Self::marshal(&body)?;
 
         let bytes_sent = self.writer.write(&buf).await?;
-        self.writer.write(b"\n").await?;
         self.writer.flush().await?;
         Ok(bytes_sent)
     }
@@ -95,7 +93,12 @@ where
     W: Send + Sync,
 {
     fn marshal<S: serde::Serialize>(val: &S) -> Result<Vec<u8>, Error> {
-        serde_json::to_vec(val).map_err(|e| e.into())
+        serde_json::to_vec(val)
+            .map(|mut v| {
+                v.push(b'\n');
+                v
+            })
+            .map_err(|e| e.into())
     }
 }
 

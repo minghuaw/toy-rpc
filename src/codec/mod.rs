@@ -1,6 +1,9 @@
 use async_trait::async_trait;
 use erased_serde as erased;
 use futures::io::{AsyncBufRead, AsyncRead, AsyncWrite, AsyncWriteExt, BufReader, BufWriter};
+// use futures::channel::mpsc::{Receiver, Sender};
+// use futures::{SinkExt, StreamExt};
+// use std::marker::PhantomData;
 
 use crate::error::Error;
 use crate::message::{MessageId, Metadata, RequestHeader, ResponseHeader};
