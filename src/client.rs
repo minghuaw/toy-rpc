@@ -8,7 +8,7 @@ use std::marker::PhantomData;
 use std::sync::atomic::Ordering;
 
 #[cfg(feature = "surf")]
-use futures::channel::mpsc::{channel, Receiver, Sender};
+use futures::channel::mpsc::{unbounded, UnboundedReceiver, UnboundedSender};
 
 #[cfg(feature = "surf")]
 use futures::io::{BufReader, BufWriter};
@@ -23,8 +23,8 @@ use crate::message::{AtomicMessageId, MessageId, RequestHeader, ResponseHeader};
 #[cfg(feature = "surf")]
 use crate::server::DEFAULT_RPC_PATH;
 
-#[cfg(feature = "surf")]
-const CHANNEL_BUF_SIZE: usize = 64;
+// #[cfg(feature = "surf")]
+// const CHANNEL_BUF_SIZE: usize = 64;
 
 /// Type state for creating `Client`
 pub struct NotConnected {}
@@ -35,7 +35,7 @@ pub struct Connected {}
 type Codec = Arc<Mutex<Box<dyn ClientCodec>>>;
 
 #[cfg(feature = "surf")]
-type Channel = (Sender<Vec<u8>>, Arc<Mutex<Receiver<Vec<u8>>>>);
+type Channel = (UnboundedSender<Vec<u8>>, Arc<Mutex<UnboundedReceiver<Vec<u8>>>>);
 
 type ResponseBody = Box<dyn erased::Deserializer<'static> + Send>;
 
@@ -455,8 +455,8 @@ impl Client<Channel, NotConnected> {
     /// TODO: check if the path ends with a slash
     /// TODO: try send and recv trait object
     pub async fn dial_http(addr: &'static str) -> Result<Client<Channel, Connected>, Error> {
-        let (req_sender, req_recver) = channel::<Vec<u8>>(CHANNEL_BUF_SIZE);
-        let (res_sender, res_recver) = channel::<Vec<u8>>(CHANNEL_BUF_SIZE);
+        let (req_sender, req_recver) = unbounded::<Vec<u8>>();
+        let (res_sender, res_recver) = unbounded::<Vec<u8>>();
 
         let channel_codec = (req_sender, Arc::new(Mutex::new(res_recver)));
 
@@ -697,8 +697,8 @@ impl Client<Channel, Connected> {
         service_method: impl ToString,
         args: &Req,
         id: MessageId,
-        mut req_sender: Sender<Vec<u8>>,
-        res_recver: Arc<Mutex<Receiver<Vec<u8>>>>,
+        mut req_sender: UnboundedSender<Vec<u8>>,
+        res_recver: Arc<Mutex<UnboundedReceiver<Vec<u8>>>>,
         pending: Arc<Mutex<ResponseMap>>,
     ) -> Result<Res, Error>
     where
@@ -769,8 +769,8 @@ impl Client<Channel, Connected> {
     async fn _http_client_loop(
         // http_client: surf::Client,
         path: surf::Url,
-        mut req_recver: Receiver<Vec<u8>>,
-        mut res_sender: Sender<Vec<u8>>,
+        mut req_recver: UnboundedReceiver<Vec<u8>>,
+        mut res_sender: UnboundedSender<Vec<u8>>,
     ) -> Option<Result<(), Error>> {
         loop {
             let encoded_req = req_recver.next().await?;
