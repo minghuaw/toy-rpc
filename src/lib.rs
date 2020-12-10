@@ -508,6 +508,10 @@
 //! ## Future Plan
 //!
 //! - `warp` integration
+//! - websocket with `async_tungstenite`
+//!   - tide-websocket
+//!   - actix-web websocket
+//!   - warp websocket
 //! - support other I/O connection
 //! - unify `call`, `async_call`, and `spawn_task` for raw connection and HTTP connection
 //!
