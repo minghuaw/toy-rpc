@@ -3,7 +3,7 @@
 use async_trait::async_trait;
 use erased_serde as erased;
 use futures::io::{AsyncBufRead, AsyncWrite, AsyncWriteExt};
-use futures::StreamExt;
+use futures::{StreamExt, SinkExt};
 use serde::de::Visitor;
 use std::io::Cursor; // serde doesn't support AsyncRead
 
@@ -11,7 +11,7 @@ use super::{Codec, CodecRead, CodecWrite, DeserializerOwned, Marshal, Unmarshal}
 use crate::error::Error;
 use crate::macros::impl_inner_deserializer;
 use crate::message::{MessageId, Metadata};
-use crate::transport::frame::{FrameRead, FrameStreamExt, FrameWrite, PayloadType};
+use crate::transport::frame::{Frame, FrameRead, FrameStreamExt, FrameSinkExt, FrameWrite, PayloadType};
 
 impl<'de, R> serde::Deserializer<'de>
     for DeserializerOwned<rmp_serde::Deserializer<rmp_serde::decode::ReadReader<R>>>
@@ -38,7 +38,7 @@ where
 
         Some(
             reader
-                .frames()
+                .frame_stream()
                 .next()
                 .await?
                 .and_then(|frame| Self::unmarshal(&frame.payload)),
@@ -50,7 +50,7 @@ where
     ) -> Option<Result<Box<dyn erased::Deserializer<'static> + Send + 'static>, Error>> {
         let reader = &mut self.reader;
 
-        let de = match reader.frames().next().await? {
+        let de = match reader.frame_stream().next().await? {
             Ok(frame) => {
                 log::debug!("frame: {:?}", frame);
                 rmp_serde::Deserializer::new(Cursor::new(frame.payload))
@@ -80,12 +80,10 @@ where
 
         let id = header.get_id();
         let buf = Self::marshal(&header)?;
+        let frame = Frame::new(id, 0, PayloadType::Header, buf);
 
-        let bytes_sent = writer.write_frame(&id, 0, PayloadType::Header, &buf).await?;
-
-        log::trace!("Header id: {} written with {} bytes", id, &bytes_sent);
-
-        Ok(())
+        log::trace!("Header id: {} sent", &id);
+        writer.frame_sink().send(frame).await
     }
 
     async fn write_body(
@@ -96,14 +94,11 @@ where
         let writer = &mut self.writer;
 
         let buf = Self::marshal(&body)?;
+        let frame = Frame::new(id.to_owned(), 1, PayloadType::Data, buf);
 
-        let bytes_sent = writer
-            .write_frame(id, 1, PayloadType::Data, &buf)
-            .await?;
+        log::trace!("Body id: {} sent", id);
 
-        log::trace!("Body id: {} written with {} bytes", id, &bytes_sent);
-
-        Ok(())
+        writer.frame_sink().send(frame).await
     }
 }
 
