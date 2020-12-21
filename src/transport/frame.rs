@@ -211,6 +211,22 @@ where
     header: Option<FrameHeader>,
 }
 
+pub trait FrameStreamExt<T>
+where
+    T: AsyncBufRead + Unpin + Send + Sync,
+{
+    fn frame_stream(&mut self) -> FrameStream<T>;
+}
+
+impl<T: AsyncBufRead + Send + Sync + Unpin> FrameStreamExt<T> for T {
+    fn frame_stream(&mut self) -> FrameStream<T> {
+        FrameStream {
+            inner: self,
+            header: None,
+        }
+    }
+}
+
 impl<'r, T: AsyncBufRead + Unpin + Send + Sync> Stream for FrameStream<'r, T> {
     type Item = Result<Frame, Error>;
 
@@ -295,33 +311,34 @@ impl<'r, T: AsyncBufRead + Unpin + Send + Sync> Stream for FrameStream<'r, T> {
     }
 }
 
-pub trait FrameStreamExt<T>
-where
-    T: AsyncBufRead + Unpin + Send + Sync,
-{
-    fn frames(&mut self) -> FrameStream<T>;
-}
-
-impl<T: AsyncBufRead + Send + Sync + Unpin> FrameStreamExt<T> for T {
-    fn frames(&mut self) -> FrameStream<T> {
-        FrameStream {
-            inner: self,
-            header: None,
-        }
-    }
-}
 
 #[pin_project]
 pub struct FrameSink<'w, T>
 where 
-    T: AsyncWrite + AsyncWriteExt + Send + Sync + Unpin,
+    T: AsyncWrite + Send + Sync + Unpin,
 {
     #[pin]
     inner: &'w mut T,
     buf: Vec<u8>,
 }
 
-impl<'w, T: AsyncWrite + AsyncWriteExt + Send + Sync + Unpin> Sink<Frame> for FrameSink<'w, T> {
+pub trait FrameSinkExt<T> 
+where 
+    T: AsyncWrite + Send + Sync + Unpin
+{
+    fn frame_sink(&mut self) -> FrameSink<T>;
+}
+
+impl<T: AsyncWrite + Send + Sync + Unpin> FrameSinkExt<T> for T {
+    fn frame_sink(&mut self) -> FrameSink<T> {
+        FrameSink {
+            inner: self,
+            buf: Vec::new()
+        }
+    }
+}
+
+impl<'w, T: AsyncWrite + Send + Sync + Unpin> Sink<Frame> for FrameSink<'w, T> {
     type Error = Error;
 
     fn poll_ready(self: Pin<&mut Self>, _: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
