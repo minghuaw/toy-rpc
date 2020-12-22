@@ -468,6 +468,10 @@
 //!
 //! ## Change Log
 //! 
+//! ### 0.4.5
+//! 
+//! - Added `Sink` implementation for the custom binary transport protocol `Frame`
+//! 
 //! ### 0.4.4
 //! 
 //! - Modified traits `CodecRead`, `CodecWrite`, `ServerCodec`, `ClientCodec` to no longer 
@@ -508,6 +512,7 @@
 //! ## Future Plan
 //!
 //! - `warp` integration
+//! - switch http client implementation to use `isahc`
 //! - websocket with `async_tungstenite`
 //!   - tide-websocket
 //!   - actix-web websocket

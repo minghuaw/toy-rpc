@@ -468,6 +468,10 @@ async fn main() {
 
 ### Change Log
 
+#### 0.4.5
+
+- Added `Sink` implementation for the custom binary transport protocol `Frame`
+
 #### 0.4.4
 
 - Modified traits `CodecRead`, `CodecWrite`, `ServerCodec`, `ClientCodec` to no longer
@@ -508,6 +512,11 @@ lifetime with async task is figured out. As a result, `Client` no longer needs t
 ### Future Plan
 
 - `warp` integration
+- switch http client implementation to use `isahc`
+- websocket with `async_tungstenite`
+  - tide-websocket
+  - actix-web websocket
+  - warp websocket
 - support other I/O connection
 - unify `call`, `async_call`, and `spawn_task` for raw connection and HTTP connection
 
