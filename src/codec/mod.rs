@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 use erased_serde as erased;
-use futures::io::{AsyncBufRead, AsyncRead, AsyncWrite, AsyncWriteExt, BufReader, BufWriter};
+use futures::io::{AsyncBufRead, AsyncRead, AsyncWrite, AsyncWriteExt, AsyncReadExt, BufReader, BufWriter, ReadHalf, WriteHalf};
 // use futures::channel::mpsc::{Receiver, Sender};
 // use futures::{SinkExt, StreamExt};
 // use std::marker::PhantomData;
@@ -121,12 +121,16 @@ where
     }
 }
 
-impl<T> Codec<BufReader<T>, BufWriter<T>>
+impl<T> Codec<BufReader<ReadHalf<T>>, BufWriter<WriteHalf<T>>>
 where
-    T: AsyncRead + AsyncWrite + Send + Sync + Unpin + Clone,
+    T: AsyncRead + AsyncWrite + Send + Sync + Unpin,
 {
     pub fn new(stream: T) -> Self {
-        Self::with_reader_writer(BufReader::new(stream.clone()), BufWriter::new(stream))
+        let (reader, writer) = stream.split();
+        let reader = BufReader::new(reader);
+        let writer = BufWriter::new(writer);
+
+        Self::with_reader_writer(reader, writer)
     }
 }
 
