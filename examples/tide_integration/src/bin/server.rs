@@ -6,7 +6,6 @@ use tide::Request;
 use toy_rpc::macros::{export_impl, service};
 use toy_rpc::server::Server;
 
-// use tide_integration::rpc;
 use tide_integration::rpc::{BarService, FooRequest, FooResponse, Rpc};
 
 use tide_integration::rpc;
@@ -97,9 +96,8 @@ async fn main() -> tide::Result<()> {
 
 async fn order_shoes(mut req: Request<()>) -> tide::Result {
     let body = req.body_string().await?;
-    println!("{:?}", body);
+    println!("{}", body);
 
-    Ok("hahahah".into())
-    // let Animal { name, legs } = req.body_json().await?;
-    // Ok(format!("Hello, {}! I've put in an order for {} shoes", name, legs).into())
+    let Animal { name, legs } = req.body_json().await?;
+    Ok(format!("Hello, {}! I've put in an order for {} shoes", name, legs).into())
 }

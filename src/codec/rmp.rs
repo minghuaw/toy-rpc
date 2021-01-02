@@ -41,7 +41,7 @@ where
                 .frame_stream()
                 .next()
                 .await?
-                .and_then(|frame| Self::unmarshal(&frame.payload)),
+                .and_then(|frame| Self::unmarshal(&frame)),
         )
     }
 
@@ -53,7 +53,7 @@ where
         let de = match reader.frame_stream().next().await? {
             Ok(frame) => {
                 log::debug!("frame: {:?}", frame);
-                rmp_serde::Deserializer::new(Cursor::new(frame.payload))
+                rmp_serde::Deserializer::new(Cursor::new(frame))
             }
             Err(e) => return Some(Err(e)),
         };

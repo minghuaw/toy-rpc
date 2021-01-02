@@ -9,7 +9,7 @@ edition = "2018"
 [dependencies]
 toy-rpc = { version = "0.4.5", path = "../..", default-features = false, features = ["std", "serde_bincode", "actix-web", "surf", "logging"]}
 actix-web = "3.3.2"
-async-std = "1.7.0"
+async-std = { version = "^1.8.0", features = ["attributes"] }
 
 serde = { version = "1.0.117", features = ["derive"] }
 async-trait = "0.1.42"

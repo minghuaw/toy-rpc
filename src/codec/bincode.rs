@@ -42,7 +42,7 @@ where
                 .frame_stream()
                 .next()
                 .await?
-                .and_then(|frame| Self::unmarshal(&frame.payload)),
+                .and_then(|frame| Self::unmarshal(&frame)),
         )
     }
 
@@ -53,9 +53,9 @@ where
 
         let de = match reader.frame_stream().next().await? {
             Ok(frame) => {
-                log::debug!("frame: {:?}", frame);
+                log::debug!("frame payload len: {:?}", &frame.len());
                 bincode::Deserializer::with_reader(
-                    Cursor::new(frame.payload),
+                    Cursor::new(frame),
                     bincode::DefaultOptions::new().with_fixint_encoding(),
                 )
             }

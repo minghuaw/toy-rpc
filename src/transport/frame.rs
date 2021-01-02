@@ -228,7 +228,7 @@ impl<T: AsyncBufRead + Send + Sync + Unpin> FrameStreamExt<T> for T {
 }
 
 impl<'r, T: AsyncBufRead + Unpin + Send + Sync> Stream for FrameStream<'r, T> {
-    type Item = Result<Frame, Error>;
+    type Item = Result<Vec<u8>, Error>;
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let this = self.project();
@@ -271,14 +271,8 @@ impl<'r, T: AsyncBufRead + Unpin + Send + Sync> Stream for FrameStream<'r, T> {
 
                     // if the message is of unit type
                     if h.payload_len == 0 {
-                        let frame = Frame {
-                            message_id: h.message_id,
-                            frame_id: h.frame_id,
-                            payload_type: h.payload_type.into(),
-                            payload: vec![],
-                        };
-
-                        return Poll::Ready(Some(Ok(frame)));
+                        // no need to return a Frame
+                        return Poll::Ready(Some(Ok(vec![])));
                     }
 
                     let buf = futures::ready!(reader.as_mut().poll_fill_buf(cx)?);
@@ -291,20 +285,13 @@ impl<'r, T: AsyncBufRead + Unpin + Send + Sync> Stream for FrameStream<'r, T> {
                         return Poll::Pending;
                     }
 
-                    let payload = &buf[..h.payload_len as usize];
-
-                    // construct frame
-                    let frame = Frame {
-                        message_id: h.message_id,
-                        frame_id: h.frame_id,
-                        payload_type: h.payload_type.into(),
-                        payload: payload.to_vec(),
-                    };
+                    // no need to constuct a Frame to return
+                    let payload = buf[..h.payload_len as usize].to_vec();
 
                     reader.as_mut().consume(h.payload_len as usize);
                     header.as_mut().take();
 
-                    return Poll::Ready(Some(Ok(frame)));
+                    return Poll::Ready(Some(Ok(payload)))
                 }
             }
         }
