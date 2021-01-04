@@ -68,8 +68,13 @@ async-trait = "^0.1"
 pin-project = "^1.0"
 log = "^0.4"
 lazy_static = "^1.4.0"
+
+# websocket dependencies, consider feature gating in the future
 tungstenite = "^0.11.1"
 async-tungstenite = { version = "^0.11.0", features = ["async-std-runtime"] }
+tide-websockets = "0.1.0"
+tokio-tungstenite = "0.12.0"
+warp = "0.2.5"
 
 [workspace]
 members = [

@@ -5,4 +5,4 @@
 ))]
 pub(crate) mod frame;
 
-// pub(crate) mod ws;
+pub(crate) mod ws;
