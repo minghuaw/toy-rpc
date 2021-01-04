@@ -81,14 +81,11 @@ impl WebSocketConn<warp::filters::ws::WebSocket, CanSink> {
     }
 }
 
-// impl WebSocketConn<warp::filters::ws::WebSocket, CanStream>
-
 #[async_trait]
-impl<S, E, N> PayloadRead for WebSocketConn<S, N> 
+impl<S, E> PayloadRead for WebSocketConn<S, CanSink> 
 where 
-    S: Stream<Item = Result<WsMessage, E>> + Send + Sync + Unpin,
+    S: Stream<Item = Result<WsMessage, E>> + Sink<WsMessage> + Send + Sync + Unpin,
     E: std::error::Error + 'static,
-    N: Send + Sync,
 {
     async fn read_payload(&self) -> Vec<u8> {
         unimplemented!()
@@ -119,7 +116,14 @@ impl WebSocketConn<tide_websockets::WebSocketConnection, CannotSink> {
 }
 
 #[async_trait]
-impl PayloadWrite for WebSocketConn<tide_websockets::WebSocketConnection, CannotSink>{
+impl PayloadRead for WebSocketConn<tide_websockets::WebSocketConnection, CannotSink> {
+    async fn read_payload(&self) -> Vec<u8> {
+        unimplemented!()
+    }
+}
+
+#[async_trait]
+impl PayloadWrite for WebSocketConn<tide_websockets::WebSocketConnection, CannotSink> {
     async fn write_payload(&mut self, payload: &[u8]) -> Result<(), Error> {
         unimplemented!()
     }
