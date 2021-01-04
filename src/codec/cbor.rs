@@ -40,7 +40,7 @@ where
                 .frame_stream()
                 .next()
                 .await?
-                .and_then(|frame| Self::unmarshal(&frame)),
+                .and_then(|frame| Self::unmarshal(&frame.payload)),
         )
     }
 
@@ -52,7 +52,7 @@ where
         let de = match reader.frame_stream().next().await? {
             Ok(frame) => {
                 log::debug!("frame: {:?}", frame);
-                serde_cbor::Deserializer::from_reader(Cursor::new(frame))
+                serde_cbor::Deserializer::from_reader(Cursor::new(frame.payload))
             }
             Err(e) => return Some(Err(e)),
         };
