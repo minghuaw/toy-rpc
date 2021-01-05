@@ -11,11 +11,6 @@
 /// - `warp::filters::ws::WebSocket` is a wrapper of `tokio::tungstenite::WebSocketStream`, and impls both `Stream` and `Sink<Message>`
 /// - `tide-websocket` only impls `Stream` but not `Sink<Message>`
 
-
-
-// use async_std::net::TcpStream;
-// use std::pin::Pin;
-// use std::task::{Context, Poll};
 use std::marker::PhantomData;
 use futures::{AsyncRead, AsyncWrite, Sink, SinkExt, Stream, StreamExt, future::UnitError};
 use pin_project::pin_project;
@@ -49,34 +44,48 @@ pub struct WebSocketConn<T, N> {
 }
 
 // =============================================================================
+// macros
+// =============================================================================
+
+// macro_rules! impl_cansink_new {
+//     // this evil monstrosity matches <A, B: T, C: S+T>
+//     ($ty:ident < $( $N:ident $(: $b0:ident $(+$b:ident)* )? ),* >) =>
+//     {
+//         impl< $( $N $(: $b0 $(+$b)* )? ),* >
+//             $crate::Greet
+//             for $ty< $( $N ),* >
+//         {
+//             pub fn new(stream: $ty <$N>) -> Self {
+//                 Self {
+//                     inner: stream,
+//                     can_sink: PhantomData
+//                 }
+//             }
+//         }
+//     };
+//     // match when no type parameters are present
+//     ($ty:ident) => {
+//         impl_greet!($ty<>);
+//     };
+// }
+
+// impl_websocketconn_cansink_new!()
+
+// =============================================================================
 // async-tungstenite,
 // tokio-tungstenite,
 // warp::filters::ws::WebSocket
 // =============================================================================
 
-impl<S> WebSocketConn<async_tungstenite::WebSocketStream<S>, CanSink> {
-    pub fn new(stream: async_tungstenite::WebSocketStream<S>) -> Self {
+impl<S, E> WebSocketConn<S, CanSink> 
+where 
+    S: Stream<Item = Result<WsMessage, E>> + Sink<WsMessage> + Send + Sync + Unpin,
+    E: std::error::Error + 'static,
+{
+    fn new(inner: S) -> Self {
         Self {
-            inner: stream,
+            inner,
             can_sink: PhantomData
-        }
-    }
-}
-
-impl<S> WebSocketConn<tokio_tungstenite::WebSocketStream<S>, CanSink> {
-    pub fn new(stream: tokio_tungstenite::WebSocketStream<S>) -> Self {
-        Self {
-            inner: stream,
-            can_sink: PhantomData,
-        }
-    }
-}
-
-impl WebSocketConn<warp::filters::ws::WebSocket, CanSink> {
-    pub fn new(stream: warp::filters::ws::WebSocket) -> Self {
-        Self {
-            inner: stream,
-            can_sink: PhantomData,
         }
     }
 }
@@ -107,10 +116,10 @@ where
 // =============================================================================
 
 impl WebSocketConn<tide_websockets::WebSocketConnection, CannotSink> {
-    pub fn new(stream: tide_websockets::WebSocketConnection) -> Self {
+    fn new_without_sink(inner: tide_websockets::WebSocketConnection) -> Self {
         Self {
-            inner: stream,
-            can_sink: PhantomData,
+            inner,
+            can_sink: PhantomData
         }
     }
 }
@@ -138,6 +147,7 @@ impl PayloadWrite for WebSocketConn<tide_websockets::WebSocketConnection, Cannot
 mod tests {
     use async_std::net::{TcpListener, TcpStream};
     use async_std::task;
+    use super::*;
 
     #[test]
     fn async_tungestenite_handshake() {
@@ -169,4 +179,42 @@ mod tests {
             .await
             .expect("Client failed to connect");
     }
+
+    #[test]
+    fn new_websocketconn() {
+        async_std::task::block_on(test_new_on_async_tungstenite());
+        async_std::task::block_on(test_new_on_tokio_tungstenite());
+        // async_std::task::block_on(test_new_on_tide_websockets());
+    }
+
+    async fn test_new_on_async_tungstenite() {
+        let stream = async_std::io::Cursor::new(vec![1,2,3]);
+        let ws_stream = async_tungstenite::WebSocketStream::from_raw_socket(
+            stream, 
+            tungstenite::protocol::Role::Server,
+            None
+        ).await;
+        let _ = WebSocketConn::new(ws_stream);
+    }
+
+    async fn test_new_on_tokio_tungstenite() {
+        let stream = std::io::Cursor::new(vec![1,2,3]);
+        let ws_stream = tokio_tungstenite::WebSocketStream::from_raw_socket(
+            stream, 
+            tungstenite::protocol::Role::Server,
+            None
+        ).await;
+        let _ = WebSocketConn::new(ws_stream);
+    }
+
+    // async fn test_new_on_tide_websockets() {
+    //     let stream = async_std::io::Cursor::new(vec![1,2,3]);
+    //     let ws_stream = async_tungstenite::WebSocketStream::from_raw_socket(
+    //         stream, 
+    //         tungstenite::protocol::Role::Server,
+    //         None
+    //     ).await;
+    //     let tide_ws = tide_websockets::WebSocketConnection::from(ws_stream);
+    //     let _ = WebSocketConn::new_with_sink(ws_stream);
+    // }
 }
