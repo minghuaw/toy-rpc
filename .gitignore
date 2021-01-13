@@ -5,3 +5,4 @@ Notes.md
 .idea/modules.xml
 .idea/toy-rpc.iml
 .idea/vcs.xml
+*.DS_STORE
