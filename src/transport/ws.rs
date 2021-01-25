@@ -12,17 +12,17 @@
 /// - `tide-websocket` only impls `Stream` but not `Sink<Message>`
 
 use std::marker::PhantomData;
-use futures::{AsyncRead, AsyncWrite, Sink, SinkExt, Stream, StreamExt, future::UnitError};
-use pin_project::pin_project;
+use futures::{Sink, SinkExt, Stream, StreamExt};
+// use pin_project::pin_project;
 use async_trait::async_trait;
 use tungstenite::Message as WsMessage;
-use tungstenite::error::Error as WsError;
+// use tungstenite::error::Error as WsError;
 
 use crate::error::Error;
 
 #[async_trait]
 pub trait PayloadRead {
-    async fn read_payload(&self) -> Vec<u8>;
+    async fn read_payload(&mut self) -> Option<Result<Vec<u8>, Error>>;
 }
 
 #[async_trait]
@@ -36,40 +36,12 @@ pub trait PayloadWrite {
 struct CanSink { }
 struct CannotSink { }
 
-#[pin_project]
-pub struct WebSocketConn<T, N> {
-    #[pin]
-    pub inner: T,
+// #[pin_project]
+pub struct WebSocketConn<S, N> {
+    // #[pin]
+    pub inner: S,
     can_sink: PhantomData<N>,
 }
-
-// =============================================================================
-// macros
-// =============================================================================
-
-// macro_rules! impl_cansink_new {
-//     // this evil monstrosity matches <A, B: T, C: S+T>
-//     ($ty:ident < $( $N:ident $(: $b0:ident $(+$b:ident)* )? ),* >) =>
-//     {
-//         impl< $( $N $(: $b0 $(+$b)* )? ),* >
-//             $crate::Greet
-//             for $ty< $( $N ),* >
-//         {
-//             pub fn new(stream: $ty <$N>) -> Self {
-//                 Self {
-//                     inner: stream,
-//                     can_sink: PhantomData
-//                 }
-//             }
-//         }
-//     };
-//     // match when no type parameters are present
-//     ($ty:ident) => {
-//         impl_greet!($ty<>);
-//     };
-// }
-
-// impl_websocketconn_cansink_new!()
 
 // =============================================================================
 // async-tungstenite,
@@ -91,23 +63,42 @@ where
 }
 
 #[async_trait]
-impl<S, E> PayloadRead for WebSocketConn<S, CanSink> 
+impl<S, E, N> PayloadRead for WebSocketConn<S, N> 
 where 
-    S: Stream<Item = Result<WsMessage, E>> + Sink<WsMessage> + Send + Sync + Unpin,
+    S: Stream<Item = Result<WsMessage, E>> + Send + Sync + Unpin,
     E: std::error::Error + 'static,
+    N: Send
 {
-    async fn read_payload(&self) -> Vec<u8> {
-        unimplemented!()
+    async fn read_payload(&mut self) -> Option<Result<Vec<u8>, Error>> {
+        match self.inner.next().await? {
+            Err(e) => return Some(Err(Error::TransportError{msg: e.to_string()})),
+            Ok(msg) => {
+                if let WsMessage::Binary(bytes) = msg {
+                    return Some(Ok(bytes))
+                }
+
+                return Some(Err(
+                        Error::TransportError{
+                            msg: "Expecting WebSocket::Message::Binary, but found something else".to_string()
+                        }))
+            }
+        }
     }
 }
 
 #[async_trait]
-impl<S> PayloadWrite for WebSocketConn<S, CanSink>
+impl<S, E> PayloadWrite for WebSocketConn<S, CanSink>
 where 
-    S: Sink<WsMessage> + Send + Sync + Unpin,
+    S: Sink<WsMessage, Error=E> + Send + Sync + Unpin,
+    E: std::error::Error + 'static,
 {
     async fn write_payload(&mut self, payload: &[u8]) -> Result<(), Error> {
-        unimplemented!()
+        let msg = WsMessage::Binary(payload.into());
+
+        self.inner.send(msg).await
+            .map_err(|e| {
+                Error::TransportError{msg: e.to_string()}
+            })
     }
 }
 
@@ -124,17 +115,18 @@ impl WebSocketConn<tide_websockets::WebSocketConnection, CannotSink> {
     }
 }
 
-#[async_trait]
-impl PayloadRead for WebSocketConn<tide_websockets::WebSocketConnection, CannotSink> {
-    async fn read_payload(&self) -> Vec<u8> {
-        unimplemented!()
-    }
-}
+// #[async_trait]
+// impl PayloadRead for WebSocketConn<tide_websockets::WebSocketConnection, CannotSink> {
+//     async fn read_payload(&mut self) -> Option<Result<Vec<u8>, Error>> {
+//         unimplemented!()
+//     }
+// }
 
 #[async_trait]
 impl PayloadWrite for WebSocketConn<tide_websockets::WebSocketConnection, CannotSink> {
     async fn write_payload(&mut self, payload: &[u8]) -> Result<(), Error> {
-        unimplemented!()
+        self.inner.send_bytes(payload.into()).await
+            .map_err(|e| Error::TransportError{msg: e.to_string()})
     }
 }
 
