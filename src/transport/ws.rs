@@ -13,10 +13,10 @@
 
 use std::marker::PhantomData;
 use futures::{Sink, SinkExt, Stream, StreamExt};
-// use pin_project::pin_project;
+use futures::stream::{SplitStream, SplitSink};
 use async_trait::async_trait;
 use tungstenite::Message as WsMessage;
-// use tungstenite::error::Error as WsError;
+use tide_websockets as tide_ws;
 
 use crate::error::Error;
 
@@ -43,6 +43,15 @@ pub struct WebSocketConn<S, N> {
     can_sink: PhantomData<N>,
 }
 
+pub struct StreamHalf<S> {
+    inner: S 
+}
+
+pub struct SinkHalf<S, Mode> {
+    inner: S,
+    can_sink: PhantomData<Mode>
+}
+
 // =============================================================================
 // async-tungstenite,
 // tokio-tungstenite,
@@ -54,20 +63,27 @@ where
     S: Stream<Item = Result<WsMessage, E>> + Sink<WsMessage> + Send + Sync + Unpin,
     E: std::error::Error + 'static,
 {
-    fn new(inner: S) -> Self {
+    pub fn new(inner: S) -> Self {
         Self {
             inner,
             can_sink: PhantomData
         }
     }
+
+    pub fn split(self) -> (SinkHalf<SplitSink<S, WsMessage>, CanSink>, StreamHalf<SplitStream<S>>) {
+        let (writer, reader) = self.inner.split();
+
+        let readhalf = StreamHalf{inner: reader};
+        let writehalf = SinkHalf{inner: writer, can_sink: PhantomData};
+        (writehalf, readhalf)
+    }
 }
 
 #[async_trait]
-impl<S, E, N> PayloadRead for WebSocketConn<S, N> 
+impl<S, E> PayloadRead for StreamHalf<S> 
 where 
     S: Stream<Item = Result<WsMessage, E>> + Send + Sync + Unpin,
     E: std::error::Error + 'static,
-    N: Send
 {
     async fn read_payload(&mut self) -> Option<Result<Vec<u8>, Error>> {
         match self.inner.next().await? {
@@ -87,7 +103,7 @@ where
 }
 
 #[async_trait]
-impl<S, E> PayloadWrite for WebSocketConn<S, CanSink>
+impl<S, E> PayloadWrite for SinkHalf<S, CanSink>
 where 
     S: Sink<WsMessage, Error=E> + Send + Sync + Unpin,
     E: std::error::Error + 'static,
@@ -107,23 +123,22 @@ where
 // =============================================================================
 
 impl WebSocketConn<tide_websockets::WebSocketConnection, CannotSink> {
-    fn new_without_sink(inner: tide_websockets::WebSocketConnection) -> Self {
+    pub fn new_without_sink(inner: tide_websockets::WebSocketConnection) -> Self {
         Self {
             inner,
             can_sink: PhantomData
         }
     }
+
+    pub fn split(self) -> (SinkHalf<tide_ws::WebSocketConnection, CannotSink>, StreamHalf<tide_ws::WebSocketConnection>) {
+        let writer = SinkHalf{inner: self.inner.clone(), can_sink: PhantomData};
+        let reader = StreamHalf{inner: self.inner};
+        (writer, reader)
+    }
 }
 
-// #[async_trait]
-// impl PayloadRead for WebSocketConn<tide_websockets::WebSocketConnection, CannotSink> {
-//     async fn read_payload(&mut self) -> Option<Result<Vec<u8>, Error>> {
-//         unimplemented!()
-//     }
-// }
-
 #[async_trait]
-impl PayloadWrite for WebSocketConn<tide_websockets::WebSocketConnection, CannotSink> {
+impl PayloadWrite for SinkHalf<tide_websockets::WebSocketConnection, CannotSink> {
     async fn write_payload(&mut self, payload: &[u8]) -> Result<(), Error> {
         self.inner.send_bytes(payload.into()).await
             .map_err(|e| Error::TransportError{msg: e.to_string()})
