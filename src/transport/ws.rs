@@ -27,14 +27,14 @@ pub trait PayloadRead {
 
 #[async_trait]
 pub trait PayloadWrite {
-    async fn write_payload(&mut self, payload: &[u8]) -> Result<(), Error>;
+    async fn write_payload(&mut self, payload: Vec<u8>) -> Result<(), Error>;
 }
 
 /// type state for WebSocketConn
 /// This is to separate `PayloadWrite` impl for `tide-websockets` 
 /// which currently does not implement `Sink`
-struct CanSink { }
-struct CannotSink { }
+pub(crate) struct CanSink { }
+pub(crate) struct CannotSink { }
 
 // #[pin_project]
 pub struct WebSocketConn<S, N> {
@@ -108,7 +108,7 @@ where
     S: Sink<WsMessage, Error=E> + Send + Sync + Unpin,
     E: std::error::Error + 'static,
 {
-    async fn write_payload(&mut self, payload: &[u8]) -> Result<(), Error> {
+    async fn write_payload(&mut self, payload: Vec<u8>) -> Result<(), Error> {
         let msg = WsMessage::Binary(payload.into());
 
         self.inner.send(msg).await
@@ -139,7 +139,7 @@ impl WebSocketConn<tide_websockets::WebSocketConnection, CannotSink> {
 
 #[async_trait]
 impl PayloadWrite for SinkHalf<tide_websockets::WebSocketConnection, CannotSink> {
-    async fn write_payload(&mut self, payload: &[u8]) -> Result<(), Error> {
+    async fn write_payload(&mut self, payload: Vec<u8>) -> Result<(), Error> {
         self.inner.send_bytes(payload.into()).await
             .map_err(|e| Error::TransportError{msg: e.to_string()})
     }
@@ -201,7 +201,9 @@ mod tests {
             tungstenite::protocol::Role::Server,
             None
         ).await;
-        let _ = WebSocketConn::new(ws_stream);
+        let conn = WebSocketConn::new(ws_stream);
+
+        let (writer, reader) = conn.split();
     }
 
     async fn test_new_on_tokio_tungstenite() {

@@ -41,7 +41,7 @@ serde_bincode = []
 serde_rmp = ["rmp-serde"]
 
 [dev-dependencies]
-async-tungstenite = "0.11"
+async-tungstenite = "0.12.0"
 url = "2.2"
 tide-websockets = "0.1.0"
 tide = {version = "0.15.0", default-features = false, features = ["h1-server"] }
@@ -70,10 +70,10 @@ log = "0.4"
 lazy_static = "1.4.0"
 
 # websocket dependencies, consider feature gating in the future
-tungstenite = "0.11.1"
-async-tungstenite = { version = "0.11.0", features = ["async-std-runtime"] }
+tungstenite = "0.12.0"
+async-tungstenite = { version = "0.12.0", features = ["async-std-runtime"] }
 tide-websockets = "0.1.0"
-tokio-tungstenite = "0.12.0"
+tokio-tungstenite = "0.13.0"
 warp = "0.2.5"
 
 [workspace]

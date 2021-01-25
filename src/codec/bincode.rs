@@ -6,13 +6,15 @@ use erased_serde as erased;
 use futures::io::{AsyncBufRead, AsyncWrite, AsyncWriteExt};
 use futures::{StreamExt, SinkExt};
 use serde::de::Visitor;
-use std::io::Cursor; // serde doesn't support AsyncRead
+use std::{io::Cursor}; // serde doesn't support AsyncRead
 
 use super::{Codec, CodecRead, CodecWrite, DeserializerOwned, Marshal, Unmarshal};
 use crate::error::Error;
 use crate::macros::impl_inner_deserializer;
 use crate::message::{MessageId, Metadata};
 use crate::transport::frame::{Frame, FrameRead, FrameStreamExt, FrameSinkExt, FrameWrite, PayloadType};
+
+use super::{ConnTypeWebSocket, ConnTypeReadWrite, PayloadRead, PayloadWrite};
 
 impl<'de, R, O> serde::Deserializer<'de> for DeserializerOwned<bincode::Deserializer<R, O>>
 where
@@ -26,7 +28,7 @@ where
 }
 
 #[async_trait]
-impl<R, W> CodecRead for Codec<R, W>
+impl<R, W> CodecRead for Codec<R, W, ConnTypeReadWrite>
 where
     R: FrameRead + Send + Sync + Unpin,
     W: FrameWrite + Send + Sync + Unpin,
@@ -71,7 +73,7 @@ where
 }
 
 #[async_trait]
-impl<R, W> CodecWrite for Codec<R, W>
+impl<R, W> CodecWrite for Codec<R, W, ConnTypeReadWrite>
 where
     R: AsyncBufRead + Send + Sync + Unpin,
     W: AsyncWrite + AsyncWriteExt + Send + Sync + Unpin,
@@ -106,10 +108,10 @@ where
     }
 }
 
-impl<R, W> Marshal for Codec<R, W>
-where
-    R: AsyncBufRead + Send + Sync + Unpin,
-    W: AsyncWrite + Send + Sync + Unpin,
+impl<R, W, C> Marshal for Codec<R, W, C>
+// where
+//     R: Send,
+//     W: Send,
 {
     fn marshal<S: serde::Serialize>(val: &S) -> Result<Vec<u8>, Error> {
         DefaultOptions::new()
@@ -119,15 +121,81 @@ where
     }
 }
 
-impl<R, W> Unmarshal for Codec<R, W>
-where
-    R: AsyncBufRead + Send + Sync + Unpin,
-    W: AsyncWrite + Send + Sync + Unpin,
+impl<R, W, C> Unmarshal for Codec<R, W, C>
+// where
+//     R: Send,
+//     W: Send,
 {
     fn unmarshal<'de, D: serde::Deserialize<'de>>(buf: &'de [u8]) -> Result<D, Error> {
         DefaultOptions::new()
             .with_fixint_encoding()
             .deserialize(buf)
             .map_err(|err| err.into())
+    }
+}
+
+#[async_trait]
+impl<R, W> CodecRead for Codec<R, W, ConnTypeWebSocket>
+where 
+    R: PayloadRead + Send,
+    W: Send,
+{
+    async fn read_header<H>(&mut self) -> Option<Result<H, Error>>
+    where
+            H: serde::de::DeserializeOwned 
+    {
+        let reader = &mut self.reader;
+
+        Some(
+            reader
+                .read_payload()
+                .await?
+                .and_then(|payload| Self::unmarshal(&payload))
+        )
+    }
+
+    async fn read_body(&mut self) -> Option<Result<Box<dyn erased::Deserializer<'static> + Send + 'static>, Error>> {
+        let reader = &mut self.reader;
+
+        let de = match reader.read_payload().await? {
+            Ok(payload) => {
+                log::debug!("frame: {:?}", payload);
+                bincode::Deserializer::with_reader(
+                    Cursor::new(payload),
+                    bincode::DefaultOptions::new().with_fixint_encoding(),
+                )
+            }
+            Err(e) => return Some(Err(e)),
+        };
+
+        // wrap the deserializer as DeserializerOwned
+        let de_owned = DeserializerOwned::new(de);
+
+        // returns a Deserializer referencing to decoder
+        Some(Ok(Box::new(erased::Deserializer::erase(de_owned))))
+    }
+}
+
+#[async_trait]
+impl<R, W> CodecWrite for Codec<R, W, ConnTypeWebSocket>
+where 
+    R: Send,
+    W: PayloadWrite + Send,
+{
+    async fn write_header<H>(&mut self, header: H) -> Result<(), Error>
+    where
+            H: serde::Serialize + Metadata + Send 
+    {
+        let writer = &mut self.writer;
+        let buf = Self::marshal(&header)?;
+        // log::trace!("Header id: {} sent", &id);
+        writer.write_payload(buf).await
+    }
+
+    async fn write_body(&mut self, _: &MessageId, body: &(dyn erased::Serialize + Send + Sync)) -> Result<(), Error> {
+        let writer = &mut self.writer;
+        let buf = Self::marshal(&body)?;
+        // log::trace!("Body id: {} sent", id);
+        writer.write_payload(buf).await
     }
 }

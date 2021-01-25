@@ -1,12 +1,16 @@
 use async_trait::async_trait;
 use erased_serde as erased;
-use futures::io::{AsyncBufRead, AsyncRead, AsyncWrite, AsyncWriteExt, AsyncReadExt, BufReader, BufWriter, ReadHalf, WriteHalf};
+use futures::{io::{AsyncBufRead, AsyncRead, AsyncWrite, AsyncWriteExt, AsyncReadExt, BufReader, BufWriter, ReadHalf, WriteHalf}, stream::{SplitSink, SplitStream}};
+use surf::http::content;
 // use futures::channel::mpsc::{Receiver, Sender};
-// use futures::{SinkExt, StreamExt};
-// use std::marker::PhantomData;
+use futures::{Stream, Sink, SinkExt, StreamExt};
+use std::marker::PhantomData;
+use tungstenite::Message as WsMessage;
+use tide_websockets as tide_ws;
 
 use crate::error::Error;
 use crate::message::{MessageId, Metadata, RequestHeader, ResponseHeader};
+use crate::transport::ws::{PayloadRead, PayloadWrite, WebSocketConn, CanSink, CannotSink, StreamHalf, SinkHalf};
 
 #[cfg(all(
     feature = "serde_bincode",
@@ -76,10 +80,17 @@ pub mod json;
 )]
 pub mod rmp;
 
+/// type state for AsyncRead and AsyncWrite connections
+pub(crate) struct ConnTypeReadWrite {}
+
+/// type state for WebSocket connections
+pub(crate) struct ConnTypeWebSocket {}
+
 /// Default codec
-pub struct Codec<R, W> {
+pub struct Codec<R, W, C> {
     pub reader: R,
     pub writer: W,
+    conn_type: PhantomData<C>
 }
 
 #[cfg(any(
@@ -111,17 +122,17 @@ pub struct Codec<R, W> {
 ))]
 pub use Codec as DefaultCodec;
 
-impl<R, W> Codec<R, W>
+impl<R, W> Codec<R, W, ConnTypeReadWrite>
 where
     R: AsyncBufRead + Send + Sync + Unpin,
     W: AsyncWrite + AsyncWriteExt + Send + Sync + Unpin,
 {
     pub fn with_reader_writer(reader: R, writer: W) -> Self {
-        Self { reader, writer }
+        Self { reader, writer, conn_type: PhantomData}
     }
 }
 
-impl<T> Codec<BufReader<ReadHalf<T>>, BufWriter<WriteHalf<T>>>
+impl<T> Codec<BufReader<ReadHalf<T>>, BufWriter<WriteHalf<T>>, ConnTypeReadWrite>
 where
     T: AsyncRead + AsyncWrite + Send + Sync + Unpin,
 {
@@ -131,6 +142,38 @@ where
         let writer = BufWriter::new(writer);
 
         Self::with_reader_writer(reader, writer)
+    }
+}
+
+// websocket integration for async_tungstenite, tokio_tungstenite, and warp
+impl<S, E> Codec<StreamHalf<SplitStream<S>>, SinkHalf<SplitSink<S, WsMessage>, CanSink>, ConnTypeWebSocket> 
+where 
+    S: Stream<Item = Result<WsMessage, E>> + Sink<WsMessage> + Send + Sync + Unpin,
+    E: std::error::Error + 'static,
+{
+    pub fn with_websocket(ws: WebSocketConn<S, CanSink>) -> Self 
+    {
+        let (writer, reader) = WebSocketConn::<S, CanSink>::split(ws);
+
+        Self {
+            reader,
+            writer,
+            conn_type: PhantomData
+        }
+    }
+}
+
+// websocket integration with `tide`
+impl Codec<StreamHalf<tide_ws::WebSocketConnection>, SinkHalf<tide_ws::WebSocketConnection, CannotSink>, ConnTypeWebSocket> {
+    pub fn with_websocket(ws: WebSocketConn<tide_ws::WebSocketConnection, CannotSink>) -> Self 
+    {
+        let (writer, reader) = WebSocketConn::<tide_ws::WebSocketConnection, CannotSink>::split(ws);
+
+        Self {
+            reader,
+            writer,
+            conn_type: PhantomData
+        }
     }
 }
 

@@ -13,6 +13,8 @@ use crate::macros::impl_inner_deserializer;
 use crate::message::{MessageId, Metadata};
 use crate::transport::frame::{Frame, FrameRead, FrameStreamExt, FrameSinkExt, FrameWrite, PayloadType};
 
+use super::{ConnTypeWebSocket, ConnTypeReadWrite};
+
 impl<'de, R> serde::Deserializer<'de>
     for DeserializerOwned<rmp_serde::Deserializer<rmp_serde::decode::ReadReader<R>>>
 where
@@ -25,7 +27,7 @@ where
 }
 
 #[async_trait]
-impl<R, W> CodecRead for Codec<R, W>
+impl<R, W> CodecRead for Codec<R, W, ConnTypeReadWrite>
 where
     R: FrameRead + Send + Sync + Unpin,
     W: FrameWrite + Send + Sync + Unpin,
@@ -67,7 +69,7 @@ where
 }
 
 #[async_trait]
-impl<R, W> CodecWrite for Codec<R, W>
+impl<R, W> CodecWrite for Codec<R, W, ConnTypeReadWrite>
 where
     R: AsyncBufRead + Send + Sync + Unpin,
     W: AsyncWrite + AsyncWriteExt + Send + Sync + Unpin,
@@ -102,10 +104,10 @@ where
     }
 }
 
-impl<R, W> Marshal for Codec<R, W>
-where
-    R: AsyncBufRead + Send + Sync + Unpin,
-    W: AsyncWrite + Send + Sync + Unpin,
+impl<R, W, C> Marshal for Codec<R, W, C>
+// where
+//     R: AsyncBufRead + Send + Sync + Unpin,
+//     W: AsyncWrite + Send + Sync + Unpin,
 {
     fn marshal<S: serde::Serialize>(val: &S) -> Result<Vec<u8>, Error> {
         let mut buf = Vec::new();
@@ -116,10 +118,10 @@ where
     }
 }
 
-impl<R, W> Unmarshal for Codec<R, W>
-where
-    R: AsyncBufRead + Send + Sync + Unpin,
-    W: AsyncWrite + Send + Sync + Unpin,
+impl<R, W, C> Unmarshal for Codec<R, W, C>
+// where
+//     R: AsyncBufRead + Send + Sync + Unpin,
+//     W: AsyncWrite + Send + Sync + Unpin,
 {
     fn unmarshal<'de, D: serde::Deserialize<'de>>(buf: &'de [u8]) -> Result<D, Error> {
         let mut de = rmp_serde::Deserializer::new(buf);
