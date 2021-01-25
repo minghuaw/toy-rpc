@@ -203,7 +203,7 @@ mod tests {
         ).await;
         let conn = WebSocketConn::new(ws_stream);
 
-        let (writer, reader) = conn.split();
+        let (_writer, _reader) = conn.split();
     }
 
     async fn test_new_on_tokio_tungstenite() {

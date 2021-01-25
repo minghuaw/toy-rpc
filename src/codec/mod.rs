@@ -1,9 +1,9 @@
 use async_trait::async_trait;
 use erased_serde as erased;
 use futures::{io::{AsyncBufRead, AsyncRead, AsyncWrite, AsyncWriteExt, AsyncReadExt, BufReader, BufWriter, ReadHalf, WriteHalf}, stream::{SplitSink, SplitStream}};
-use surf::http::content;
+// use surf::http::content;
 // use futures::channel::mpsc::{Receiver, Sender};
-use futures::{Stream, Sink, SinkExt, StreamExt};
+use futures::{Stream, Sink};
 use std::marker::PhantomData;
 use tungstenite::Message as WsMessage;
 use tide_websockets as tide_ws;
