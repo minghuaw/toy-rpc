@@ -91,12 +91,14 @@ where
             Ok(msg) => {
                 if let WsMessage::Binary(bytes) = msg {
                     return Some(Ok(bytes))
+                } else if let WsMessage::Close(_) = msg {
+                    return None
                 }
 
-                return Some(Err(
-                        Error::TransportError{
-                            msg: "Expecting WebSocket::Message::Binary, but found something else".to_string()
-                        }))
+                Some(Err(
+                    Error::TransportError{
+                        msg: "Expecting WebSocket::Message::Binary, but found something else".to_string()
+                }))
             }
         }
     }
