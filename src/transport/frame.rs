@@ -2,12 +2,12 @@ use async_trait::async_trait;
 use bincode::{DefaultOptions, Options};
 use futures::io::{AsyncBufRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 // use futures::ready;
-use std::task::{Context, Poll};
-use futures::{Stream, Sink};
+use futures::{Sink, Stream};
 use lazy_static::lazy_static;
 use pin_project::pin_project;
 use serde::{Deserialize, Serialize};
 use std::pin::Pin;
+use std::task::{Context, Poll};
 
 use crate::error::Error;
 use crate::message::MessageId;
@@ -22,20 +22,20 @@ lazy_static! {
 }
 
 /// Trait for custom binary transport protocol
-/// 
+///
 /// `AsyncBufRead` or `AsyncRead` is required because `async_std::net::TcpStream`
 /// only implements `AsyncWrite` and `AsyncRead`
-/// 
+///
 #[async_trait]
 pub trait FrameRead: AsyncBufRead {
     async fn read_frame(&mut self) -> Option<Result<Frame, Error>>;
 }
 
 /// Trait for custom binary transport protocol
-/// 
+///
 /// `AsyncWrite` is required because `async_std::net::TcpStream`
 /// only implements `AsyncWrite` and `AsyncRead`
-/// 
+///
 #[async_trait]
 pub trait FrameWrite: AsyncWrite {
     async fn write_frame(
@@ -127,7 +127,12 @@ pub struct Frame {
 }
 
 impl Frame {
-    pub fn new(message_id: MessageId, frame_id: FrameId, payload_type: PayloadType, payload: Vec<u8>) -> Self {
+    pub fn new(
+        message_id: MessageId,
+        frame_id: FrameId,
+        payload_type: PayloadType,
+        payload: Vec<u8>,
+    ) -> Self {
         Self {
             message_id,
             frame_id,
@@ -152,16 +157,12 @@ impl<R: AsyncBufRead + Unpin + Send + Sync> FrameRead for R {
         let mut payload = vec![0; header.payload_len as usize];
         let _ = self.read_exact(&mut payload).await.ok()?;
 
-        Some(
-            Ok(
-                Frame::new(
-                    header.message_id, 
-                    header.frame_id, 
-                    header.payload_type.into(), 
-                    payload
-                )
-            )
-        )
+        Some(Ok(Frame::new(
+            header.message_id,
+            header.frame_id,
+            header.payload_type.into(),
+            payload,
+        )))
     }
 }
 
@@ -178,8 +179,8 @@ impl<W: AsyncWrite + AsyncWriteExt + Unpin + Send + Sync> FrameWrite for W {
         if buf.len() > PayloadLen::MAX as usize {
             return Err(Error::TransportError {
                 msg: format!(
-                    "Payload length exceeded maximum. Max is {}, found {}", 
-                    PayloadLen::MAX, 
+                    "Payload length exceeded maximum. Max is {}, found {}",
+                    PayloadLen::MAX,
                     buf.len()
                 ),
             });
@@ -292,7 +293,7 @@ impl<'r, T: AsyncBufRead + Unpin + Send + Sync> Stream for FrameStream<'r, T> {
                     }
 
                     let payload = buf[..h.payload_len as usize].to_vec();
-                    
+
                     // construct frame
                     let frame = Frame {
                         message_id: h.message_id,
@@ -300,24 +301,23 @@ impl<'r, T: AsyncBufRead + Unpin + Send + Sync> Stream for FrameStream<'r, T> {
                         payload_type: h.payload_type.into(),
                         payload,
                     };
-                    
+
                     // use a separate
                     // no need to constuct a Frame to return
 
                     reader.as_mut().consume(h.payload_len as usize);
                     header.as_mut().take();
 
-                    return Poll::Ready(Some(Ok(frame)))
+                    return Poll::Ready(Some(Ok(frame)));
                 }
             }
         }
     }
 }
 
-
 #[pin_project]
 pub struct FrameSink<'w, T>
-where 
+where
     T: AsyncWrite + Send + Sync + Unpin,
 {
     #[pin]
@@ -325,9 +325,9 @@ where
     buf: Vec<u8>,
 }
 
-pub trait FrameSinkExt<T> 
-where 
-    T: AsyncWrite + Send + Sync + Unpin
+pub trait FrameSinkExt<T>
+where
+    T: AsyncWrite + Send + Sync + Unpin,
 {
     fn frame_sink(&mut self) -> FrameSink<T>;
 }
@@ -336,7 +336,7 @@ impl<T: AsyncWrite + Send + Sync + Unpin> FrameSinkExt<T> for T {
     fn frame_sink(&mut self) -> FrameSink<T> {
         FrameSink {
             inner: self,
-            buf: Vec::new()
+            buf: Vec::new(),
         }
     }
 }
@@ -356,15 +356,13 @@ impl<'w, T: AsyncWrite + Send + Sync + Unpin> Sink<Frame> for FrameSink<'w, T> {
         // check payload len
         let payload_len = item.payload.len();
         if payload_len > PayloadLen::MAX as usize {
-            return Err(
-                Error::TransportError {
-                    msg: format!(
-                        "Payload length exceeded maximum. Max is {}, found {}", 
-                        PayloadLen::MAX, 
-                        payload_len
-                    ),
-                }
-            )
+            return Err(Error::TransportError {
+                msg: format!(
+                    "Payload length exceeded maximum. Max is {}, found {}",
+                    PayloadLen::MAX,
+                    payload_len
+                ),
+            });
         }
 
         // write header
@@ -374,7 +372,7 @@ impl<'w, T: AsyncWrite + Send + Sync + Unpin> Sink<Frame> for FrameSink<'w, T> {
             item.payload_type,
             payload_len as u32,
         );
-        
+
         buf.append(&mut header.to_vec()?);
         buf.append(&mut item.payload);
 
@@ -386,10 +384,8 @@ impl<'w, T: AsyncWrite + Send + Sync + Unpin> Sink<Frame> for FrameSink<'w, T> {
         let mut writer = this.inner;
         let buf = this.buf;
 
-        futures::ready!(writer.as_mut().poll_write(cx, &buf))
-            .map_err(|e| Error::IoError(e))?;
-        futures::ready!(writer.as_mut().poll_flush(cx))
-            .map_err(|e| Error::IoError(e))?;
+        futures::ready!(writer.as_mut().poll_write(cx, &buf)).map_err(|e| Error::IoError(e))?;
+        futures::ready!(writer.as_mut().poll_flush(cx)).map_err(|e| Error::IoError(e))?;
 
         buf.clear();
 
@@ -400,8 +396,7 @@ impl<'w, T: AsyncWrite + Send + Sync + Unpin> Sink<Frame> for FrameSink<'w, T> {
         let this = self.project();
         let writer = this.inner;
 
-        writer.poll_close(cx)
-            .map_err(|e| e.into())
+        writer.poll_close(cx).map_err(|e| e.into())
     }
 }
 

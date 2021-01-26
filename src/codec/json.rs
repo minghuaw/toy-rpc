@@ -11,7 +11,7 @@ use crate::error::Error;
 use crate::macros::impl_inner_deserializer;
 use crate::message::{MessageId, Metadata};
 
-use super::{ConnTypeWebSocket, ConnTypeReadWrite};
+use super::{ConnTypeReadWrite, ConnTypeWebSocket};
 
 impl<'de, R> serde::Deserializer<'de> for DeserializerOwned<serde_json::Deserializer<R>>
 where

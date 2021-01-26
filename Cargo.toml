@@ -84,5 +84,6 @@ members = [
 exclude = [
     "examples/server_client",
     "examples/tide_integration",
-    "examples/actix_v3_integration"
+    "examples/actix_v3_integration",
+    "examples/websocket",
 ]

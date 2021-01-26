@@ -35,7 +35,10 @@ pub struct Connected {}
 type Codec = Arc<Mutex<Box<dyn ClientCodec>>>;
 
 #[cfg(feature = "surf")]
-type Channel = (UnboundedSender<Vec<u8>>, Arc<Mutex<UnboundedReceiver<Vec<u8>>>>);
+type Channel = (
+    UnboundedSender<Vec<u8>>,
+    Arc<Mutex<UnboundedReceiver<Vec<u8>>>>,
+);
 
 type ResponseBody = Box<dyn erased::Deserializer<'static> + Send>;
 

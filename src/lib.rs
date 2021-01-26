@@ -133,8 +133,8 @@
 //! and then creates `Client` over the connection. The convenience function `dial` performs
 //! this step for raw TCP socket connection, and `dial_http` performs this for an HTTP
 //! connection. A `Client` with HTTP connection or socket connection has three methods, `call`, `async_call`,
-//! and `spawn_task`, to specify the service and method to call and the argument. 
-//! 
+//! and `spawn_task`, to specify the service and method to call and the argument.
+//!
 //! Please note that `call_http`, `async_call_http` and `spawn_task_http` are becoming deprecated
 //! as the same API now can be called for both a socket client and an HTTP client.
 //!
@@ -467,21 +467,21 @@
 //! ```
 //!
 //! ## Change Log
-//! 
+//!
 //! ### 0.4.5
-//! 
+//!
 //! - Added `Sink` implementation for the custom binary transport protocol `Frame`
-//! 
+//!
 //! ### 0.4.4
-//! 
-//! - Modified traits `CodecRead`, `CodecWrite`, `ServerCodec`, `ClientCodec` to no longer 
+//!
+//! - Modified traits `CodecRead`, `CodecWrite`, `ServerCodec`, `ClientCodec` to no longer
 //! return number of bytes written
 //! - The number of bytes written for header and body will be logged separately
-//! 
+//!
 //! ### 0.4.3
-//! 
+//!
 //! - Removed previously unused NoneError
-//! - Unified `call`, `async_call` and `spawn_task` for socket client 
+//! - Unified `call`, `async_call` and `spawn_task` for socket client
 //! and HTTP client. The `call_http`, `async_call_http`, and `spawn_task_http`
 //! methods are kept for compatibility.
 //!

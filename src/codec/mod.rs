@@ -1,16 +1,24 @@
 use async_trait::async_trait;
 use erased_serde as erased;
-use futures::{io::{AsyncBufRead, AsyncRead, AsyncWrite, AsyncWriteExt, AsyncReadExt, BufReader, BufWriter, ReadHalf, WriteHalf}, stream::{SplitSink, SplitStream}};
+use futures::{
+    io::{
+        AsyncBufRead, AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt, BufReader, BufWriter,
+        ReadHalf, WriteHalf,
+    },
+    stream::{SplitSink, SplitStream},
+};
 // use surf::http::content;
 // use futures::channel::mpsc::{Receiver, Sender};
-use futures::{Stream, Sink};
+use futures::{Sink, Stream};
 use std::marker::PhantomData;
-use tungstenite::Message as WsMessage;
 use tide_websockets as tide_ws;
+use tungstenite::Message as WsMessage;
 
 use crate::error::Error;
 use crate::message::{MessageId, Metadata, RequestHeader, ResponseHeader};
-use crate::transport::ws::{PayloadRead, PayloadWrite, WebSocketConn, CanSink, CannotSink, StreamHalf, SinkHalf};
+use crate::transport::ws::{
+    CanSink, CannotSink, PayloadRead, PayloadWrite, SinkHalf, StreamHalf, WebSocketConn,
+};
 
 #[cfg(all(
     feature = "serde_bincode",
@@ -90,7 +98,7 @@ pub(crate) struct ConnTypeWebSocket {}
 pub struct Codec<R, W, C> {
     pub reader: R,
     pub writer: W,
-    conn_type: PhantomData<C>
+    conn_type: PhantomData<C>,
 }
 
 #[cfg(any(
@@ -128,7 +136,11 @@ where
     W: AsyncWrite + AsyncWriteExt + Send + Sync + Unpin,
 {
     pub fn with_reader_writer(reader: R, writer: W) -> Self {
-        Self { reader, writer, conn_type: PhantomData}
+        Self {
+            reader,
+            writer,
+            conn_type: PhantomData,
+        }
     }
 }
 
@@ -146,33 +158,38 @@ where
 }
 
 // websocket integration for async_tungstenite, tokio_tungstenite, and warp
-impl<S, E> Codec<StreamHalf<SplitStream<S>>, SinkHalf<SplitSink<S, WsMessage>, CanSink>, ConnTypeWebSocket> 
-where 
+impl<S, E>
+    Codec<StreamHalf<SplitStream<S>>, SinkHalf<SplitSink<S, WsMessage>, CanSink>, ConnTypeWebSocket>
+where
     S: Stream<Item = Result<WsMessage, E>> + Sink<WsMessage> + Send + Sync + Unpin,
     E: std::error::Error + 'static,
 {
-    pub fn with_websocket(ws: WebSocketConn<S, CanSink>) -> Self 
-    {
+    pub fn with_websocket(ws: WebSocketConn<S, CanSink>) -> Self {
         let (writer, reader) = WebSocketConn::<S, CanSink>::split(ws);
 
         Self {
             reader,
             writer,
-            conn_type: PhantomData
+            conn_type: PhantomData,
         }
     }
 }
 
 // websocket integration with `tide`
-impl Codec<StreamHalf<tide_ws::WebSocketConnection>, SinkHalf<tide_ws::WebSocketConnection, CannotSink>, ConnTypeWebSocket> {
-    pub fn with_websocket(ws: WebSocketConn<tide_ws::WebSocketConnection, CannotSink>) -> Self 
-    {
+impl
+    Codec<
+        StreamHalf<tide_ws::WebSocketConnection>,
+        SinkHalf<tide_ws::WebSocketConnection, CannotSink>,
+        ConnTypeWebSocket,
+    >
+{
+    pub fn with_websocket(ws: WebSocketConn<tide_ws::WebSocketConnection, CannotSink>) -> Self {
         let (writer, reader) = WebSocketConn::<tide_ws::WebSocketConnection, CannotSink>::split(ws);
 
         Self {
             reader,
             writer,
-            conn_type: PhantomData
+            conn_type: PhantomData,
         }
     }
 }

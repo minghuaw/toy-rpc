@@ -3,7 +3,7 @@
 use async_trait::async_trait;
 use erased_serde as erased;
 use futures::io::{AsyncBufRead, AsyncWrite, AsyncWriteExt};
-use futures::{StreamExt, SinkExt};
+use futures::{SinkExt, StreamExt};
 use serde::de::Visitor;
 use std::io::Cursor; // serde doesn't support AsyncRead
 
@@ -11,9 +11,11 @@ use super::{Codec, CodecRead, CodecWrite, DeserializerOwned, Marshal, Unmarshal}
 use crate::error::Error;
 use crate::macros::impl_inner_deserializer;
 use crate::message::{MessageId, Metadata};
-use crate::transport::frame::{Frame, FrameRead, FrameStreamExt, FrameSinkExt, FrameWrite, PayloadType};
+use crate::transport::frame::{
+    Frame, FrameRead, FrameSinkExt, FrameStreamExt, FrameWrite, PayloadType,
+};
 
-use super::{ConnTypeWebSocket, ConnTypeReadWrite};
+use super::{ConnTypeReadWrite, ConnTypeWebSocket};
 
 impl<'de, R> serde::Deserializer<'de> for DeserializerOwned<serde_cbor::Deserializer<R>>
 where

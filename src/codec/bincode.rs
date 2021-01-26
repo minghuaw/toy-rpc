@@ -4,17 +4,19 @@ use async_trait::async_trait;
 use bincode::{DefaultOptions, Options};
 use erased_serde as erased;
 use futures::io::{AsyncBufRead, AsyncWrite, AsyncWriteExt};
-use futures::{StreamExt, SinkExt};
+use futures::{SinkExt, StreamExt};
 use serde::de::Visitor;
-use std::{io::Cursor}; // serde doesn't support AsyncRead
+use std::io::Cursor; // serde doesn't support AsyncRead
 
 use super::{Codec, CodecRead, CodecWrite, DeserializerOwned, Marshal, Unmarshal};
 use crate::error::Error;
 use crate::macros::impl_inner_deserializer;
 use crate::message::{MessageId, Metadata};
-use crate::transport::frame::{Frame, FrameRead, FrameStreamExt, FrameSinkExt, FrameWrite, PayloadType};
+use crate::transport::frame::{
+    Frame, FrameRead, FrameSinkExt, FrameStreamExt, FrameWrite, PayloadType,
+};
 
-use super::{ConnTypeWebSocket, ConnTypeReadWrite, PayloadRead, PayloadWrite};
+use super::{ConnTypeReadWrite, ConnTypeWebSocket, PayloadRead, PayloadWrite};
 
 impl<'de, R, O> serde::Deserializer<'de> for DeserializerOwned<bincode::Deserializer<R, O>>
 where
@@ -136,13 +138,13 @@ impl<R, W, C> Unmarshal for Codec<R, W, C>
 
 #[async_trait]
 impl<R, W> CodecRead for Codec<R, W, ConnTypeWebSocket>
-where 
+where
     R: PayloadRead + Send,
     W: Send,
 {
     async fn read_header<H>(&mut self) -> Option<Result<H, Error>>
     where
-            H: serde::de::DeserializeOwned 
+        H: serde::de::DeserializeOwned,
     {
         let reader = &mut self.reader;
 
@@ -150,11 +152,13 @@ where
             reader
                 .read_payload()
                 .await?
-                .and_then(|payload| Self::unmarshal(&payload))
+                .and_then(|payload| Self::unmarshal(&payload)),
         )
     }
 
-    async fn read_body(&mut self) -> Option<Result<Box<dyn erased::Deserializer<'static> + Send + 'static>, Error>> {
+    async fn read_body(
+        &mut self,
+    ) -> Option<Result<Box<dyn erased::Deserializer<'static> + Send + 'static>, Error>> {
         let reader = &mut self.reader;
 
         let de = match reader.read_payload().await? {
@@ -178,13 +182,13 @@ where
 
 #[async_trait]
 impl<R, W> CodecWrite for Codec<R, W, ConnTypeWebSocket>
-where 
+where
     R: Send,
     W: PayloadWrite + Send,
 {
     async fn write_header<H>(&mut self, header: H) -> Result<(), Error>
     where
-            H: serde::Serialize + Metadata + Send 
+        H: serde::Serialize + Metadata + Send,
     {
         let writer = &mut self.writer;
         let buf = Self::marshal(&header)?;
@@ -192,7 +196,11 @@ where
         writer.write_payload(buf).await
     }
 
-    async fn write_body(&mut self, _: &MessageId, body: &(dyn erased::Serialize + Send + Sync)) -> Result<(), Error> {
+    async fn write_body(
+        &mut self,
+        _: &MessageId,
+        body: &(dyn erased::Serialize + Send + Sync),
+    ) -> Result<(), Error> {
         let writer = &mut self.writer;
         let buf = Self::marshal(&body)?;
         // log::trace!("Body id: {} sent", id);

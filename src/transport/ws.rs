@@ -1,22 +1,21 @@
+use async_trait::async_trait;
+use futures::stream::{SplitSink, SplitStream};
+use futures::{Sink, SinkExt, Stream, StreamExt};
 /// Websocket transport
-/// 
+///
 /// WebSocket message definition:
-/// 
+///
 /// - `tungstenite::Mesage` based: `tide-websocket` (wrapping `async-tungstenite`), `warp` (using `tokio-tungstenite`)
-/// - `actix-web-actors::ws`: this seems like `actix-web`'s implementation. 
-/// 
+/// - `actix-web-actors::ws`: this seems like `actix-web`'s implementation.
+///
 /// `Stream` and `Sink<tungstenite::Message>`?
-/// 
+///
 /// - `async-tungstenite` and `tokio-tungstenite` both impl `Stream` and `Sink<Message>`
 /// - `warp::filters::ws::WebSocket` is a wrapper of `tokio::tungstenite::WebSocketStream`, and impls both `Stream` and `Sink<Message>`
 /// - `tide-websocket` only impls `Stream` but not `Sink<Message>`
-
 use std::marker::PhantomData;
-use futures::{Sink, SinkExt, Stream, StreamExt};
-use futures::stream::{SplitStream, SplitSink};
-use async_trait::async_trait;
-use tungstenite::Message as WsMessage;
 use tide_websockets as tide_ws;
+use tungstenite::Message as WsMessage;
 
 use crate::error::Error;
 
@@ -31,10 +30,10 @@ pub trait PayloadWrite {
 }
 
 /// type state for WebSocketConn
-/// This is to separate `PayloadWrite` impl for `tide-websockets` 
+/// This is to separate `PayloadWrite` impl for `tide-websockets`
 /// which currently does not implement `Sink`
-pub(crate) struct CanSink { }
-pub(crate) struct CannotSink { }
+pub(crate) struct CanSink {}
+pub(crate) struct CannotSink {}
 
 // #[pin_project]
 pub struct WebSocketConn<S, N> {
@@ -44,12 +43,12 @@ pub struct WebSocketConn<S, N> {
 }
 
 pub struct StreamHalf<S> {
-    inner: S 
+    inner: S,
 }
 
 pub struct SinkHalf<S, Mode> {
     inner: S,
-    can_sink: PhantomData<Mode>
+    can_sink: PhantomData<Mode>,
 }
 
 // =============================================================================
@@ -58,46 +57,54 @@ pub struct SinkHalf<S, Mode> {
 // warp::filters::ws::WebSocket
 // =============================================================================
 
-impl<S, E> WebSocketConn<S, CanSink> 
-where 
+impl<S, E> WebSocketConn<S, CanSink>
+where
     S: Stream<Item = Result<WsMessage, E>> + Sink<WsMessage> + Send + Sync + Unpin,
     E: std::error::Error + 'static,
 {
     pub fn new(inner: S) -> Self {
         Self {
             inner,
-            can_sink: PhantomData
+            can_sink: PhantomData,
         }
     }
 
-    pub fn split(self) -> (SinkHalf<SplitSink<S, WsMessage>, CanSink>, StreamHalf<SplitStream<S>>) {
+    pub fn split(
+        self,
+    ) -> (
+        SinkHalf<SplitSink<S, WsMessage>, CanSink>,
+        StreamHalf<SplitStream<S>>,
+    ) {
         let (writer, reader) = self.inner.split();
 
-        let readhalf = StreamHalf{inner: reader};
-        let writehalf = SinkHalf{inner: writer, can_sink: PhantomData};
+        let readhalf = StreamHalf { inner: reader };
+        let writehalf = SinkHalf {
+            inner: writer,
+            can_sink: PhantomData,
+        };
         (writehalf, readhalf)
     }
 }
 
 #[async_trait]
-impl<S, E> PayloadRead for StreamHalf<S> 
-where 
+impl<S, E> PayloadRead for StreamHalf<S>
+where
     S: Stream<Item = Result<WsMessage, E>> + Send + Sync + Unpin,
     E: std::error::Error + 'static,
 {
     async fn read_payload(&mut self) -> Option<Result<Vec<u8>, Error>> {
         match self.inner.next().await? {
-            Err(e) => return Some(Err(Error::TransportError{msg: e.to_string()})),
+            Err(e) => return Some(Err(Error::TransportError { msg: e.to_string() })),
             Ok(msg) => {
                 if let WsMessage::Binary(bytes) = msg {
-                    return Some(Ok(bytes))
+                    return Some(Ok(bytes));
                 } else if let WsMessage::Close(_) = msg {
-                    return None
+                    return None;
                 }
 
-                Some(Err(
-                    Error::TransportError{
-                        msg: "Expecting WebSocket::Message::Binary, but found something else".to_string()
+                Some(Err(Error::TransportError {
+                    msg: "Expecting WebSocket::Message::Binary, but found something else"
+                        .to_string(),
                 }))
             }
         }
@@ -106,17 +113,17 @@ where
 
 #[async_trait]
 impl<S, E> PayloadWrite for SinkHalf<S, CanSink>
-where 
-    S: Sink<WsMessage, Error=E> + Send + Sync + Unpin,
+where
+    S: Sink<WsMessage, Error = E> + Send + Sync + Unpin,
     E: std::error::Error + 'static,
 {
     async fn write_payload(&mut self, payload: Vec<u8>) -> Result<(), Error> {
         let msg = WsMessage::Binary(payload.into());
 
-        self.inner.send(msg).await
-            .map_err(|e| {
-                Error::TransportError{msg: e.to_string()}
-            })
+        self.inner
+            .send(msg)
+            .await
+            .map_err(|e| Error::TransportError { msg: e.to_string() })
     }
 }
 
@@ -128,13 +135,21 @@ impl WebSocketConn<tide_websockets::WebSocketConnection, CannotSink> {
     pub fn new_without_sink(inner: tide_websockets::WebSocketConnection) -> Self {
         Self {
             inner,
-            can_sink: PhantomData
+            can_sink: PhantomData,
         }
     }
 
-    pub fn split(self) -> (SinkHalf<tide_ws::WebSocketConnection, CannotSink>, StreamHalf<tide_ws::WebSocketConnection>) {
-        let writer = SinkHalf{inner: self.inner.clone(), can_sink: PhantomData};
-        let reader = StreamHalf{inner: self.inner};
+    pub fn split(
+        self,
+    ) -> (
+        SinkHalf<tide_ws::WebSocketConnection, CannotSink>,
+        StreamHalf<tide_ws::WebSocketConnection>,
+    ) {
+        let writer = SinkHalf {
+            inner: self.inner.clone(),
+            can_sink: PhantomData,
+        };
+        let reader = StreamHalf { inner: self.inner };
         (writer, reader)
     }
 }
@@ -142,8 +157,10 @@ impl WebSocketConn<tide_websockets::WebSocketConnection, CannotSink> {
 #[async_trait]
 impl PayloadWrite for SinkHalf<tide_websockets::WebSocketConnection, CannotSink> {
     async fn write_payload(&mut self, payload: Vec<u8>) -> Result<(), Error> {
-        self.inner.send_bytes(payload.into()).await
-            .map_err(|e| Error::TransportError{msg: e.to_string()})
+        self.inner
+            .send_bytes(payload.into())
+            .await
+            .map_err(|e| Error::TransportError { msg: e.to_string() })
     }
 }
 
@@ -154,9 +171,9 @@ impl PayloadWrite for SinkHalf<tide_websockets::WebSocketConnection, CannotSink>
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use async_std::net::{TcpListener, TcpStream};
     use async_std::task;
-    use super::*;
 
     #[test]
     fn async_tungestenite_handshake() {
@@ -197,31 +214,33 @@ mod tests {
     }
 
     async fn test_new_on_async_tungstenite() {
-        let stream = async_std::io::Cursor::new(vec![1,2,3]);
+        let stream = async_std::io::Cursor::new(vec![1, 2, 3]);
         let ws_stream = async_tungstenite::WebSocketStream::from_raw_socket(
-            stream, 
+            stream,
             tungstenite::protocol::Role::Server,
-            None
-        ).await;
+            None,
+        )
+        .await;
         let conn = WebSocketConn::new(ws_stream);
 
         let (_writer, _reader) = conn.split();
     }
 
     async fn test_new_on_tokio_tungstenite() {
-        let stream = std::io::Cursor::new(vec![1,2,3]);
+        let stream = std::io::Cursor::new(vec![1, 2, 3]);
         let ws_stream = tokio_tungstenite::WebSocketStream::from_raw_socket(
-            stream, 
+            stream,
             tungstenite::protocol::Role::Server,
-            None
-        ).await;
+            None,
+        )
+        .await;
         let _ = WebSocketConn::new(ws_stream);
     }
 
     // async fn test_new_on_tide_websockets() {
     //     let stream = async_std::io::Cursor::new(vec![1,2,3]);
     //     let ws_stream = async_tungstenite::WebSocketStream::from_raw_socket(
-    //         stream, 
+    //         stream,
     //         tungstenite::protocol::Role::Server,
     //         None
     //     ).await;
