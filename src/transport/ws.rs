@@ -1,6 +1,13 @@
 use async_trait::async_trait;
 use futures::stream::{SplitSink, SplitStream};
 use futures::{Sink, SinkExt, Stream, StreamExt};
+
+use std::marker::PhantomData;
+use tide_websockets as tide_ws;
+use tungstenite::Message as WsMessage;
+
+use crate::error::Error;
+
 /// Websocket transport
 ///
 /// WebSocket message definition:
@@ -13,11 +20,9 @@ use futures::{Sink, SinkExt, Stream, StreamExt};
 /// - `async-tungstenite` and `tokio-tungstenite` both impl `Stream` and `Sink<Message>`
 /// - `warp::filters::ws::WebSocket` is a wrapper of `tokio::tungstenite::WebSocketStream`, and impls both `Stream` and `Sink<Message>`
 /// - `tide-websocket` only impls `Stream` but not `Sink<Message>`
-use std::marker::PhantomData;
-use tide_websockets as tide_ws;
-use tungstenite::Message as WsMessage;
+/// 
+/// WebSocket connection process
 
-use crate::error::Error;
 
 #[async_trait]
 pub trait PayloadRead {

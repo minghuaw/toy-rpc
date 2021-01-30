@@ -463,7 +463,7 @@ impl Client<Channel, NotConnected> {
 
         let channel_codec = (req_sender, Arc::new(Mutex::new(res_recver)));
 
-        let base = surf::Url::parse(addr)?;
+        let base = url::Url::parse(addr)?;
         let path = base.join(DEFAULT_RPC_PATH)?;
 
         let _conn_res = Self::_dial_connect(base).await?;
@@ -482,11 +482,12 @@ impl Client<Channel, NotConnected> {
         })
     }
 
-    async fn _dial_connect(base: surf::Url) -> Result<String, Error> {
-        let mut client = surf::Client::new();
-        client.set_base_url(base);
+    async fn _dial_connect(base: url::Url) -> Result<String, Error> {
+        let uri = base.join(DEFAULT_RPC_PATH)?;
+        let client = surf::Client::new();
+        // client.set_base_url(base);
         let res = client
-            .connect(DEFAULT_RPC_PATH)
+            .connect(uri)
             .recv_string()
             .await
             .map_err(|e| Error::TransportError { msg: e.to_string() })?;
@@ -495,6 +496,8 @@ impl Client<Channel, NotConnected> {
 
         Ok(res)
     }
+
+    // async fn _dial_ws(base: )
 }
 
 #[cfg(any(feature = "surf", feature = "docs"))]
@@ -771,7 +774,7 @@ impl Client<Channel, Connected> {
     /// TODO: try send and receive trait object over the channel instead of `Vec<u8>`
     async fn _http_client_loop(
         // http_client: surf::Client,
-        path: surf::Url,
+        path: url::Url,
         mut req_recver: UnboundedReceiver<Vec<u8>>,
         mut res_sender: UnboundedSender<Vec<u8>>,
     ) -> Option<Result<(), Error>> {
