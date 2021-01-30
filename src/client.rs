@@ -3,7 +3,7 @@ use async_std::sync::{Arc, Mutex};
 use async_std::task;
 use erased_serde as erased;
 use futures::channel::oneshot;
-use std::collections::HashMap;
+use std::{collections::HashMap, unimplemented};
 use std::marker::PhantomData;
 use std::sync::atomic::Ordering;
 
@@ -458,15 +458,41 @@ impl Client<Channel, NotConnected> {
     /// TODO: check if the path ends with a slash
     /// TODO: try send and recv trait object
     pub async fn dial_http(addr: &'static str) -> Result<Client<Channel, Connected>, Error> {
+        // let (req_sender, req_recver) = unbounded::<Vec<u8>>();
+        // let (res_sender, res_recver) = unbounded::<Vec<u8>>();
+
+        // let channel_codec = (req_sender, Arc::new(Mutex::new(res_recver)));
+
+        // let base = url::Url::parse(addr)?;
+        // let path = base.join(DEFAULT_RPC_PATH)?;
+
+        // let _conn_res = Self::_dial_connect(base).await?;
+
+        // #[cfg(feature = "logging")]
+        // log::info!("{}", _conn_res);
+
+        // task::spawn(Client::_http_client_loop(path, req_recver, res_sender));
+
+        // Ok(Client::<Channel, Connected> {
+        //     count: AtomicMessageId::new(0u16),
+        //     inner_codec: channel_codec,
+        //     pending: Arc::new(Mutex::new(HashMap::new())),
+
+        //     mode: PhantomData,
+        // })
+        let base = url::Url::parse(addr)?;
+        Self::_dial_http(base).await
+    }
+
+    async fn _dial_http(base: url::Url) -> Result<Client<Channel, Connected>, Error> {
         let (req_sender, req_recver) = unbounded::<Vec<u8>>();
         let (res_sender, res_recver) = unbounded::<Vec<u8>>();
 
         let channel_codec = (req_sender, Arc::new(Mutex::new(res_recver)));
 
-        let base = url::Url::parse(addr)?;
         let path = base.join(DEFAULT_RPC_PATH)?;
 
-        let _conn_res = Self::_dial_connect(base).await?;
+        let _conn_res = Self::_dial_connect(&path).await?;
 
         #[cfg(feature = "logging")]
         log::info!("{}", _conn_res);
@@ -482,8 +508,7 @@ impl Client<Channel, NotConnected> {
         })
     }
 
-    async fn _dial_connect(base: url::Url) -> Result<String, Error> {
-        let uri = base.join(DEFAULT_RPC_PATH)?;
+    async fn _dial_connect(uri: &url::Url) -> Result<String, Error> {
         let client = surf::Client::new();
         // client.set_base_url(base);
         let res = client
@@ -497,7 +522,9 @@ impl Client<Channel, NotConnected> {
         Ok(res)
     }
 
-    // async fn _dial_ws(base: )
+    async fn _dial_ws<S>(base: url::Url) -> Result<async_tungstenite::WebSocketStream<S>, Error> {
+        unimplemented!()
+    }
 }
 
 #[cfg(any(feature = "surf", feature = "docs"))]

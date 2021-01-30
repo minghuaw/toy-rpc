@@ -181,7 +181,7 @@ mod tests {
     use async_std::task;
 
     #[test]
-    fn async_tungestenite_handshake() {
+    fn async_tungstenite_handshake() {
         println!("Start testing");
         task::block_on(test_handshake());
         println!("end testing");
@@ -205,7 +205,8 @@ mod tests {
         let tcp = TcpStream::connect("0.0.0.0:12345")
             .await
             .expect("Failed to connect");
-        let url = url::Url::parse("ws://localhost:12345/").unwrap();
+        let mut url = url::Url::parse("http://localhost:12345/").unwrap();
+        url.set_scheme("ws").unwrap();
         let _stream = async_tungstenite::client_async(url, tcp)
             .await
             .expect("Client failed to connect");
