@@ -16,8 +16,9 @@ use tungstenite::Message as WsMessage;
 
 use crate::error::Error;
 use crate::message::{MessageId, Metadata, RequestHeader, ResponseHeader};
+use crate::transport::{PayloadWrite, PayloadRead};
 use crate::transport::ws::{
-    CanSink, CannotSink, PayloadRead, PayloadWrite, SinkHalf, StreamHalf, WebSocketConn,
+    CanSink, CannotSink, SinkHalf, StreamHalf, WebSocketConn,
 };
 
 #[cfg(all(
@@ -91,8 +92,8 @@ pub mod rmp;
 /// type state for AsyncRead and AsyncWrite connections
 pub(crate) struct ConnTypeReadWrite {}
 
-/// type state for WebSocket connections
-pub(crate) struct ConnTypeWebSocket {}
+/// type state for PayloadRead and PayloadWrite connections
+pub(crate) struct ConnTypePayload {}
 
 /// Default codec
 pub struct Codec<R, W, C> {
@@ -159,7 +160,7 @@ where
 
 // websocket integration for async_tungstenite, tokio_tungstenite, and warp
 impl<S, E>
-    Codec<StreamHalf<SplitStream<S>>, SinkHalf<SplitSink<S, WsMessage>, CanSink>, ConnTypeWebSocket>
+    Codec<StreamHalf<SplitStream<S>>, SinkHalf<SplitSink<S, WsMessage>, CanSink>, ConnTypePayload>
 where
     S: Stream<Item = Result<WsMessage, E>> + Sink<WsMessage> + Send + Sync + Unpin,
     E: std::error::Error + 'static,
@@ -180,7 +181,7 @@ impl
     Codec<
         StreamHalf<tide_ws::WebSocketConnection>,
         SinkHalf<tide_ws::WebSocketConnection, CannotSink>,
-        ConnTypeWebSocket,
+        ConnTypePayload,
     >
 {
     pub fn with_websocket(ws: WebSocketConn<tide_ws::WebSocketConnection, CannotSink>) -> Self {

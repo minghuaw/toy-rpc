@@ -458,28 +458,6 @@ impl Client<Channel, NotConnected> {
     /// TODO: check if the path ends with a slash
     /// TODO: try send and recv trait object
     pub async fn dial_http(addr: &'static str) -> Result<Client<Channel, Connected>, Error> {
-        // let (req_sender, req_recver) = unbounded::<Vec<u8>>();
-        // let (res_sender, res_recver) = unbounded::<Vec<u8>>();
-
-        // let channel_codec = (req_sender, Arc::new(Mutex::new(res_recver)));
-
-        // let base = url::Url::parse(addr)?;
-        // let path = base.join(DEFAULT_RPC_PATH)?;
-
-        // let _conn_res = Self::_dial_connect(base).await?;
-
-        // #[cfg(feature = "logging")]
-        // log::info!("{}", _conn_res);
-
-        // task::spawn(Client::_http_client_loop(path, req_recver, res_sender));
-
-        // Ok(Client::<Channel, Connected> {
-        //     count: AtomicMessageId::new(0u16),
-        //     inner_codec: channel_codec,
-        //     pending: Arc::new(Mutex::new(HashMap::new())),
-
-        //     mode: PhantomData,
-        // })
         let base = url::Url::parse(addr)?;
         Self::_dial_http(base).await
     }
@@ -822,8 +800,8 @@ impl Client<Channel, Connected> {
             // send back result
             match res_sender.send(res_body).await {
                 Err(e) => return Some(Err(Error::TransportError { msg: e.to_string() })),
-                // Ok(()) => { },
-                _ => {}
+                Ok(()) => { },
+                // _ => {}
             };
         }
     }

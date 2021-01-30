@@ -7,6 +7,7 @@ use tide_websockets as tide_ws;
 use tungstenite::Message as WsMessage;
 
 use crate::error::Error;
+use super::{PayloadRead, PayloadWrite};
 
 /// Websocket transport
 ///
@@ -24,15 +25,6 @@ use crate::error::Error;
 /// WebSocket connection process
 
 
-#[async_trait]
-pub trait PayloadRead {
-    async fn read_payload(&mut self) -> Option<Result<Vec<u8>, Error>>;
-}
-
-#[async_trait]
-pub trait PayloadWrite {
-    async fn write_payload(&mut self, payload: Vec<u8>) -> Result<(), Error>;
-}
 
 /// type state for WebSocketConn
 /// This is to separate `PayloadWrite` impl for `tide-websockets`

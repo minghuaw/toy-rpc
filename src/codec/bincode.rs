@@ -16,7 +16,7 @@ use crate::transport::frame::{
     Frame, FrameRead, FrameSinkExt, FrameStreamExt, FrameWrite, PayloadType,
 };
 
-use super::{ConnTypeReadWrite, ConnTypeWebSocket, PayloadRead, PayloadWrite};
+use super::{ConnTypeReadWrite, ConnTypePayload, PayloadRead, PayloadWrite};
 
 impl<'de, R, O> serde::Deserializer<'de> for DeserializerOwned<bincode::Deserializer<R, O>>
 where
@@ -137,7 +137,7 @@ impl<R, W, C> Unmarshal for Codec<R, W, C>
 }
 
 #[async_trait]
-impl<R, W> CodecRead for Codec<R, W, ConnTypeWebSocket>
+impl<R, W> CodecRead for Codec<R, W, ConnTypePayload>
 where
     R: PayloadRead + Send,
     W: Send,
@@ -181,7 +181,7 @@ where
 }
 
 #[async_trait]
-impl<R, W> CodecWrite for Codec<R, W, ConnTypeWebSocket>
+impl<R, W> CodecWrite for Codec<R, W, ConnTypePayload>
 where
     R: Send,
     W: PayloadWrite + Send,
