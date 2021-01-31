@@ -39,8 +39,9 @@ pub struct WebSocketConn<S, N> {
     can_sink: PhantomData<N>,
 }
 
-pub struct StreamHalf<S> {
+pub struct StreamHalf<S, Mode> {
     inner: S,
+    can_sink: PhantomData<Mode>
 }
 
 pub struct SinkHalf<S, Mode> {
@@ -70,11 +71,11 @@ where
         self,
     ) -> (
         SinkHalf<SplitSink<S, WsMessage>, CanSink>,
-        StreamHalf<SplitStream<S>>,
+        StreamHalf<SplitStream<S>, CanSink>,
     ) {
         let (writer, reader) = self.inner.split();
 
-        let readhalf = StreamHalf { inner: reader };
+        let readhalf = StreamHalf { inner: reader, can_sink: PhantomData};
         let writehalf = SinkHalf {
             inner: writer,
             can_sink: PhantomData,
@@ -84,7 +85,7 @@ where
 }
 
 #[async_trait]
-impl<S, E> PayloadRead for StreamHalf<S>
+impl<S, E> PayloadRead for StreamHalf<S, CanSink>
 where
     S: Stream<Item = Result<WsMessage, E>> + Send + Sync + Unpin,
     E: std::error::Error + 'static,
@@ -140,16 +141,38 @@ impl WebSocketConn<tide_websockets::WebSocketConnection, CannotSink> {
         self,
     ) -> (
         SinkHalf<tide_ws::WebSocketConnection, CannotSink>,
-        StreamHalf<tide_ws::WebSocketConnection>,
+        StreamHalf<tide_ws::WebSocketConnection, CannotSink>,
     ) {
         let writer = SinkHalf {
             inner: self.inner.clone(),
             can_sink: PhantomData,
         };
-        let reader = StreamHalf { inner: self.inner };
+        let reader = StreamHalf { inner: self.inner, can_sink: PhantomData };
         (writer, reader)
     }
 }
+
+#[async_trait]
+impl PayloadRead for StreamHalf<tide_websockets::WebSocketConnection, CannotSink> {
+    async fn read_payload(&mut self) -> Option<Result<Vec<u8>, Error>> {
+        match self.inner.next().await? {
+            Err(e) => return Some(Err(Error::TransportError { msg: e.to_string() })),
+            Ok(msg) => {
+                if let tide_websockets::Message::Binary(bytes) = msg {
+                    return Some(Ok(bytes));
+                } else if let tide_websockets::Message::Close(_) = msg {
+                    return None;
+                }
+
+                Some(Err(Error::TransportError {
+                    msg: "Expecting WebSocket::Message::Binary, but found something else"
+                        .to_string(),
+                }))
+            }
+        }
+    }
+}
+
 
 #[async_trait]
 impl PayloadWrite for SinkHalf<tide_websockets::WebSocketConnection, CannotSink> {

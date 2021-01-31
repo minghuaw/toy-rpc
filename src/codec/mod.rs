@@ -160,7 +160,7 @@ where
 
 // websocket integration for async_tungstenite, tokio_tungstenite, and warp
 impl<S, E>
-    Codec<StreamHalf<SplitStream<S>>, SinkHalf<SplitSink<S, WsMessage>, CanSink>, ConnTypePayload>
+    Codec<StreamHalf<SplitStream<S>, CanSink>, SinkHalf<SplitSink<S, WsMessage>, CanSink>, ConnTypePayload>
 where
     S: Stream<Item = Result<WsMessage, E>> + Sink<WsMessage> + Send + Sync + Unpin,
     E: std::error::Error + 'static,
@@ -179,7 +179,7 @@ where
 // websocket integration with `tide`
 impl
     Codec<
-        StreamHalf<tide_ws::WebSocketConnection>,
+        StreamHalf<tide_ws::WebSocketConnection, CannotSink>,
         SinkHalf<tide_ws::WebSocketConnection, CannotSink>,
         ConnTypePayload,
     >

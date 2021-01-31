@@ -22,11 +22,6 @@ impl Metadata for RequestHeader {
     }
 }
 
-// pub struct Request {
-//     header: RequestHeader,
-//     body: Box<dyn erased::Serialize>,
-// }
-
 #[derive(Serialize, Deserialize, Debug, Default)]
 pub struct ResponseHeader {
     pub id: MessageId,
@@ -38,13 +33,3 @@ impl Metadata for ResponseHeader {
         self.id
     }
 }
-
-// pub struct Response {
-//     header: ResponseHeader,
-//     body: Box<dyn erased::Deserializer<'static>>,
-// }
-
-// enum ClientEvent {
-//     Call(Request, oneshot::Sender<Response>),
-//     Reply(Response),
-// }
