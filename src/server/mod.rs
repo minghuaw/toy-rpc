@@ -5,9 +5,6 @@ use erased_serde as erased;
 use futures::StreamExt;
 use std::collections::HashMap;
 
-#[cfg(feature = "actix-web")]
-use actix_web::web;
-
 use crate::codec::{DefaultCodec, ServerCodec};
 use crate::error::{Error, RpcError};
 use crate::message::{MessageId, RequestHeader, ResponseHeader};
@@ -16,8 +13,13 @@ use crate::service::{
 };
 use crate::transport::ws::{WebSocketConn};
 
+#[cfg(all(feature = "actix-web", feature = "tokio"))]
 pub mod http_actix_web;
+
+#[cfg(feature = "tide")]
 pub mod http_tide;
+
+#[cfg(feature = "warp")]
 pub mod http_warp;
 
 /// Default RPC path for http handler
@@ -69,6 +71,8 @@ impl Server {
         C: ServerCodec + Send + Sync,
     {
         if let Some(header) = codec.read_request_header().await {
+            log::debug!("Request header: {:?}", &header);
+
             // destructure header
             let RequestHeader { id, service_method } = header?;
             // let service_method = &service_method[..];
@@ -78,8 +82,7 @@ impl Server {
             let service_name = &service_method[..pos];
             let method_name = service_method[pos + 1..].to_owned();
 
-            #[cfg(feature = "logging")]
-            log::info!(
+            log::debug!(
                 "Message {}, service: {}, method: {}",
                 id,
                 service_name,
@@ -95,12 +98,10 @@ impl Server {
 
             // read body
             let res = {
-                #[cfg(feature = "logging")]
                 log::debug!("Reading request body");
 
                 let deserializer = codec.read_request_body().await.unwrap()?;
 
-                #[cfg(feature = "logging")]
                 log::debug!("Calling handler");
 
                 // pass ownership to the `call`
@@ -125,22 +126,20 @@ impl Server {
     {
         match res {
             Ok(b) => {
-                #[cfg(feature = "logging")]
-                log::info!("Message {} Success", id.clone());
+                log::debug!("Message {} Success", id.clone());
 
                 let header = ResponseHeader {
                     id,
                     is_error: false,
                 };
 
-                log::trace!("Writing response id: {}", &id);
+                log::debug!("Writing response id: {}", &id);
 
                 _codec.write_response(header, &b).await?;
                 Ok(())
             }
             Err(e) => {
-                #[cfg(feature = "logging")]
-                log::info!("Message {} Error", id.clone());
+                log::debug!("Message {} Error", id.clone());
 
                 let header = ResponseHeader { id, is_error: true };
                 let body = match e {
@@ -343,7 +342,7 @@ impl Server {
         let fut = Self::_serve_codec(codec, services);
 
         #[cfg(feature = "logging")]
-        log::info!("Client disconnected from {}", _peer_addr);
+        log::info!("Client disconnected");
 
         fut.await
     }

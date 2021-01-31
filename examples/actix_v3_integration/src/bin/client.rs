@@ -8,7 +8,7 @@ use actix_v3_integration::rpc::{BarRequest, BarResponse, FooRequest, FooResponse
 async fn main() {
     env_logger::init();
 
-    let addr = "http://127.0.0.1:23333/rpc/";
+    let addr = "ws://127.0.0.1:23333/rpc/";
     let mut client = Client::dial_http(addr).await.unwrap();
 
     let args = FooRequest { a: 1, b: 3 };

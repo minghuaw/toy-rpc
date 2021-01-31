@@ -158,6 +158,18 @@ impl From<tungstenite::Error> for crate::error::Error {
     }
 }
 
+impl From<futures::channel::mpsc::SendError> for crate::error::Error {
+    fn from(err: futures::channel::mpsc::SendError) -> Self {
+        Self::TransportError { msg: err.to_string() }
+    }
+}
+
+impl<T> From<tokio::sync::mpsc::error::SendError<T>> for crate::error::Error {
+    fn from(err: tokio::sync::mpsc::error::SendError<T>) -> Self {
+        Self::TransportError { msg: err.to_string() }
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;

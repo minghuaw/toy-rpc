@@ -1,12 +1,9 @@
 use async_trait::async_trait;
 use erased_serde as erased;
-use futures::{
-    io::{
+use futures::{channel::mpsc::{UnboundedReceiver, UnboundedSender}, io::{
         AsyncBufRead, AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt, BufReader, BufWriter,
         ReadHalf, WriteHalf,
-    },
-    stream::{SplitSink, SplitStream},
-};
+    }, stream::{SplitSink, SplitStream}};
 // use surf::http::content;
 // use futures::channel::mpsc::{Receiver, Sender};
 use futures::{Sink, Stream};
@@ -191,6 +188,42 @@ impl
             reader,
             writer,
             conn_type: PhantomData,
+        }
+    }
+}
+
+// websocket integration with channels for actix-web
+// impl
+//     Codec<
+//         UnboundedReceiver<Vec<u8>>,
+//         UnboundedSender<Vec<u8>>,
+//         ConnTypePayload,
+//     >
+// {
+//     pub fn with_channels(recver: UnboundedReceiver<Vec<u8>>, sender: UnboundedSender<Vec<u8>>) -> Self {
+//         Self {
+//             reader: recver,
+//             writer: sender,
+//             conn_type: PhantomData
+//         }
+//     }
+// }
+
+impl
+    Codec<
+        tokio_stream::wrappers::UnboundedReceiverStream<Vec<u8>>,
+        tokio::sync::mpsc::UnboundedSender<Vec<u8>>,
+        ConnTypePayload,
+    >
+{
+    pub fn with_channels(
+        recver: tokio_stream::wrappers::UnboundedReceiverStream<Vec<u8>>,
+        sender: tokio::sync::mpsc::UnboundedSender<Vec<u8>>,
+    ) -> Self {
+        Self {
+            reader: recver,
+            writer: sender,
+            conn_type: PhantomData
         }
     }
 }

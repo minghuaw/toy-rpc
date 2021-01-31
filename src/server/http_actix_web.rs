@@ -1,4 +1,17 @@
-use super::{Server};
+use actix_web::{web, HttpRequest, HttpResponse};
+use actix_web_actors::ws::{handshake};
+
+// use tungstenite::Message as WsMessage;
+// use futures::channel::mpsc::{unbounded, UnboundedSender, UnboundedReceiver};
+use futures::{StreamExt};
+use tokio_stream::wrappers::UnboundedReceiverStream;
+use tokio_util::codec::{Decoder, Encoder};
+use tokio::sync::mpsc::{UnboundedSender, unbounded_channel};
+use web::{Bytes};
+
+use crate::error::Error;
+
+use super::{Server, AsyncServiceMap, Arc};
 
 #[cfg(any(
     all(
@@ -137,7 +150,7 @@ impl Server {
                 // .app_data(data)
                 .service(
                     web::resource(super::DEFAULT_RPC_PATH)
-                        .route(web::post().to(Server::_handle_http))
+                        .route(web::get().to(Server::_handle_http_ws))
                         .route(web::method(actix_web::http::Method::CONNECT).to(|| {
                             actix_web::HttpResponse::Ok().body("CONNECT request is received")
                         })),
@@ -209,5 +222,139 @@ impl Server {
     /// ```
     pub fn handle_http() -> fn(&mut web::ServiceConfig) {
         Self::scope_config
+    }
+
+    async fn _handle_http_ws(
+        state: web::Data<Server>, 
+        req: HttpRequest, 
+        stream: web::Payload
+    ) -> Result<HttpResponse, actix_web::Error> 
+    {
+        let mut res = handshake(&req)?;
+        let services = state.services.clone();
+
+        let (chunk_sender, chunk_recver) = unbounded_channel::<Result<Bytes, actix_web::Error>>();
+        let (resp_sender, resp_recver) = unbounded_channel::<Vec<u8>>();
+        let (frame_sender, frame_recver) = unbounded_channel::<Vec<u8>>();
+
+        let chunk_recver = UnboundedReceiverStream::new(chunk_recver);
+        let resp_recver = UnboundedReceiverStream::new(resp_recver);
+        let frame_recver = UnboundedReceiverStream::new(frame_recver);
+
+        let _chunk_sender = chunk_sender.clone();
+        actix_web::rt::spawn(
+            async move {
+                match Self::_encode_ws_resp(resp_recver, _chunk_sender).await {
+                    Ok(()) => { },
+                    Err(e) => {
+                        log::debug!("{:?}", e);
+                    }
+                }
+            }
+        );
+        
+        actix_web::rt::spawn(
+            async move {
+                match Self::_serve_ws_message(services, frame_recver, resp_sender).await {
+                    Ok(()) => { },
+                    Err(e) => {
+                        log::debug!("{:?}", e);
+                    }
+                }
+            }
+        );
+
+        let _chunk_sender = chunk_sender.clone();
+        actix_web::rt::spawn(
+            async move {
+                match Self::_decode_ws_frame(stream, frame_sender, _chunk_sender).await {
+                    Ok(()) => { },
+                    Err(e) => {
+                        log::debug!("{:?}", e);
+                    }
+                }
+            }
+        );
+
+        Ok(res.streaming(chunk_recver))
+        // unimplemented!()
+    }
+
+    async fn _encode_ws_resp(
+        mut resp_recver: UnboundedReceiverStream<Vec<u8>>, 
+        chunk_sender: UnboundedSender<Result<Bytes, actix_web::Error>>
+    ) -> Result<(), actix_web::Error> {
+        while let Some(payload) = resp_recver.next().await {
+            let mut ws_codec = actix_http::ws::Codec::new();
+            let frame = Bytes::from(payload);
+            let msg = actix_http::ws::Message::Binary(frame);
+            let mut buf =  web::BytesMut::new();
+            ws_codec.encode(msg, &mut buf)?;
+            let resp = buf.freeze();
+            chunk_sender.send(Ok(resp))
+                .map_err(|e| Error::from(e))?;
+
+        }
+
+        Ok(())
+    }
+
+    async fn _serve_ws_message(
+        services: Arc<AsyncServiceMap>,
+        frame_recver: UnboundedReceiverStream<Vec<u8>>, 
+        resp_sender: UnboundedSender<Vec<u8>>
+    ) -> Result<(), actix_web::Error> {
+        let codec = super::DefaultCodec::with_channels(frame_recver, resp_sender);
+        Self::_serve_codec(codec, services).await
+            .map_err(|e| actix_web::Error::from(e))
+    }
+
+    async fn _decode_ws_frame(
+        mut stream: web::Payload, 
+        frame_sender: UnboundedSender<Vec<u8>>,
+        chunk_sender: UnboundedSender<Result<Bytes, actix_web::Error>>,
+    ) -> Result<(), actix_web::Error> {
+        while let Some(chunk) = stream.next().await {
+            let chunk = chunk?;
+            let mut ws_codec = actix_http::ws::Codec::new();
+            let mut buf = web::BytesMut::new();
+            buf.extend_from_slice(&chunk);
+
+            log::debug!("WebSocket frame received");
+
+            let frame = match ws_codec.decode(&mut buf)? {
+                None => break,
+                Some(f) => f
+            };
+
+            log::debug!("{:?}", frame);
+           
+            match frame {
+                actix_http::ws::Frame::Text(_b) => {
+                    break
+                },
+                actix_http::ws::Frame::Binary(b) => {
+                    log::debug!("Sending Binary frame over channel");
+                    frame_sender.send(b.to_vec())
+                        .map_err(|e| Error::from(e))?;
+                    // frame_sender.flush().await
+                    //     .map_err(|e| Error::from(e))?;
+                },
+                actix_http::ws::Frame::Continuation(_) => { },
+                actix_http::ws::Frame::Ping(b) => {
+                    let msg = actix_http::ws::Message::Pong(b);
+                    let mut pong_buf = web::BytesMut::new();
+                    ws_codec.encode(msg, &mut pong_buf)?;
+                    let pong = pong_buf.freeze();
+                    chunk_sender.send(Ok(pong))
+                        .map_err(|e| Error::from(e))?;
+                },
+                actix_http::ws::Frame::Pong(_) => { },
+                actix_http::ws::Frame::Close(_) => {
+                    break;
+                }
+            }
+        }
+        Ok(())
     }
 }

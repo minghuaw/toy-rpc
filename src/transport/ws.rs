@@ -257,15 +257,4 @@ mod tests {
         .await;
         let _ = WebSocketConn::new(ws_stream);
     }
-
-    // async fn test_new_on_tide_websockets() {
-    //     let stream = async_std::io::Cursor::new(vec![1,2,3]);
-    //     let ws_stream = async_tungstenite::WebSocketStream::from_raw_socket(
-    //         stream,
-    //         tungstenite::protocol::Role::Server,
-    //         None
-    //     ).await;
-    //     let tide_ws = tide_websockets::WebSocketConnection::from(ws_stream);
-    //     let _ = WebSocketConn::new_with_sink(ws_stream);
-    // }
 }
