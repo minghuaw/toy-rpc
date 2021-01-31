@@ -8,7 +8,7 @@ async fn main() {
     env_logger::init();
 
     let addr = "127.0.0.1:23333";
-    let client = Client::dial(addr).await.unwrap();
+    let mut client = Client::dial(addr).await.unwrap();
 
     // first request, echo
     let args = FooRequest { a: 1, b: 3 };

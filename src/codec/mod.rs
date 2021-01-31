@@ -184,7 +184,7 @@ impl
         ConnTypePayload,
     >
 {
-    pub fn with_websocket(ws: WebSocketConn<tide_ws::WebSocketConnection, CannotSink>) -> Self {
+    pub fn with_tide_websocket(ws: WebSocketConn<tide_ws::WebSocketConnection, CannotSink>) -> Self {
         let (writer, reader) = WebSocketConn::<tide_ws::WebSocketConnection, CannotSink>::split(ws);
 
         Self {
@@ -317,6 +317,7 @@ where
     }
 }
 
+/// A wrapper for erased serde deserializers to allow transfer of ownership
 pub(crate) struct DeserializerOwned<D> {
     inner: D,
 }

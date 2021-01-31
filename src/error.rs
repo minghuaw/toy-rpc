@@ -150,6 +150,14 @@ impl From<Error> for actix_web::Error {
     }
 }
 
+impl From<tungstenite::Error> for crate::error::Error {
+    fn from(err: tungstenite::Error) -> Self {
+        crate::error::Error::TransportError {
+            msg: err.to_string()
+        }
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;

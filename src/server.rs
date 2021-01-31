@@ -14,6 +14,7 @@ use crate::message::{MessageId, RequestHeader, ResponseHeader};
 use crate::service::{
     ArcAsyncServiceCall, AsyncServiceMap, HandleService, HandlerResult, HandlerResultFut,
 };
+use crate::transport::ws::{WebSocketConn};
 
 /// Default RPC path for http handler
 pub const DEFAULT_RPC_PATH: &str = "_rpc_";
@@ -255,13 +256,30 @@ impl Server {
         while let Some(conn) = incoming.next().await {
             let stream = conn?;
 
-            #[cfg(feature = "logging")]
-            log::info!("Accepting incoming connection from {}", stream.peer_addr()?);
+            // #[cfg(feature = "logging")]
+            log::debug!("Accepting incoming connection from {}", stream.peer_addr()?);
 
             task::spawn(Self::_serve_conn(stream, self.services.clone()));
         }
 
         Ok(())
+    }
+
+    pub async fn accept_websocket(&self, listener: TcpListener) -> Result<(), Error> {
+        let mut incoming = listener.incoming();
+
+        while let Some(conn) = incoming.next().await {
+            let stream = conn?;
+            // #[cfg(feature = "logging")]
+            log::debug!("Accepting incoming connection from {}", stream.peer_addr()?);
+
+            let ws_stream = async_tungstenite::accept_async(stream)
+                .await?;
+
+            task::spawn(Self::_serve_websocket(ws_stream, self.services.clone()));          
+        }
+
+        unimplemented!()
     }
 
     /// Serves a single connection
@@ -313,6 +331,29 @@ impl Server {
     pub async fn serve_conn(&self, stream: TcpStream) -> Result<(), Error> {
         Self::_serve_conn(stream, self.services.clone()).await
     }
+
+    async fn _serve_websocket(ws_stream: async_tungstenite::WebSocketStream<TcpStream>, services: Arc<AsyncServiceMap>) -> Result<(), Error> {
+        let ws_stream = WebSocketConn::new(ws_stream);
+        let codec = DefaultCodec::with_websocket(ws_stream);
+
+        let fut = Self::_serve_codec(codec, services);
+
+        #[cfg(feature = "logging")]
+        log::info!("Client disconnected from {}", _peer_addr);
+
+        fut.await
+    }
+
+    // pub async fn serve_websocket<S, E>(&self, ws_stream: S) -> Result<(), Error> 
+    // where
+    //     S: Stream<Item = Result<WsMessage, E>> + Sink<WsMessage> + Send + Sync + Unpin,
+    //     E: std::error::Error + 'static,
+    // {
+    //     let ws_stream = WebSocketConn::new(ws_stream);
+    //     let codec = DefaultCodec::with_websocket(ws_stream);
+
+    //     Self::_serve_codec(codec, self.services.clone()).await
+    // }
 
     #[cfg(feature = "actix-web")]
     async fn _handle_http(
