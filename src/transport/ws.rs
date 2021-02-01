@@ -8,25 +8,6 @@ use tungstenite::Message as WsMessage;
 
 use super::{PayloadRead, PayloadWrite};
 use crate::error::Error;
-
-/// Websocket transport
-///
-/// WebSocket message definition:
-///
-/// - `tungstenite::Mesage` based: `tide-websocket` (wrapping `async-tungstenite`), `warp` (using `tokio-tungstenite`)
-/// - `actix-web-actors::ws`: this seems like `actix-web`'s implementation.
-///
-/// `Stream` and `Sink<tungstenite::Message>`?
-///
-/// - `async-tungstenite` and `tokio-tungstenite` both impl `Stream` and `Sink<Message>`
-/// - `warp::filters::ws::WebSocket` is a wrapper of `tokio::tungstenite::WebSocketStream`, and impls both `Stream` and `Sink<Message>`
-/// - `tide-websocket` only impls `Stream` but not `Sink<Message>`
-///
-/// WebSocket connection process
-
-/// type state for WebSocketConn
-/// This is to separate `PayloadWrite` impl for `tide-websockets`
-/// which currently does not implement `Sink`
 pub(crate) struct CanSink {}
 pub(crate) struct CannotSink {}
 

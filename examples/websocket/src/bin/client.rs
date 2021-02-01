@@ -1,7 +1,6 @@
 use toy_rpc::error::Error;
 use toy_rpc::Client;
 
-use websocket::rpc;
 use websocket::rpc::{BarRequest, BarResponse, FooRequest, FooResponse};
 
 #[async_std::main]
@@ -10,6 +9,7 @@ async fn main() {
 
     let addr = "ws://127.0.0.1:23333";
     let client = Client::dial_http(addr).await.unwrap();
+    println!("Client connected to {}", addr);
 
     // first request, echo
     let args = FooRequest { a: 1, b: 3 };

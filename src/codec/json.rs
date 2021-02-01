@@ -4,12 +4,14 @@ use futures::io::{AsyncBufRead, AsyncBufReadExt, AsyncWrite, AsyncWriteExt};
 use serde::de::Visitor;
 use std::io::Cursor; // serde doesn't support AsyncRead
 
-use super::{Codec, CodecRead, CodecWrite, DeserializerOwned, EraseDeserializer, Marshal, Unmarshal};
+use super::{
+    Codec, CodecRead, CodecWrite, DeserializerOwned, EraseDeserializer, Marshal, Unmarshal,
+};
 use crate::error::Error;
 use crate::macros::impl_inner_deserializer;
 use crate::message::{MessageId, Metadata};
 
-use super::{ConnTypeReadWrite, ConnTypePayload};
+use super::ConnTypeReadWrite;
 
 impl<'de, R> serde::Deserializer<'de> for DeserializerOwned<serde_json::Deserializer<R>>
 where

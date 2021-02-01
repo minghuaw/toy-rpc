@@ -77,16 +77,11 @@ async fn main() {
         .build();
 
     let listener = TcpListener::bind(addr).await.unwrap();
-
-    log::info!("Starting server at {}", &addr);
-
-    // server.accept(listener).await.unwrap();
-
+    
     let handle = task::spawn(async move {
+        log::info!("Starting WebSocket server at {}", &addr);
         server.accept_websocket(listener).await.unwrap();
-        // server.accept(listener).await.unwrap();
     });
 
     handle.await;
-    // task::sleep(std::time::Duration::from_secs(10)).await;
 }
