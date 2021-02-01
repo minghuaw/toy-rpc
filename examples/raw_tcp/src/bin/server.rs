@@ -6,8 +6,8 @@ use async_trait::async_trait;
 use toy_rpc::macros::{export_impl, service};
 use toy_rpc::Server;
 
-use server_client::rpc;
-use server_client::rpc::{BarService, FooRequest, FooResponse, Rpc};
+use raw_tcp::rpc;
+use raw_tcp::rpc::{BarService, FooRequest, FooResponse, Rpc};
 
 pub struct FooService {
     counter: Mutex<u32>,

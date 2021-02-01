@@ -2883,6 +2883,7 @@ dependencies = [
 name = "toy-rpc"
 version = "0.4.5"
 dependencies = [
+ "actix",
  "actix-http",
  "actix-web-actors",
  "async-std",

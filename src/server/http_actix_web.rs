@@ -1,17 +1,23 @@
-use actix_web::{web, HttpRequest, HttpResponse};
-use actix_web_actors::ws::{handshake};
+use std::{io::Cursor, marker::PhantomData};
 
+use actix::{Actor, Arbiter, AsyncContext, ContextFutureSpawner, StreamHandler, WrapFuture};
+use actix_http::client::SendRequestError;
+use actix_web::{HttpRequest, HttpResponse, web};
+use actix_web_actors::ws;
+use actix_web_actors::ws::handshake;
+
+use bincode::Options;
 // use tungstenite::Message as WsMessage;
 // use futures::channel::mpsc::{unbounded, UnboundedSender, UnboundedReceiver};
-use futures::{StreamExt};
+use futures::{StreamExt, channel::oneshot};
 use tokio_stream::wrappers::UnboundedReceiverStream;
-use tokio_util::codec::{Decoder, Encoder};
-use tokio::sync::mpsc::{UnboundedSender, unbounded_channel};
+use tokio_util::{codec::{Decoder, Encoder}, compat::FuturesAsyncReadCompatExt};
+use tokio::sync::mpsc::{UnboundedSender, UnboundedReceiver, unbounded_channel};
 use web::{Bytes};
 
-use crate::error::Error;
+use crate::{codec::{ConnTypePayload, DeserializerOwned, Marshal, Unmarshal, EraseDeserializer}, error::{Error, RpcError}, message::ResponseHeader};
 
-use super::{Server, AsyncServiceMap, Arc};
+use super::{Server, AsyncServiceMap, Arc, RequestHeader, ArcAsyncServiceCall, HandlerResult, MessageId};
 
 #[cfg(any(
     all(
@@ -150,7 +156,7 @@ impl Server {
                 // .app_data(data)
                 .service(
                     web::resource(super::DEFAULT_RPC_PATH)
-                        .route(web::get().to(Server::_handle_http_ws))
+                        .route(web::get().to(index))
                         .route(web::method(actix_web::http::Method::CONNECT).to(|| {
                             actix_web::HttpResponse::Ok().body("CONNECT request is received")
                         })),
@@ -239,7 +245,7 @@ impl Server {
 
         let chunk_recver = UnboundedReceiverStream::new(chunk_recver);
         let resp_recver = UnboundedReceiverStream::new(resp_recver);
-        let frame_recver = UnboundedReceiverStream::new(frame_recver);
+        // let frame_recver = UnboundedReceiverStream::new(frame_recver);
 
         let _chunk_sender = chunk_sender.clone();
         actix_web::rt::spawn(
@@ -301,12 +307,20 @@ impl Server {
 
     async fn _serve_ws_message(
         services: Arc<AsyncServiceMap>,
-        frame_recver: UnboundedReceiverStream<Vec<u8>>, 
+        mut frame_recver: UnboundedReceiver<Vec<u8>>, 
         resp_sender: UnboundedSender<Vec<u8>>
     ) -> Result<(), actix_web::Error> {
-        let codec = super::DefaultCodec::with_channels(frame_recver, resp_sender);
-        Self::_serve_codec(codec, services).await
-            .map_err(|e| actix_web::Error::from(e))
+        loop {
+            if let Some(buf) = frame_recver.recv().await {
+
+            }
+
+            log::debug!("Reading request body");
+            if let Some(frame) = frame_recver.recv().await {
+
+            }
+        }
+
     }
 
     async fn _decode_ws_frame(
@@ -358,3 +372,180 @@ impl Server {
         Ok(())
     }
 }
+
+struct ServerActor<Codec: Unpin> {
+    pub services: Arc<AsyncServiceMap>,
+    pub req_header: Option<RequestHeader>,
+
+    phantom: PhantomData<Codec>,
+}
+
+#[derive(actix::Message)]
+#[rtype(result = "()")]
+struct HandlerResultMessage {
+    id: MessageId,
+    res: HandlerResult
+}
+
+impl<C> actix::Handler<HandlerResultMessage> for ServerActor<C>
+where 
+    C: Marshal + Unmarshal + Unpin + 'static,
+{
+    type Result = ();
+
+    fn handle(&mut self, msg: HandlerResultMessage, ctx: &mut Self::Context) -> Self::Result {
+        let HandlerResultMessage{id, res} = msg;
+        match Self::send_response_via_context(id, res, ctx) {
+            Ok(_) => (),
+            Err(e) => log::debug!("Error encountered sending response via context: {}", e),
+        };
+    }
+}
+
+impl<C> Actor for ServerActor<C> 
+where 
+    C: Marshal + Unmarshal + Unpin + 'static,
+{
+    type Context = ws::WebsocketContext<Self>;
+}
+
+impl<C> StreamHandler<Result<ws::Message, ws::ProtocolError>> for ServerActor<C> 
+where 
+    C: Marshal + Unmarshal + EraseDeserializer + Unpin + 'static,
+{
+    fn handle(
+        &mut self, 
+        item: Result<ws::Message, ws::ProtocolError>, 
+        ctx: &mut Self::Context
+    ) {
+        match item {
+            Ok(ws::Message::Ping(msg)) => ctx.pong(&msg),
+            Ok(ws::Message::Text(text)) => ctx.text(text),
+            Ok(ws::Message::Binary(bin)) => {
+                match self.req_header.take() {
+                    None => {
+                        match C::unmarshal(&bin) {
+                            Ok(h) => {
+                                self.req_header.get_or_insert(h);
+                            },
+                            Err(e ) => { 
+                                log::debug!("Failed to unmarshal request header: {}", e);
+                            }
+                        }
+                    },
+                    Some(header) => {
+                        let RequestHeader{id, service_method} = header;
+
+                        // split service and method
+                        let pos = match service_method.rfind('.') {
+                            Some(idx) => idx,
+                            None => {
+                                let err = Err(Error::RpcError(RpcError::MethodNotFound));
+                                match Self::send_response_via_context(id, err, ctx) {
+                                    Ok(_) => (),
+                                    Err(e) => log::debug!("Error encountered sending response via context: {}", e),
+                                };
+                                return;
+                            }
+                        };
+                        let service_name = &service_method[..pos];
+                        let method_name = service_method[pos+1..].to_owned();
+
+                        log::debug!("Message: {}, service: {}, method: {}", id, service_name, method_name);
+
+                        // look up the service
+                        let call: ArcAsyncServiceCall = match self.services.get(service_name) {
+                            Some(c) => c.clone(),
+                            None => {
+                                let err = Err(Error::RpcError(RpcError::MethodNotFound));
+                                match Self::send_response_via_context(id, err, ctx) {
+                                    Ok(_) => (),
+                                    Err(e) => log::debug!("Error encountered sending response via context: {}", e),
+                                };
+                                return;
+                            }
+                        };
+
+                        let deserializer = C::from_bytes(bin.to_vec());
+
+                        // perform RPC
+                        let actor_addr = ctx.address().recipient();
+                        let future = async move {
+                            let res = call(method_name, deserializer).await;
+                            match actor_addr.do_send(HandlerResultMessage{id, res}) {
+                                Ok(_) => (),
+                                Err(e ) => {
+                                    log::debug!("Error encountered while sending message to actor. Error: {}", e);
+                                }
+                            };
+                        };
+
+                        future.into_actor(self).spawn(ctx);
+                    }
+                } 
+            },
+            _ => ()  
+        }
+    }
+}
+
+impl<C> ServerActor<C>
+where 
+    C: Marshal + Unmarshal + Unpin + 'static,
+{
+    fn send_response_via_context(
+        id: MessageId, 
+        res: HandlerResult, 
+        ctx: &mut <Self as Actor>::Context 
+    ) -> Result<(), Error> {
+        match res {
+            Ok(body) => {
+                log::debug!("Message {} Success", id.clone());
+
+                // send response header first
+                let header = ResponseHeader {
+                    id, 
+                    is_error: false,
+                };
+                let buf = C::marshal(&header)?;
+                ctx.binary(buf);
+
+                // serialize response body
+                let buf = C::marshal(&body)?;
+                ctx.binary(buf);
+            },
+            Err(e) => {
+                log::debug!("Message {} Error", id.clone());
+
+                // compose error response header
+                let header = ResponseHeader {
+                    id,
+                    is_error: true,
+                };
+                let buf = C::marshal(&header)?;
+                ctx.binary(buf);
+
+                // compose error response body
+                let body = match e {
+                    Error::RpcError(rpc_err) => Box::new(rpc_err),
+                    _ => Box::new(RpcError::ServerError(e.to_string()))
+                };
+                let buf = C::marshal(&body)?;
+                ctx.binary(buf);
+            }
+        }
+
+        Ok(())
+    }
+}
+
+async fn index(state: web::Data<Server>, req: HttpRequest, stream: web::Payload) -> Result<HttpResponse, actix_web::Error> {
+    let services = state.services.clone();
+    // let phantom = PhantomData::<super::DefaultCodec>;
+
+    let actor: ServerActor<super::DefaultCodec<Vec<u8>, Vec<u8>, ConnTypePayload>> = ServerActor{services, req_header: None, phantom: PhantomData};
+    let resp = ws::start(actor, &req, stream);
+    println!("{:?}", resp);
+    resp
+}
+

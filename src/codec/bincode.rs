@@ -16,7 +16,7 @@ use crate::transport::frame::{
     Frame, FrameRead, FrameSinkExt, FrameStreamExt, FrameWrite, PayloadType,
 };
 
-use super::{ConnTypeReadWrite, ConnTypePayload, PayloadRead, PayloadWrite};
+use super::{ConnTypeReadWrite, ConnTypePayload, PayloadRead, PayloadWrite, EraseDeserializer};
 
 impl<'de, R, O> serde::Deserializer<'de> for DeserializerOwned<bincode::Deserializer<R, O>>
 where
@@ -55,22 +55,15 @@ where
     ) -> Option<Result<Box<dyn erased::Deserializer<'static> + Send + 'static>, Error>> {
         let reader = &mut self.reader;
 
-        let de = match reader.frame_stream().next().await? {
+        match reader.frame_stream().next().await? {
             Ok(frame) => {
                 log::debug!("frame: {:?}", frame);
-                bincode::Deserializer::with_reader(
-                    Cursor::new(frame.payload),
-                    bincode::DefaultOptions::new().with_fixint_encoding(),
-                )
+
+                let de = Self::from_bytes(frame.payload);
+                Some(Ok(de))
             }
             Err(e) => return Some(Err(e)),
-        };
-
-        // wrap the deserializer as DeserializerOwned
-        let de_owned = DeserializerOwned::new(de);
-
-        // returns a Deserializer referencing to decoder
-        Some(Ok(Box::new(erased::Deserializer::erase(de_owned))))
+        }
     }
 }
 
@@ -205,5 +198,17 @@ where
         let buf = Self::marshal(&body)?;
         // log::trace!("Body id: {} sent", id);
         writer.write_payload(buf).await
+    }
+}
+
+impl<R, W, C> EraseDeserializer for Codec<R, W, C> {
+    fn from_bytes(buf: Vec<u8>) -> Box<dyn erased::Deserializer<'static> + Send> {
+        let de = bincode::Deserializer::with_reader(
+            Cursor::new(buf),
+            bincode::DefaultOptions::new().with_fixint_encoding(),
+        );
+
+        let de_owned = DeserializerOwned::new(de);
+        Box::new(erased::Deserializer::erase(de_owned))
     }
 }

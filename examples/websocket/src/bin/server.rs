@@ -84,6 +84,7 @@ async fn main() {
 
     let handle = task::spawn(async move {
         server.accept_websocket(listener).await.unwrap();
+        // server.accept(listener).await.unwrap();
     });
 
     handle.await;

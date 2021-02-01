@@ -209,24 +209,25 @@ impl
 //     }
 // }
 
-impl
-    Codec<
-        tokio_stream::wrappers::UnboundedReceiverStream<Vec<u8>>,
-        tokio::sync::mpsc::UnboundedSender<Vec<u8>>,
-        ConnTypePayload,
-    >
-{
-    pub fn with_channels(
-        recver: tokio_stream::wrappers::UnboundedReceiverStream<Vec<u8>>,
-        sender: tokio::sync::mpsc::UnboundedSender<Vec<u8>>,
-    ) -> Self {
-        Self {
-            reader: recver,
-            writer: sender,
-            conn_type: PhantomData
-        }
-    }
-}
+// #[cfg(feature = "tokio")]
+// impl
+//     Codec<
+//         tokio_stream::wrappers::UnboundedReceiverStream<Vec<u8>>,
+//         tokio::sync::mpsc::UnboundedSender<Vec<u8>>,
+//         ConnTypePayload,
+//     >
+// {
+//     pub fn with_channels(
+//         recver: tokio_stream::wrappers::UnboundedReceiverStream<Vec<u8>>,
+//         sender: tokio::sync::mpsc::UnboundedSender<Vec<u8>>,
+//     ) -> Self {
+//         Self {
+//             reader: recver,
+//             writer: sender,
+//             conn_type: PhantomData
+//         }
+//     }
+// }
 
 #[async_trait]
 pub trait ServerCodec: Send + Sync {
@@ -359,4 +360,8 @@ impl<D> DeserializerOwned<D> {
     pub fn new(inner: D) -> Self {
         Self { inner }
     }
+}
+
+pub trait EraseDeserializer {
+    fn from_bytes(buf: Vec<u8>) -> Box<dyn erased::Deserializer<'static> + Send>;
 }

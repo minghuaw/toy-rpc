@@ -1,14 +1,15 @@
 use toy_rpc::error::Error;
 use toy_rpc::Client;
 
-use server_client::rpc::{BarRequest, BarResponse, FooRequest, FooResponse};
+use raw_tcp::rpc;
+use raw_tcp::rpc::{BarRequest, BarResponse, FooRequest, FooResponse};
 
 #[async_std::main]
 async fn main() {
     env_logger::init();
 
     let addr = "127.0.0.1:23333";
-    let mut client = Client::dial(addr).await.unwrap();
+    let client = Client::dial(addr).await.unwrap();
 
     // first request, echo
     let args = FooRequest { a: 1, b: 3 };
