@@ -11,8 +11,6 @@ pub(crate) mod frame;
 
 pub(crate) mod ws;
 
-pub(crate) mod chan;
-
 #[async_trait]
 pub trait PayloadRead {
     async fn read_payload(&mut self) -> Option<Result<Vec<u8>, Error>>;

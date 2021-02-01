@@ -6,8 +6,8 @@ use std::marker::PhantomData;
 use tide_websockets as tide_ws;
 use tungstenite::Message as WsMessage;
 
-use crate::error::Error;
 use super::{PayloadRead, PayloadWrite};
+use crate::error::Error;
 
 /// Websocket transport
 ///
@@ -21,10 +21,8 @@ use super::{PayloadRead, PayloadWrite};
 /// - `async-tungstenite` and `tokio-tungstenite` both impl `Stream` and `Sink<Message>`
 /// - `warp::filters::ws::WebSocket` is a wrapper of `tokio::tungstenite::WebSocketStream`, and impls both `Stream` and `Sink<Message>`
 /// - `tide-websocket` only impls `Stream` but not `Sink<Message>`
-/// 
+///
 /// WebSocket connection process
-
-
 
 /// type state for WebSocketConn
 /// This is to separate `PayloadWrite` impl for `tide-websockets`
@@ -41,7 +39,7 @@ pub struct WebSocketConn<S, N> {
 
 pub struct StreamHalf<S, Mode> {
     inner: S,
-    can_sink: PhantomData<Mode>
+    can_sink: PhantomData<Mode>,
 }
 
 pub struct SinkHalf<S, Mode> {
@@ -75,7 +73,10 @@ where
     ) {
         let (writer, reader) = self.inner.split();
 
-        let readhalf = StreamHalf { inner: reader, can_sink: PhantomData};
+        let readhalf = StreamHalf {
+            inner: reader,
+            can_sink: PhantomData,
+        };
         let writehalf = SinkHalf {
             inner: writer,
             can_sink: PhantomData,
@@ -147,7 +148,10 @@ impl WebSocketConn<tide_websockets::WebSocketConnection, CannotSink> {
             inner: self.inner.clone(),
             can_sink: PhantomData,
         };
-        let reader = StreamHalf { inner: self.inner, can_sink: PhantomData };
+        let reader = StreamHalf {
+            inner: self.inner,
+            can_sink: PhantomData,
+        };
         (writer, reader)
     }
 }
@@ -172,7 +176,6 @@ impl PayloadRead for StreamHalf<tide_websockets::WebSocketConnection, CannotSink
         }
     }
 }
-
 
 #[async_trait]
 impl PayloadWrite for SinkHalf<tide_websockets::WebSocketConnection, CannotSink> {

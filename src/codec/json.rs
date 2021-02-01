@@ -1,17 +1,15 @@
-//! Impplementation of `CodecRead`, `CodecWrite`, `Marshal` and `Unmarshal` traits with `serde_json`
-
 use async_trait::async_trait;
 use erased_serde as erased;
 use futures::io::{AsyncBufRead, AsyncBufReadExt, AsyncWrite, AsyncWriteExt};
 use serde::de::Visitor;
 use std::io::Cursor; // serde doesn't support AsyncRead
 
-use super::{Codec, CodecRead, CodecWrite, DeserializerOwned, Marshal, Unmarshal};
+use super::{Codec, CodecRead, CodecWrite, DeserializerOwned, EraseDeserializer, Marshal, Unmarshal};
 use crate::error::Error;
 use crate::macros::impl_inner_deserializer;
 use crate::message::{MessageId, Metadata};
 
-use super::{ConnTypeReadWrite, ConnTypeWebSocket};
+use super::{ConnTypeReadWrite, ConnTypePayload};
 
 impl<'de, R> serde::Deserializer<'de> for DeserializerOwned<serde_json::Deserializer<R>>
 where
@@ -46,15 +44,13 @@ where
     ) -> Option<Result<Box<dyn erased::Deserializer<'static> + Send + 'static>, Error>> {
         let mut buf = String::new();
 
-        let de = match self.reader.read_line(&mut buf).await {
-            Ok(_) => serde_json::Deserializer::from_reader(Cursor::new(buf.into_bytes())),
+        match self.reader.read_line(&mut buf).await {
+            Ok(_) => {
+                let de = Self::from_bytes(buf.into_bytes());
+                Some(Ok(de))
+            }
             Err(e) => return Some(Err(e.into())),
-        };
-
-        // wrap the deserializer as DeserializerOwned
-        let de_owned = DeserializerOwned::new(de);
-
-        Some(Ok(Box::new(erased::Deserializer::erase(de_owned))))
+        }
     }
 }
 
@@ -95,11 +91,7 @@ where
     }
 }
 
-impl<R, W, C> Marshal for Codec<R, W, C>
-// where
-//     R: Send + Sync,
-//     W: Send + Sync,
-{
+impl<R, W, C> Marshal for Codec<R, W, C> {
     fn marshal<S: serde::Serialize>(val: &S) -> Result<Vec<u8>, Error> {
         serde_json::to_vec(val)
             .map(|mut v| {
@@ -110,13 +102,18 @@ impl<R, W, C> Marshal for Codec<R, W, C>
     }
 }
 
-impl<R, W, C> Unmarshal for Codec<R, W, C>
-// where
-//     R: Send + Sync,
-//     W: Send + Sync,
-{
+impl<R, W, C> Unmarshal for Codec<R, W, C> {
     fn unmarshal<'de, D: serde::Deserialize<'de>>(buf: &'de [u8]) -> Result<D, Error> {
         serde_json::from_slice(buf).map_err(|e| e.into())
+    }
+}
+
+impl<R, W, C> EraseDeserializer for Codec<R, W, C> {
+    fn from_bytes(buf: Vec<u8>) -> Box<dyn erased::Deserializer<'static> + Send> {
+        let de = serde_json::Deserializer::from_reader(Cursor::new(buf));
+
+        let de_owned = DeserializerOwned::new(de);
+        Box::new(erased::Deserializer::erase(de_owned))
     }
 }
 

@@ -7,7 +7,7 @@ use futures::{SinkExt, StreamExt};
 use serde::de::Visitor;
 use std::io::Cursor; // serde doesn't support AsyncRead
 
-use super::{Codec, CodecRead, CodecWrite, DeserializerOwned, Marshal, Unmarshal};
+use super::{Codec, CodecRead, CodecWrite, DeserializerOwned, EraseDeserializer, Marshal, Unmarshal};
 use crate::error::Error;
 use crate::macros::impl_inner_deserializer;
 use crate::message::{MessageId, Metadata};
@@ -15,7 +15,7 @@ use crate::transport::frame::{
     Frame, FrameRead, FrameSinkExt, FrameStreamExt, FrameWrite, PayloadType,
 };
 
-use super::{ConnTypeReadWrite, ConnTypeWebSocket};
+use super::{ConnTypeReadWrite, ConnTypePayload};
 
 impl<'de, R> serde::Deserializer<'de> for DeserializerOwned<serde_cbor::Deserializer<R>>
 where
@@ -53,19 +53,14 @@ where
     ) -> Option<Result<Box<dyn erased::Deserializer<'static> + Send + 'static>, Error>> {
         let reader = &mut self.reader;
 
-        let de = match reader.frame_stream().next().await? {
+        match reader.frame_stream().next().await? {
             Ok(frame) => {
-                log::debug!("frame: {:?}", frame);
-                serde_cbor::Deserializer::from_reader(Cursor::new(frame.payload))
+                // log::debug!("frame: {:?}", frame);
+                let de = Self::from_bytes(frame.payload);
+                Some(Ok(de))
             }
             Err(e) => return Some(Err(e)),
-        };
-
-        // wrap the deserializer as DeserializerOwned
-        let de_owned = DeserializerOwned::new(de);
-
-        // returns a Deserializer referencing to decoder
-        Some(Ok(Box::new(erased::Deserializer::erase(de_owned))))
+        }
     }
 }
 
@@ -105,22 +100,23 @@ where
     }
 }
 
-impl<R, W, C> Marshal for Codec<R, W, C>
-// where
-//     R: Send,
-//     W: Send,
-{
+impl<R, W, C> Marshal for Codec<R, W, C> {
     fn marshal<S: serde::Serialize>(val: &S) -> Result<Vec<u8>, Error> {
         serde_cbor::to_vec(val).map_err(|e| e.into())
     }
 }
 
-impl<R, W, C> Unmarshal for Codec<R, W, C>
-// where
-//     R: Send,
-//     W: Send,
-{
+impl<R, W, C> Unmarshal for Codec<R, W, C> {
     fn unmarshal<'de, D: serde::Deserialize<'de>>(buf: &'de [u8]) -> Result<D, Error> {
         serde_cbor::from_slice(buf).map_err(|e| e.into())
+    }
+}
+
+impl<R, W, C> EraseDeserializer for Codec<R, W, C> {
+    fn from_bytes(buf: Vec<u8>) -> Box<dyn erased::Deserializer<'static> + Send> {
+        let de = serde_cbor::Deserializer::from_reader(Cursor::new(buf));
+
+        let de_owned = DeserializerOwned::new(de);
+        Box::new(erased::Deserializer::erase(de_owned))
     }
 }

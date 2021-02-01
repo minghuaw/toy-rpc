@@ -1,7 +1,7 @@
 use tide_websockets as tide_ws;
 
-use super::{Server};
-use crate::{transport::ws::{WebSocketConn}};
+use super::Server;
+use crate::transport::ws::WebSocketConn;
 
 #[cfg(any(
     all(
@@ -91,24 +91,25 @@ impl Server {
     /// ```
     ///
     pub fn into_endpoint(self) -> tide::Server<Server> {
-
         let mut app = tide::Server::with_state(self);
         // let mut app = tide::Server::new();
         app.at(super::DEFAULT_RPC_PATH)
             // .connect(|_| async move { Ok("CONNECT request is received") })
-            .get(tide_ws::WebSocket::new(|req: tide::Request<Server>, ws_stream| async move {
-                let ws_stream = WebSocketConn::new_without_sink(ws_stream);
-                let codec = super::DefaultCodec::with_tide_websocket(ws_stream);
-                let services = req.state().services.clone();
+            .get(tide_ws::WebSocket::new(
+                |req: tide::Request<Server>, ws_stream| async move {
+                    let ws_stream = WebSocketConn::new_without_sink(ws_stream);
+                    let codec = super::DefaultCodec::with_tide_websocket(ws_stream);
+                    let services = req.state().services.clone();
 
-                let fut = Self::_serve_codec(codec, services);
+                    let fut = Self::_serve_codec(codec, services);
 
-                #[cfg(feature = "logging")]
-                log::info!("Client disconnected from {}", _peer_addr);
+                    #[cfg(feature = "logging")]
+                    log::info!("Client disconnected from {}", _peer_addr);
 
-                fut.await?;
-                Ok(())
-            }));
+                    fut.await?;
+                    Ok(())
+                },
+            ));
 
         app
     }

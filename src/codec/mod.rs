@@ -1,11 +1,12 @@
 use async_trait::async_trait;
 use erased_serde as erased;
-use futures::{channel::mpsc::{UnboundedReceiver, UnboundedSender}, io::{
+use futures::{
+    io::{
         AsyncBufRead, AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt, BufReader, BufWriter,
         ReadHalf, WriteHalf,
-    }, stream::{SplitSink, SplitStream}};
-// use surf::http::content;
-// use futures::channel::mpsc::{Receiver, Sender};
+    },
+    stream::{SplitSink, SplitStream},
+};
 use futures::{Sink, Stream};
 use std::marker::PhantomData;
 use tide_websockets as tide_ws;
@@ -13,10 +14,8 @@ use tungstenite::Message as WsMessage;
 
 use crate::error::Error;
 use crate::message::{MessageId, Metadata, RequestHeader, ResponseHeader};
-use crate::transport::{PayloadWrite, PayloadRead};
-use crate::transport::ws::{
-    CanSink, CannotSink, SinkHalf, StreamHalf, WebSocketConn,
-};
+use crate::transport::ws::{CanSink, CannotSink, SinkHalf, StreamHalf, WebSocketConn};
+use crate::transport::{PayloadRead, PayloadWrite};
 
 #[cfg(all(
     feature = "serde_bincode",
@@ -157,7 +156,11 @@ where
 
 // websocket integration for async_tungstenite, tokio_tungstenite, and warp
 impl<S, E>
-    Codec<StreamHalf<SplitStream<S>, CanSink>, SinkHalf<SplitSink<S, WsMessage>, CanSink>, ConnTypePayload>
+    Codec<
+        StreamHalf<SplitStream<S>, CanSink>,
+        SinkHalf<SplitSink<S, WsMessage>, CanSink>,
+        ConnTypePayload,
+    >
 where
     S: Stream<Item = Result<WsMessage, E>> + Sink<WsMessage> + Send + Sync + Unpin,
     E: std::error::Error + 'static,
@@ -181,7 +184,9 @@ impl
         ConnTypePayload,
     >
 {
-    pub fn with_tide_websocket(ws: WebSocketConn<tide_ws::WebSocketConnection, CannotSink>) -> Self {
+    pub fn with_tide_websocket(
+        ws: WebSocketConn<tide_ws::WebSocketConnection, CannotSink>,
+    ) -> Self {
         let (writer, reader) = WebSocketConn::<tide_ws::WebSocketConnection, CannotSink>::split(ws);
 
         Self {
@@ -191,43 +196,6 @@ impl
         }
     }
 }
-
-// websocket integration with channels for actix-web
-// impl
-//     Codec<
-//         UnboundedReceiver<Vec<u8>>,
-//         UnboundedSender<Vec<u8>>,
-//         ConnTypePayload,
-//     >
-// {
-//     pub fn with_channels(recver: UnboundedReceiver<Vec<u8>>, sender: UnboundedSender<Vec<u8>>) -> Self {
-//         Self {
-//             reader: recver,
-//             writer: sender,
-//             conn_type: PhantomData
-//         }
-//     }
-// }
-
-// #[cfg(feature = "tokio")]
-// impl
-//     Codec<
-//         tokio_stream::wrappers::UnboundedReceiverStream<Vec<u8>>,
-//         tokio::sync::mpsc::UnboundedSender<Vec<u8>>,
-//         ConnTypePayload,
-//     >
-// {
-//     pub fn with_channels(
-//         recver: tokio_stream::wrappers::UnboundedReceiverStream<Vec<u8>>,
-//         sender: tokio::sync::mpsc::UnboundedSender<Vec<u8>>,
-//     ) -> Self {
-//         Self {
-//             reader: recver,
-//             writer: sender,
-//             conn_type: PhantomData
-//         }
-//     }
-// }
 
 #[async_trait]
 pub trait ServerCodec: Send + Sync {
@@ -258,7 +226,7 @@ pub trait ClientCodec: Send + Sync {
 }
 
 #[async_trait]
-pub trait CodecRead: Unmarshal {
+pub trait CodecRead: Unmarshal + EraseDeserializer {
     async fn read_header<H>(&mut self) -> Option<Result<H, Error>>
     where
         H: serde::de::DeserializeOwned;

@@ -1,4 +1,4 @@
-use super::{Server};
+use super::Server;
 
 #[cfg(any(
     all(
@@ -33,6 +33,4 @@ use super::{Server};
 /// - `serde_json`
 /// - `serde_cbor`
 /// - `serde_rmp`
-impl Server {
-    
-}
+impl Server {}

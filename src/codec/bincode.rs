@@ -16,7 +16,7 @@ use crate::transport::frame::{
     Frame, FrameRead, FrameSinkExt, FrameStreamExt, FrameWrite, PayloadType,
 };
 
-use super::{ConnTypeReadWrite, ConnTypePayload, PayloadRead, PayloadWrite, EraseDeserializer};
+use super::{ConnTypePayload, ConnTypeReadWrite, EraseDeserializer, PayloadRead, PayloadWrite};
 
 impl<'de, R, O> serde::Deserializer<'de> for DeserializerOwned<bincode::Deserializer<R, O>>
 where
@@ -57,8 +57,7 @@ where
 
         match reader.frame_stream().next().await? {
             Ok(frame) => {
-                log::debug!("frame: {:?}", frame);
-
+                // log::debug!("frame: {:?}", frame);
                 let de = Self::from_bytes(frame.payload);
                 Some(Ok(de))
             }
@@ -103,32 +102,6 @@ where
     }
 }
 
-impl<R, W, C> Marshal for Codec<R, W, C>
-// where
-//     R: Send,
-//     W: Send,
-{
-    fn marshal<S: serde::Serialize>(val: &S) -> Result<Vec<u8>, Error> {
-        DefaultOptions::new()
-            .with_fixint_encoding()
-            .serialize(&val)
-            .map_err(|err| err.into())
-    }
-}
-
-impl<R, W, C> Unmarshal for Codec<R, W, C>
-// where
-//     R: Send,
-//     W: Send,
-{
-    fn unmarshal<'de, D: serde::Deserialize<'de>>(buf: &'de [u8]) -> Result<D, Error> {
-        DefaultOptions::new()
-            .with_fixint_encoding()
-            .deserialize(buf)
-            .map_err(|err| err.into())
-    }
-}
-
 #[async_trait]
 impl<R, W> CodecRead for Codec<R, W, ConnTypePayload>
 where
@@ -154,22 +127,14 @@ where
     ) -> Option<Result<Box<dyn erased::Deserializer<'static> + Send + 'static>, Error>> {
         let reader = &mut self.reader;
 
-        let de = match reader.read_payload().await? {
+        match reader.read_payload().await? {
             Ok(payload) => {
-                log::debug!("frame: {:?}", payload);
-                bincode::Deserializer::with_reader(
-                    Cursor::new(payload),
-                    bincode::DefaultOptions::new().with_fixint_encoding(),
-                )
+                log::debug!("payload: {:?}", payload);
+                let de = Self::from_bytes(payload);
+                Some(Ok(de))
             }
             Err(e) => return Some(Err(e)),
-        };
-
-        // wrap the deserializer as DeserializerOwned
-        let de_owned = DeserializerOwned::new(de);
-
-        // returns a Deserializer referencing to decoder
-        Some(Ok(Box::new(erased::Deserializer::erase(de_owned))))
+        }
     }
 }
 
@@ -198,6 +163,24 @@ where
         let buf = Self::marshal(&body)?;
         // log::trace!("Body id: {} sent", id);
         writer.write_payload(buf).await
+    }
+}
+
+impl<R, W, C> Marshal for Codec<R, W, C> {
+    fn marshal<S: serde::Serialize>(val: &S) -> Result<Vec<u8>, Error> {
+        DefaultOptions::new()
+            .with_fixint_encoding()
+            .serialize(&val)
+            .map_err(|err| err.into())
+    }
+}
+
+impl<R, W, C> Unmarshal for Codec<R, W, C> {
+    fn unmarshal<'de, D: serde::Deserialize<'de>>(buf: &'de [u8]) -> Result<D, Error> {
+        DefaultOptions::new()
+            .with_fixint_encoding()
+            .deserialize(buf)
+            .map_err(|err| err.into())
     }
 }
 

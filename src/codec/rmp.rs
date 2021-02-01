@@ -7,7 +7,7 @@ use futures::{SinkExt, StreamExt};
 use serde::de::Visitor;
 use std::io::Cursor; // serde doesn't support AsyncRead
 
-use super::{Codec, CodecRead, CodecWrite, DeserializerOwned, Marshal, Unmarshal};
+use super::{Codec, CodecRead, CodecWrite, DeserializerOwned, EraseDeserializer, Marshal, Unmarshal};
 use crate::error::Error;
 use crate::macros::impl_inner_deserializer;
 use crate::message::{MessageId, Metadata};
@@ -15,7 +15,7 @@ use crate::transport::frame::{
     Frame, FrameRead, FrameSinkExt, FrameStreamExt, FrameWrite, PayloadType,
 };
 
-use super::{ConnTypeReadWrite, ConnTypeWebSocket};
+use super::{ConnTypeReadWrite, ConnTypePayload};
 
 impl<'de, R> serde::Deserializer<'de>
     for DeserializerOwned<rmp_serde::Deserializer<rmp_serde::decode::ReadReader<R>>>
@@ -54,19 +54,14 @@ where
     ) -> Option<Result<Box<dyn erased::Deserializer<'static> + Send + 'static>, Error>> {
         let reader = &mut self.reader;
 
-        let de = match reader.frame_stream().next().await? {
+        match reader.frame_stream().next().await? {
             Ok(frame) => {
-                log::debug!("frame: {:?}", frame);
-                rmp_serde::Deserializer::new(Cursor::new(frame.payload))
+                // log::debug!("frame: {:?}", frame);
+                let de = Self::from_bytes(frame.payload);
+                Some(Ok(de))
             }
             Err(e) => return Some(Err(e)),
-        };
-
-        // wrap the deserializer as DeserializerOwned
-        let de_owned = DeserializerOwned::new(de);
-
-        // returns a Deserializer referencing to decoder
-        Some(Ok(Box::new(erased::Deserializer::erase(de_owned))))
+        }
     }
 }
 
@@ -128,5 +123,14 @@ impl<R, W, C> Unmarshal for Codec<R, W, C>
     fn unmarshal<'de, D: serde::Deserialize<'de>>(buf: &'de [u8]) -> Result<D, Error> {
         let mut de = rmp_serde::Deserializer::new(buf);
         serde::Deserialize::deserialize(&mut de).map_err(|e| e.into())
+    }
+}
+
+impl<R, W, C> EraseDeserializer for Codec<R, W, C> {
+    fn from_bytes(buf: Vec<u8>) -> Box<dyn erased::Deserializer<'static> + Send> {
+        let de = rmp_serde::Deserializer::new(Cursor::new(buf));
+
+        let de_owned = DeserializerOwned::new(de);
+        Box::new(erased::Deserializer::erase(de_owned))
     }
 }

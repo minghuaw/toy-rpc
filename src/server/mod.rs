@@ -11,9 +11,9 @@ use crate::message::{MessageId, RequestHeader, ResponseHeader};
 use crate::service::{
     ArcAsyncServiceCall, AsyncServiceMap, HandleService, HandlerResult, HandlerResultFut,
 };
-use crate::transport::ws::{WebSocketConn};
+use crate::transport::ws::WebSocketConn;
 
-#[cfg(all(feature = "actix-web", feature = "tokio"))]
+#[cfg(all(feature = "actix-web"))]
 pub mod http_actix_web;
 
 #[cfg(feature = "tide")]
@@ -276,10 +276,9 @@ impl Server {
             // #[cfg(feature = "logging")]
             log::debug!("Accepting incoming connection from {}", stream.peer_addr()?);
 
-            let ws_stream = async_tungstenite::accept_async(stream)
-                .await?;
+            let ws_stream = async_tungstenite::accept_async(stream).await?;
 
-            task::spawn(Self::_serve_websocket(ws_stream, self.services.clone()));          
+            task::spawn(Self::_serve_websocket(ws_stream, self.services.clone()));
         }
 
         unimplemented!()
@@ -335,7 +334,10 @@ impl Server {
         Self::_serve_conn(stream, self.services.clone()).await
     }
 
-    async fn _serve_websocket(ws_stream: async_tungstenite::WebSocketStream<TcpStream>, services: Arc<AsyncServiceMap>) -> Result<(), Error> {
+    async fn _serve_websocket(
+        ws_stream: async_tungstenite::WebSocketStream<TcpStream>,
+        services: Arc<AsyncServiceMap>,
+    ) -> Result<(), Error> {
         let ws_stream = WebSocketConn::new(ws_stream);
         let codec = DefaultCodec::with_websocket(ws_stream);
 

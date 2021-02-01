@@ -153,21 +153,25 @@ impl From<Error> for actix_web::Error {
 impl From<tungstenite::Error> for crate::error::Error {
     fn from(err: tungstenite::Error) -> Self {
         crate::error::Error::TransportError {
-            msg: err.to_string()
+            msg: err.to_string(),
         }
     }
 }
 
 impl From<futures::channel::mpsc::SendError> for crate::error::Error {
     fn from(err: futures::channel::mpsc::SendError) -> Self {
-        Self::TransportError { msg: err.to_string() }
+        Self::TransportError {
+            msg: err.to_string(),
+        }
     }
 }
 
 #[cfg(feature = "tokio")]
 impl<T> From<tokio::sync::mpsc::error::SendError<T>> for crate::error::Error {
     fn from(err: tokio::sync::mpsc::error::SendError<T>) -> Self {
-        Self::TransportError { msg: err.to_string() }
+        Self::TransportError {
+            msg: err.to_string(),
+        }
     }
 }
 

@@ -2,17 +2,17 @@ use async_std::net::{TcpStream, ToSocketAddrs};
 use async_std::sync::{Arc, Mutex};
 use async_std::task;
 use erased_serde as erased;
-use futures::{channel::oneshot};
-use std::{collections::HashMap};
+use futures::channel::oneshot;
+use std::collections::HashMap;
 use std::marker::PhantomData;
 use std::sync::atomic::Ordering;
 
-use async_tungstenite::async_std::{connect_async};
+use async_tungstenite::async_std::connect_async;
 
 use crate::codec::{ClientCodec, DefaultCodec};
 use crate::error::Error;
 use crate::message::{AtomicMessageId, MessageId, RequestHeader, ResponseHeader};
-use crate::transport::ws::{WebSocketConn};
+use crate::transport::ws::WebSocketConn;
 
 #[cfg(feature = "surf")]
 use crate::server::DEFAULT_RPC_PATH;
@@ -452,16 +452,14 @@ impl Client<Codec, NotConnected> {
     /// TODO: check if the path ends with a slash
     /// TODO: try send and recv trait object
     pub async fn dial_http(addr: &'static str) -> Result<Client<Codec, Connected>, Error> {
-        let url = url::Url::parse(addr)?
-            .join(DEFAULT_RPC_PATH)?;
+        let url = url::Url::parse(addr)?.join(DEFAULT_RPC_PATH)?;
         let (ws_stream, _) = connect_async(&url).await?;
 
         log::debug!("WebSocket handshake has been successfully completed");
 
         let ws_stream = WebSocketConn::new(ws_stream);
         let codec = DefaultCodec::with_websocket(ws_stream);
-        
+
         Ok(Self::with_codec(codec))
     }
 }
-

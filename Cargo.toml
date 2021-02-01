@@ -31,7 +31,6 @@ default = [
     "serde_bincode",
     "actix-web",
     "surf",
-    "tokio"
 ]
 
 docs = ["default", "actix-web"]
