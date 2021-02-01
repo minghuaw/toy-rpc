@@ -114,7 +114,7 @@ impl From<serde_cbor::Error> for Error {
     }
 }
 
-#[cfg(feature = "surf")]
+// #[cfg(feature = "surf")]
 impl From<url::ParseError> for Error {
     fn from(err: url::ParseError) -> Self {
         Error::ParseError {

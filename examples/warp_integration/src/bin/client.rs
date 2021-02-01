@@ -1,34 +1,22 @@
+use toy_rpc::client::Client;
 use toy_rpc::error::Error;
-use toy_rpc::Client;
 
-use websocket::rpc::{BarRequest, BarResponse, FooRequest, FooResponse};
+use warp_integration::rpc::{BarRequest, BarResponse, FooRequest, FooResponse};
 
 #[async_std::main]
 async fn main() {
-    env_logger::init();
+    pretty_env_logger::init();
 
-    let addr = "ws://127.0.0.1:23333";
-    let client = Client::dial_websocket(addr).await.unwrap();
-    println!("Client connected to {}", addr);
+    let addr = "ws://127.0.0.1:23333/rpc/";
+    let client = Client::dial_http(addr).await.unwrap();
 
-    // first request, echo
     let args = FooRequest { a: 1, b: 3 };
     let reply: Result<FooResponse, Error> = client.call("foo_service.echo", &args);
     println!("{:?}", reply);
 
-    // second request, increment_a
-    // let args = FooRequest {
-    //     a: reply.a,
-    //     b: reply.b,
-    // };
     let reply: Result<FooResponse, Error> = client.async_call("foo_service.increment_a", &args).await;
     println!("{:?}", reply);
 
-    // second request, increment_b
-    // let args = FooRequest {
-    //     a: reply.a,
-    //     b: reply.b,
-    // };
     let handle = client.spawn_task("foo_service.increment_b", args);
     let reply: Result<FooResponse, Error> = handle.await;
     println!("{:?}", reply);

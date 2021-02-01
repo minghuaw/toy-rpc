@@ -19,7 +19,7 @@ pub mod http_actix_web;
 #[cfg(feature = "tide")]
 pub mod http_tide;
 
-#[cfg(feature = "warp")]
+#[cfg(all(feature = "warp"))]
 pub mod http_warp;
 
 /// Default RPC path for http handler

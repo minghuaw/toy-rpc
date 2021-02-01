@@ -14,7 +14,6 @@ use crate::error::Error;
 use crate::message::{AtomicMessageId, MessageId, RequestHeader, ResponseHeader};
 use crate::transport::ws::WebSocketConn;
 
-#[cfg(feature = "surf")]
 use crate::server::DEFAULT_RPC_PATH;
 
 // #[cfg(feature = "surf")]
@@ -390,7 +389,7 @@ impl<T> Client<T, Connected> {
     }
 }
 
-#[cfg(any(feature = "surf", feature = "docs"))]
+// #[cfg(any(feature = "surf", feature = "docs"))]
 #[cfg(any(
     all(
         feature = "serde_bincode",
@@ -417,7 +416,7 @@ impl<T> Client<T, Connected> {
         not(feature = "serde_bincode"),
     )
 ))]
-#[cfg_attr(feature = "docs", doc(cfg(feature = "surf")))]
+// #[cfg_attr(feature = "docs", doc(cfg(feature = "surf")))]
 /// The following impl block is controlled by feature flag. It is enabled
 /// if and only if **exactly one** of the the following feature flag is turned on
 /// - `serde_bincode`
@@ -453,8 +452,16 @@ impl Client<Codec, NotConnected> {
     /// TODO: try send and recv trait object
     pub async fn dial_http(addr: &'static str) -> Result<Client<Codec, Connected>, Error> {
         let url = url::Url::parse(addr)?.join(DEFAULT_RPC_PATH)?;
-        let (ws_stream, _) = connect_async(&url).await?;
+        Self::_dial_websocket(url).await
+    }
 
+    pub async fn dial_websocket(addr: &'static str) -> Result<Client<Codec, Connected>, Error> {
+        let url = url::Url::parse(addr)?;
+        Self::_dial_websocket(url).await
+    }
+
+    async fn _dial_websocket(url: url::Url) -> Result<Client<Codec, Connected>, Error> {
+        let (ws_stream, _) = connect_async(&url).await?;
         log::debug!("WebSocket handshake has been successfully completed");
 
         let ws_stream = WebSocketConn::new(ws_stream);

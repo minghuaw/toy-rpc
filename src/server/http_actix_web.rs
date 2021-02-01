@@ -225,7 +225,9 @@ where
     fn handle(&mut self, item: Result<ws::Message, ws::ProtocolError>, ctx: &mut Self::Context) {
         match item {
             Ok(ws::Message::Ping(msg)) => ctx.pong(&msg),
-            Ok(ws::Message::Text(text)) => ctx.text(text),
+            Ok(ws::Message::Text(text)) => {
+                // ctx.text(text)
+            },
             Ok(ws::Message::Binary(bin)) => {
                 match self.req_header.take() {
                     None => match C::unmarshal(&bin) {

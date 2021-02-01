@@ -3,12 +3,16 @@ use futures::stream::{SplitSink, SplitStream};
 use futures::{Sink, SinkExt, Stream, StreamExt};
 
 use std::marker::PhantomData;
-use tide_websockets as tide_ws;
 use tungstenite::Message as WsMessage;
 
 use super::{PayloadRead, PayloadWrite};
 use crate::error::Error;
+
+#[cfg(all(feature = "tide"))]
+use tide_websockets as tide_ws;
 pub(crate) struct CanSink {}
+
+#[cfg(all(feature = "tide"))]
 pub(crate) struct CannotSink {}
 
 // #[pin_project]
@@ -31,7 +35,6 @@ pub struct SinkHalf<S, Mode> {
 // =============================================================================
 // async-tungstenite,
 // tokio-tungstenite,
-// warp::filters::ws::WebSocket
 // =============================================================================
 
 impl<S, E> WebSocketConn<S, CanSink>
@@ -111,6 +114,7 @@ where
 // tide-websockets
 // =============================================================================
 
+#[cfg(all(feature = "tide"))]
 impl WebSocketConn<tide_websockets::WebSocketConnection, CannotSink> {
     pub fn new_without_sink(inner: tide_websockets::WebSocketConnection) -> Self {
         Self {
@@ -137,6 +141,7 @@ impl WebSocketConn<tide_websockets::WebSocketConnection, CannotSink> {
     }
 }
 
+#[cfg(all(feature = "tide"))]
 #[async_trait]
 impl PayloadRead for StreamHalf<tide_websockets::WebSocketConnection, CannotSink> {
     async fn read_payload(&mut self) -> Option<Result<Vec<u8>, Error>> {
@@ -158,6 +163,7 @@ impl PayloadRead for StreamHalf<tide_websockets::WebSocketConnection, CannotSink
     }
 }
 
+#[cfg(all(feature = "tide"))]
 #[async_trait]
 impl PayloadWrite for SinkHalf<tide_websockets::WebSocketConnection, CannotSink> {
     async fn write_payload(&mut self, payload: Vec<u8>) -> Result<(), Error> {
@@ -169,9 +175,52 @@ impl PayloadWrite for SinkHalf<tide_websockets::WebSocketConnection, CannotSink>
 }
 
 // =============================================================================
-// actix-web-actors::ws
+// warp::ws::Message
 // This will have to implement on the `Server` type to handle websocket stream
 // =============================================================================
+
+#[cfg(all(feature = "warp"))]
+#[async_trait]
+impl<S, E> PayloadRead for S
+where 
+    S: Stream<Item = Result<warp::ws::Message, E>> + Send + Sync + Unpin,
+    E: std::error::Error + 'static,
+{
+    async fn read_payload(&mut self) -> Option<Result<Vec<u8>, Error>> {
+        let msg = self.next().await?;
+        match msg {
+            Err(e) => return Some(Err(Error::TransportError { msg: e.to_string() })),
+            Ok(m) => {
+                if m.is_close() {
+                    return None;
+                } else if m.is_binary() {
+                    return Some(Ok(m.into_bytes()))
+                }
+                Some(Err(Error::TransportError {
+                    msg: "Expecting WebSocket::Message::Binary, but found something else"
+                        .to_string(),
+                }))
+            }
+        }
+    }
+}
+
+#[cfg(all(feature = "warp"))]
+#[async_trait]
+impl<S, E> PayloadWrite for S
+where 
+    S: Sink<warp::ws::Message, Error = E> + Send + Sync + Unpin,
+    E: std::error::Error + 'static,
+{
+    async fn write_payload(&mut self, payload: Vec<u8>) -> Result<(), Error> {
+        // let msg = WsMessage::Binary(payload.into());
+        let msg = warp::ws::Message::binary(payload);
+
+        self.send(msg)
+            .await
+            .map_err(|e| Error::TransportError { msg: e.to_string() })
+    }
+}
 
 #[cfg(test)]
 mod tests {

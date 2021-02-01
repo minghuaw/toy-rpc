@@ -1,0 +1,27 @@
+[package]
+name = "warp_integration"
+version = "0.1.0"
+authors = ["minghuaw <michael.wu1107@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+futures = "0.3.12"
+pretty_env_logger = "0.4.0"
+tokio = { version = "1.1.1", features = ["rt", "rt-multi-thread", "macros"] }
+warp = "0.3.0"
+
+toy-rpc = {version = "0.4.5", path = "../..", default-features = false, features = ["std", "serde_bincode", "warp", "tokio"]}
+async-trait = "0.1.42"
+serde = { version = "1.0.123", features = ["derive"] }
+async-std = { version = "1.9.0", features = ["attributes"] }
+
+
+[[bin]]
+name = "server"
+path = "src/bin/server.rs"
+
+[[bin]]
+name = "client"
+path = "src/bin/client.rs" 

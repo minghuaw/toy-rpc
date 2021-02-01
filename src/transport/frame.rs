@@ -1,7 +1,6 @@
 use async_trait::async_trait;
 use bincode::{DefaultOptions, Options};
 use futures::io::{AsyncBufRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
-// use futures::ready;
 use futures::{Sink, Stream};
 use lazy_static::lazy_static;
 use pin_project::pin_project;

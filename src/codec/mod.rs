@@ -1,21 +1,23 @@
 use async_trait::async_trait;
 use erased_serde as erased;
-use futures::{
-    io::{
+use futures::{StreamExt, SinkExt, io::{
         AsyncBufRead, AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt, BufReader, BufWriter,
         ReadHalf, WriteHalf,
-    },
-    stream::{SplitSink, SplitStream},
-};
+    }, stream::{SplitSink, SplitStream}};
 use futures::{Sink, Stream};
 use std::marker::PhantomData;
-use tide_websockets as tide_ws;
 use tungstenite::Message as WsMessage;
+
+#[cfg(all(feature = "tide"))]
+use tide_websockets as tide_ws;
 
 use crate::error::Error;
 use crate::message::{MessageId, Metadata, RequestHeader, ResponseHeader};
-use crate::transport::ws::{CanSink, CannotSink, SinkHalf, StreamHalf, WebSocketConn};
+use crate::transport::ws::{CanSink, SinkHalf, StreamHalf, WebSocketConn};
 use crate::transport::{PayloadRead, PayloadWrite};
+
+#[cfg(all(feature = "tide"))]
+use crate::transport::ws::CannotSink;
 
 #[cfg(any(
     feature = "serde_bincode",
@@ -163,7 +165,7 @@ where
     }
 }
 
-// websocket integration for async_tungstenite, tokio_tungstenite, and warp
+// websocket integration for async_tungstenite, tokio_tungstenite
 impl<S, E>
     Codec<
         StreamHalf<SplitStream<S>, CanSink>,
@@ -185,6 +187,7 @@ where
     }
 }
 
+#[cfg(all(feature = "tide"))]
 // websocket integration with `tide`
 impl
     Codec<
@@ -197,6 +200,29 @@ impl
         ws: WebSocketConn<tide_ws::WebSocketConnection, CannotSink>,
     ) -> Self {
         let (writer, reader) = WebSocketConn::<tide_ws::WebSocketConnection, CannotSink>::split(ws);
+
+        Self {
+            reader,
+            writer,
+            conn_type: PhantomData,
+        }
+    }
+}
+
+#[cfg(all(feature = "warp"))]
+// warp websocket
+impl<S, E>
+    Codec<
+        SplitStream<S>,
+        SplitSink<S, warp::ws::Message>,
+        ConnTypePayload,
+    >
+where
+    S: Stream<Item = Result<warp::ws::Message, E>> + Sink<warp::ws::Message>,
+    E: std::error::Error,
+{
+    pub fn with_warp_websocket(ws: S) -> Self {
+        let (writer, reader) = ws.split();
 
         Self {
             reader,

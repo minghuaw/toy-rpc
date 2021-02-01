@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use super::Server;
 
 #[cfg(any(
@@ -33,4 +35,21 @@ use super::Server;
 /// - `serde_json`
 /// - `serde_cbor`
 /// - `serde_rmp`
-impl Server {}
+impl Server {
+    pub fn warp_websocket_handler(state: Arc<Self>, ws: warp::ws::Ws) -> impl warp::Reply {
+        ws.on_upgrade(|websocket| async move {
+            let codec = super::DefaultCodec::with_warp_websocket(websocket);
+            let services = state.services.clone();
+
+            let fut = Self::_serve_codec(codec, services);
+            match fut.await {
+                Ok(_) => (),
+                Err(e) => log::debug!("{}", e),
+            };
+        })
+    }
+
+    pub fn handler_path() -> &'static str {
+        super::DEFAULT_RPC_PATH
+    }
+}

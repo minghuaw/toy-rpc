@@ -28,9 +28,8 @@ rustdoc-args = ["--cfg", "feature=\"docs\""]
 [features]
 default = [
     "std", 
-    "serde_json",
-    "actix-web",
-    "surf",
+    "serde_bincode",
+    "warp",
 ]
 
 docs = ["default", "actix-web"]
@@ -41,10 +40,6 @@ serde_bincode = []
 serde_rmp = ["rmp-serde"]
 
 [dev-dependencies]
-# async-tungstenite = "0.12.0"
-# url = "2.2"
-# tide-websockets = "0.1.0"
-# tide = {version = "0.15.0", default-features = false, features = ["h1-server"] }
 
 [dependencies]
 # local imports
@@ -56,9 +51,10 @@ serde_json = { version = "1.0", optional = true }
 serde_cbor = { version = "0.11", optional = true }
 rmp-serde = { version = "0.15", optional = true }
 tide = { version = "0.15.1", optional = true }
-surf = { version = "2.1.0", optional = true }
+# surf = { version = "2.1.0", optional = true }
 actix-web = { version = "3.3", optional = true }
 warp = { version = "0.3.0", optional = true }
+tokio = { version = "1.1.1", features = ["rt", "sync"], optional = true }
 
 bincode = { version = "1.3" }
 serde = { version = "1.0", features = ["derive"] }
@@ -80,7 +76,6 @@ actix-web-actors = "3.0.0"
 actix-http = "2.2.0"
 tokio-util = { version = "0.3.1", features = ["codec"] }
 bytes = "1.0.1"
-tokio = { version = "1.1.1", features = ["rt", "sync"], optional = true }
 tokio-stream = "0.1.2"
 actix = "0.10.0"
 
@@ -94,4 +89,5 @@ exclude = [
     "examples/tide_integration",
     "examples/actix_v3_integration",
     "examples/websocket",
+    "examples/warp_integration",
 ]
