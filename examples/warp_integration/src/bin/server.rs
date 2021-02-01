@@ -1,8 +1,6 @@
-use futures::{FutureExt, StreamExt};
 use warp::Filter;
 use async_std::sync::{Arc, Mutex};
 use async_trait::async_trait;
-use tokio::sync::{RwLock};
 
 use toy_rpc::macros::{export_impl, service};
 use toy_rpc::Server;

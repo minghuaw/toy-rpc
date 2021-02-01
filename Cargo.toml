@@ -1,6 +1,6 @@
 [package]
 name = "toy-rpc"
-version = "0.4.5"
+version = "0.5.0-beta.0"
 authors = ["Minghua Wu <michael.wu1107@gmail.com>"]
 edition = "2018"
 description = "An async-std based RPC library that mimics the API of golang net/rpc"
@@ -29,7 +29,6 @@ rustdoc-args = ["--cfg", "feature=\"docs\""]
 default = [
     "std", 
     "serde_bincode",
-    "warp",
 ]
 
 docs = ["default", "actix-web"]

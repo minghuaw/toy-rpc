@@ -2996,7 +2996,7 @@ checksum = "360dfd1d6d30e05fda32ace2c8c70e9c0a9da713275777f5a4dbb8a1893930c6"
 
 [[package]]
 name = "toy-rpc"
-version = "0.4.5"
+version = "0.5.0-beta.0"
 dependencies = [
  "actix",
  "actix-http",
@@ -3013,7 +3013,6 @@ dependencies = [
  "pin-project 1.0.4",
  "serde",
  "tide-websockets",
- "tokio 1.1.1",
  "tokio-stream",
  "tokio-tungstenite",
  "tokio-util 0.3.1",

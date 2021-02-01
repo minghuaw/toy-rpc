@@ -226,6 +226,7 @@ where
         match item {
             Ok(ws::Message::Ping(msg)) => ctx.pong(&msg),
             Ok(ws::Message::Text(text)) => {
+                log::debug!("Received Text message: {}", text);
                 // ctx.text(text)
             },
             Ok(ws::Message::Binary(bin)) => {
