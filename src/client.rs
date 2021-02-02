@@ -16,31 +16,19 @@ use crate::transport::ws::WebSocketConn;
 
 use crate::server::DEFAULT_RPC_PATH;
 
-// #[cfg(feature = "surf")]
-// const CHANNEL_BUF_SIZE: usize = 64;
-
 /// Type state for creating `Client`
 pub struct NotConnected {}
-
 /// Type state for creating `Client`
 pub struct Connected {}
 
 type Codec = Arc<Mutex<Box<dyn ClientCodec>>>;
-
-// #[cfg(feature = "surf")]
-// type Channel = (
-//     UnboundedSender<Vec<u8>>,
-//     UnboundedReceiver<Vec<u8>>,
-// );
-
 type ResponseBody = Box<dyn erased::Deserializer<'static> + Send>;
-
 type ResponseMap = HashMap<u16, oneshot::Sender<Result<ResponseBody, ResponseBody>>>;
 
 /// RPC Client
-pub struct Client<T, Mode> {
+pub struct Client<Mode> {
     count: AtomicMessageId,
-    inner_codec: T,
+    inner_codec: Codec,
     pending: Arc<Mutex<ResponseMap>>,
 
     mode: PhantomData<Mode>,
@@ -78,32 +66,7 @@ pub struct Client<T, Mode> {
 /// - `serde_json`
 /// - `serde_cbor`
 /// - `serde_rmp`
-impl Client<Codec, NotConnected> {
-    /// Creates an RPC `Client` over socket with a specified `async_std::net::TcpStream` and the default codec
-    ///
-    /// This is enabled
-    /// if and only if **exactly one** of the the following feature flag is turned on
-    /// - `serde_bincode`
-    /// - `serde_json`
-    /// - `serde_cbor`
-    /// - `serde_rmp`
-    ///
-    /// # Example
-    /// ```
-    /// use async_std::net::TcpStream;
-    ///
-    /// #[async_std::main]
-    /// async fn main() {
-    ///     let stream = TcpStream::connect("127.0.0.1:8888").await.unwrap();
-    ///     let client = Client::with_stream(stream);
-    /// }
-    /// ```
-    pub fn with_stream(stream: TcpStream) -> Client<Codec, Connected> {
-        let codec = DefaultCodec::new(stream);
-
-        Self::with_codec(codec)
-    }
-
+impl Client<NotConnected> {
     /// Connects the an RPC server over socket at the specified network address
     ///
     /// This is enabled
@@ -125,14 +88,116 @@ impl Client<Codec, NotConnected> {
     /// }
     ///
     /// ```
-    pub async fn dial(addr: impl ToSocketAddrs) -> Result<Client<Codec, Connected>, Error> {
+    pub async fn dial(addr: impl ToSocketAddrs) -> Result<Client<Connected>, Error> {
         let stream = TcpStream::connect(addr).await?;
 
         Ok(Self::with_stream(stream))
     }
+
+    /// Similar to `dial`, this connects to an WebSocket RPC server at the specified network address using the defatul codec
+    ///
+    /// This is enabled
+    /// if and only if **exactly one** of the the following feature flag is turned on
+    /// - `serde_bincode`
+    /// - `serde_json`
+    /// - `serde_cbor`
+    /// - `serde_rmp`
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use toy_rpc::client::Client;
+    /// use toy_rpc::error::Error;
+    ///
+    /// #[async_std::main]
+    /// async fn main() {
+    ///     let addr = "ws://127.0.0.1:8888";
+    ///     let client = Client::dial_http(addr).await.unwrap();
+    /// }
+    /// ```
+    ///
+    pub async fn dial_websocket(addr: &'static str) -> Result<Client<Connected>, Error> {
+        let url = url::Url::parse(addr)?;
+        Self::_dial_websocket(url).await
+    }
+
+    async fn _dial_websocket(url: url::Url) -> Result<Client<Connected>, Error> {
+        let (ws_stream, _) = connect_async(&url).await?;
+        log::debug!("WebSocket handshake has been successfully completed");
+
+        let ws_stream = WebSocketConn::new(ws_stream);
+        let codec = DefaultCodec::with_websocket(ws_stream);
+
+        Ok(Self::with_codec(codec))
+    }
+
+    /// Connects to an HTTP RPC server at the specified network address using WebSocket and the defatul codec
+    ///
+    /// *Warning*: WebSocket is used as the underlying transport protocol starting from version "0.5.0-beta.0",
+    /// and this will make client of versions later than "0.5.0-beta.0" incompatible with servers of versions
+    /// earlier than "0.5.0-beta.0".
+    /// 
+    /// If a network path were to be supplpied, the network path must end with a slash "/". Internally, 
+    /// `DEFAULT_RPC_PATH="_rpc"` is appended to the end of `addr`, and the rest is the same is calling 
+    /// `dial_websocket`.
+    ///
+    /// This is enabled
+    /// if and only if **exactly one** of the the following feature flag is turned on
+    /// - `serde_bincode`
+    /// - `serde_json`
+    /// - `serde_cbor`
+    /// - `serde_rmp`
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use toy_rpc::client::Client;
+    /// use toy_rpc::error::Error;
+    ///
+    /// #[async_std::main]
+    /// async fn main() {
+    ///     let addr = "http://127.0.0.1:8888/rpc/";
+    ///     let client = Client::dial_http(addr).await.unwrap();
+    /// }
+    /// ```
+    ///
+    /// TODO: check if the path ends with a slash
+    /// TODO: try send and recv trait object
+    pub async fn dial_http(addr: &'static str) -> Result<Client<Connected>, Error> {
+        let mut url = url::Url::parse(addr)?.join(DEFAULT_RPC_PATH)?;
+        url.set_scheme("ws")
+            .expect("Failed to change scheme to ws");
+            
+        Self::_dial_websocket(url).await
+    }
+
+    /// Creates an RPC `Client` over socket with a specified `async_std::net::TcpStream` and the default codec
+    ///
+    /// This is enabled
+    /// if and only if **exactly one** of the the following feature flag is turned on
+    /// - `serde_bincode`
+    /// - `serde_json`
+    /// - `serde_cbor`
+    /// - `serde_rmp`
+    ///
+    /// # Example
+    /// ```
+    /// use async_std::net::TcpStream;
+    ///
+    /// #[async_std::main]
+    /// async fn main() {
+    ///     let stream = TcpStream::connect("127.0.0.1:8888").await.unwrap();
+    ///     let client = Client::with_stream(stream);
+    /// }
+    /// ```
+    pub fn with_stream(stream: TcpStream) -> Client<Connected> {
+        let codec = DefaultCodec::new(stream);
+
+        Self::with_codec(codec)
+    }
 }
 
-impl Client<Codec, NotConnected> {
+impl Client<NotConnected> {
     /// Creates an RPC 'Client` over socket with a specified codec
     ///
     /// Example
@@ -150,13 +215,13 @@ impl Client<Codec, NotConnected> {
     ///     let client = Client::with_codec(codec);
     /// }
     /// ```
-    pub fn with_codec<C>(codec: C) -> Client<Codec, Connected>
+    pub fn with_codec<C>(codec: C) -> Client<Connected>
     where
         C: ClientCodec + Send + Sync + 'static,
     {
         let box_codec: Box<dyn ClientCodec> = Box::new(codec);
 
-        Client::<Codec, Connected> {
+        Client::<Connected> {
             count: AtomicMessageId::new(0u16),
             inner_codec: Arc::new(Mutex::new(box_codec)),
             pending: Arc::new(Mutex::new(HashMap::new())),
@@ -166,7 +231,7 @@ impl Client<Codec, NotConnected> {
     }
 }
 
-impl Client<Codec, Connected> {
+impl Client<Connected> {
     /// Invokes the named function and wait synchronously
     ///
     /// This function internally calls `task::block_on` to wait for the response.
@@ -299,13 +364,13 @@ impl Client<Codec, Connected> {
             _pending.insert(id, done_sender);
         }
 
-        Client::<Codec, Connected>::_read_response(_codec.as_mut(), pending).await?;
+        Client::<Connected>::_read_response(_codec.as_mut(), pending).await?;
 
-        Client::<Codec, Connected>::_handle_response(done, &id)
+        Client::<Connected>::_handle_response(done, &id)
     }
 }
 
-impl<T> Client<T, Connected> {
+impl Client<Connected> {
     async fn _read_response(
         codec: &mut dyn ClientCodec,
         pending: Arc<Mutex<ResponseMap>>,
@@ -386,87 +451,5 @@ impl<T> Client<T, Connected> {
                 Err(Error::RpcError(err))
             }
         }
-    }
-}
-
-// #[cfg(any(feature = "surf", feature = "docs"))]
-#[cfg(any(
-    all(
-        feature = "serde_bincode",
-        not(feature = "serde_json"),
-        not(feature = "serde_cbor"),
-        not(feature = "serde_rmp"),
-    ),
-    all(
-        feature = "serde_cbor",
-        not(feature = "serde_json"),
-        not(feature = "serde_bincode"),
-        not(feature = "serde_rmp"),
-    ),
-    all(
-        feature = "serde_json",
-        not(feature = "serde_bincode"),
-        not(feature = "serde_cbor"),
-        not(feature = "serde_rmp"),
-    ),
-    all(
-        feature = "serde_rmp",
-        not(feature = "serde_cbor"),
-        not(feature = "serde_json"),
-        not(feature = "serde_bincode"),
-    )
-))]
-// #[cfg_attr(feature = "docs", doc(cfg(feature = "surf")))]
-/// The following impl block is controlled by feature flag. It is enabled
-/// if and only if **exactly one** of the the following feature flag is turned on
-/// - `serde_bincode`
-/// - `serde_json`
-/// - `serde_cbor`
-/// - `serde_rmp`
-impl Client<Codec, NotConnected> {
-    /// Connects to an HTTP RPC server at the specified network address using the defatul codec
-    ///
-    /// If a network path were to be supplpied, the network path must end with a slash "/"
-    ///
-    /// This is enabled
-    /// if and only if **exactly one** of the the following feature flag is turned on
-    /// - `serde_bincode`
-    /// - `serde_json`
-    /// - `serde_cbor`
-    /// - `serde_rmp`
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// use toy_rpc::client::Client;
-    /// use toy_rpc::error::Error;
-    ///
-    /// #[async_std::main]
-    /// async fn main() {
-    ///     let addr = "http://127.0.0.1:8888/rpc/";
-    ///     let client = Client::dial_http(addr).await.unwrap();
-    /// }
-    /// ```
-    ///
-    /// TODO: check if the path ends with a slash
-    /// TODO: try send and recv trait object
-    pub async fn dial_http(addr: &'static str) -> Result<Client<Codec, Connected>, Error> {
-        let url = url::Url::parse(addr)?.join(DEFAULT_RPC_PATH)?;
-        Self::_dial_websocket(url).await
-    }
-
-    pub async fn dial_websocket(addr: &'static str) -> Result<Client<Codec, Connected>, Error> {
-        let url = url::Url::parse(addr)?;
-        Self::_dial_websocket(url).await
-    }
-
-    async fn _dial_websocket(url: url::Url) -> Result<Client<Codec, Connected>, Error> {
-        let (ws_stream, _) = connect_async(&url).await?;
-        log::debug!("WebSocket handshake has been successfully completed");
-
-        let ws_stream = WebSocketConn::new(ws_stream);
-        let codec = DefaultCodec::with_websocket(ws_stream);
-
-        Ok(Self::with_codec(codec))
     }
 }
