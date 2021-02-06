@@ -6,4 +6,19 @@ edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[[bin]]
+name = "server"
+path = "src/bin/server.rs"
+
+[[bin]]
+name = "client"
+path = "src/bin/client.rs" 
+
 [dependencies]
+tokio = { version = "1.1.1", features = ["rt", "rt-multi-thread", "macros", "net", "sync"] }
+async-trait = "0.1.42"
+env_logger = "0.8.2"
+log = "0.4.14"
+pretty_env_logger = "0.4.0"
+serde = { version = "1.0.123", features = ["derive"] }
+toy-rpc = { version = "0.5.0-beta.0", path = "../..", default-features = false, features = ["std", "serde_bincode", "tokio_runtime"]}
