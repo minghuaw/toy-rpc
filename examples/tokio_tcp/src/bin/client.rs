@@ -56,4 +56,6 @@ async fn main() {
     // different from that of async-std's
     let reply: u32 = handle.await.unwrap().unwrap();
     println!("{:?}", reply);
+
+    client.close().await;
 }

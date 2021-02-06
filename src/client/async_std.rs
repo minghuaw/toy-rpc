@@ -340,6 +340,10 @@ impl Client<Connected> {
         Client::<Connected>::_handle_response(done, &id)
     }
 
+    /// Gracefully shutdown the connection. 
+    ///
+    /// For a WebSocket connection, a Close message will be sent. 
+    /// For a raw TCP connection, the client will simply drop the connection
     pub async fn close(self) {
         let _codec = &mut self.inner_codec.lock().await;
         _codec.close().await;

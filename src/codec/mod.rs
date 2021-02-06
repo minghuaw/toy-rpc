@@ -28,12 +28,29 @@ use crate::transport::ws::CannotSink;
 ))]
 use crate::transport::frame::{Frame, PayloadType};
 
+#[cfg_attr(
+    feature = "docs",
+    doc(any(
+        all(feature = "async_std_runtime", not(feature = "tokio_runtime")),
+        all(feature = "http_tide", not(feature="http_actix_web"), not(feature = "http_warp"))
+    ))
+)]
 #[cfg(any(
     all(feature = "async_std_runtime", not(feature = "tokio_runtime")),
     all(feature = "http_tide", not(feature="http_actix_web"), not(feature = "http_warp"))
 ))]
 mod async_std;
 
+#[cfg_attr(
+    feature = "docs",
+    doc(any(
+        all(feature = "tokio_runtime", not(feature = "async_std_runtime")),
+        all(
+            any(feature = "http_warp", feature = "http_actix_web"),
+            not(feature = "http_tide")
+        )
+    ))
+)]
 #[cfg(any(
     all(feature = "tokio_runtime", not(feature = "async_std_runtime")),
     all(
@@ -42,26 +59,6 @@ mod async_std;
     )
 ))]
 mod tokio;
-
-// #[cfg(all(
-//     any(
-//         feature = "serde_bincode",
-//         feature = "serde_cbor",
-//         feature = "serde_rmp",
-//     ),
-//     feature = "async-std"
-// ))]
-// use crate::transport::frame::async_std::{FrameStreamExt, FrameSinkExt};
-
-// #[cfg(all(
-//     any(
-//         feature = "serde_bincode",
-//         feature = "serde_cbor",
-//         feature = "serde_rmp",
-//     ),
-//     feature = "tokio"
-// ))]
-// use crate::transport::frame::tokio::{FrameStreamExt, FrameSinkExt};
 
 #[cfg(all(
     feature = "serde_bincode",

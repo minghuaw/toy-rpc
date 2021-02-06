@@ -1,5 +1,5 @@
 use futures::{io::{
-        AsyncRead, AsyncReadExt, AsyncWrite, BufReader, BufWriter, ReadHalf,
+        AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt, BufReader, BufWriter, ReadHalf,
         WriteHalf,
     }};
 use crate::GracefulShutdown;
@@ -40,8 +40,15 @@ where
     W: AsyncWrite + Send + Sync + Unpin,
 {
     async fn close(&mut self) {
-        // simply drop the connection
-        // self.writer.close();
+        match self.writer.flush().await {
+            Ok(()) => (),
+            Err(e) => log::error!("Error closing connection: {}", e)
+        };
+
+        match self.writer.close().await {
+            Ok(()) => (),
+            Err(e) => log::error!("Error closing connection: {}", e)
+        };
     }
 }
 

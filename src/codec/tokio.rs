@@ -1,3 +1,4 @@
+use ::tokio::io::AsyncWriteExt;
 use ::tokio::io::{AsyncRead, AsyncWrite, BufReader, BufWriter, ReadHalf, WriteHalf};
 use ::tokio::io::split;
 
@@ -37,8 +38,15 @@ where
     W: AsyncWrite + Send + Sync + Unpin,
 {
     async fn close(&mut self) {
-        // simply drop the connection
-        // self.writer.close();
+        match self.writer.flush().await {
+            Ok(()) => (),
+            Err(e) => log::error!("Error closing connection: {}", e)
+        };
+
+        match self.writer.shutdown().await {
+            Ok(()) => (),
+            Err(e) => log::error!("Error closing connection: {}", e)
+        };
     }
 }
 
