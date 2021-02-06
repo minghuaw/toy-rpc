@@ -81,12 +81,10 @@ async fn main() {
 
     log::info!("Starting server at {}", &addr);
 
-    // server.accept(listener).await.unwrap();
-
     let handle = task::spawn(async move {
         server.accept(listener).await.unwrap();
     });
 
-    handle.await;
-    // task::sleep(std::time::Duration::from_secs(10)).await;
+    // tokio has en extra JoinError
+    handle.await.unwrap();
 }

@@ -15,7 +15,6 @@ use crate::transport::ws::{CanSink, SinkHalf, StreamHalf, WebSocketConn};
 use crate::transport::{PayloadRead, PayloadWrite};
 use crate::{
     error::Error,
-    transport::frame::{FrameRead, FrameWrite},
 };
 
 #[cfg(all(feature = "tide"))]
@@ -26,7 +25,7 @@ use crate::transport::ws::CannotSink;
     feature = "serde_cbor",
     feature = "serde_rmp",
 ))]
-use crate::transport::frame::{Frame, PayloadType};
+use crate::transport::frame::{Frame, PayloadType, FrameRead, FrameWrite};
 
 #[cfg_attr(
     feature = "docs",
