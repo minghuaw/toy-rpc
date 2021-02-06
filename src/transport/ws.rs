@@ -6,13 +6,13 @@ use std::marker::PhantomData;
 use tungstenite::Message as WsMessage;
 
 use super::{PayloadRead, PayloadWrite};
-use crate::error::Error;
+use crate::{GracefulShutdown, error::Error};
 
-#[cfg(all(feature = "tide"))]
+#[cfg(all(feature = "http_tide"))]
 use tide_websockets as tide_ws;
 pub(crate) struct CanSink {}
 
-#[cfg(all(feature = "tide"))]
+#[cfg(all(feature = "http_tide"))]
 pub(crate) struct CannotSink {}
 
 // #[pin_project]
@@ -110,11 +110,29 @@ where
     }
 }
 
+#[async_trait]
+impl<S, E> GracefulShutdown for SinkHalf<S, CanSink>
+where 
+    S: Sink<WsMessage, Error = E> + Send + Sync + Unpin,
+    E: std::error::Error + 'static,
+{
+    async fn close(&mut self) {
+        let msg = WsMessage::Close(None);
+
+        match self.inner
+            .send(msg)
+            .await
+            .map_err(|e| Error::TransportError { msg: e.to_string() }) {
+                Ok(()) => { },
+                Err(e) => log::error!("Error closing WebSocket {}", e.to_string()),
+            };
+    }
+}
 // =============================================================================
 // tide-websockets
 // =============================================================================
 
-#[cfg(all(feature = "tide"))]
+#[cfg(all(feature = "http_tide"))]
 impl WebSocketConn<tide_websockets::WebSocketConnection, CannotSink> {
     pub fn new_without_sink(inner: tide_websockets::WebSocketConnection) -> Self {
         Self {
@@ -141,7 +159,7 @@ impl WebSocketConn<tide_websockets::WebSocketConnection, CannotSink> {
     }
 }
 
-#[cfg(all(feature = "tide"))]
+#[cfg(all(feature = "http_tide"))]
 #[async_trait]
 impl PayloadRead for StreamHalf<tide_websockets::WebSocketConnection, CannotSink> {
     async fn read_payload(&mut self) -> Option<Result<Vec<u8>, Error>> {
@@ -163,7 +181,7 @@ impl PayloadRead for StreamHalf<tide_websockets::WebSocketConnection, CannotSink
     }
 }
 
-#[cfg(all(feature = "tide"))]
+#[cfg(all(feature = "http_tide"))]
 #[async_trait]
 impl PayloadWrite for SinkHalf<tide_websockets::WebSocketConnection, CannotSink> {
     async fn write_payload(&mut self, payload: Vec<u8>) -> Result<(), Error> {
@@ -173,6 +191,15 @@ impl PayloadWrite for SinkHalf<tide_websockets::WebSocketConnection, CannotSink>
             .map_err(|e| Error::TransportError { msg: e.to_string() })
     }
 }
+
+#[cfg(all(feature = "http_tide"))]
+#[async_trait]
+impl GracefulShutdown for SinkHalf<tide_websockets::WebSocketConnection, CannotSink> {
+    async fn close(&mut self) {
+        // tide-websocket does not provide a close method
+
+    }
+} 
 
 // =============================================================================
 // warp::ws::Message
@@ -219,6 +246,25 @@ where
         self.send(msg)
             .await
             .map_err(|e| Error::TransportError { msg: e.to_string() })
+    }
+}
+
+#[cfg(all(feature = "warp"))]
+#[async_trait]
+impl<S, E> GracefulShutdown for S 
+where 
+    S: Sink<warp::ws::Message, Error = E> + Send + Sync + Unpin,
+    E: std::error::Error + 'static,
+{
+    async fn close(&mut self) {
+        let msg = warp::ws::Message::close();
+
+        match self.send(msg)
+            .await
+            .map_err(|e| Error::TransportError { msg: e.to_string() }) {
+                Ok(()) => { },
+                Err(e) => log::error!("Error closing WebSocket {}", e.to_string()),
+            };
     }
 }
 

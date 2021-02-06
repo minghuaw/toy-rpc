@@ -1,11 +1,18 @@
 use async_trait::async_trait;
 
 use crate::error::Error;
+use crate::GracefulShutdown;
 
-#[cfg(any(
-    feature = "serde_bincode",
-    feature = "serde_cbor",
-    feature = "serde_rmp"
+#[cfg(all(
+    any(
+        feature = "serde_bincode",
+        feature = "serde_cbor",
+        feature = "serde_rmp"
+    ),
+    any(
+        feature = "async_std_runtime",
+        feature = "tokio_runtime",
+    )
 ))]
 pub(crate) mod frame;
 
@@ -17,6 +24,6 @@ pub trait PayloadRead {
 }
 
 #[async_trait]
-pub trait PayloadWrite {
+pub trait PayloadWrite: GracefulShutdown {
     async fn write_payload(&mut self, payload: Vec<u8>) -> Result<(), Error>;
 }

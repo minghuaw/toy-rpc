@@ -9,23 +9,38 @@ use crate::service::{
     ArcAsyncServiceCall, AsyncServiceMap, HandleService, HandlerResult, HandlerResultFut,
 };
 
-#[cfg(all(feature = "actix-web"))]
+#[cfg(all(feature = "http_actix_web"))]
 pub mod http_actix_web;
 
-#[cfg(feature = "tide")]
+#[cfg(feature = "http_tide")]
 pub mod http_tide;
 
-#[cfg(all(feature = "warp"))]
+#[cfg(all(feature = "http_warp"))]
 pub mod http_warp;
 
-#[cfg(feature = "async_std_runtime")]
+#[cfg(any(
+    all(feature = "async_std_runtime", not(feature = "tokio_runtime")),
+    all(feature = "http_tide", not(feature="http_actix_web"), not(feature = "http_warp"))
+))]
 pub mod async_std;
 
-#[cfg(feature = "tokio_runtime")]
+#[cfg(any(
+    all(feature = "tokio_runtime", not(feature = "async_std_runtime")),
+    all(
+        any(feature = "http_warp", feature = "http_actix_web"),
+        not(feature = "http_tide")
+    )
+))]
 pub mod tokio;
 
 /// Default RPC path for http handler
 pub const DEFAULT_RPC_PATH: &str = "_rpc_";
+
+#[derive(Debug)]
+pub enum ConnectionStatus {
+    KeepReading,
+    Stop,
+}
 
 /// RPC Server
 ///
@@ -59,7 +74,14 @@ impl Server {
         log::debug!("Start serving codec");
         loop {
             match Self::_serve_codec_once(&mut codec, &services).await {
-                Ok(()) => { },
+                Ok(stat) => { 
+                    match stat {
+                        ConnectionStatus::KeepReading => { },
+                        ConnectionStatus::Stop => {
+                            return Ok(())
+                        }
+                    }
+                },
                 Err(e) => {
                     log::error!("Error encountered serving codec \n{}", e);
                     return Err(e)
@@ -72,7 +94,7 @@ impl Server {
     async fn _serve_codec_once<C>(
         codec: &mut C,
         services: &Arc<AsyncServiceMap>,
-    ) -> Result<(), Error>
+    ) -> Result<ConnectionStatus, Error>
     where
         C: ServerCodec + Send + Sync,
     {
@@ -118,17 +140,10 @@ impl Server {
                 // send back result
                 Self::_send_response(codec, id, res).await?;
 
-                Ok(())
+                Ok(ConnectionStatus::KeepReading)
             },
             None => {
-                Err(
-                    Error::IoError(
-                        std::io::Error::new(
-                            std::io::ErrorKind::ConnectionAborted,
-                            "Connection closed"
-                        )
-                    )
-                )
+                Ok(ConnectionStatus::Stop)
             }
         }
 

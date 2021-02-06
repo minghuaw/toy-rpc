@@ -10,7 +10,7 @@ use tungstenite::Message as WsMessage;
 #[cfg(all(feature = "tide"))]
 use tide_websockets as tide_ws;
 
-use crate::message::{MessageId, Metadata, RequestHeader, ResponseHeader};
+use crate::{GracefulShutdown, message::{MessageId, Metadata, RequestHeader, ResponseHeader}};
 use crate::transport::ws::{CanSink, SinkHalf, StreamHalf, WebSocketConn};
 use crate::transport::{PayloadRead, PayloadWrite};
 use crate::{
@@ -28,10 +28,19 @@ use crate::transport::ws::CannotSink;
 ))]
 use crate::transport::frame::{Frame, PayloadType};
 
-#[cfg(all(feature = "async_std_runtime", not(feature = "tokio_runtime")))]
+#[cfg(any(
+    all(feature = "async_std_runtime", not(feature = "tokio_runtime")),
+    all(feature = "http_tide", not(feature="http_actix_web"), not(feature = "http_warp"))
+))]
 mod async_std;
 
-#[cfg(all(feature = "tokio_runtime", not(feature = "async_std_runtime")))]
+#[cfg(any(
+    all(feature = "tokio_runtime", not(feature = "async_std_runtime")),
+    all(
+        any(feature = "http_warp", feature = "http_actix_web"),
+        not(feature = "http_tide")
+    )
+))]
 mod tokio;
 
 // #[cfg(all(
@@ -164,8 +173,6 @@ pub struct Codec<R, W, C> {
 ))]
 pub use Codec as DefaultCodec;
 
-
-
 // websocket integration for async_tungstenite, tokio_tungstenite
 impl<S, E>
     Codec<
@@ -244,7 +251,7 @@ pub trait ServerCodec: Send + Sync {
 }
 
 #[async_trait]
-pub trait ClientCodec: Send + Sync {
+pub trait ClientCodec: GracefulShutdown + Send + Sync {
     async fn read_response_header(&mut self) -> Option<Result<ResponseHeader, Error>>;
     async fn read_response_body(
         &mut self,
@@ -469,7 +476,7 @@ where
 #[async_trait]
 impl<T> ClientCodec for T
 where
-    T: CodecRead + CodecWrite + Send + Sync,
+    T: CodecRead + CodecWrite + GracefulShutdown + Send + Sync,
 {
     async fn read_response_header(&mut self) -> Option<Result<ResponseHeader, Error>> {
         self.read_header().await
@@ -511,3 +518,4 @@ impl<D> DeserializerOwned<D> {
 pub trait EraseDeserializer {
     fn from_bytes(buf: Vec<u8>) -> Box<dyn erased::Deserializer<'static> + Send>;
 }
+

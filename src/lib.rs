@@ -637,13 +637,21 @@
 //! - unify `call`, `async_call`, and `spawn_task` for raw connection and HTTP connection
 //!
 
-pub mod client;
 pub mod codec;
 pub mod error;
 pub mod message;
 pub mod server;
 pub mod service;
 pub mod transport;
+
+#[cfg(any(
+    feature = "async_std_runtime",
+    feature = "tokio_runtime",
+    feature = "http_tide",
+    feature = "http_warp",
+    feature = "http_actix_web"
+))]
+pub mod client;
 pub mod macros {
     pub(crate) use toy_rpc_macros::impl_inner_deserializer;
     pub use toy_rpc_macros::{export_impl, service};
@@ -655,3 +663,8 @@ pub use server::{Server, ServerBuilder};
 // re-export
 pub use erased_serde;
 pub use lazy_static;
+
+#[async_trait::async_trait]
+pub trait GracefulShutdown {
+    async fn close(&mut self);
+}

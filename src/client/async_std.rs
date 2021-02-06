@@ -339,6 +339,11 @@ impl Client<Connected> {
 
         Client::<Connected>::_handle_response(done, &id)
     }
+
+    pub async fn close(self) {
+        let _codec = &mut self.inner_codec.lock().await;
+        _codec.close().await;
+    }
 }
 
 impl Client<Connected> {

@@ -49,4 +49,6 @@ async fn main() {
     let handle = client.spawn_task("foo_service.get_counter", args);
     let reply: u32 = handle.await.unwrap();
     println!("{:?}", reply);
+
+    client.close().await;
 }

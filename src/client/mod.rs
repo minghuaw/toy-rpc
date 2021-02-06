@@ -13,7 +13,7 @@ use crate::server::DEFAULT_RPC_PATH;
 
 #[cfg(any(
     all(feature = "async_std_runtime", not(feature = "tokio_runtime")),
-    all(feature = "http_ide", not(feature="http_actix_web"), not(feature = "http_warp"))
+    all(feature = "http_tide", not(feature="http_actix_web"), not(feature = "http_warp"))
 ))]
 mod async_std;
 

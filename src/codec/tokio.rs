@@ -29,3 +29,26 @@ where
         Self::with_reader_writer(reader, writer)
     }
 }
+
+#[async_trait]
+impl<R, W> GracefulShutdown for Codec<R, W, ConnTypeReadWrite>
+where 
+    R: AsyncRead + Send + Sync + Unpin,
+    W: AsyncWrite + Send + Sync + Unpin,
+{
+    async fn close(&mut self) {
+        // simply drop the connection
+        // self.writer.close();
+    }
+}
+
+#[async_trait::async_trait]
+impl<R, W> GracefulShutdown for Codec<R, W, ConnTypePayload>
+where  
+    R: Send,
+    W: GracefulShutdown + Send,
+{
+    async fn close(&mut self) {
+        self.writer.close().await;
+    }
+}

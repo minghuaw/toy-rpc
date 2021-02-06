@@ -1,6 +1,7 @@
 use actix_web::{App, HttpResponse, HttpServer, Responder, get, web};
 use async_trait::async_trait;
-use async_std::sync::{Arc, Mutex};
+use std::sync::Arc;
+use tokio::sync::Mutex;
 
 use toy_rpc::macros::{export_impl, service};
 use toy_rpc::Server;
