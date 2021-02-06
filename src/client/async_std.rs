@@ -1,38 +1,10 @@
-use async_std::net::{TcpStream, ToSocketAddrs};
-use async_std::sync::{Arc, Mutex};
-use async_std::task;
-use erased_serde as erased;
-use futures::channel::oneshot;
-use std::collections::HashMap;
-use std::marker::PhantomData;
-use std::sync::atomic::Ordering;
-
+use ::async_std::net::{TcpStream, ToSocketAddrs};
+pub(crate) use ::async_std::sync::Mutex;
+use ::async_std::task;
 use async_tungstenite::async_std::connect_async;
+pub(crate) use futures::channel::oneshot;
 
-use crate::codec::{ClientCodec, DefaultCodec};
-use crate::error::Error;
-use crate::message::{AtomicMessageId, MessageId, RequestHeader, ResponseHeader};
-use crate::transport::ws::WebSocketConn;
-
-use crate::server::DEFAULT_RPC_PATH;
-
-/// Type state for creating `Client`
-pub struct NotConnected {}
-/// Type state for creating `Client`
-pub struct Connected {}
-
-type Codec = Arc<Mutex<Box<dyn ClientCodec>>>;
-type ResponseBody = Box<dyn erased::Deserializer<'static> + Send>;
-type ResponseMap = HashMap<u16, oneshot::Sender<Result<ResponseBody, ResponseBody>>>;
-
-/// RPC Client
-pub struct Client<Mode> {
-    count: AtomicMessageId,
-    inner_codec: Codec,
-    pending: Arc<Mutex<ResponseMap>>,
-
-    mode: PhantomData<Mode>,
-}
+use super::*;
 
 #[cfg(any(
     all(
@@ -136,9 +108,9 @@ impl Client<NotConnected> {
     /// *Warning*: WebSocket is used as the underlying transport protocol starting from version "0.5.0-beta.0",
     /// and this will make client of versions later than "0.5.0-beta.0" incompatible with servers of versions
     /// earlier than "0.5.0-beta.0".
-    /// 
-    /// If a network path were to be supplpied, the network path must end with a slash "/". Internally, 
-    /// `DEFAULT_RPC_PATH="_rpc"` is appended to the end of `addr`, and the rest is the same is calling 
+    ///
+    /// If a network path were to be supplpied, the network path must end with a slash "/". Internally,
+    /// `DEFAULT_RPC_PATH="_rpc"` is appended to the end of `addr`, and the rest is the same is calling
     /// `dial_websocket`.
     ///
     /// This is enabled
@@ -165,9 +137,8 @@ impl Client<NotConnected> {
     /// TODO: try send and recv trait object
     pub async fn dial_http(addr: &'static str) -> Result<Client<Connected>, Error> {
         let mut url = url::Url::parse(addr)?.join(DEFAULT_RPC_PATH)?;
-        url.set_scheme("ws")
-            .expect("Failed to change scheme to ws");
-            
+        url.set_scheme("ws").expect("Failed to change scheme to ws");
+
         Self::_dial_websocket(url).await
     }
 
@@ -396,7 +367,6 @@ impl Client<Connected> {
             // send back response
             let mut _pending = pending.lock().await;
             if let Some(done_sender) = _pending.remove(&id) {
-                #[cfg(feature = "logging")]
                 log::debug!("Sending ResponseBody over oneshot channel {}", &id);
                 done_sender.send(res).map_err(|_| Error::TransportError {
                     msg: format!("Failed to send ResponseBody over oneshot channel {}", &id),
@@ -414,8 +384,7 @@ impl Client<Connected> {
     where
         Res: serde::de::DeserializeOwned,
     {
-        #[cfg(feature = "logging")]
-        log::info!("Received response id: {}", &id);
+        log::debug!("Received response id: {}", &id);
 
         // wait for result from oneshot channel
         let res = match done.try_recv() {
@@ -441,6 +410,7 @@ impl Client<Connected> {
                     source: Box::new(e),
                 })?;
 
+                // upon successful deserializing, an Ok() must be returned
                 Ok(resp)
             }
             Err(mut err_body) => {
@@ -448,6 +418,7 @@ impl Client<Connected> {
                     source: Box::new(e),
                 })?;
 
+                // upon successful deserializing, an Err() must be returned
                 Err(Error::RpcError(err))
             }
         }

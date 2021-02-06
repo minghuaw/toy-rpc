@@ -1,7 +1,7 @@
 use toy_rpc::error::Error;
 use toy_rpc::Client;
 
-use raw_tcp::rpc::{BarRequest, BarResponse, FooRequest, FooResponse};
+use async_std_tcp::rpc::{BarRequest, BarResponse, FooRequest, FooResponse};
 
 #[async_std::main]
 async fn main() {

@@ -228,7 +228,7 @@ where
             Ok(ws::Message::Text(text)) => {
                 log::debug!("Received Text message: {}", text);
                 // ctx.text(text)
-            },
+            }
             Ok(ws::Message::Binary(bin)) => {
                 match self.req_header.take() {
                     None => match C::unmarshal(&bin) {

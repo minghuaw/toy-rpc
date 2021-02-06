@@ -1,17 +1,13 @@
-use async_std::net::{TcpListener, TcpStream};
-use async_std::sync::Arc;
-use async_std::task;
 use erased_serde as erased;
-use futures::StreamExt;
 use std::collections::HashMap;
+use std::sync::Arc;
 
-use crate::codec::{DefaultCodec, ServerCodec};
+use crate::codec::{ServerCodec, DefaultCodec};
 use crate::error::{Error, RpcError};
 use crate::message::{MessageId, RequestHeader, ResponseHeader};
 use crate::service::{
     ArcAsyncServiceCall, AsyncServiceMap, HandleService, HandlerResult, HandlerResultFut,
 };
-use crate::transport::ws::WebSocketConn;
 
 #[cfg(all(feature = "actix-web"))]
 pub mod http_actix_web;
@@ -21,6 +17,12 @@ pub mod http_tide;
 
 #[cfg(all(feature = "warp"))]
 pub mod http_warp;
+
+#[cfg(feature = "async_std_runtime")]
+pub mod async_std;
+
+#[cfg(feature = "tokio_runtime")]
+pub mod tokio;
 
 /// Default RPC path for http handler
 pub const DEFAULT_RPC_PATH: &str = "_rpc_";
@@ -54,12 +56,16 @@ impl Server {
     where
         C: ServerCodec + Send + Sync,
     {
+        log::debug!("Start serving codec");
         loop {
-            Self::_serve_codec_once(&mut codec, &services).await?
+            match Self::_serve_codec_once(&mut codec, &services).await {
+                Ok(()) => { },
+                Err(e) => {
+                    log::error!("Error encountered serving codec \n{}", e);
+                    return Err(e)
+                }
+            }
         }
-
-        #[allow(unreachable_code)]
-        Ok(())
     }
 
     /// Serves using the specified codec only once
@@ -70,49 +76,62 @@ impl Server {
     where
         C: ServerCodec + Send + Sync,
     {
-        if let Some(header) = codec.read_request_header().await {
-            log::debug!("Request header: {:?}", &header);
+        match codec.read_request_header().await {
+            Some(header) => {
+                log::debug!("Request header: {:?}", &header);
+    
+                // destructure header
+                let RequestHeader { id, service_method } = header?;
+                // let service_method = &service_method[..];
+                let pos = service_method
+                    .rfind('.')
+                    .ok_or(Error::RpcError(RpcError::MethodNotFound))?;
+                let service_name = &service_method[..pos];
+                let method_name = service_method[pos + 1..].to_owned();
+    
+                log::debug!(
+                    "Message {}, service: {}, method: {}",
+                    id,
+                    service_name,
+                    method_name
+                );
+    
+                // look up the service
+                // TODO; consider adding a new error type
+                let call: ArcAsyncServiceCall = services
+                    .get(service_name)
+                    .ok_or(Error::RpcError(RpcError::MethodNotFound))?
+                    .clone();
+    
+                // read body
+                let res = {
+                    log::debug!("Reading request body");
+    
+                    let deserializer = codec.read_request_body().await.unwrap()?;
+    
+                    log::debug!("Calling handler");
+    
+                    // pass ownership to the `call`
+                    call(method_name, deserializer).await
+                };
+    
+                // send back result
+                Self::_send_response(codec, id, res).await?;
 
-            // destructure header
-            let RequestHeader { id, service_method } = header?;
-            // let service_method = &service_method[..];
-            let pos = service_method
-                .rfind('.')
-                .ok_or(Error::RpcError(RpcError::MethodNotFound))?;
-            let service_name = &service_method[..pos];
-            let method_name = service_method[pos + 1..].to_owned();
-
-            log::debug!(
-                "Message {}, service: {}, method: {}",
-                id,
-                service_name,
-                method_name
-            );
-
-            // look up the service
-            // TODO; consider adding a new error type
-            let call: ArcAsyncServiceCall = services
-                .get(service_name)
-                .ok_or(Error::RpcError(RpcError::MethodNotFound))?
-                .clone();
-
-            // read body
-            let res = {
-                log::debug!("Reading request body");
-
-                let deserializer = codec.read_request_body().await.unwrap()?;
-
-                log::debug!("Calling handler");
-
-                // pass ownership to the `call`
-                call(method_name, deserializer).await
-            };
-
-            // send back result
-            Self::_send_response(codec, id, res).await?;
+                Ok(())
+            },
+            None => {
+                Err(
+                    Error::IoError(
+                        std::io::Error::new(
+                            std::io::ErrorKind::ConnectionAborted,
+                            "Connection closed"
+                        )
+                    )
+                )
+            }
         }
 
-        Ok(())
     }
 
     /// Sends back the response with the specified codec
@@ -184,169 +203,6 @@ impl Server {
         C: ServerCodec + Send + Sync,
     {
         Self::_serve_codec(codec, self.services.clone()).await
-    }
-}
-
-#[cfg(any(
-    all(
-        feature = "serde_bincode",
-        not(feature = "serde_json"),
-        not(feature = "serde_cbor"),
-        not(feature = "serde_rmp"),
-    ),
-    all(
-        feature = "serde_cbor",
-        not(feature = "serde_json"),
-        not(feature = "serde_bincode"),
-        not(feature = "serde_rmp"),
-    ),
-    all(
-        feature = "serde_json",
-        not(feature = "serde_bincode"),
-        not(feature = "serde_cbor"),
-        not(feature = "serde_rmp"),
-    ),
-    all(
-        feature = "serde_rmp",
-        not(feature = "serde_cbor"),
-        not(feature = "serde_json"),
-        not(feature = "serde_bincode"),
-    ),
-    feature = "docs"
-))]
-/// The following impl block is controlled by feature flag. It is enabled
-/// if and only if **exactly one** of the the following feature flag is turned on
-/// - `serde_bincode`
-/// - `serde_json`
-/// - `serde_cbor`
-/// - `serde_rmp`
-impl Server {
-    /// Accepts connections on the listener and serves requests to default
-    /// server for each incoming connection
-    ///
-    /// This is enabled
-    /// if and only if **exactly one** of the the following feature flag is turned on
-    /// - `serde_bincode`
-    /// - `serde_json`
-    /// - `serde_cbor`
-    /// - `serde_rmp`
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// use async_std::net::TcpListener;
-    ///
-    /// async fn main() {
-    ///     // assume `ExampleService` exist
-    ///     let example_service = ExampleService {};
-    ///     let server = Server::builder()
-    ///         .register("example", service!(example_service, ExampleService))
-    ///         .build();
-    ///
-    ///     let listener = TcpListener::bind(addr).await.unwrap();
-    ///
-    ///     let handle = task::spawn(async move {
-    ///         server.accept(listener).await.unwrap();
-    ///     });
-    ///     handle.await;
-    /// }
-    /// ```
-    ///         
-    /// See `toy-rpc/examples/server_client/` for the example
-    pub async fn accept(&self, listener: TcpListener) -> Result<(), Error> {
-        let mut incoming = listener.incoming();
-
-        while let Some(conn) = incoming.next().await {
-            let stream = conn?;
-
-            // #[cfg(feature = "logging")]
-            log::debug!("Accepting incoming connection from {}", stream.peer_addr()?);
-
-            task::spawn(Self::_serve_conn(stream, self.services.clone()));
-        }
-
-        Ok(())
-    }
-
-    pub async fn accept_websocket(&self, listener: TcpListener) -> Result<(), Error> {
-        let mut incoming = listener.incoming();
-
-        while let Some(conn) = incoming.next().await {
-            let stream = conn?;
-            // #[cfg(feature = "logging")]
-            log::debug!("Accepting incoming connection from {}", stream.peer_addr()?);
-
-            let ws_stream = async_tungstenite::accept_async(stream).await?;
-
-            task::spawn(Self::_serve_websocket(ws_stream, self.services.clone()));
-        }
-
-        unimplemented!()
-    }
-
-    /// Serves a single connection
-    async fn _serve_conn(stream: TcpStream, services: Arc<AsyncServiceMap>) -> Result<(), Error> {
-        // let _stream = stream;
-        let _peer_addr = stream.peer_addr()?;
-
-        // using feature flag controlled default codec
-        let codec = DefaultCodec::new(stream);
-
-        // let fut = task::spawn_blocking(|| Self::_serve_codec(codec, services)).await;
-        let fut = Self::_serve_codec(codec, services);
-
-        #[cfg(feature = "logging")]
-        log::info!("Client disconnected from {}", _peer_addr);
-
-        fut.await
-    }
-
-    /// Serves a single connection using the default codec
-    ///
-    /// This is enabled
-    /// if and only if **exactly one** of the the following feature flag is turned on
-    /// - `serde_bincode`
-    /// - `serde_json`
-    /// - `serde_cbor`
-    /// - `serde_rmp`
-    ///
-    /// Example
-    ///
-    /// ```rust
-    /// use async_std::net::TcpStream;
-    ///
-    /// async fn main() {
-    ///     // assume `ExampleService` exist
-    ///     let example_service = ExampleService {};
-    ///     let server = Server::builder()
-    ///         .register("example", service!(example_service, ExampleService))
-    ///         .build();
-    ///
-    ///     let conn = TcpStream::connect(addr).await.unwrap();
-    ///
-    ///     let handle = task::spawn(async move {
-    ///         server.serve_conn(conn).await.unwrap();
-    ///     });
-    ///     handle.await;
-    /// }
-    /// ```
-    pub async fn serve_conn(&self, stream: TcpStream) -> Result<(), Error> {
-        Self::_serve_conn(stream, self.services.clone()).await
-    }
-
-    async fn _serve_websocket(
-        ws_stream: async_tungstenite::WebSocketStream<TcpStream>,
-        services: Arc<AsyncServiceMap>,
-    ) -> Result<(), Error> {
-        let ws_stream = WebSocketConn::new(ws_stream);
-        let codec = DefaultCodec::with_websocket(ws_stream);
-
-        let fut = Self::_serve_codec(codec, services);
-
-        #[cfg(feature = "logging")]
-        log::info!("Client disconnected");
-
-        fut.await
     }
 }
 

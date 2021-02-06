@@ -150,6 +150,18 @@
 //! the default codec specified by one of the following features tags (`bincode`, `serde_json`)
 //! will be used to transport data.
 //!
+//! ## HTTP integrations
+//!
+//! `toy-rpc` supports integration with `actix-web`, `tide`, and `warp`. The integration is
+//! implemented using WebSocket as the transport protocol.
+//!
+//! `tide`
+//!
+//! ```rust
+//! // assume rpc_server already exist
+//! r
+//! ```
+//!
 //! ## Examples
 //!
 //! A few simple examples are shown below. More examples can be found in the `examples`
@@ -345,7 +357,7 @@
 //! #[async_std::main]
 //! async fn main() {
 //!     // note that the endpoint path must be specified
-//!     let path = "http://127.0.0.1:8888/rpc/";
+//!     let path = "ws://127.0.0.1:8888/rpc/";
 //!     let client = Client::dial_http(path).await.unwrap();
 //!
 //!     let args = ExampleRequest{a: 1};
@@ -357,7 +369,7 @@
 //! ### RPC over HTTP with `actix-web`
 //!
 //! ```toml
-//! toy-rpc = { version = "0.4.4", default-features = false, features = ["std", "serde_bincode", "actix-web", "surf"] }
+//! toy-rpc = { version = "0.5.0", default-features = false, features = ["std", "serde_bincode", "actix-web", "surf"] }
 //! ```
 //!
 //! server.rs
@@ -456,7 +468,7 @@
 //! #[async_std::main]
 //! async fn main() {
 //!     // note that the endpoint path must be specified
-//!     let path = "http://127.0.0.1:8888/rpc/";
+//!     let path = "ws://127.0.0.1:8888/rpc/";
 //!     let client = Client::dial_http(path).await.unwrap();
 //!
 //!     let args = ExampleRequest{a: 1};
@@ -466,6 +478,110 @@
 //!
 //! ```
 //!
+//! ### RPC over HTTP with `warp`
+//!
+//! ```toml
+//! toy-rpc = { version = "0.5.0", default-features = false, features = ["std", "serde_bincode", "warp"] }
+//! ```
+//!
+//! server.rs
+//!
+//! ```rust
+//! use warp::Filter;
+//! use async_std::sync::{Arc, Mutex};
+//! use serde::{Serialize, Deserialize};
+//! use actix_web::{App, HttpServer, web};
+//!
+//! use toy_rpc::macros::{export_impl, service};
+//! use toy_rpc::Server;
+//!
+//!
+//! pub struct ExampleService {
+//!     counter: Mutex<i32>
+//! }
+//!
+//! #[derive(Debug, Serialize, Deserialize)]
+//! pub struct ExampleRequest {
+//!     pub a: u32,
+//! }
+//!
+//! #[derive(Debug, Serialize, Deserialize)]
+//! pub struct ExampleResponse {
+//!     a: u32,
+//! }
+//!
+//! #[async_trait::async_trait]
+//! trait Rpc {
+//!     async fn echo(&self, req: ExampleRequest) -> Result<ExampleResponse, String>;
+//! }
+//!
+//! #[async_trait::async_trait]
+//! #[export_impl]
+//! impl Rpc for ExampleService {
+//!     #[export_method]
+//!     async fn echo(&self, req: ExampleRequest) -> Result<ExampleResponse, String> {
+//!         let mut counter = self.counter.lock().await;
+//!         *counter += 1;
+//!
+//!         let res = ExampleResponse{ a: req.a };
+//!         Ok(res)
+//!     }
+//! }
+//!
+//! #[tokio::main]
+//! async fn main() -> std::io::Result<()> {
+//!     let example_service = Arc::new(
+//!         ExampleService {
+//!             counter: Mutex::new(0),
+//!         }
+//!     );
+//!
+//!     let server = Server::builder()
+//!         .register("example", service!(example_service, ExampleService))
+//!         .build();
+//!
+//!     let state = warp::any().map(move || server.clone());
+//!     let rpc_route = warp::path(Server::handler_path())
+//!         .and(state)
+//!         .and(warp::ws())
+//!         .map(Server::warp_websocket_handler);
+//!     let routes = warp::path("rpc")
+//!         .and(rpc_route);
+//!
+//!     warp::serve(routes).run([127.0.0.1], 8888).await;
+//! }
+//!
+//! ```
+//!
+//! client.rs
+//!
+//! ```rust
+//! use serde::{Serialize, Deserialize};
+//! use toy_rpc::Client;
+//! use toy_rpc::error::Error;
+//!
+//! #[derive(Debug, Serialize, Deserialize)]
+//! struct ExampleRequest {
+//!     a: u32
+//! }
+//!
+//! #[derive(Debug, Serialize, Deserialize)]
+//! struct ExampleResponse {
+//!     a: u32
+//! }
+//!
+//! #[async_std::main]
+//! async fn main() {
+//!     // note that the endpoint path must be specified
+//!     let path = "ws://127.0.0.1:8888/rpc/";
+//!     let client = Client::dial_http(path).await.unwrap();
+//!
+//!     let args = ExampleRequest{a: 1};
+//!     let reply: Result<ExampleResponse, Error> = client.call("example.echo", &args);
+//!     println!("{:?}", reply);
+//! }
+//!
+//! ```
 //! ## Change Log
 //!
 //! ### 0.4.5

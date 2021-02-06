@@ -103,8 +103,7 @@ impl Server {
 
                     let fut = Self::_serve_codec(codec, services);
 
-                    #[cfg(feature = "logging")]
-                    log::info!("Client disconnected from {}", _peer_addr);
+                    log::debug!("Client disconnected from");
 
                     fut.await?;
                     Ok(())

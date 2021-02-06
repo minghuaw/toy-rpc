@@ -1,5 +1,5 @@
 [package]
-name = "raw_tcp"
+name = "async_std_tcp"
 version = "0.1.0"
 authors = ["minghuaw <michael.wu1107@gmail.com>"]
 edition = "2018"
@@ -20,5 +20,11 @@ async-trait = "0.1.42"
 env_logger = "0.8.2"
 futures = "0.3.12"
 log = "0.4.14"
+pretty_env_logger = "0.4.0"
 serde = { version = "1.0.123", features = ["derive"] }
-toy-rpc = { version = "0.5.0-beta.0", path = "../..", features = ["std", "serde_bincode"]}
+toy-rpc = { version = "0.5.0-beta.0", path = "../..", default-features = false, features = ["std", "serde_bincode", "async_std_runtime"]}
+
+# [dependecies.toy-rpc]
+# path = "../.."
+# default-features = false 
+# features = ["std", "serde_bincode", "async_std_runtime"]

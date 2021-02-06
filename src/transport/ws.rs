@@ -182,7 +182,7 @@ impl PayloadWrite for SinkHalf<tide_websockets::WebSocketConnection, CannotSink>
 #[cfg(all(feature = "warp"))]
 #[async_trait]
 impl<S, E> PayloadRead for S
-where 
+where
     S: Stream<Item = Result<warp::ws::Message, E>> + Send + Sync + Unpin,
     E: std::error::Error + 'static,
 {
@@ -194,7 +194,7 @@ where
                 if m.is_close() {
                     return None;
                 } else if m.is_binary() {
-                    return Some(Ok(m.into_bytes()))
+                    return Some(Ok(m.into_bytes()));
                 }
                 Some(Err(Error::TransportError {
                     msg: "Expecting WebSocket::Message::Binary, but found something else"
@@ -208,7 +208,7 @@ where
 #[cfg(all(feature = "warp"))]
 #[async_trait]
 impl<S, E> PayloadWrite for S
-where 
+where
     S: Sink<warp::ws::Message, Error = E> + Send + Sync + Unpin,
     E: std::error::Error + 'static,
 {
@@ -263,7 +263,6 @@ mod tests {
     #[test]
     fn new_websocketconn() {
         async_std::task::block_on(test_new_on_async_tungstenite());
-        async_std::task::block_on(test_new_on_tokio_tungstenite());
         // async_std::task::block_on(test_new_on_tide_websockets());
     }
 
@@ -278,16 +277,5 @@ mod tests {
         let conn = WebSocketConn::new(ws_stream);
 
         let (_writer, _reader) = conn.split();
-    }
-
-    async fn test_new_on_tokio_tungstenite() {
-        let stream = std::io::Cursor::new(vec![1, 2, 3]);
-        let ws_stream = tokio_tungstenite::WebSocketStream::from_raw_socket(
-            stream,
-            tungstenite::protocol::Role::Server,
-            None,
-        )
-        .await;
-        let _ = WebSocketConn::new(ws_stream);
     }
 }

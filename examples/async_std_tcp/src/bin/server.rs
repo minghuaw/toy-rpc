@@ -6,8 +6,8 @@ use async_trait::async_trait;
 use toy_rpc::macros::{export_impl, service};
 use toy_rpc::Server;
 
-use raw_tcp::rpc;
-use raw_tcp::rpc::{BarService, FooRequest, FooResponse, Rpc};
+use async_std_tcp::rpc;
+use async_std_tcp::rpc::{BarService, FooRequest, FooResponse, Rpc};
 
 pub struct FooService {
     counter: Mutex<u32>,
@@ -63,7 +63,7 @@ impl Rpc for FooService {
 
 #[async_std::main]
 async fn main() {
-    env_logger::init();
+    pretty_env_logger::init();
 
     let addr = "127.0.0.1:23333";
     let foo_service = Arc::new(FooService {

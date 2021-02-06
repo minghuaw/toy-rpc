@@ -1,9 +1,8 @@
 use async_trait::async_trait;
 use erased_serde as erased;
-use futures::{StreamExt, SinkExt, io::{
-        AsyncBufRead, AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt, BufReader, BufWriter,
-        ReadHalf, WriteHalf,
-    }, stream::{SplitSink, SplitStream}};
+use futures::{
+    stream::{SplitSink, SplitStream},
+};
 use futures::{Sink, Stream};
 use std::marker::PhantomData;
 use tungstenite::Message as WsMessage;
@@ -11,10 +10,13 @@ use tungstenite::Message as WsMessage;
 #[cfg(all(feature = "tide"))]
 use tide_websockets as tide_ws;
 
-use crate::error::Error;
 use crate::message::{MessageId, Metadata, RequestHeader, ResponseHeader};
 use crate::transport::ws::{CanSink, SinkHalf, StreamHalf, WebSocketConn};
 use crate::transport::{PayloadRead, PayloadWrite};
+use crate::{
+    error::Error,
+    transport::frame::{FrameRead, FrameWrite},
+};
 
 #[cfg(all(feature = "tide"))]
 use crate::transport::ws::CannotSink;
@@ -22,11 +24,35 @@ use crate::transport::ws::CannotSink;
 #[cfg(any(
     feature = "serde_bincode",
     feature = "serde_cbor",
-    feature = "serde_rmp"
+    feature = "serde_rmp",
 ))]
-use crate::transport::frame::{
-    Frame, FrameRead, FrameSinkExt, FrameStreamExt, FrameWrite, PayloadType,
-};
+use crate::transport::frame::{Frame, PayloadType};
+
+#[cfg(all(feature = "async_std_runtime", not(feature = "tokio_runtime")))]
+mod async_std;
+
+#[cfg(all(feature = "tokio_runtime", not(feature = "async_std_runtime")))]
+mod tokio;
+
+// #[cfg(all(
+//     any(
+//         feature = "serde_bincode",
+//         feature = "serde_cbor",
+//         feature = "serde_rmp",
+//     ),
+//     feature = "async-std"
+// ))]
+// use crate::transport::frame::async_std::{FrameStreamExt, FrameSinkExt};
+
+// #[cfg(all(
+//     any(
+//         feature = "serde_bincode",
+//         feature = "serde_cbor",
+//         feature = "serde_rmp",
+//     ),
+//     feature = "tokio"
+// ))]
+// use crate::transport::frame::tokio::{FrameStreamExt, FrameSinkExt};
 
 #[cfg(all(
     feature = "serde_bincode",
@@ -138,32 +164,7 @@ pub struct Codec<R, W, C> {
 ))]
 pub use Codec as DefaultCodec;
 
-impl<R, W> Codec<R, W, ConnTypeReadWrite>
-where
-    R: AsyncBufRead + Send + Sync + Unpin,
-    W: AsyncWrite + AsyncWriteExt + Send + Sync + Unpin,
-{
-    pub fn with_reader_writer(reader: R, writer: W) -> Self {
-        Self {
-            reader,
-            writer,
-            conn_type: PhantomData,
-        }
-    }
-}
 
-impl<T> Codec<BufReader<ReadHalf<T>>, BufWriter<WriteHalf<T>>, ConnTypeReadWrite>
-where
-    T: AsyncRead + AsyncWrite + Send + Sync + Unpin,
-{
-    pub fn new(stream: T) -> Self {
-        let (reader, writer) = stream.split();
-        let reader = BufReader::new(reader);
-        let writer = BufWriter::new(writer);
-
-        Self::with_reader_writer(reader, writer)
-    }
-}
 
 // websocket integration for async_tungstenite, tokio_tungstenite
 impl<S, E>
@@ -211,12 +212,7 @@ impl
 
 #[cfg(all(feature = "warp"))]
 // warp websocket
-impl<S, E>
-    Codec<
-        SplitStream<S>,
-        SplitSink<S, warp::ws::Message>,
-        ConnTypePayload,
-    >
+impl<S, E> Codec<SplitStream<S>, SplitSink<S, warp::ws::Message>, ConnTypePayload>
 where
     S: Stream<Item = Result<warp::ws::Message, E>> + Sink<warp::ws::Message>,
     E: std::error::Error,
@@ -303,8 +299,7 @@ where
 
         Some(
             reader
-                .frame_stream()
-                .next()
+                .read_frame()
                 .await?
                 .and_then(|frame| Self::unmarshal(&frame.payload)),
         )
@@ -315,7 +310,7 @@ where
     ) -> Option<Result<Box<dyn erased::Deserializer<'static> + Send + 'static>, Error>> {
         let reader = &mut self.reader;
 
-        match reader.frame_stream().next().await? {
+        match reader.read_frame().await? {
             Ok(frame) => {
                 // log::debug!("frame: {:?}", frame);
                 let de = Self::from_bytes(frame.payload);
@@ -334,8 +329,8 @@ where
 #[async_trait]
 impl<R, W> CodecWrite for Codec<R, W, ConnTypeReadWrite>
 where
-    R: AsyncBufRead + Send + Sync + Unpin,
-    W: AsyncWrite + AsyncWriteExt + Send + Sync + Unpin,
+    R: FrameRead + Send + Sync + Unpin,
+    W: FrameWrite + Send + Sync + Unpin,
 {
     async fn write_header<H>(&mut self, header: H) -> Result<(), Error>
     where
@@ -348,7 +343,7 @@ where
         let frame = Frame::new(id, 0, PayloadType::Header, buf);
 
         log::trace!("Header id: {} sent", &id);
-        writer.frame_sink().send(frame).await
+        writer.write_frame(frame).await
     }
 
     async fn write_body(
@@ -363,7 +358,7 @@ where
 
         log::trace!("Body id: {} sent", id);
 
-        writer.frame_sink().send(frame).await
+        writer.write_frame(frame).await
     }
 }
 
