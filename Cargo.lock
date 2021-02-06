@@ -3153,7 +3153,7 @@ checksum = "e987b6bf443f4b5b3b6f38704195592cca41c5bb7aedd3c3693c7081f8289860"
 
 [[package]]
 name = "toy-rpc"
-version = "0.5.0-beta.0"
+version = "0.5.0-beta.1"
 dependencies = [
  "actix",
  "actix-http",

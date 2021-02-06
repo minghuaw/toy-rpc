@@ -4,7 +4,7 @@ use toy_rpc::error::Error;
 
 use actix_v3_integration::rpc::{BarRequest, BarResponse, FooRequest, FooResponse};
 
-#[async_std::main]
+#[tokio::main]
 async fn main() {
     env_logger::init();
 
@@ -19,7 +19,7 @@ async fn main() {
     println!("{:?}", reply);
 
     let handle = client.spawn_task("foo_service.increment_b", args);
-    let reply: Result<FooResponse, Error> = handle.await;
+    let reply: Result<FooResponse, Error> = handle.await.unwrap();
     println!("{:?}", reply);
 
     // third request, bar echo
@@ -36,6 +36,6 @@ async fn main() {
     // third request, get_counter
     let args = ();
     let handle = client.spawn_task("foo_service.get_counter", args);
-    let reply: u32 = handle.await.unwrap();
+    let reply: u32 = handle.await.unwrap().unwrap();
     println!("{:?}", reply);
 }

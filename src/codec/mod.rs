@@ -188,7 +188,7 @@ where
     }
 }
 
-#[cfg(all(feature = "tide"))]
+#[cfg(all(feature = "http_tide"))]
 // websocket integration with `tide`
 impl
     Codec<
@@ -210,14 +210,15 @@ impl
     }
 }
 
-#[cfg(all(feature = "warp"))]
+#[cfg(all(feature = "http_warp"))]
 // warp websocket
 impl<S, E> Codec<SplitStream<S>, SplitSink<S, warp::ws::Message>, ConnTypePayload>
 where
     S: Stream<Item = Result<warp::ws::Message, E>> + Sink<warp::ws::Message>,
     E: std::error::Error,
 {
-    pub fn with_warp_websocket(ws: S) -> Self {
+    pub fn with_warp_websocket(ws: S) -> Self { 
+        use futures::StreamExt;
         let (writer, reader) = ws.split();
 
         Self {

@@ -229,9 +229,12 @@ impl Client<Connected> {
         Req: serde::Serialize + Send + Sync,
         Res: serde::de::DeserializeOwned,
     {
-        let rt = ::tokio::runtime::Runtime::new()
-            .expect("Unable to start tokio multithreaded runtime");
-        rt.block_on(self.async_call(service_method, args))
+        task::block_in_place(|| {
+            let res= futures::executor::block_on(
+                self.async_call(service_method, args)
+            );
+            res
+        })
     }
 
     /// Invokes the named function asynchronously by spawning a new task and returns the `JoinHandle`

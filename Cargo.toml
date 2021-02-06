@@ -1,6 +1,6 @@
 [package]
 name = "toy-rpc"
-version = "0.5.0-beta.0"
+version = "0.5.0-beta.1"
 authors = ["Minghua Wu <michael.wu1107@gmail.com>"]
 edition = "2018"
 description = "An async-std based RPC library that mimics the API of golang net/rpc"
@@ -8,7 +8,7 @@ license = "MIT/Apache-2.0"
 documentation = "https://docs.rs/toy-rpc/0.4.4/toy_rpc/"
 homepage = "https://github.com/minghuaw/toy-rpc"
 repository = "https://github.com/minghuaw/toy-rpc"
-keywords = ["async", "rpc", "go", "golang", "async-std"]
+keywords = ["async", "rpc", "go", "golang", "async-std", "tokio"]
 categories = ["network-programming", "asynchronous"]
 readme = "Readme.md"
 exclude = [
@@ -29,13 +29,12 @@ rustdoc-args = ["--cfg", "feature=\"docs\""]
 default = [
     "std", 
     "serde_bincode",
-    "async_std_runtime"
+    "http_warp"
 ]
 
 docs = ["default", "actix-web"]
 
 std = ["serde/std"]
-logging = []
 serde_bincode = []
 serde_rmp = ["rmp-serde"]
 tokio_runtime = ["tokio", "async-tungstenite/tokio-runtime", "tokio-stream"]

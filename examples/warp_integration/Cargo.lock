@@ -640,11 +640,11 @@ version = "0.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e00550829ef8e2c4115250d0ee43305649b0fa95f78a32ce5b07da0b73d95c5c"
 dependencies = [
- "async-std",
  "futures-io",
  "futures-util",
  "log",
  "pin-project-lite 0.2.4",
+ "tokio 1.1.1",
  "tungstenite 0.12.0",
 ]
 
@@ -2996,12 +2996,11 @@ checksum = "360dfd1d6d30e05fda32ace2c8c70e9c0a9da713275777f5a4dbb8a1893930c6"
 
 [[package]]
 name = "toy-rpc"
-version = "0.5.0-beta.0"
+version = "0.5.0-beta.1"
 dependencies = [
  "actix",
  "actix-http",
  "actix-web-actors",
- "async-std",
  "async-trait",
  "async-tungstenite 0.12.0",
  "bincode",
@@ -3013,8 +3012,8 @@ dependencies = [
  "pin-project 1.0.4",
  "serde",
  "tide-websockets",
+ "tokio 1.1.1",
  "tokio-stream",
- "tokio-tungstenite",
  "tokio-util 0.3.1",
  "toy-rpc-macros",
  "tungstenite 0.12.0",
