@@ -1,15 +1,15 @@
 use async_trait::async_trait;
-use futures::{Sink, SinkExt, Stream, StreamExt};
 use cfg_if::cfg_if;
 use futures::stream::{SplitSink, SplitStream};
+use futures::{Sink, SinkExt, Stream, StreamExt};
 use tungstenite::Message as WsMessage;
 
 use std::marker::PhantomData;
 
 use super::{PayloadRead, PayloadWrite};
-use crate::{GracefulShutdown, error::Error};
+use crate::{error::Error, GracefulShutdown};
 
-cfg_if!{
+cfg_if! {
     if #[cfg(feature = "http_tide")] {
         pub(crate) struct CannotSink {}
         mod tide_ws;
@@ -35,7 +35,6 @@ pub struct SinkHalf<S, Mode> {
     inner: S,
     can_sink: PhantomData<Mode>,
 }
-
 
 impl<S, E> WebSocketConn<S, CanSink>
 where
@@ -112,19 +111,21 @@ where
 
 #[async_trait]
 impl<S, E> GracefulShutdown for SinkHalf<S, CanSink>
-where 
+where
     S: Sink<WsMessage, Error = E> + Send + Sync + Unpin,
     E: std::error::Error + 'static,
 {
     async fn close(&mut self) {
         let msg = WsMessage::Close(None);
 
-        match self.inner
+        match self
+            .inner
             .send(msg)
             .await
-            .map_err(|e| Error::TransportError { msg: e.to_string() }) {
-                Ok(()) => { },
-                Err(e) => log::error!("Error closing WebSocket {}", e.to_string()),
-            };
+            .map_err(|e| Error::TransportError { msg: e.to_string() })
+        {
+            Ok(()) => {}
+            Err(e) => log::error!("Error closing WebSocket {}", e.to_string()),
+        };
     }
 }

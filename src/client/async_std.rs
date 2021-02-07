@@ -1,6 +1,6 @@
-use cfg_if::cfg_if;
-use ::async_std::task;
 pub(crate) use ::async_std::sync::Mutex;
+use ::async_std::task;
+use cfg_if::cfg_if;
 pub(crate) use futures::channel::oneshot;
 
 use super::*;
@@ -211,9 +211,6 @@ cfg_if! {
 
 }
 
-
-
-
 impl Client<Connected> {
     /// Invokes the named function and wait synchronously
     ///
@@ -352,9 +349,9 @@ impl Client<Connected> {
         Client::<Connected>::_handle_response(done, &id)
     }
 
-    /// Gracefully shutdown the connection. 
+    /// Gracefully shutdown the connection.
     ///
-    /// For a WebSocket connection, a Close message will be sent. 
+    /// For a WebSocket connection, a Close message will be sent.
     /// For a raw TCP connection, the client will simply drop the connection
     pub async fn close(self) {
         let _codec = &mut self.inner_codec.lock().await;

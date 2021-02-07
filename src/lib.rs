@@ -1,5 +1,4 @@
 #![cfg_attr(feature = "docs", feature(doc_cfg))]
-
 // non-builtin inner attribute is not stable
 // #![cfg_attr(
 //     any(
@@ -8,7 +7,7 @@
 //         feature = "http_tide",
 //         feature = "http_warp",
 //         feature = "http_actix_web"
-//     ), 
+//     ),
 //     any_runtime
 // )]
 
@@ -655,7 +654,7 @@ pub mod message;
 pub mod service;
 pub mod transport;
 
-cfg_if::cfg_if!{
+cfg_if::cfg_if! {
     if #[cfg(any(
         feature = "async_std_runtime",
         feature = "tokio_runtime",
@@ -669,12 +668,12 @@ cfg_if::cfg_if!{
 
         pub use client::Client;
         pub use server::{Server, ServerBuilder};
-    } 
+    }
 }
 
 pub mod macros {
     pub use toy_rpc_macros::{export_impl, service};
-    
+
     #[cfg(all(
         any(
             feature = "serde_bincode",

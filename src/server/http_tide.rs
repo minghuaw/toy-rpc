@@ -1,10 +1,10 @@
-use tide_websockets as tide_ws;
 use cfg_if::cfg_if;
+use tide_websockets as tide_ws;
 
 use super::Server;
 use crate::transport::ws::WebSocketConn;
 
-cfg_if!{
+cfg_if! {
     if #[cfg(any(
         all(
             feature = "serde_bincode",
@@ -79,7 +79,7 @@ cfg_if!{
             ///     let server = Server::builder()
             ///         .register("foo", service!(foo_service, FooService))
             ///         .build();
-            ///     
+            ///
             ///     let mut app = tide::new();
             ///
             ///     // If a network path were to be supplied,
@@ -120,16 +120,16 @@ cfg_if!{
 
             #[cfg(any(
                 all(
-                    feature = "http_tide", 
-                    not(feature = "http_actix_web"), 
+                    feature = "http_tide",
+                    not(feature = "http_actix_web"),
                     not(feature = "http_warp"),
-                ), 
+                ),
                 feature = "docs"
             ))]
             #[cfg_attr(
                 feature = "docs",
                 doc(cfg(all(
-                    feature = "http_tide", 
+                    feature = "http_tide",
                     not(feature = "http_actix_web"),
                     not(feature = "http_warp"),
                 )))
@@ -171,7 +171,7 @@ cfg_if!{
             ///     let server = Server::builder()
             ///         .register("foo", service!(foo_service, FooService))
             ///         .build();
-            ///     
+            ///
             ///     let mut app = tide::new();
             ///
             ///     // If a network path were to be supplied,
@@ -190,6 +190,3 @@ cfg_if!{
         }
     }
 }
-
-
-

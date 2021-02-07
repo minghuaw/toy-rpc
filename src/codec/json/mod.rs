@@ -1,8 +1,8 @@
 use async_trait::async_trait;
+use cfg_if::cfg_if;
 use erased_serde as erased;
 use serde::de::Visitor;
 use std::io::Cursor; // serde doesn't support AsyncRead
-use cfg_if::cfg_if;
 
 use super::{
     Codec, CodecRead, CodecWrite, DeserializerOwned, EraseDeserializer, Marshal, Unmarshal,
@@ -15,13 +15,13 @@ use super::ConnTypeReadWrite;
 
 cfg_if! {
     if #[cfg(any(
-        feature = "async_std_runtime", 
+        feature = "async_std_runtime",
         feature = "http_tide"
     ))] {
         mod async_std;
     } else if #[cfg(any(
-        feature = "tokio_runtime", 
-        feature = "http_warp", 
+        feature = "tokio_runtime",
+        feature = "http_warp",
         feature = "http_actix_web"
     ))] {
         mod tokio;

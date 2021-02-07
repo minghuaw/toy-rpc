@@ -1,8 +1,6 @@
-
 use cfg_if::cfg_if;
 
-
-cfg_if!{
+cfg_if! {
     if #[cfg(any(
         all(
             feature = "serde_bincode",
@@ -41,7 +39,7 @@ cfg_if!{
         use crate::codec::DefaultCodec;
 
         use super::{AsyncServiceMap, Server};
-                
+
         /// The following impl block is controlled by feature flag. It is enabled
         /// if and only if **exactly one** of the the following feature flag is turned on
         /// - `serde_bincode`
@@ -80,7 +78,7 @@ cfg_if!{
             ///     handle.await;
             /// }
             /// ```
-            ///         
+            ///
             /// See `toy-rpc/examples/rap_tcp/` for the example
             pub async fn accept(&self, listener: TcpListener) -> Result<(), Error> {
                 let mut incoming = tokio_stream::wrappers::TcpListenerStream::new(listener);
@@ -208,4 +206,3 @@ cfg_if!{
 
     }
 }
-

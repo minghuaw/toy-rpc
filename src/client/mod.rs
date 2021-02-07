@@ -1,15 +1,15 @@
+use cfg_if::cfg_if;
 use erased_serde as erased;
 use std::collections::HashMap;
 use std::marker::PhantomData;
-use std::sync::Arc;
 use std::sync::atomic::Ordering;
-use cfg_if::cfg_if;
+use std::sync::Arc;
 
-use crate::codec::{ClientCodec};
+use crate::codec::ClientCodec;
 use crate::error::Error;
 use crate::message::{AtomicMessageId, MessageId, RequestHeader, ResponseHeader};
 
-cfg_if!{
+cfg_if! {
     if #[cfg(feature = "serde_bincode")] {
         use crate::codec::DefaultCodec;
     } else if #[cfg(feature = "serde_json")] {
@@ -23,7 +23,7 @@ cfg_if!{
 
 cfg_if! {
     if #[cfg(any(
-        feature = "async_std_runtime", 
+        feature = "async_std_runtime",
         feature = "http_tide"
     ))] {
         #[cfg_attr(
@@ -36,8 +36,8 @@ cfg_if! {
         mod async_std;
         use crate::client::async_std::{Mutex, oneshot};
     } else if #[cfg(any(
-        feature = "tokio_runtime", 
-        feature = "http_warp", 
+        feature = "tokio_runtime",
+        feature = "http_warp",
         feature = "http_actix_web"
     ))] {
         #[cfg_attr(

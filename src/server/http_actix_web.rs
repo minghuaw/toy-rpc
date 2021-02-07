@@ -1,5 +1,5 @@
-use std::marker::PhantomData;
 use cfg_if::cfg_if;
+use std::marker::PhantomData;
 
 use actix::{Actor, AsyncContext, ContextFutureSpawner, StreamHandler, WrapFuture};
 use actix_web::{web, HttpRequest, HttpResponse};
@@ -186,10 +186,7 @@ where
     }
 }
 
-
-
-
-cfg_if!{
+cfg_if! {
     if #[cfg(any(
         all(
             feature = "serde_bincode",
@@ -216,7 +213,7 @@ cfg_if!{
             not(feature = "serde_bincode"),
         ),
         feature = "docs"
-    ))] { 
+    ))] {
         use crate::codec::DefaultCodec;
 
         async fn index(
@@ -274,7 +271,7 @@ cfg_if!{
             /// #[actix::main]
             /// async fn main() -> std::io::Result<()> {
             ///     let addr = "127.0.0.1:8888";
-            ///     
+            ///
             ///     let foo_service = Arc::new(FooService { });
             ///
             ///     let server = Server::builder()
@@ -346,7 +343,7 @@ cfg_if!{
             /// #[actix::main]
             /// async fn main() -> std::io::Result<()> {
             ///     let addr = "127.0.0.1:8888";
-            ///     
+            ///
             ///     let foo_service = Arc::new(FooService { });
             ///
             ///     let server = Server::builder()
@@ -377,4 +374,3 @@ cfg_if!{
         }
     }
 }
-

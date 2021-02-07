@@ -1,20 +1,19 @@
 use async_trait::async_trait;
 use cfg_if::cfg_if;
 use erased_serde as erased;
-use futures::{
-    stream::{SplitSink, SplitStream},
-};
+use futures::stream::{SplitSink, SplitStream};
 use futures::{Sink, Stream};
 use std::marker::PhantomData;
 use tungstenite::Message as WsMessage;
 
-use crate::{GracefulShutdown, message::{MessageId, Metadata, RequestHeader, ResponseHeader}};
+use crate::error::Error;
 use crate::transport::ws::{CanSink, SinkHalf, StreamHalf, WebSocketConn};
 use crate::{
-    error::Error,
+    message::{MessageId, Metadata, RequestHeader, ResponseHeader},
+    GracefulShutdown,
 };
 
-cfg_if!{
+cfg_if! {
     if #[cfg(feature = "http_tide")] {
         use tide_websockets as tide_ws;
         use crate::transport::ws::CannotSink;
@@ -23,7 +22,7 @@ cfg_if!{
 
 cfg_if! {
     if #[cfg(any(
-        feature = "async_std_runtime", 
+        feature = "async_std_runtime",
         feature = "http_tide"
     ))] {
         #[cfg_attr(
@@ -35,8 +34,8 @@ cfg_if! {
         )]
         mod async_std;
     } else if #[cfg(any(
-        feature = "tokio_runtime", 
-        feature = "http_warp", 
+        feature = "tokio_runtime",
+        feature = "http_warp",
         feature = "http_actix_web"
     ))] {
         #[cfg_attr(
@@ -53,7 +52,7 @@ cfg_if! {
     }
 }
 
-cfg_if!{
+cfg_if! {
     if #[cfg(feature = "serde_bincode")] {
         pub mod bincode;
         pub use Codec as DefaultCodec;
@@ -69,10 +68,7 @@ cfg_if!{
     }
 }
 
-#[cfg(any(
-    feature = "async_std_runtime",
-    feature = "tokio_runtime"
-))]
+#[cfg(any(feature = "async_std_runtime", feature = "tokio_runtime"))]
 /// type state for AsyncRead and AsyncWrite connections
 pub(crate) struct ConnTypeReadWrite {}
 
@@ -137,7 +133,7 @@ where
     S: Stream<Item = Result<warp::ws::Message, E>> + Sink<warp::ws::Message>,
     E: std::error::Error,
 {
-    pub fn with_warp_websocket(ws: S) -> Self { 
+    pub fn with_warp_websocket(ws: S) -> Self {
         use futures::StreamExt;
         let (writer, reader) = ws.split();
 
@@ -201,8 +197,7 @@ pub trait CodecWrite: Marshal {
     ) -> Result<(), Error>;
 }
 
-
-cfg_if!{
+cfg_if! {
     if #[cfg(all(
         any(feature = "async_std_runtime", feature = "tokio_runtime"),
         any(
@@ -225,7 +220,7 @@ cfg_if!{
                 H: serde::de::DeserializeOwned,
             {
                 let reader = &mut self.reader;
-        
+
                 Some(
                     reader
                         .read_frame()
@@ -233,12 +228,12 @@ cfg_if!{
                         .and_then(|frame| Self::unmarshal(&frame.payload)),
                 )
             }
-        
+
             async fn read_body(
                 &mut self,
             ) -> Option<Result<Box<dyn erased::Deserializer<'static> + Send + 'static>, Error>> {
                 let reader = &mut self.reader;
-        
+
                 match reader.read_frame().await? {
                     Ok(frame) => {
                         // log::debug!("frame: {:?}", frame);
@@ -289,7 +284,7 @@ cfg_if!{
     }
 }
 
-cfg_if!{
+cfg_if! {
     if #[cfg(all(
         any(
             feature = "serde_bincode",
@@ -457,4 +452,3 @@ where
 pub trait EraseDeserializer {
     fn from_bytes(buf: Vec<u8>) -> Box<dyn erased::Deserializer<'static> + Send>;
 }
-

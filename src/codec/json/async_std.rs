@@ -17,15 +17,15 @@ where
             Ok(n) => {
                 if n == 0 {
                     // EOF, probably end of connection
-                    return None
+                    return None;
                 }
 
                 Some(Self::unmarshal(buf.as_bytes()))
-            },
+            }
             Err(err) => {
                 log::error!("{:?}", err.kind());
                 Some(Err(err.into()))
-            },
+            }
         }
     }
 
@@ -38,15 +38,13 @@ where
             Ok(n) => {
                 if n == 0 {
                     // EOF, probablen client closed connection
-                    return None
+                    return None;
                 }
 
                 let de = Self::from_bytes(buf.into_bytes());
                 Some(Ok(de))
             }
-            Err(err) => {
-                return Some(Err(err.into()))
-            },
+            Err(err) => return Some(Err(err.into())),
         }
     }
 }

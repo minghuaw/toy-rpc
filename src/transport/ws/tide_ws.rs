@@ -74,4 +74,4 @@ impl GracefulShutdown for SinkHalf<tide_websockets::WebSocketConnection, CannotS
         //     .await
         //     .map_err(|e| Error::TransportError { msg: e.to_string() })
     }
-} 
+}

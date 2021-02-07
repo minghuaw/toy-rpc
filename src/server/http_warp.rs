@@ -1,9 +1,9 @@
-use std::sync::Arc;
 use cfg_if::cfg_if;
+use std::sync::Arc;
 
 use super::Server;
 
-cfg_if!{
+cfg_if! {
     if #[cfg(any(
         all(
             feature = "serde_bincode",
@@ -32,7 +32,7 @@ cfg_if!{
         feature = "docs"
     ))] {
         use crate::codec::DefaultCodec;
-        
+
         /// The following impl block is controlled by feature flag. It is enabled
         /// if and only if **exactly one** of the the following feature flag is turned on
         /// - `serde_bincode`
@@ -59,6 +59,3 @@ cfg_if!{
         }
     }
 }
-
-
-

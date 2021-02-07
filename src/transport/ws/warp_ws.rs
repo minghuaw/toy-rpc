@@ -42,19 +42,21 @@ where
 }
 
 #[async_trait]
-impl<S, E> GracefulShutdown for S 
-where 
+impl<S, E> GracefulShutdown for S
+where
     S: Sink<warp::ws::Message, Error = E> + Send + Sync + Unpin,
     E: std::error::Error + 'static,
 {
     async fn close(&mut self) {
         let msg = warp::ws::Message::close();
 
-        match self.send(msg)
+        match self
+            .send(msg)
             .await
-            .map_err(|e| Error::TransportError { msg: e.to_string() }) {
-                Ok(()) => { },
-                Err(e) => log::error!("Error closing WebSocket {}", e.to_string()),
-            };
+            .map_err(|e| Error::TransportError { msg: e.to_string() })
+        {
+            Ok(()) => {}
+            Err(e) => log::error!("Error closing WebSocket {}", e.to_string()),
+        };
     }
 }

@@ -1,6 +1,6 @@
 use cfg_if::cfg_if;
 
-cfg_if!{
+cfg_if! {
     if #[cfg(any(
         all(
             feature = "serde_bincode",
@@ -76,7 +76,7 @@ cfg_if!{
             ///     handle.await;
             /// }
             /// ```
-            ///         
+            ///
             /// See `toy-rpc/examples/rap_tcp/` for the example
             pub async fn accept(&self, listener: TcpListener) -> Result<(), Error> {
                 let mut incoming = listener.incoming();

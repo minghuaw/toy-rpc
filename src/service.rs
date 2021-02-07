@@ -1,10 +1,10 @@
 use async_trait::async_trait;
 use erased_serde as erased;
-use std::sync::Arc;
 use futures::future::Future;
 use std::collections::HashMap;
 use std::marker::PhantomData;
 use std::pin::Pin;
+use std::sync::Arc;
 
 use crate::error::{Error, RpcError};
 

@@ -16,14 +16,12 @@ where
         match self.reader.read_line(&mut buf).await {
             Ok(n) => {
                 if n == 0 {
-                    return None
+                    return None;
                 }
 
                 Some(Self::unmarshal(buf.as_bytes()))
-            },
-            Err(err) => {
-                Some(Err(err.into()))
             }
+            Err(err) => Some(Err(err.into())),
         }
     }
 
@@ -35,15 +33,13 @@ where
         match self.reader.read_line(&mut buf).await {
             Ok(n) => {
                 if n == 0 {
-                    return None
+                    return None;
                 }
 
                 let de = Self::from_bytes(buf.into_bytes());
                 Some(Ok(de))
             }
-            Err(e) => {
-                return Some(Err(e.into()))
-            },
+            Err(e) => return Some(Err(e.into())),
         }
     }
 }

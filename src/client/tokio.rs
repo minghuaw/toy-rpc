@@ -1,9 +1,9 @@
+pub(crate) use ::tokio::sync::{oneshot, Mutex};
 use ::tokio::task;
-pub(crate) use ::tokio::sync::{Mutex, oneshot};
 
 use super::*;
- 
-cfg_if!{
+
+cfg_if! {
     if #[cfg(any(
         all(
             feature = "serde_bincode",
@@ -68,10 +68,10 @@ cfg_if!{
             /// ```
             pub async fn dial(addr: impl ToSocketAddrs) -> Result<Client<Connected>, Error> {
                 let stream = TcpStream::connect(addr).await?;
-        
+
                 Ok(Self::with_stream(stream))
             }
-        
+
             /// Similar to `dial`, this connects to an WebSocket RPC server at the specified network address using the defatul codec
             ///
             /// This is enabled
@@ -98,17 +98,17 @@ cfg_if!{
                 let url = url::Url::parse(addr)?;
                 Self::_dial_websocket(url).await
             }
-        
+
             async fn _dial_websocket(url: url::Url) -> Result<Client<Connected>, Error> {
                 let (ws_stream, _) = connect_async(&url).await?;
                 log::debug!("WebSocket handshake has been successfully completed");
-        
+
                 let ws_stream = WebSocketConn::new(ws_stream);
                 let codec = DefaultCodec::with_websocket(ws_stream);
-        
+
                 Ok(Self::with_codec(codec))
             }
-        
+
             /// Connects to an HTTP RPC server at the specified network address using WebSocket and the defatul codec
             ///
             /// *Warning*: WebSocket is used as the underlying transport protocol starting from version "0.5.0-beta.0",
@@ -144,10 +144,10 @@ cfg_if!{
             pub async fn dial_http(addr: &'static str) -> Result<Client<Connected>, Error> {
                 let mut url = url::Url::parse(addr)?.join(DEFAULT_RPC_PATH)?;
                 url.set_scheme("ws").expect("Failed to change scheme to ws");
-        
+
                 Self::_dial_websocket(url).await
             }
-        
+
             /// Creates an RPC `Client` over socket with a specified `async_std::net::TcpStream` and the default codec
             ///
             /// This is enabled
@@ -169,14 +169,12 @@ cfg_if!{
             /// ```
             pub fn with_stream(stream: TcpStream) -> Client<Connected> {
                 let codec = DefaultCodec::new(stream);
-        
+
                 Self::with_codec(codec)
             }
         }
     }
 }
-
-
 
 impl Client<NotConnected> {
     /// Creates an RPC 'Client` over socket with a specified codec
@@ -240,9 +238,7 @@ impl Client<Connected> {
         Res: serde::de::DeserializeOwned,
     {
         task::block_in_place(|| {
-            let res= futures::executor::block_on(
-                self.async_call(service_method, args)
-            );
+            let res = futures::executor::block_on(self.async_call(service_method, args));
             res
         })
     }
@@ -355,9 +351,9 @@ impl Client<Connected> {
         Client::<Connected>::_handle_response(done, &id)
     }
 
-    /// Gracefully shutdown the connection. 
+    /// Gracefully shutdown the connection.
     ///
-    /// For a WebSocket connection, a Close message will be sent. 
+    /// For a WebSocket connection, a Close message will be sent.
     /// For a raw TCP connection, the client will simply drop the connection
     pub async fn close(self) {
         let _codec = &mut self.inner_codec.lock().await;
@@ -410,18 +406,21 @@ impl Client<Connected> {
     {
         log::debug!("Received response id: {}", &id);
 
-        let res = done.try_recv()
-            .map_err(|e| Error::TransportError{ msg: e.to_string() })?;
+        let res = done
+            .try_recv()
+            .map_err(|e| Error::TransportError { msg: e.to_string() })?;
 
         match res {
             Ok(mut resp_body) => {
-                let resp = erased::deserialize(&mut resp_body)
-                    .map_err(|e| Error::ParseError{source: Box::new(e)})?;
+                let resp = erased::deserialize(&mut resp_body).map_err(|e| Error::ParseError {
+                    source: Box::new(e),
+                })?;
                 Ok(resp)
-            },
+            }
             Err(mut err_body) => {
-                let resp = erased::deserialize(&mut err_body)
-                    .map_err(|e| Error::ParseError{source: Box::new(e)})?;
+                let resp = erased::deserialize(&mut err_body).map_err(|e| Error::ParseError {
+                    source: Box::new(e),
+                })?;
                 Err(Error::RpcError(resp))
             }
         }

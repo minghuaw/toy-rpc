@@ -1,22 +1,22 @@
 use async_trait::async_trait;
 use bincode::{DefaultOptions, Options};
+use cfg_if::cfg_if;
 use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
-use cfg_if::cfg_if;
 // use pin_project::pin_project;
 
-use crate::{error::Error};
+use crate::error::Error;
 use crate::message::MessageId;
 
 cfg_if! {
     if #[cfg(any(
-        feature = "async_std_runtime", 
+        feature = "async_std_runtime",
         feature = "http_tide"
     ))] {
         use futures::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
     } else if #[cfg(any(
-        feature = "tokio_runtime", 
-        feature = "http_warp", 
+        feature = "tokio_runtime",
+        feature = "http_warp",
         feature = "http_actix_web"
     ))] {
         use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
@@ -168,7 +168,6 @@ impl Frame {
 //     buf: Vec<u8>,
 // }
 
-
 #[async_trait]
 impl<R: AsyncRead + Unpin + Send + Sync> FrameRead for R {
     async fn read_frame(&mut self) -> Option<Result<Frame, Error>> {
@@ -177,14 +176,14 @@ impl<R: AsyncRead + Unpin + Send + Sync> FrameRead for R {
         let _ = self.read_exact(magic).await.ok()?;
         log::debug!("MAGIC read: {:?}", &magic);
         if magic[0] != MAGIC {
-            return Some(Err(Error::TransportError{
+            return Some(Err(Error::TransportError {
                 msg: "Magic byte mismatch.
                     Client may be using a different protocol or version.\r
                     Client of version <0.5.0 is not compatible with Server of version >0.5.0"
-                    .into()
-            }))
+                    .into(),
+            }));
         }
-        
+
         // read header
         let mut buf = vec![0; *HEADER_LEN];
         let _ = self.read_exact(&mut buf).await.ok()?;
@@ -244,7 +243,6 @@ impl<W: AsyncWrite + Unpin + Send + Sync> FrameWrite for W {
         Ok(())
     }
 }
-
 
 #[cfg(test)]
 mod tests {

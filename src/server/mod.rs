@@ -1,9 +1,9 @@
+use cfg_if::cfg_if;
 use erased_serde as erased;
 use std::collections::HashMap;
 use std::sync::Arc;
-use cfg_if::cfg_if;
 
-use crate::codec::{ServerCodec};
+use crate::codec::ServerCodec;
 use crate::error::{Error, RpcError};
 use crate::message::{MessageId, RequestHeader, ResponseHeader};
 use crate::service::{
@@ -21,7 +21,7 @@ pub mod http_warp;
 
 cfg_if! {
     if #[cfg(any(
-        feature = "async_std_runtime", 
+        feature = "async_std_runtime",
         feature = "http_tide"
     ))] {
         #[cfg_attr(
@@ -33,8 +33,8 @@ cfg_if! {
         )]
         mod async_std;
     } else if #[cfg(any(
-        feature = "tokio_runtime", 
-        feature = "http_warp", 
+        feature = "tokio_runtime",
+        feature = "http_warp",
         feature = "http_actix_web"
     ))] {
         #[cfg_attr(
@@ -92,17 +92,13 @@ impl Server {
         log::debug!("Start serving codec");
         loop {
             match Self::_serve_codec_once(&mut codec, &services).await {
-                Ok(stat) => { 
-                    match stat {
-                        ConnectionStatus::KeepReading => { },
-                        ConnectionStatus::Stop => {
-                            return Ok(())
-                        }
-                    }
+                Ok(stat) => match stat {
+                    ConnectionStatus::KeepReading => {}
+                    ConnectionStatus::Stop => return Ok(()),
                 },
                 Err(e) => {
                     log::error!("Error encountered serving codec \n{}", e);
-                    return Err(e)
+                    return Err(e);
                 }
             }
         }
@@ -119,7 +115,7 @@ impl Server {
         match codec.read_request_header().await {
             Some(header) => {
                 log::debug!("Request header: {:?}", &header);
-    
+
                 // destructure header
                 let RequestHeader { id, service_method } = header?;
                 // let service_method = &service_method[..];
@@ -128,43 +124,40 @@ impl Server {
                     .ok_or(Error::RpcError(RpcError::MethodNotFound))?;
                 let service_name = &service_method[..pos];
                 let method_name = service_method[pos + 1..].to_owned();
-    
+
                 log::debug!(
                     "Message {}, service: {}, method: {}",
                     id,
                     service_name,
                     method_name
                 );
-    
+
                 // look up the service
                 // TODO; consider adding a new error type
                 let call: ArcAsyncServiceCall = services
                     .get(service_name)
                     .ok_or(Error::RpcError(RpcError::MethodNotFound))?
                     .clone();
-    
+
                 // read body
                 let res = {
                     log::debug!("Reading request body");
-    
+
                     let deserializer = codec.read_request_body().await.unwrap()?;
-    
+
                     log::debug!("Calling handler");
-    
+
                     // pass ownership to the `call`
                     call(method_name, deserializer).await
                 };
-    
+
                 // send back result
                 Self::_send_response(codec, id, res).await?;
 
                 Ok(ConnectionStatus::KeepReading)
-            },
-            None => {
-                Ok(ConnectionStatus::Stop)
             }
+            None => Ok(ConnectionStatus::Stop),
         }
-
     }
 
     /// Sends back the response with the specified codec
