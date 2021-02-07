@@ -137,7 +137,7 @@ cfg_if! {
                     task::spawn(Self::_serve_websocket(ws_stream, self.services.clone()));
                 }
 
-                unimplemented!()
+                Ok(())
             }
 
             /// Serves a single connection

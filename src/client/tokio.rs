@@ -1,12 +1,28 @@
-//! This module implements the traits/methods that require `async-std`
-//! runtime for the RPC client. The module is enabled if one
-//! `feature = "tokio_runtime"`, `featue = "http_warp"` or 
-//! `feature = "http_actix_web`" is true.
+/// This module implements the traits/methods that require `async-std`
+/// runtime for the RPC client. The module is enabled if one
+/// `feature = "tokio_runtime"`, `featue = "http_warp"` or 
+/// `feature = "http_actix_web`" is true.
 
+use std::sync::Arc;
 pub(crate) use ::tokio::sync::{oneshot, Mutex};
 use ::tokio::task;
 
 use super::*;
+
+type Codec = Arc<Mutex<Box<dyn ClientCodec>>>;
+type ResponseMap = HashMap<u16, oneshot::Sender<Result<ResponseBody, ResponseBody>>>;
+
+/// RPC Client. Unlike [`Server`](../../server/struct.Server.html), the `Client` 
+/// struct contains field that uses runtime dependent synchronization primitives,
+/// thus there is a separate 'Client' struct defined for each of the `async-std` 
+/// and `tokio` runtime.
+pub struct Client<Mode> {
+    count: AtomicMessageId,
+    inner_codec: Codec,
+    pending: Arc<Mutex<ResponseMap>>,
+
+    mode: PhantomData<Mode>,
+}
 
 cfg_if! {
     if #[cfg(any(
@@ -37,7 +53,6 @@ cfg_if! {
     ))] {
         use ::tokio::net::{TcpStream, ToSocketAddrs};
         use async_tungstenite::tokio::connect_async;
-        use std::sync::Arc;
 
         use crate::transport::ws::WebSocketConn;
         use crate::server::DEFAULT_RPC_PATH;
@@ -92,7 +107,7 @@ cfg_if! {
             /// use toy_rpc::client::Client;
             /// use toy_rpc::error::Error;
             ///
-            /// #[async_std::main]
+            /// #[tokio::main]
             /// async fn main() {
             ///     let addr = "ws://127.0.0.1:8888";
             ///     let client = Client::dial_http(addr).await.unwrap();
@@ -193,7 +208,7 @@ impl Client<NotConnected> {
     /// use toy_rpc::codec::bincode::Codec;
     /// use toy_rpc::Client;
     ///
-    /// #[async_std::main]
+    /// #[tokio::main]
     /// async fn main() {
     ///     let addr = "127.0.0.1:8888";
     ///     let stream = TcpStream::connect(addr).await.unwrap();
@@ -296,7 +311,7 @@ impl Client<Connected> {
     /// use toy_rpc::Client;
     /// use toy_rpc::error::Error;
     ///
-    /// #[async_std::main]
+    /// #[tokio::main]
     /// async fn main() {
     ///     let addr = "127.0.0.1:8888";
     ///     let client = Client::dial(addr).await.unwrap();

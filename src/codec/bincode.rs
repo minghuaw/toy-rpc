@@ -1,53 +1,66 @@
 //! Impplementation of `CodecRead`, `CodecWrite`, `Marshal` and `Unmarshal` traits with `bincode`
 
-use bincode::{DefaultOptions, Options};
-use erased_serde as erased;
-use serde::de::Visitor;
-use std::io::Cursor; // serde doesn't support AsyncRead
+use cfg_if::cfg_if;
 
-use super::{Codec, DeserializerOwned, Marshal, Unmarshal};
-use crate::error::Error;
-use crate::macros::impl_inner_deserializer;
+cfg_if!{
+    if #[cfg(feature = "serde_json")] {
 
-use super::EraseDeserializer;
+    } else if #[cfg(feature = "serde_cbor")] {
 
-impl<'de, R, O> serde::Deserializer<'de> for DeserializerOwned<bincode::Deserializer<R, O>>
-where
-    R: bincode::BincodeRead<'de>,
-    O: bincode::Options,
-{
-    type Error = <&'de mut bincode::Deserializer<R, O> as serde::Deserializer<'de>>::Error;
+    } else if #[cfg(feature = "serde_rmp")] {
 
-    // use a macro to generate the code
-    impl_inner_deserializer!();
-}
-
-impl<R, W, C> Marshal for Codec<R, W, C> {
-    fn marshal<S: serde::Serialize>(val: &S) -> Result<Vec<u8>, Error> {
-        DefaultOptions::new()
-            .with_fixint_encoding()
-            .serialize(&val)
-            .map_err(|err| err.into())
+    } else {
+        use bincode::{DefaultOptions, Options};
+        use erased_serde as erased;
+        use serde::de::Visitor;
+        use std::io::Cursor; // serde doesn't support AsyncRead
+        
+        use super::{Codec, DeserializerOwned, Marshal, Unmarshal};
+        use crate::error::Error;
+        use crate::macros::impl_inner_deserializer;
+        
+        use super::EraseDeserializer;
+        
+        impl<'de, R, O> serde::Deserializer<'de> for DeserializerOwned<bincode::Deserializer<R, O>>
+        where
+            R: bincode::BincodeRead<'de>,
+            O: bincode::Options,
+        {
+            type Error = <&'de mut bincode::Deserializer<R, O> as serde::Deserializer<'de>>::Error;
+        
+            // use a macro to generate the code
+            impl_inner_deserializer!();
+        }
+        
+        impl<R, W, C> Marshal for Codec<R, W, C> {
+            fn marshal<S: serde::Serialize>(val: &S) -> Result<Vec<u8>, Error> {
+                DefaultOptions::new()
+                    .with_fixint_encoding()
+                    .serialize(&val)
+                    .map_err(|err| err.into())
+            }
+        }
+        
+        impl<R, W, C> Unmarshal for Codec<R, W, C> {
+            fn unmarshal<'de, D: serde::Deserialize<'de>>(buf: &'de [u8]) -> Result<D, Error> {
+                DefaultOptions::new()
+                    .with_fixint_encoding()
+                    .deserialize(buf)
+                    .map_err(|err| err.into())
+            }
+        }
+        
+        impl<R, W, C> EraseDeserializer for Codec<R, W, C> {
+            fn from_bytes(buf: Vec<u8>) -> Box<dyn erased::Deserializer<'static> + Send> {
+                let de = bincode::Deserializer::with_reader(
+                    Cursor::new(buf),
+                    bincode::DefaultOptions::new().with_fixint_encoding(),
+                );
+        
+                let de_owned = DeserializerOwned::new(de);
+                Box::new(erased::Deserializer::erase(de_owned))
+            }
+        }
     }
 }
 
-impl<R, W, C> Unmarshal for Codec<R, W, C> {
-    fn unmarshal<'de, D: serde::Deserialize<'de>>(buf: &'de [u8]) -> Result<D, Error> {
-        DefaultOptions::new()
-            .with_fixint_encoding()
-            .deserialize(buf)
-            .map_err(|err| err.into())
-    }
-}
-
-impl<R, W, C> EraseDeserializer for Codec<R, W, C> {
-    fn from_bytes(buf: Vec<u8>) -> Box<dyn erased::Deserializer<'static> + Send> {
-        let de = bincode::Deserializer::with_reader(
-            Cursor::new(buf),
-            bincode::DefaultOptions::new().with_fixint_encoding(),
-        );
-
-        let de_owned = DeserializerOwned::new(de);
-        Box::new(erased::Deserializer::erase(de_owned))
-    }
-}

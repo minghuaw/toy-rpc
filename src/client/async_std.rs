@@ -1,13 +1,29 @@
-//! This module implements the traits/methods that require `async-std`
-//! runtime for the RPC client. The module is enabled if either
-//! `feature = "async_std_runtime"` or `featue = "http_tide"` is true.
+/// This module implements the traits/methods that require `async-std`
+/// runtime for the RPC client. The module is enabled if either
+/// `feature = "async_std_runtime"` or `featue = "http_tide"` is true.
 
-pub(crate) use ::async_std::sync::Mutex;
+use std::sync::Arc;
+use ::async_std::sync::Mutex;
 use ::async_std::task;
+use futures::channel::oneshot;
 use cfg_if::cfg_if;
-pub(crate) use futures::channel::oneshot;
 
 use super::*;
+
+type Codec = Arc<Mutex<Box<dyn ClientCodec>>>;
+type ResponseMap = HashMap<u16, oneshot::Sender<Result<ResponseBody, ResponseBody>>>;
+
+/// RPC Client. Unlike [`Server`](../../server/struct.Server.html), the `Client` 
+/// struct contains field that uses runtime dependent synchronization primitives,
+/// thus there is a separate 'Client' struct defined for each of the `async-std` 
+/// and `tokio` runtime.
+pub struct Client<Mode> {
+    count: AtomicMessageId,
+    inner_codec: Codec,
+    pending: Arc<Mutex<ResponseMap>>,
+
+    mode: PhantomData<Mode>,
+}
 
 cfg_if! {
     if #[cfg(any(

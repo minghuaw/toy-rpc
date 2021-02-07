@@ -1,3 +1,8 @@
+//! `ServerCodec` and `ClientCodec` are defined in this module, and they are implemented 
+//! for the `DefaultCodec`
+//! Default codec implementations are feature gated behind the following features
+//! `serde_bincode`, `serde_json`, `serde_cbor`, `serde_rmp`.
+
 use async_trait::async_trait;
 use cfg_if::cfg_if;
 use erased_serde as erased;
@@ -53,18 +58,49 @@ cfg_if! {
 }
 
 cfg_if! {
-    if #[cfg(feature = "serde_bincode")] {
+    if #[cfg(any(
+        all(
+            feature = "serde_bincode",
+            not(feature = "serde_json"),
+            not(feature = "serde_cbor"),
+            not(feature = "serde_rmp"),
+        ),
+        all(
+            feature = "serde_cbor",
+            not(feature = "serde_json"),
+            not(feature = "serde_bincode"),
+            not(feature = "serde_rmp"),
+        ),
+        all(
+            feature = "serde_json",
+            not(feature = "serde_bincode"),
+            not(feature = "serde_cbor"),
+            not(feature = "serde_rmp"),
+        ),
+        all(
+            feature = "serde_rmp",
+            not(feature = "serde_cbor"),
+            not(feature = "serde_json"),
+            not(feature = "serde_bincode"),
+        )
+    ))] {
+        pub use Codec as DefaultCodec;
+    }
+}
+
+cfg_if!{
+    if #[cfg(any(
+        feature = "async_std_runtime",
+        feature = "tokio_runtime",
+        feature = "http_tide",
+        feature = "http_warp",
+        feature = "http_actix_web",
+        feature = "docs",
+    ))] {
         pub mod bincode;
-        pub use Codec as DefaultCodec;
-    } else if #[cfg(feature = "serde_json")] {
         pub mod json;
-        pub use Codec as DefaultCodec;
-    } else if #[cfg(feature = "serde_cbor")] {
         pub mod cbor;
-        pub use Codec as DefaultCodec;
-    } else if #[cfg(feature = "serde_rmp")] {
         pub mod rmp;
-        pub use Codec as DefaultCodec;
     }
 }
 
@@ -75,7 +111,8 @@ pub(crate) struct ConnTypeReadWrite {}
 /// type state for PayloadRead and PayloadWrite connections
 pub(crate) struct ConnTypePayload {}
 
-/// Default codec
+/// Default codec. `Codec` is re-exported as `DefaultCodec` when one of these feature 
+/// flags is toggled (`serde_bincode`, `serde_json`, `serde_cbor`, `serde_rmp`")
 pub struct Codec<R, W, C> {
     pub reader: R,
     pub writer: W,
@@ -201,9 +238,24 @@ cfg_if! {
     if #[cfg(all(
         any(feature = "async_std_runtime", feature = "tokio_runtime"),
         any(
-            feature = "serde_bincode",
-            feature = "serde_cbor",
-            feature = "serde_rmp",
+            all(
+                feature = "serde_bincode",
+                not(feature = "serde_json"),
+                not(feature = "serde_cbor"),
+                not(feature = "serde_rmp"),
+            ),
+            all(
+                feature = "serde_cbor",
+                not(feature = "serde_json"),
+                not(feature = "serde_bincode"),
+                not(feature = "serde_rmp"),
+            ),
+            all(
+                feature = "serde_rmp",
+                not(feature = "serde_cbor"),
+                not(feature = "serde_json"),
+                not(feature = "serde_bincode"),
+            )
         )
     ))] {
         use crate::transport::frame::{Frame, PayloadType, FrameRead, FrameWrite};
@@ -287,17 +339,37 @@ cfg_if! {
 cfg_if! {
     if #[cfg(all(
         any(
-            feature = "serde_bincode",
-            feature = "serde_cbor",
-            feature = "serde_rmp",
-            feature = "serde_json",
-        ),
-        any(
             feature = "async_std_runtime",
             feature = "tokio_runtime",
             feature = "http_tide",
             feature = "http_warp",
             feature = "http_actix_web"
+        ),
+        any(
+            all(
+                feature = "serde_bincode",
+                not(feature = "serde_json"),
+                not(feature = "serde_cbor"),
+                not(feature = "serde_rmp"),
+            ),
+            all(
+                feature = "serde_cbor",
+                not(feature = "serde_json"),
+                not(feature = "serde_bincode"),
+                not(feature = "serde_rmp"),
+            ),
+            all(
+                feature = "serde_json",
+                not(feature = "serde_bincode"),
+                not(feature = "serde_cbor"),
+                not(feature = "serde_rmp"),
+            ),
+            all(
+                feature = "serde_rmp",
+                not(feature = "serde_cbor"),
+                not(feature = "serde_json"),
+                not(feature = "serde_bincode"),
+            )
         )
     ))] {
         use crate::transport::{PayloadRead, PayloadWrite};

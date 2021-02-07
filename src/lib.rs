@@ -663,13 +663,27 @@ cfg_if::cfg_if! {
         feature = "http_tide",
         feature = "http_warp",
         feature = "http_actix_web",
-        feature ="docs",
+        feature = "docs",
     ))] {
         pub mod client;
         pub mod server;
 
-        pub use client::Client;
         pub use server::{Server, ServerBuilder};
+    }
+}
+
+cfg_if!{
+    if #[cfg(any(
+        feature = "async_std_runtime",
+        feature = "http_tide"
+    ))] {
+        pub use crate::client::async_std::Client;
+    } else if #[cfg(any(
+        feature = "tokio_runtime",
+        feature = "http_warp",
+        feature = "http_actix_web",
+    ))] {
+        pub use crate::client::tokio::Client;
     }
 }
 
@@ -678,22 +692,43 @@ pub mod macros {
 
     #[cfg(all(
         any(
-            feature = "serde_bincode",
-            feature = "serde_cbor",
-            feature = "serde_rmp",
-            feature = "serde_json"
-        ),
-        any(
             feature = "async_std_runtime",
             feature = "tokio_runtime",
             feature = "http_tide",
             feature = "http_warp",
             feature = "http_actix_web"
+        ),
+        any(
+            all(
+                feature = "serde_bincode",
+                not(feature = "serde_json"),
+                not(feature = "serde_cbor"),
+                not(feature = "serde_rmp"),
+            ),
+            all(
+                feature = "serde_cbor",
+                not(feature = "serde_json"),
+                not(feature = "serde_bincode"),
+                not(feature = "serde_rmp"),
+            ),
+            all(
+                feature = "serde_json",
+                not(feature = "serde_bincode"),
+                not(feature = "serde_cbor"),
+                not(feature = "serde_rmp"),
+            ),
+            all(
+                feature = "serde_rmp",
+                not(feature = "serde_cbor"),
+                not(feature = "serde_json"),
+                not(feature = "serde_bincode"),
+            )
         )
     ))]
     pub(crate) use toy_rpc_macros::impl_inner_deserializer;
 }
 
+use cfg_if::cfg_if;
 // re-export
 pub use erased_serde;
 pub use lazy_static;
