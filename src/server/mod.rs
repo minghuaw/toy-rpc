@@ -2,12 +2,41 @@ use erased_serde as erased;
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use crate::codec::{ServerCodec, DefaultCodec};
+use crate::codec::{ServerCodec};
 use crate::error::{Error, RpcError};
 use crate::message::{MessageId, RequestHeader, ResponseHeader};
 use crate::service::{
     ArcAsyncServiceCall, AsyncServiceMap, HandleService, HandlerResult, HandlerResultFut,
 };
+
+#[cfg(any(
+    all(
+        feature = "serde_bincode",
+        not(feature = "serde_json"),
+        not(feature = "serde_cbor"),
+        not(feature = "serde_rmp"),
+    ),
+    all(
+        feature = "serde_cbor",
+        not(feature = "serde_json"),
+        not(feature = "serde_bincode"),
+        not(feature = "serde_rmp"),
+    ),
+    all(
+        feature = "serde_json",
+        not(feature = "serde_bincode"),
+        not(feature = "serde_cbor"),
+        not(feature = "serde_rmp"),
+    ),
+    all(
+        feature = "serde_rmp",
+        not(feature = "serde_cbor"),
+        not(feature = "serde_json"),
+        not(feature = "serde_bincode"),
+    ),
+    feature = "docs"
+))]
+use crate::codec::DefaultCodec;
 
 #[cfg(all(feature = "http_actix_web"))]
 pub mod http_actix_web;

@@ -7,7 +7,7 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-toy-rpc = { version = "0.5.0-beta.1", path = "../..", features = ["std", "serde_bincode", "http_actix_web"]}
+toy-rpc = { version = "0.5.0-beta.1", path = "../..", default-features = false, features = ["std", "serde_json", "http_actix_web"]}
 actix-web = "3.3.2"
 tokio = { version = "1.1.1", features = ["rt", "rt-multi-thread", "macros", "net", "sync"] }
 

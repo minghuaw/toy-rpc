@@ -12,18 +12,29 @@ use tide_websockets as tide_ws;
 
 use crate::{GracefulShutdown, message::{MessageId, Metadata, RequestHeader, ResponseHeader}};
 use crate::transport::ws::{CanSink, SinkHalf, StreamHalf, WebSocketConn};
-use crate::transport::{PayloadRead, PayloadWrite};
 use crate::{
     error::Error,
 };
 
+#[cfg(any(
+    feature = "async_std_runtime",
+    feature = "tokio_runtime",
+    feature = "http_tide",
+    feature = "http_warp",
+    feature = "http_actix_web"
+))]
+use crate::transport::{PayloadRead, PayloadWrite};
+
 #[cfg(all(feature = "tide"))]
 use crate::transport::ws::CannotSink;
 
-#[cfg(any(
-    feature = "serde_bincode",
-    feature = "serde_cbor",
-    feature = "serde_rmp",
+#[cfg(all(
+    any(feature = "async_std_runtime", feature = "tokio_runtime"),
+    any(
+        feature = "serde_bincode",
+        feature = "serde_cbor",
+        feature = "serde_rmp",
+    )
 ))]
 use crate::transport::frame::{Frame, PayloadType, FrameRead, FrameWrite};
 
@@ -60,10 +71,19 @@ mod async_std;
 mod tokio;
 
 #[cfg(all(
-    feature = "serde_bincode",
-    not(feature = "serde_json"),
-    not(feature = "serde_cbor"),
-    not(feature = "serde_rmp"),
+    all(
+        feature = "serde_bincode",
+        not(feature = "serde_json"),
+        not(feature = "serde_cbor"),
+        not(feature = "serde_rmp"),
+    ),
+    any(
+        feature = "async_std_runtime",
+        feature = "tokio_runtime",
+        feature = "http_tide",
+        feature = "http_warp",
+        feature = "http_actix_web"
+    )
 ))]
 #[cfg_attr(
     feature = "docs",
@@ -77,10 +97,19 @@ mod tokio;
 pub mod bincode;
 
 #[cfg(all(
-    feature = "serde_cbor",
-    not(feature = "serde_json"),
-    not(feature = "serde_bincode"),
-    not(feature = "serde_rmp"),
+    all(
+        feature = "serde_cbor",
+        not(feature = "serde_json"),
+        not(feature = "serde_bincode"),
+        not(feature = "serde_rmp"),
+    ),
+    any(
+        feature = "async_std_runtime",
+        feature = "tokio_runtime",
+        feature = "http_tide",
+        feature = "http_warp",
+        feature = "http_actix_web"
+    )
 ))]
 #[cfg_attr(
     feature = "docs",
@@ -94,10 +123,19 @@ pub mod bincode;
 pub mod cbor;
 
 #[cfg(all(
-    feature = "serde_json",
-    not(feature = "serde_bincode"),
-    not(feature = "serde_cbor"),
-    not(feature = "serde_rmp"),
+    all(
+        feature = "serde_json",
+        not(feature = "serde_bincode"),
+        not(feature = "serde_cbor"),
+        not(feature = "serde_rmp"),
+    ),
+    any(
+        feature = "async_std_runtime",
+        feature = "tokio_runtime",
+        feature = "http_tide",
+        feature = "http_warp",
+        feature = "http_actix_web"
+    )
 ))]
 #[cfg_attr(
     feature = "docs",
@@ -111,10 +149,19 @@ pub mod cbor;
 pub mod json;
 
 #[cfg(all(
-    feature = "serde_rmp",
-    not(feature = "serde_cbor"),
-    not(feature = "serde_json"),
-    not(feature = "serde_bincode"),
+    all(
+        feature = "serde_rmp",
+        not(feature = "serde_cbor"),
+        not(feature = "serde_json"),
+        not(feature = "serde_bincode"),
+    ),
+    any(
+        feature = "async_std_runtime",
+        feature = "tokio_runtime",
+        feature = "http_tide",
+        feature = "http_warp",
+        feature = "http_actix_web"
+    )
 ))]
 #[cfg_attr(
     feature = "docs",
@@ -124,9 +171,13 @@ pub mod json;
         not(feature = "serde_json"),
         not(feature = "serde_bincode"),
     )))
-)]
+)] 
 pub mod rmp;
 
+#[cfg(any(
+    feature = "async_std_runtime",
+    feature = "tokio_runtime"
+))]
 /// type state for AsyncRead and AsyncWrite connections
 pub(crate) struct ConnTypeReadWrite {}
 
@@ -284,12 +335,16 @@ pub trait CodecWrite: Marshal {
     ) -> Result<(), Error>;
 }
 
-#[cfg(any(
-    feature = "serde_bincode",
-    feature = "serde_cbor",
-    feature = "serde_rmp"
+#[cfg(all(
+    any(feature = "async_std_runtime", feature = "tokio_runtime"),
+    any(
+        feature = "serde_bincode",
+        feature = "serde_cbor",
+        feature = "serde_rmp",
+    )
 ))]
 #[async_trait]
+// Trati implementation for binary protocols
 impl<R, W> CodecRead for Codec<R, W, ConnTypeReadWrite>
 where
     R: FrameRead + Send + Sync + Unpin,
@@ -325,12 +380,16 @@ where
     }
 }
 
-#[cfg(any(
-    feature = "serde_bincode",
-    feature = "serde_cbor",
-    feature = "serde_rmp"
+#[cfg(all(
+    any(feature = "async_std_runtime", feature = "tokio_runtime"),
+    any(
+        feature = "serde_bincode",
+        feature = "serde_cbor",
+        feature = "serde_rmp",
+    )
 ))]
 #[async_trait]
+// trait implementation for binary protocols
 impl<R, W> CodecWrite for Codec<R, W, ConnTypeReadWrite>
 where
     R: FrameRead + Send + Sync + Unpin,
@@ -366,6 +425,21 @@ where
     }
 }
 
+#[cfg(all(
+    any(
+        feature = "serde_bincode",
+        feature = "serde_cbor",
+        feature = "serde_rmp",
+        feature = "serde_json",
+    ),
+    any(
+        feature = "async_std_runtime",
+        feature = "tokio_runtime",
+        feature = "http_tide",
+        feature = "http_warp",
+        feature = "http_actix_web"
+    )
+))]
 #[async_trait]
 impl<R, W> CodecRead for Codec<R, W, ConnTypePayload>
 where
@@ -402,6 +476,21 @@ where
     }
 }
 
+#[cfg(all(
+    any(
+        feature = "serde_bincode",
+        feature = "serde_cbor",
+        feature = "serde_rmp",
+        feature = "serde_json",
+    ),
+    any(
+        feature = "async_std_runtime",
+        feature = "tokio_runtime",
+        feature = "http_tide",
+        feature = "http_warp",
+        feature = "http_actix_web"
+    )
+))]
 #[async_trait]
 impl<R, W> CodecWrite for Codec<R, W, ConnTypePayload>
 where
@@ -500,11 +589,41 @@ where
     }
 }
 
+#[cfg(all(
+    any(
+        feature = "serde_bincode",
+        feature = "serde_cbor",
+        feature = "serde_rmp",
+        feature = "serde_json",
+    ),
+    any(
+        feature = "async_std_runtime",
+        feature = "tokio_runtime",
+        feature = "http_tide",
+        feature = "http_warp",
+        feature = "http_actix_web"
+    )
+))]
 /// A wrapper for erased serde deserializers to allow transfer of ownership
 pub(crate) struct DeserializerOwned<D> {
     inner: D,
 }
 
+#[cfg(all(
+    any(
+        feature = "serde_bincode",
+        feature = "serde_cbor",
+        feature = "serde_rmp",
+        feature = "serde_json",
+    ),
+    any(
+        feature = "async_std_runtime",
+        feature = "tokio_runtime",
+        feature = "http_tide",
+        feature = "http_warp",
+        feature = "http_actix_web"
+    )
+))]
 impl<D> DeserializerOwned<D> {
     pub fn new(inner: D) -> Self {
         Self { inner }

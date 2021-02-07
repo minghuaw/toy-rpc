@@ -6,7 +6,36 @@ use std::sync::Arc;
 use crate::error::Error;
 use crate::transport::ws::WebSocketConn;
 
-use super::{AsyncServiceMap, Server, DefaultCodec};
+use super::{AsyncServiceMap, Server};
+
+#[cfg(any(
+    all(
+        feature = "serde_bincode",
+        not(feature = "serde_json"),
+        not(feature = "serde_cbor"),
+        not(feature = "serde_rmp"),
+    ),
+    all(
+        feature = "serde_cbor",
+        not(feature = "serde_json"),
+        not(feature = "serde_bincode"),
+        not(feature = "serde_rmp"),
+    ),
+    all(
+        feature = "serde_json",
+        not(feature = "serde_bincode"),
+        not(feature = "serde_cbor"),
+        not(feature = "serde_rmp"),
+    ),
+    all(
+        feature = "serde_rmp",
+        not(feature = "serde_cbor"),
+        not(feature = "serde_json"),
+        not(feature = "serde_bincode"),
+    ),
+    feature = "docs"
+))]
+use crate::codec::DefaultCodec;
 
 #[cfg(any(
     all(

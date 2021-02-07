@@ -4,12 +4,41 @@ use std::marker::PhantomData;
 use std::sync::Arc;
 use std::sync::atomic::Ordering;
 
-use crate::codec::{ClientCodec, DefaultCodec};
+use crate::codec::{ClientCodec};
 use crate::error::Error;
 use crate::transport::ws::WebSocketConn;
 use crate::message::{AtomicMessageId, MessageId, RequestHeader, ResponseHeader};
 
 use crate::server::DEFAULT_RPC_PATH;
+
+#[cfg(any(
+    all(
+        feature = "serde_bincode",
+        not(feature = "serde_json"),
+        not(feature = "serde_cbor"),
+        not(feature = "serde_rmp"),
+    ),
+    all(
+        feature = "serde_cbor",
+        not(feature = "serde_json"),
+        not(feature = "serde_bincode"),
+        not(feature = "serde_rmp"),
+    ),
+    all(
+        feature = "serde_json",
+        not(feature = "serde_bincode"),
+        not(feature = "serde_cbor"),
+        not(feature = "serde_rmp"),
+    ),
+    all(
+        feature = "serde_rmp",
+        not(feature = "serde_cbor"),
+        not(feature = "serde_json"),
+        not(feature = "serde_bincode"),
+    ),
+    feature = "docs"
+))]
+use crate::codec::DefaultCodec;
 
 #[cfg(any(
     all(feature = "async_std_runtime", not(feature = "tokio_runtime")),

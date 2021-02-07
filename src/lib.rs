@@ -1,5 +1,17 @@
 #![cfg_attr(feature = "docs", feature(doc_cfg))]
 
+// non-builtin inner attribute is not stable
+// #![cfg_attr(
+//     any(
+//         feature = "async_std_runtime",
+//         feature = "tokio_runtime",
+//         feature = "http_tide",
+//         feature = "http_warp",
+//         feature = "http_actix_web"
+//     ), 
+//     any_runtime
+// )]
+
 //! # A toy RPC crate based on `async-std` that mimics the `golang`'s `net/rpc` package
 //!
 //! This crate aims at providing an easy-to-use RPC that is similar to `golang`'s
@@ -640,7 +652,6 @@
 pub mod codec;
 pub mod error;
 pub mod message;
-pub mod server;
 pub mod service;
 pub mod transport;
 
@@ -652,12 +663,52 @@ pub mod transport;
     feature = "http_actix_web"
 ))]
 pub mod client;
+
+#[cfg(any(
+    feature = "async_std_runtime",
+    feature = "tokio_runtime",
+    feature = "http_tide",
+    feature = "http_warp",
+    feature = "http_actix_web"
+))]
+pub mod server;
 pub mod macros {
-    pub(crate) use toy_rpc_macros::impl_inner_deserializer;
     pub use toy_rpc_macros::{export_impl, service};
+    
+    #[cfg(all(
+        any(
+            feature = "serde_bincode",
+            feature = "serde_cbor",
+            feature = "serde_rmp",
+            feature = "serde_json"
+        ),
+        any(
+            feature = "async_std_runtime",
+            feature = "tokio_runtime",
+            feature = "http_tide",
+            feature = "http_warp",
+            feature = "http_actix_web"
+        )
+    ))]
+    pub(crate) use toy_rpc_macros::impl_inner_deserializer;
 }
 
+#[cfg(any(
+    feature = "async_std_runtime",
+    feature = "tokio_runtime",
+    feature = "http_tide",
+    feature = "http_warp",
+    feature = "http_actix_web"
+))]
 pub use client::Client;
+
+#[cfg(any(
+    feature = "async_std_runtime",
+    feature = "tokio_runtime",
+    feature = "http_tide",
+    feature = "http_warp",
+    feature = "http_actix_web"
+))]
 pub use server::{Server, ServerBuilder};
 
 // re-export
