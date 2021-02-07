@@ -319,6 +319,7 @@ cfg_if! {
             /// | ------------ |---|
             /// | `http_tide`| [`into_endpoint`](#method.into_endpoint) |
             /// | `http_actix_web` | [`scope_config`](#method.scope_config) |
+            /// | `http_warp` | [`boxed_filter`](#method.boxed_filter) |
             ///
             /// This is enabled
             /// if and only if **exactly one** of the the following feature flag is turned on

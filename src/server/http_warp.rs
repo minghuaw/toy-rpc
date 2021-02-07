@@ -34,6 +34,7 @@ cfg_if! {
         ),
     ))] {
         use crate::codec::DefaultCodec;
+        use warp::{Filter, Reply, filters::BoxedFilter};
 
         /// The following impl block is controlled by feature flag. It is enabled
         /// if and only if **exactly one** of the the following feature flag is turned on
@@ -42,7 +43,8 @@ cfg_if! {
         /// - `serde_cbor`
         /// - `serde_rmp`
         impl Server {
-            pub fn warp_websocket_handler(state: Arc<Self>, ws: warp::ws::Ws) -> impl warp::Reply {
+            /// WebSocket handler for integration with `warp`
+            fn warp_websocket_handler(state: Arc<Self>, ws: warp::ws::Ws) -> impl warp::Reply {
                 ws.on_upgrade(|websocket| async move {
                     let codec = DefaultCodec::with_warp_websocket(websocket);
                     let services = state.services.clone();
@@ -55,8 +57,60 @@ cfg_if! {
                 })
             }
 
-            pub fn handler_path() -> &'static str {
+            /// Returns the `DEFAULT_RPC_PATH`
+            fn handler_path() -> &'static str {
                 super::DEFAULT_RPC_PATH
+            }
+
+            /// Consumes `Server` and returns a `warp::filters::BoxedFilter`
+            /// which can be chained with `warp` filters
+            pub fn boxed_filter(self) -> BoxedFilter<(impl Reply,)> {
+                let state = Arc::new(self);
+                let state = warp::any().map(move || state.clone());
+
+                let rpc_route = warp::path(Server::handler_path())
+                    .and(state)
+                    .and(warp::ws())
+                    .map(Server::warp_websocket_handler)
+                    .boxed();
+
+                rpc_route
+            }
+
+            #[cfg(any(
+                all(
+                    feature = "http_warp",
+                    not(feature = "http_actix_web"),
+                    not(feature = "http_tide"),
+                ),
+                feature = "docs"
+            ))]
+            #[cfg_attr(
+                feature = "docs",
+                doc(cfg(all(
+                    feature = "http_warp",
+                    not(feature = "http_actix_web"),
+                    not(feature = "http_tide"),
+                )))
+            )]
+            /// A conevience function that calls the corresponding http handling
+            /// function depending on the enabled feature flag
+            ///
+            /// | feature flag | function name  |
+            /// | ------------ |---|
+            /// | `http_tide`| [`into_endpoint`](#method.into_endpoint) |
+            /// | `http_actix_web` | [`scope_config`](#method.scope_config) |
+            /// | `http_warp` | [`boxed_filter`](#method.boxed_filter) |
+            ///
+            /// This is enabled
+            /// if and only if **exactly one** of the the following feature flag is turned on
+            /// - `serde_bincode`
+            /// - `serde_json`
+            /// - `serde_cbor`
+            /// - `serde_rmp`
+            ///
+            pub fn handle_http(self) -> BoxedFilter<(impl Reply,)> {
+                self.boxed_filter()
             }
         }
     }

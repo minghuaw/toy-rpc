@@ -1,4 +1,4 @@
-//! Impplementation of `CodecRead`, `CodecWrite`, `Marshal` and `Unmarshal` traits with `bincode`
+//! Impplementation of `CodecRead`, `CodecWrite`, `Marshal`, `Unmarshal` and `EraseDeserializer` traits with `bincode`
 
 use cfg_if::cfg_if;
 
