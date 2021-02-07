@@ -57,6 +57,9 @@ cfg_if! {
     }
 }
 
+#[cfg(any(feature = "docs", doc))]
+pub use Codec as DefaultCodec;
+
 cfg_if! {
     if #[cfg(any(
         all(
@@ -97,9 +100,48 @@ cfg_if!{
         feature = "http_actix_web",
         feature = "docs",
     ))] {
+        #[cfg_attr(
+            doc, 
+            doc(cfg(all(
+                feature = "serde_bincode",
+                not(feature = "serde_json"),
+                not(feature = "serde_cbor"),
+                not(feature = "serde_rmp"),
+            )))
+        )]
         pub mod bincode;
+
+        #[cfg_attr(
+            doc, 
+            doc(cfg(all(
+                feature = "serde_json",
+                not(feature = "serde_bincode"),
+                not(feature = "serde_cbor"),
+                not(feature = "serde_rmp"),
+            )))
+        )]
         pub mod json;
+
+        #[cfg_attr(
+            doc, 
+            doc(cfg(all(
+                feature = "serde_cbor",
+                not(feature = "serde_json"),
+                not(feature = "serde_bincode"),
+                not(feature = "serde_rmp"),
+            )))
+        )]
         pub mod cbor;
+
+        #[cfg_attr(
+            doc, 
+            doc(cfg(all(
+                feature = "serde_rmp",
+                not(feature = "serde_cbor"),
+                not(feature = "serde_json"),
+                not(feature = "serde_bincode"),
+            )))
+        )]
         pub mod rmp;
     }
 }

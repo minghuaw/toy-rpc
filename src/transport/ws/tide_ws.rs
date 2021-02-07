@@ -32,7 +32,7 @@ impl WebSocketConn<tide_websockets::WebSocketConnection, CannotSink> {
 impl PayloadRead for StreamHalf<tide_websockets::WebSocketConnection, CannotSink> {
     async fn read_payload(&mut self) -> Option<Result<Vec<u8>, Error>> {
         match self.inner.next().await? {
-            Err(e) => return Some(Err(Error::TransportError { msg: e.to_string() })),
+            Err(e) => return Some(Err(Error::TransportError( e.to_string() ))),
             Ok(msg) => {
                 if let tide_websockets::Message::Binary(bytes) = msg {
                     return Some(Ok(bytes));
@@ -40,10 +40,10 @@ impl PayloadRead for StreamHalf<tide_websockets::WebSocketConnection, CannotSink
                     return None;
                 }
 
-                Some(Err(Error::TransportError {
-                    msg: "Expecting WebSocket::Message::Binary, but found something else"
+                Some(Err(Error::TransportError (
+                    "Expecting WebSocket::Message::Binary, but found something else"
                         .to_string(),
-                }))
+                )))
             }
         }
     }
@@ -55,6 +55,6 @@ impl PayloadWrite for SinkHalf<tide_websockets::WebSocketConnection, CannotSink>
         self.inner
             .send_bytes(payload.into())
             .await
-            .map_err(|e| Error::TransportError { msg: e.to_string() })
+            .map_err(|e| Error::TransportError ( e.to_string() ))
     }
 }

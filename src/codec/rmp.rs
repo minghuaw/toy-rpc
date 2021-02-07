@@ -1,4 +1,4 @@
-//! Impplementation of `CodecRead`, `CodecWrite`, `Marshal` and `Unmarshal` traits with `rmp-serde`
+//! Impplementation of `CodecRead`, `CodecWrite`, `Marshal`, `Unmarshal` and `EraseDeserializer` traits with `rmp-serde`
 
 use cfg_if::cfg_if;
 

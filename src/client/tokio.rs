@@ -409,9 +409,9 @@ impl Client<Connected> {
             let mut _pending = pending.lock().await;
             if let Some(done_sender) = _pending.remove(&id) {
                 log::debug!("Sending ResponseBody over oneshot channel {}", &id);
-                done_sender.send(res).map_err(|_| Error::TransportError {
-                    msg: format!("Failed to send ResponseBody over oneshot channel {}", &id),
-                })?;
+                done_sender.send(res).map_err(|_| Error::TransportError(
+                    format!("Failed to send ResponseBody over oneshot channel {}", &id),
+                ))?;
             }
         }
 
@@ -429,19 +429,21 @@ impl Client<Connected> {
 
         let res = done
             .try_recv()
-            .map_err(|e| Error::TransportError { msg: e.to_string() })?;
+            .map_err(|e| Error::TransportError(
+                e.to_string()
+            ))?;
 
         match res {
             Ok(mut resp_body) => {
-                let resp = erased::deserialize(&mut resp_body).map_err(|e| Error::ParseError {
-                    source: Box::new(e),
-                })?;
+                let resp = erased::deserialize(&mut resp_body).map_err(|e| 
+                    Error::ParseError(Box::new(e))
+                )?;
                 Ok(resp)
             }
             Err(mut err_body) => {
-                let resp = erased::deserialize(&mut err_body).map_err(|e| Error::ParseError {
-                    source: Box::new(e),
-                })?;
+                let resp = erased::deserialize(&mut err_body).map_err(|e| 
+                    Error::ParseError(Box::new(e))
+                )?;
                 Err(Error::RpcError(resp))
             }
         }

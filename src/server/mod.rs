@@ -11,15 +11,15 @@ use crate::service::{
 };
 
 #[cfg(all(feature = "http_actix_web"))]
-#[doc(cfg(feature = "http_actix_web"))]
+#[cfg_attr(doc, doc(cfg(feature = "http_actix_web")))]
 pub mod http_actix_web;
 
 #[cfg(feature = "http_tide")]
-#[doc(cfg(feature = "http_tide"))]
+#[cfg_attr(doc, doc(cfg(feature = "http_tide")))]
 pub mod http_tide;
 
 #[cfg(all(feature = "http_warp"))]
-#[doc(cfg(feature = "http_warp"))]
+#[cfg_attr(doc, doc(cfg(feature = "http_warp")))]
 pub mod http_warp;
 
 cfg_if! {

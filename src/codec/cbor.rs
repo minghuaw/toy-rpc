@@ -1,4 +1,5 @@
-//! Impplementation of `CodecRead`, `CodecWrite`, `Marshal` and `Unmarshal` traits with `serde_cbor`
+//! 
+//! Impplementation of `CodecRead`, `CodecWrite`, `Marshal`, `Unmarshal` and `EraseDeserializer` traits with `serde_cbor`
 
 use cfg_if::cfg_if;
 

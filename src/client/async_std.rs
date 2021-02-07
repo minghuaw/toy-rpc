@@ -403,9 +403,9 @@ impl Client<Connected> {
             let mut _pending = pending.lock().await;
             if let Some(done_sender) = _pending.remove(&id) {
                 log::debug!("Sending ResponseBody over oneshot channel {}", &id);
-                done_sender.send(res).map_err(|_| Error::TransportError {
-                    msg: format!("Failed to send ResponseBody over oneshot channel {}", &id),
-                })?;
+                done_sender.send(res).map_err(|_| Error::TransportError (
+                    format!("Failed to send ResponseBody over oneshot channel {}", &id),
+                ))?;
             }
         }
 
@@ -426,32 +426,32 @@ impl Client<Connected> {
             Ok(o) => match o {
                 Some(r) => r,
                 None => {
-                    return Err(Error::TransportError {
-                        msg: format!("Done channel for id {} is out of date", &id),
-                    })
+                    return Err(Error::TransportError (
+                        format!("Done channel for id {} is out of date", &id),
+                    ))
                 }
             },
             _ => {
-                return Err(Error::TransportError {
-                    msg: format!("Done channel for id {} is canceled", &id),
-                })
+                return Err(Error::TransportError (
+                    format!("Done channel for id {} is canceled", &id),
+                ))
             }
         };
 
         // deserialize Ok message and Err message
         match res {
             Ok(mut resp_body) => {
-                let resp = erased::deserialize(&mut resp_body).map_err(|e| Error::ParseError {
-                    source: Box::new(e),
-                })?;
+                let resp = erased::deserialize(&mut resp_body).map_err(|e| 
+                    Error::ParseError (Box::new(e))
+                )?;
 
                 // upon successful deserializing, an Ok() must be returned
                 Ok(resp)
             }
             Err(mut err_body) => {
-                let err = erased::deserialize(&mut err_body).map_err(|e| Error::ParseError {
-                    source: Box::new(e),
-                })?;
+                let err = erased::deserialize(&mut err_body).map_err(|e| 
+                    Error::ParseError (Box::new(e))
+                )?;
 
                 // upon successful deserializing, an Err() must be returned
                 Err(Error::RpcError(err))

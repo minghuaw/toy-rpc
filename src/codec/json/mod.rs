@@ -1,3 +1,5 @@
+//! Impplementation of `CodecRead`, `CodecWrite`, `Marshal`, `Unmarshal` and `EraseDeserializer` traits with `serde_json`
+
 use cfg_if::cfg_if;
 
 cfg_if! {

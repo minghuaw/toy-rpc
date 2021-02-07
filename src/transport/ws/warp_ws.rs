@@ -9,17 +9,17 @@ where
     async fn read_payload(&mut self) -> Option<Result<Vec<u8>, Error>> {
         let msg = self.next().await?;
         match msg {
-            Err(e) => return Some(Err(Error::TransportError { msg: e.to_string() })),
+            Err(e) => return Some(Err(Error::TransportError( e.to_string() ))),
             Ok(m) => {
                 if m.is_close() {
                     return None;
                 } else if m.is_binary() {
                     return Some(Ok(m.into_bytes()));
                 }
-                Some(Err(Error::TransportError {
-                    msg: "Expecting WebSocket::Message::Binary, but found something else"
+                Some(Err(Error::TransportError (
+                    "Expecting WebSocket::Message::Binary, but found something else"
                         .to_string(),
-                }))
+                )))
             }
         }
     }
@@ -37,6 +37,6 @@ where
 
         self.send(msg)
             .await
-            .map_err(|e| Error::TransportError { msg: e.to_string() })
+            .map_err(|e| Error::TransportError( e.to_string() ))
     }
 }

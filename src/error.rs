@@ -3,12 +3,8 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug)]
 pub enum Error {
     IoError(std::io::Error),
-    ParseError {
-        source: Box<dyn std::error::Error + Send + Sync>,
-    },
-    TransportError {
-        msg: String,
-    },
+    ParseError (Box<dyn std::error::Error + Send + Sync>),
+    TransportError(String),
     RpcError(RpcError),
 }
 
@@ -16,7 +12,7 @@ impl std::error::Error for Error {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
             Error::IoError(ref e) => Some(e),
-            Error::ParseError { source } => Some(&**source),
+            Error::ParseError ( source ) => Some(&**source),
             Error::TransportError { .. } => None,
             // Error::NoneError => None,
             Error::RpcError(ref e) => Some(e),
@@ -28,8 +24,8 @@ impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Error::IoError(ref err) => err.fmt(f),
-            Error::ParseError { source } => std::fmt::Display::fmt(&*source, f),
-            Error::TransportError { msg } => write!(f, "Transport Error Message: {}", msg),
+            Error::ParseError ( source ) => std::fmt::Display::fmt(&*source, f),
+            Error::TransportError (msg ) => write!(f, "Transport Error Message: {}", msg),
             // Error::NoneError => write!(f, "None error"),
             Error::RpcError(ref err) => std::fmt::Display::fmt(err, f),
         }
@@ -88,51 +84,41 @@ impl From<RpcError> for Box<dyn std::error::Error + Send> {
 #[cfg(feature = "serde_json")]
 impl From<serde_json::error::Error> for Error {
     fn from(err: serde_json::error::Error) -> Self {
-        Error::ParseError {
-            source: Box::new(err),
-        }
+        Error::ParseError(Box::new(err))
     }
 }
 
 /// Convert from bincode::Error to the custom Error
 impl From<bincode::Error> for Error {
     fn from(err: bincode::Error) -> Self {
-        Error::ParseError { source: err }
+        Error::ParseError ( err )
     }
 }
 
 #[cfg(feature = "serde_cbor")]
 impl From<serde_cbor::Error> for Error {
     fn from(err: serde_cbor::Error) -> Self {
-        Error::ParseError {
-            source: Box::new(err),
-        }
+        Error::ParseError(Box::new(err))
     }
 }
 
 impl From<url::ParseError> for Error {
     fn from(err: url::ParseError) -> Self {
-        Error::ParseError {
-            source: Box::new(err),
-        }
+        Error::ParseError(Box::new(err))
     }
 }
 
 #[cfg(feature = "serde_rmp")]
 impl From<rmp_serde::decode::Error> for Error {
     fn from(err: rmp_serde::decode::Error) -> Self {
-        Error::ParseError {
-            source: Box::new(err),
-        }
+        Error::ParseError(Box::new(err))
     }
 }
 
 #[cfg(feature = "serde_rmp")]
 impl From<rmp_serde::encode::Error> for Error {
     fn from(err: rmp_serde::encode::Error) -> Self {
-        Error::ParseError {
-            source: Box::new(err),
-        }
+        Error::ParseError(Box::new(err))
     }
 }
 
@@ -147,26 +133,20 @@ impl From<Error> for actix_web::Error {
 
 impl From<tungstenite::Error> for crate::error::Error {
     fn from(err: tungstenite::Error) -> Self {
-        crate::error::Error::TransportError {
-            msg: err.to_string(),
-        }
+        crate::error::Error::TransportError(err.to_string())
     }
 }
 
 impl From<futures::channel::mpsc::SendError> for crate::error::Error {
     fn from(err: futures::channel::mpsc::SendError) -> Self {
-        Self::TransportError {
-            msg: err.to_string(),
-        }
+        Self::TransportError(err.to_string())
     }
 }
 
 #[cfg(feature = "tokio")]
 impl<T> From<tokio::sync::mpsc::error::SendError<T>> for crate::error::Error {
     fn from(err: tokio::sync::mpsc::error::SendError<T>) -> Self {
-        Self::TransportError {
-            msg: err.to_string(),
-        }
+        Self::TransportError(err.to_string())
     }
 }
 
