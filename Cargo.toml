@@ -29,7 +29,7 @@ rustdoc-args = ["--cfg", "feature=\"docs\""]
 default = [
     "std", 
     "serde_json",
-    "tokio_runtime"
+    "http_warp"
 ]
 
 docs = ["default", "actix-web"]

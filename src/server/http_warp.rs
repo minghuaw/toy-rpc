@@ -41,7 +41,6 @@ cfg_if!{
         /// - `serde_rmp`
         impl Server {
             pub fn warp_websocket_handler(state: Arc<Self>, ws: warp::ws::Ws) -> impl warp::Reply {
-
                 ws.on_upgrade(|websocket| async move {
                     let codec = DefaultCodec::with_warp_websocket(websocket);
                     let services = state.services.clone();
