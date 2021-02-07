@@ -28,8 +28,8 @@ rustdoc-args = ["--cfg", "feature=\"docs\""]
 [features]
 default = [
     "std", 
-    "serde_bincode",
-    "http_tide"
+    "serde_json",
+    "tokio_runtime"
 ]
 
 docs = ["default", "actix-web"]

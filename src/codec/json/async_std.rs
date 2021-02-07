@@ -14,8 +14,18 @@ where
     {
         let mut buf = String::new();
         match self.reader.read_line(&mut buf).await {
-            Ok(_) => Some(Self::unmarshal(buf.as_bytes())),
-            Err(_) => None,
+            Ok(n) => {
+                if n == 0 {
+                    // EOF, probably end of connection
+                    return None
+                }
+
+                Some(Self::unmarshal(buf.as_bytes()))
+            },
+            Err(err) => {
+                log::error!("{:?}", err.kind());
+                Some(Err(err.into()))
+            },
         }
     }
 
@@ -25,11 +35,18 @@ where
         let mut buf = String::new();
 
         match self.reader.read_line(&mut buf).await {
-            Ok(_) => {
+            Ok(n) => {
+                if n == 0 {
+                    // EOF, probablen client closed connection
+                    return None
+                }
+
                 let de = Self::from_bytes(buf.into_bytes());
                 Some(Ok(de))
             }
-            Err(e) => return Some(Err(e.into())),
+            Err(err) => {
+                return Some(Err(err.into()))
+            },
         }
     }
 }

@@ -14,8 +14,16 @@ where
     {
         let mut buf = String::new();
         match self.reader.read_line(&mut buf).await {
-            Ok(_) => Some(Self::unmarshal(buf.as_bytes())),
-            Err(_) => None,
+            Ok(n) => {
+                if n == 0 {
+                    return None
+                }
+
+                Some(Self::unmarshal(buf.as_bytes()))
+            },
+            Err(err) => {
+                Some(Err(err.into()))
+            }
         }
     }
 
@@ -25,11 +33,17 @@ where
         let mut buf = String::new();
 
         match self.reader.read_line(&mut buf).await {
-            Ok(_) => {
+            Ok(n) => {
+                if n == 0 {
+                    return None
+                }
+
                 let de = Self::from_bytes(buf.into_bytes());
                 Some(Ok(de))
             }
-            Err(e) => return Some(Err(e.into())),
+            Err(e) => {
+                return Some(Err(e.into()))
+            },
         }
     }
 }

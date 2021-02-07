@@ -38,8 +38,9 @@ cfg_if!{
 
         use crate::error::Error;
         use crate::transport::ws::WebSocketConn;
-        
         use crate::codec::DefaultCodec;
+
+        use super::{AsyncServiceMap, Server};
                 
         /// The following impl block is controlled by feature flag. It is enabled
         /// if and only if **exactly one** of the the following feature flag is turned on

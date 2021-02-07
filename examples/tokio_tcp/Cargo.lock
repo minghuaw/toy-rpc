@@ -2796,6 +2796,7 @@ dependencies = [
  "log",
  "pin-project 1.0.5",
  "serde",
+ "serde_json",
  "tide-websockets",
  "tokio 1.2.0",
  "tokio-stream",
