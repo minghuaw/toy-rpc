@@ -1,3 +1,7 @@
+//! This module implements the traits/methods that require `async-std`
+//! runtime for the RPC client. The module is enabled if either
+//! `feature = "async_std_runtime"` or `featue = "http_tide"` is true.
+
 pub(crate) use ::async_std::sync::Mutex;
 use ::async_std::task;
 use cfg_if::cfg_if;
@@ -84,7 +88,6 @@ cfg_if! {
             ///
             /// ```rust
             /// use toy_rpc::client::Client;
-            /// use toy_rpc::error::Error;
             ///
             /// #[async_std::main]
             /// async fn main() {
@@ -108,18 +111,20 @@ cfg_if! {
                 Ok(Self::with_codec(codec))
             }
 
-            /// Connects to an HTTP RPC server at the specified network address using WebSocket and the defatul codec
+            /// Connects to an HTTP RPC server at the specified network address using WebSocket and the defatul codec. 
+            /// 
+            /// It is recommended to use "ws://" as the url scheme as opposed to "http://"; however, internally the url scheme
+            /// is changed to "ws://". Internally, `DEFAULT_RPC_PATH="_rpc"` is appended to the end of `addr`, 
+            /// and the rest is the same is calling `dial_websocket`. 
+            /// If a network path were to be supplpied, the network path must end with a slash "/".
+            /// For example, a valid path could be "ws://127.0.0.1/rpc/".
             ///
             /// *Warning*: WebSocket is used as the underlying transport protocol starting from version "0.5.0-beta.0",
             /// and this will make client of versions later than "0.5.0-beta.0" incompatible with servers of versions
             /// earlier than "0.5.0-beta.0".
             ///
-            /// If a network path were to be supplpied, the network path must end with a slash "/". Internally,
-            /// `DEFAULT_RPC_PATH="_rpc"` is appended to the end of `addr`, and the rest is the same is calling
-            /// `dial_websocket`.
-            ///
             /// This is enabled
-            /// if and only if **exactly one** of the the following feature flag is turned on
+            /// if and only if **only one** of the the following feature flag is turned on
             /// - `serde_bincode`
             /// - `serde_json`
             /// - `serde_cbor`
@@ -128,18 +133,15 @@ cfg_if! {
             /// # Example
             ///
             /// ```rust
-            /// use toy_rpc::client::Client;
-            /// use toy_rpc::error::Error;
+            /// use toy_rpc::Client;
             ///
             /// #[async_std::main]
             /// async fn main() {
-            ///     let addr = "http://127.0.0.1:8888/rpc/";
+            ///     let addr = "ws://127.0.0.1:8888/rpc/";
             ///     let client = Client::dial_http(addr).await.unwrap();
             /// }
             /// ```
             ///
-            /// TODO: check if the path ends with a slash
-            /// TODO: try send and recv trait object
             pub async fn dial_http(addr: &'static str) -> Result<Client<Connected>, Error> {
                 let mut url = url::Url::parse(addr)?.join(DEFAULT_RPC_PATH)?;
                 url.set_scheme("ws").expect("Failed to change scheme to ws");
@@ -159,6 +161,7 @@ cfg_if! {
             /// # Example
             /// ```
             /// use async_std::net::TcpStream;
+            /// use toy_rpc::Client;
             ///
             /// #[async_std::main]
             /// async fn main() {
@@ -174,7 +177,8 @@ cfg_if! {
         }
 
         impl Client<NotConnected> {
-            /// Creates an RPC 'Client` over socket with a specified codec
+            /// Creates an RPC 'Client` with a specified codec. The codec must 
+            /// implement `ClientCodec` trait and `GracefulShutdown` trait.
             ///
             /// Example
             ///
@@ -212,7 +216,7 @@ cfg_if! {
 }
 
 impl Client<Connected> {
-    /// Invokes the named function and wait synchronously
+    /// Invokes the named function and wait synchronously in a blocking manner.
     ///
     /// This function internally calls `task::block_on` to wait for the response.
     /// Do NOT use this function inside another `task::block_on`.async_std
@@ -220,8 +224,7 @@ impl Client<Connected> {
     /// Example
     ///
     /// ```rust
-    /// use toy_rpc::client::Client;
-    /// use toy_rpc::error::Error;
+    /// use toy_rpc::Client;
     ///
     /// #[async_std::main]
     /// async fn main() {
@@ -283,9 +286,7 @@ impl Client<Connected> {
     /// Example
     ///
     /// ```rust
-    /// use async_std::task;
-    ///
-    /// use toy_rpc::client::Client;
+    /// use toy_rpc::Client;
     /// use toy_rpc::error::Error;
     ///
     /// #[async_std::main]

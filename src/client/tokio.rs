@@ -1,3 +1,8 @@
+//! This module implements the traits/methods that require `async-std`
+//! runtime for the RPC client. The module is enabled if one
+//! `feature = "tokio_runtime"`, `featue = "http_warp"` or 
+//! `feature = "http_actix_web`" is true.
+
 pub(crate) use ::tokio::sync::{oneshot, Mutex};
 use ::tokio::task;
 
@@ -59,7 +64,7 @@ cfg_if! {
             /// ```rust
             /// use toy_rpc::Client;
             ///
-            /// #[async_std::main]
+            /// #[tokio::main]
             /// async fn main() {
             ///     let addr = "127.0.0.1";
             ///     let client = Client::dial(addr).await;
@@ -109,18 +114,20 @@ cfg_if! {
                 Ok(Self::with_codec(codec))
             }
 
-            /// Connects to an HTTP RPC server at the specified network address using WebSocket and the defatul codec
+            /// Connects to an HTTP RPC server at the specified network address using WebSocket and the defatul codec. 
+            /// 
+            /// It is recommended to use "ws://" as the url scheme as opposed to "http://"; however, internally the url scheme
+            /// is changed to "ws://". Internally, `DEFAULT_RPC_PATH="_rpc"` is appended to the end of `addr`, 
+            /// and the rest is the same is calling `dial_websocket`. 
+            /// If a network path were to be supplpied, the network path must end with a slash "/".
+            /// For example, a valid path could be "ws://127.0.0.1/rpc/".
             ///
             /// *Warning*: WebSocket is used as the underlying transport protocol starting from version "0.5.0-beta.0",
             /// and this will make client of versions later than "0.5.0-beta.0" incompatible with servers of versions
             /// earlier than "0.5.0-beta.0".
             ///
-            /// If a network path were to be supplpied, the network path must end with a slash "/". Internally,
-            /// `DEFAULT_RPC_PATH="_rpc"` is appended to the end of `addr`, and the rest is the same is calling
-            /// `dial_websocket`.
-            ///
             /// This is enabled
-            /// if and only if **exactly one** of the the following feature flag is turned on
+            /// if and only if **only one** of the the following feature flag is turned on
             /// - `serde_bincode`
             /// - `serde_json`
             /// - `serde_cbor`
@@ -129,12 +136,11 @@ cfg_if! {
             /// # Example
             ///
             /// ```rust
-            /// use toy_rpc::client::Client;
-            /// use toy_rpc::error::Error;
+            /// use toy_rpc::Client;
             ///
-            /// #[async_std::main]
+            /// #[tokio::main]
             /// async fn main() {
-            ///     let addr = "http://127.0.0.1:8888/rpc/";
+            ///     let addr = "ws://127.0.0.1:8888/rpc/";
             ///     let client = Client::dial_http(addr).await.unwrap();
             /// }
             /// ```
@@ -159,9 +165,10 @@ cfg_if! {
             ///
             /// # Example
             /// ```
-            /// use async_std::net::TcpStream;
+            /// use tokio::net::TcpStream;
+            /// use toy_rpc::Client;
             ///
-            /// #[async_std::main]
+            /// #[tokio::main]
             /// async fn main() {
             ///     let stream = TcpStream::connect("127.0.0.1:8888").await.unwrap();
             ///     let client = Client::with_stream(stream);
@@ -211,7 +218,7 @@ impl Client<NotConnected> {
 }
 
 impl Client<Connected> {
-    /// Invokes the named function and wait synchronously
+    /// Invokes the named function and wait synchronously in a blocking manner.
     ///
     /// This function internally calls `task::block_on` to wait for the response.
     /// Do NOT use this function inside another `task::block_on`.async_std
@@ -219,10 +226,10 @@ impl Client<Connected> {
     /// Example
     ///
     /// ```rust
-    /// use toy_rpc::client::Client;
+    /// use toy_rpc::Client;
     /// use toy_rpc::error::Error;
     ///
-    /// #[async_std::main]
+    /// #[tokio::main]
     /// async fn main() {
     ///     let addr = "127.0.0.1:8888";
     ///     let client = Client::dial(addr).await.unwrap();
@@ -246,12 +253,11 @@ impl Client<Connected> {
     /// Invokes the named function asynchronously by spawning a new task and returns the `JoinHandle`
     ///
     /// ```rust
-    /// use async_std::task;
-    ///
-    /// use toy_rpc::client::Client;
+    /// use tokio::task;
+    /// use toy_rpc::Client;
     /// use toy_rpc::error::Error;
     ///
-    /// #[async_std::main]
+    /// #[tokio::main]
     /// async fn main() {
     ///     let addr = "127.0.0.1:8888";
     ///     let client = Client::dial(addr).await.unwrap();
@@ -285,9 +291,9 @@ impl Client<Connected> {
     /// Example
     ///
     /// ```rust
-    /// use async_std::task;
+    /// use tokio::task;
     ///
-    /// use toy_rpc::client::Client;
+    /// use toy_rpc::Client;
     /// use toy_rpc::error::Error;
     ///
     /// #[async_std::main]

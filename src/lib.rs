@@ -11,13 +11,14 @@
 //     any_runtime
 // )]
 
-//! # A toy RPC crate based on `async-std` that mimics the `golang`'s `net/rpc` package
+//! # A async RPC crate that mimics the `golang`'s `net/rpc` package and supports
+//! both `async-std` and `tokio`.
 //!
 //! This crate aims at providing an easy-to-use RPC that is similar to `golang`'s
 //! `net/rpc`.
 //!
 //! The usage is similar to that of `golang`'s `net/rpc` with functions sharing similar
-//! names and functionalities. Certain function names are changed to be more rusty.
+//! names and functionalities. Certain function names are changed to be more "rusty".
 //! Because `rust` doesn't have reflection, attribute macros are used to make certain
 //! method "exported".
 //!
