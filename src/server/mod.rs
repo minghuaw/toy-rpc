@@ -1,6 +1,7 @@
 use erased_serde as erased;
 use std::collections::HashMap;
 use std::sync::Arc;
+use cfg_if::cfg_if;
 
 use crate::codec::{ServerCodec};
 use crate::error::{Error, RpcError};
@@ -18,20 +19,37 @@ pub mod http_tide;
 #[cfg(all(feature = "http_warp"))]
 pub mod http_warp;
 
-#[cfg(any(
-    all(feature = "async_std_runtime", not(feature = "tokio_runtime")),
-    all(feature = "http_tide", not(feature="http_actix_web"), not(feature = "http_warp"))
-))]
-pub mod async_std;
-
-#[cfg(any(
-    all(feature = "tokio_runtime", not(feature = "async_std_runtime")),
-    all(
-        any(feature = "http_warp", feature = "http_actix_web"),
-        not(feature = "http_tide")
-    )
-))]
-pub mod tokio;
+cfg_if! {
+    if #[cfg(any(
+        feature = "async_std_runtime", 
+        feature = "http_tide"
+    ))] {
+        #[cfg_attr(
+            feature = "docs",
+            doc(any(
+                all(feature = "async_std_runtime", not(feature = "tokio_runtime")),
+                all(feature = "http_tide", not(feature="http_actix_web"), not(feature = "http_warp"))
+            ))
+        )]
+        mod async_std;
+    } else if #[cfg(any(
+        feature = "tokio_runtime", 
+        feature = "http_warp", 
+        feature = "http_actix_web"
+    ))] {
+        #[cfg_attr(
+            feature = "docs",
+            doc(any(
+                all(feature = "tokio_runtime", not(feature = "async_std_runtime")),
+                all(
+                    any(feature = "http_warp", feature = "http_actix_web"),
+                    not(feature = "http_tide")
+                )
+            ))
+        )]
+        mod tokio;
+    }
+}
 
 /// Default RPC path for http handler
 pub const DEFAULT_RPC_PATH: &str = "_rpc_";

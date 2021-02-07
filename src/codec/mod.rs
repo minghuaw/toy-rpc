@@ -14,25 +14,6 @@ use crate::{
     error::Error,
 };
 
-#[cfg(any(
-    feature = "async_std_runtime",
-    feature = "tokio_runtime",
-    feature = "http_tide",
-    feature = "http_warp",
-    feature = "http_actix_web"
-))]
-use crate::transport::{PayloadRead, PayloadWrite};
-
-#[cfg(all(
-    any(feature = "async_std_runtime", feature = "tokio_runtime"),
-    any(
-        feature = "serde_bincode",
-        feature = "serde_cbor",
-        feature = "serde_rmp",
-    )
-))]
-use crate::transport::frame::{Frame, PayloadType, FrameRead, FrameWrite};
-
 cfg_if!{
     if #[cfg(feature = "http_tide")] {
         use tide_websockets as tide_ws;
@@ -230,6 +211,8 @@ cfg_if!{
             feature = "serde_rmp",
         )
     ))] {
+        use crate::transport::frame::{Frame, PayloadType, FrameRead, FrameWrite};
+
         #[async_trait]
         // Trati implementation for binary protocols
         impl<R, W> CodecRead for Codec<R, W, ConnTypeReadWrite>
@@ -322,6 +305,8 @@ cfg_if!{
             feature = "http_actix_web"
         )
     ))] {
+        use crate::transport::{PayloadRead, PayloadWrite};
+
         #[async_trait]
         impl<R, W> CodecRead for Codec<R, W, ConnTypePayload>
         where

@@ -2,28 +2,26 @@ use async_trait::async_trait;
 use bincode::{DefaultOptions, Options};
 use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
+use cfg_if::cfg_if;
 // use pin_project::pin_project;
 
 use crate::{error::Error};
 use crate::message::MessageId;
 
-#[cfg(any(
-    all(feature = "async_std_runtime", not(feature = "tokio_runtime")),
-    all(feature = "http_ide", not(feature="http_actix_web"), not(feature = "http_warp"))
-))]
-use futures::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
-
-// #[cfg(all(feature = "tokio_runtime", not(feature = "async_std_runtime")))]
-// pub mod tokio;
-
-#[cfg(any(
-    all(feature = "tokio_runtime", not(feature = "async_std_runtime")),
-    all(
-        any(feature = "http_warp", feature = "http_actix_web"),
-        not(feature = "http_tide")
-    )
-))]
-use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
+cfg_if! {
+    if #[cfg(any(
+        feature = "async_std_runtime", 
+        feature = "http_tide"
+    ))] {
+        use futures::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
+    } else if #[cfg(any(
+        feature = "tokio_runtime", 
+        feature = "http_warp", 
+        feature = "http_actix_web"
+    ))] {
+        use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
+    }
+}
 
 type FrameId = u8;
 type PayloadLen = u32;

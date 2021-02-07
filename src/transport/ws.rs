@@ -1,6 +1,7 @@
 use async_trait::async_trait;
 use futures::stream::{SplitSink, SplitStream};
 use futures::{Sink, SinkExt, Stream, StreamExt};
+use cfg_if::cfg_if;
 
 use std::marker::PhantomData;
 use tungstenite::Message as WsMessage;
@@ -8,12 +9,13 @@ use tungstenite::Message as WsMessage;
 use super::{PayloadRead, PayloadWrite};
 use crate::{GracefulShutdown, error::Error};
 
-#[cfg(all(feature = "http_tide"))]
-use tide_websockets as tide_ws;
+cfg_if!{
+    if #[cfg(feature = "http_tide")] {
+        use tide_websockets as tide_ws;
+        pub(crate) struct CannotSink {}
+    }
+}
 pub(crate) struct CanSink {}
-
-#[cfg(all(feature = "http_tide"))]
-pub(crate) struct CannotSink {}
 
 // #[pin_project]
 pub struct WebSocketConn<S, N> {
