@@ -5,7 +5,7 @@ authors = ["Minghua Wu <michael.wu1107@gmail.com>"]
 edition = "2018"
 description = "An async-std based RPC library that mimics the API of golang net/rpc"
 license = "MIT/Apache-2.0"
-documentation = "https://docs.rs/toy-rpc/0.4.4/toy_rpc/"
+documentation = "https://docs.rs/toy-rpc/0.5.0-beta.1/toy_rpc/"
 homepage = "https://github.com/minghuaw/toy-rpc"
 repository = "https://github.com/minghuaw/toy-rpc"
 keywords = ["async", "rpc", "go", "async-std", "tokio"]
@@ -28,8 +28,8 @@ rustdoc-args = ["--cfg", "feature=\"docs\""]
 [features]
 default = [
     "std", 
-    "serde_json",
-    "http_warp"
+    "serde_bincode",
+    "http_tide"
 ]
 
 docs = ["default", "actix-web"]

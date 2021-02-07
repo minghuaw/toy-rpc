@@ -1,7 +1,6 @@
 use async_trait::async_trait;
 
 use crate::error::Error;
-use crate::GracefulShutdown;
 
 #[cfg(all(
     any(
@@ -21,6 +20,6 @@ pub trait PayloadRead {
 }
 
 #[async_trait]
-pub trait PayloadWrite: GracefulShutdown {
+pub trait PayloadWrite {
     async fn write_payload(&mut self, payload: Vec<u8>) -> Result<(), Error>;
 }

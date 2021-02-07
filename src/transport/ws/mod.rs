@@ -109,6 +109,7 @@ where
     }
 }
 
+// GracefulShutdown is only required on the client side.
 #[async_trait]
 impl<S, E> GracefulShutdown for SinkHalf<S, CanSink>
 where
