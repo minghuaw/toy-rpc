@@ -1,7 +1,5 @@
 use serde::{Deserialize, Serialize};
 use std::sync::atomic::AtomicU16;
-// use erased_serde as erased;
-// use futures::channel::oneshot;
 
 pub type MessageId = u16;
 pub type AtomicMessageId = AtomicU16;

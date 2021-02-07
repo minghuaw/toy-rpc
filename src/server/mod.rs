@@ -9,35 +9,6 @@ use crate::service::{
     ArcAsyncServiceCall, AsyncServiceMap, HandleService, HandlerResult, HandlerResultFut,
 };
 
-#[cfg(any(
-    all(
-        feature = "serde_bincode",
-        not(feature = "serde_json"),
-        not(feature = "serde_cbor"),
-        not(feature = "serde_rmp"),
-    ),
-    all(
-        feature = "serde_cbor",
-        not(feature = "serde_json"),
-        not(feature = "serde_bincode"),
-        not(feature = "serde_rmp"),
-    ),
-    all(
-        feature = "serde_json",
-        not(feature = "serde_bincode"),
-        not(feature = "serde_cbor"),
-        not(feature = "serde_rmp"),
-    ),
-    all(
-        feature = "serde_rmp",
-        not(feature = "serde_cbor"),
-        not(feature = "serde_json"),
-        not(feature = "serde_bincode"),
-    ),
-    feature = "docs"
-))]
-use crate::codec::DefaultCodec;
-
 #[cfg(all(feature = "http_actix_web"))]
 pub mod http_actix_web;
 

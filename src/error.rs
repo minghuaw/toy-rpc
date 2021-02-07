@@ -3,16 +3,12 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug)]
 pub enum Error {
     IoError(std::io::Error),
-
     ParseError {
         source: Box<dyn std::error::Error + Send + Sync>,
     },
-    // ParseError{ source: &'static (dyn std::error::Error + Send) },
     TransportError {
         msg: String,
     },
-
-    // NoneError,
     RpcError(RpcError),
 }
 

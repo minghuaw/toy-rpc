@@ -29,7 +29,7 @@ rustdoc-args = ["--cfg", "feature=\"docs\""]
 default = [
     "std", 
     "serde_json",
-    "http_actix_web"
+    "async_std_runtime"
 ]
 
 docs = ["default", "actix-web"]
@@ -72,6 +72,7 @@ pin-project = "1.0"
 log = "0.4"
 lazy_static = "1.4.0"
 url = "2.2.0"
+cfg-if = "1.0.0"
 
 # websocket dependencies, consider feature gating in the future
 tungstenite = "0.12.0"

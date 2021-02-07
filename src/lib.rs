@@ -655,23 +655,41 @@ pub mod message;
 pub mod service;
 pub mod transport;
 
-#[cfg(any(
-    feature = "async_std_runtime",
-    feature = "tokio_runtime",
-    feature = "http_tide",
-    feature = "http_warp",
-    feature = "http_actix_web"
-))]
-pub mod client;
+// #[cfg(any(
+//     feature = "async_std_runtime",
+//     feature = "tokio_runtime",
+//     feature = "http_tide",
+//     feature = "http_warp",
+//     feature = "http_actix_web"
+// ))]
+// pub mod client;
 
-#[cfg(any(
-    feature = "async_std_runtime",
-    feature = "tokio_runtime",
-    feature = "http_tide",
-    feature = "http_warp",
-    feature = "http_actix_web"
-))]
-pub mod server;
+// #[cfg(any(
+//     feature = "async_std_runtime",
+//     feature = "tokio_runtime",
+//     feature = "http_tide",
+//     feature = "http_warp",
+//     feature = "http_actix_web"
+// ))]
+// pub mod server;
+
+cfg_if::cfg_if!{
+    if #[cfg(any(
+        feature = "async_std_runtime",
+        feature = "tokio_runtime",
+        feature = "http_tide",
+        feature = "http_warp",
+        feature = "http_actix_web"
+    ))] {
+        pub mod client;
+        pub mod server;
+
+        pub use client::Client;
+        pub use server::{Server, ServerBuilder};
+    } 
+}
+
+
 pub mod macros {
     pub use toy_rpc_macros::{export_impl, service};
     
@@ -693,23 +711,23 @@ pub mod macros {
     pub(crate) use toy_rpc_macros::impl_inner_deserializer;
 }
 
-#[cfg(any(
-    feature = "async_std_runtime",
-    feature = "tokio_runtime",
-    feature = "http_tide",
-    feature = "http_warp",
-    feature = "http_actix_web"
-))]
-pub use client::Client;
+// #[cfg(any(
+//     feature = "async_std_runtime",
+//     feature = "tokio_runtime",
+//     feature = "http_tide",
+//     feature = "http_warp",
+//     feature = "http_actix_web"
+// ))]
+// pub use client::Client;
 
-#[cfg(any(
-    feature = "async_std_runtime",
-    feature = "tokio_runtime",
-    feature = "http_tide",
-    feature = "http_warp",
-    feature = "http_actix_web"
-))]
-pub use server::{Server, ServerBuilder};
+// #[cfg(any(
+//     feature = "async_std_runtime",
+//     feature = "tokio_runtime",
+//     feature = "http_tide",
+//     feature = "http_warp",
+//     feature = "http_actix_web"
+// ))]
+// pub use server::{Server, ServerBuilder};
 
 // re-export
 pub use erased_serde;

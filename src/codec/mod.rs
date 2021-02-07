@@ -1,4 +1,5 @@
 use async_trait::async_trait;
+use cfg_if::cfg_if;
 use erased_serde as erased;
 use futures::{
     stream::{SplitSink, SplitStream},
@@ -6,9 +7,6 @@ use futures::{
 use futures::{Sink, Stream};
 use std::marker::PhantomData;
 use tungstenite::Message as WsMessage;
-
-#[cfg(all(feature = "tide"))]
-use tide_websockets as tide_ws;
 
 use crate::{GracefulShutdown, message::{MessageId, Metadata, RequestHeader, ResponseHeader}};
 use crate::transport::ws::{CanSink, SinkHalf, StreamHalf, WebSocketConn};
@@ -25,9 +23,6 @@ use crate::{
 ))]
 use crate::transport::{PayloadRead, PayloadWrite};
 
-#[cfg(all(feature = "tide"))]
-use crate::transport::ws::CannotSink;
-
 #[cfg(all(
     any(feature = "async_std_runtime", feature = "tokio_runtime"),
     any(
@@ -38,141 +33,60 @@ use crate::transport::ws::CannotSink;
 ))]
 use crate::transport::frame::{Frame, PayloadType, FrameRead, FrameWrite};
 
-#[cfg_attr(
-    feature = "docs",
-    doc(any(
-        all(feature = "async_std_runtime", not(feature = "tokio_runtime")),
-        all(feature = "http_tide", not(feature="http_actix_web"), not(feature = "http_warp"))
-    ))
-)]
-#[cfg(any(
-    all(feature = "async_std_runtime", not(feature = "tokio_runtime")),
-    all(feature = "http_tide", not(feature="http_actix_web"), not(feature = "http_warp"))
-))]
-mod async_std;
+cfg_if!{
+    if #[cfg(feature = "http_tide")] {
+        use tide_websockets as tide_ws;
+        use crate::transport::ws::CannotSink;
+    }
+}
 
-#[cfg_attr(
-    feature = "docs",
-    doc(any(
-        all(feature = "tokio_runtime", not(feature = "async_std_runtime")),
-        all(
-            any(feature = "http_warp", feature = "http_actix_web"),
-            not(feature = "http_tide")
-        )
-    ))
-)]
-#[cfg(any(
-    all(feature = "tokio_runtime", not(feature = "async_std_runtime")),
-    all(
-        any(feature = "http_warp", feature = "http_actix_web"),
-        not(feature = "http_tide")
-    )
-))]
-mod tokio;
-
-#[cfg(all(
-    all(
-        feature = "serde_bincode",
-        not(feature = "serde_json"),
-        not(feature = "serde_cbor"),
-        not(feature = "serde_rmp"),
-    ),
-    any(
-        feature = "async_std_runtime",
-        feature = "tokio_runtime",
-        feature = "http_tide",
-        feature = "http_warp",
+cfg_if! {
+    if #[cfg(any(
+        feature = "async_std_runtime", 
+        feature = "http_tide"
+    ))] {
+        #[cfg_attr(
+            feature = "docs",
+            doc(any(
+                all(feature = "async_std_runtime", not(feature = "tokio_runtime")),
+                all(feature = "http_tide", not(feature="http_actix_web"), not(feature = "http_warp"))
+            ))
+        )]
+        mod async_std;
+    } else if #[cfg(any(
+        feature = "tokio_runtime", 
+        feature = "http_warp", 
         feature = "http_actix_web"
-    )
-))]
-#[cfg_attr(
-    feature = "docs",
-    doc(cfg(all(
-        feature = "serde_bincode",
-        not(feature = "serde_json"),
-        not(feature = "serde_cbor"),
-        not(feature = "serde_rmp"),
-    )))
-)]
-pub mod bincode;
+    ))] {
+        #[cfg_attr(
+            feature = "docs",
+            doc(any(
+                all(feature = "tokio_runtime", not(feature = "async_std_runtime")),
+                all(
+                    any(feature = "http_warp", feature = "http_actix_web"),
+                    not(feature = "http_tide")
+                )
+            ))
+        )]
+        mod tokio;
+    }
+}
 
-#[cfg(all(
-    all(
-        feature = "serde_cbor",
-        not(feature = "serde_json"),
-        not(feature = "serde_bincode"),
-        not(feature = "serde_rmp"),
-    ),
-    any(
-        feature = "async_std_runtime",
-        feature = "tokio_runtime",
-        feature = "http_tide",
-        feature = "http_warp",
-        feature = "http_actix_web"
-    )
-))]
-#[cfg_attr(
-    feature = "docs",
-    doc(cfg(all(
-        feature = "serde_cbor",
-        not(feature = "serde_json"),
-        not(feature = "serde_bincode"),
-        not(feature = "serde_rmp"),
-    )))
-)]
-pub mod cbor;
-
-#[cfg(all(
-    all(
-        feature = "serde_json",
-        not(feature = "serde_bincode"),
-        not(feature = "serde_cbor"),
-        not(feature = "serde_rmp"),
-    ),
-    any(
-        feature = "async_std_runtime",
-        feature = "tokio_runtime",
-        feature = "http_tide",
-        feature = "http_warp",
-        feature = "http_actix_web"
-    )
-))]
-#[cfg_attr(
-    feature = "docs",
-    doc(cfg(all(
-        feature = "serde_json",
-        not(feature = "serde_bincode"),
-        not(feature = "serde_cbor"),
-        not(feature = "serde_rmp"),
-    )))
-)]
-pub mod json;
-
-#[cfg(all(
-    all(
-        feature = "serde_rmp",
-        not(feature = "serde_cbor"),
-        not(feature = "serde_json"),
-        not(feature = "serde_bincode"),
-    ),
-    any(
-        feature = "async_std_runtime",
-        feature = "tokio_runtime",
-        feature = "http_tide",
-        feature = "http_warp",
-        feature = "http_actix_web"
-    )
-))]
-#[cfg_attr(
-    feature = "docs",
-    doc(cfg(all(
-        feature = "serde_rmp",
-        not(feature = "serde_cbor"),
-        not(feature = "serde_json"),
-        not(feature = "serde_bincode"),
-    )))
-)] 
-pub mod rmp;
+cfg_if!{
+    if #[cfg(feature = "serde_bincode")] {
+        pub mod bincode;
+        pub use Codec as DefaultCodec;
+    } else if #[cfg(feature = "serde_json")] {
+        pub mod json;
+        pub use Codec as DefaultCodec;
+    } else if #[cfg(feature = "serde_cbor")] {
+        pub mod cbor;
+        pub use Codec as DefaultCodec;
+    } else if #[cfg(feature = "serde_rmp")] {
+        pub mod rmp;
+        pub use Codec as DefaultCodec;
+    }
+}
 
 #[cfg(any(
     feature = "async_std_runtime",
@@ -190,35 +104,6 @@ pub struct Codec<R, W, C> {
     pub writer: W,
     conn_type: PhantomData<C>,
 }
-
-#[cfg(any(
-    all(
-        feature = "serde_bincode",
-        not(feature = "serde_json"),
-        not(feature = "serde_cbor"),
-        not(feature = "serde_rmp"),
-    ),
-    all(
-        feature = "serde_cbor",
-        not(feature = "serde_json"),
-        not(feature = "serde_bincode"),
-        not(feature = "serde_rmp"),
-    ),
-    all(
-        feature = "serde_json",
-        not(feature = "serde_bincode"),
-        not(feature = "serde_cbor"),
-        not(feature = "serde_rmp"),
-    ),
-    all(
-        feature = "serde_rmp",
-        not(feature = "serde_cbor"),
-        not(feature = "serde_json"),
-        not(feature = "serde_bincode"),
-    ),
-    feature = "docs"
-))]
-pub use Codec as DefaultCodec;
 
 // websocket integration for async_tungstenite, tokio_tungstenite
 impl<S, E>
@@ -335,187 +220,182 @@ pub trait CodecWrite: Marshal {
     ) -> Result<(), Error>;
 }
 
-#[cfg(all(
-    any(feature = "async_std_runtime", feature = "tokio_runtime"),
-    any(
-        feature = "serde_bincode",
-        feature = "serde_cbor",
-        feature = "serde_rmp",
-    )
-))]
-#[async_trait]
-// Trati implementation for binary protocols
-impl<R, W> CodecRead for Codec<R, W, ConnTypeReadWrite>
-where
-    R: FrameRead + Send + Sync + Unpin,
-    W: FrameWrite + Send + Sync + Unpin,
-{
-    async fn read_header<H>(&mut self) -> Option<Result<H, Error>>
-    where
-        H: serde::de::DeserializeOwned,
-    {
-        let reader = &mut self.reader;
 
-        Some(
-            reader
-                .read_frame()
-                .await?
-                .and_then(|frame| Self::unmarshal(&frame.payload)),
+cfg_if!{
+    if #[cfg(all(
+        any(feature = "async_std_runtime", feature = "tokio_runtime"),
+        any(
+            feature = "serde_bincode",
+            feature = "serde_cbor",
+            feature = "serde_rmp",
         )
-    }
-
-    async fn read_body(
-        &mut self,
-    ) -> Option<Result<Box<dyn erased::Deserializer<'static> + Send + 'static>, Error>> {
-        let reader = &mut self.reader;
-
-        match reader.read_frame().await? {
-            Ok(frame) => {
-                // log::debug!("frame: {:?}", frame);
-                let de = Self::from_bytes(frame.payload);
-                Some(Ok(de))
+    ))] {
+        #[async_trait]
+        // Trati implementation for binary protocols
+        impl<R, W> CodecRead for Codec<R, W, ConnTypeReadWrite>
+        where
+            R: FrameRead + Send + Sync + Unpin,
+            W: FrameWrite + Send + Sync + Unpin,
+        {
+            async fn read_header<H>(&mut self) -> Option<Result<H, Error>>
+            where
+                H: serde::de::DeserializeOwned,
+            {
+                let reader = &mut self.reader;
+        
+                Some(
+                    reader
+                        .read_frame()
+                        .await?
+                        .and_then(|frame| Self::unmarshal(&frame.payload)),
+                )
             }
-            Err(e) => return Some(Err(e)),
+        
+            async fn read_body(
+                &mut self,
+            ) -> Option<Result<Box<dyn erased::Deserializer<'static> + Send + 'static>, Error>> {
+                let reader = &mut self.reader;
+        
+                match reader.read_frame().await? {
+                    Ok(frame) => {
+                        // log::debug!("frame: {:?}", frame);
+                        let de = Self::from_bytes(frame.payload);
+                        Some(Ok(de))
+                    }
+                    Err(e) => return Some(Err(e)),
+                }
+            }
+        }
+
+        #[async_trait]
+        // trait implementation for binary protocols
+        impl<R, W> CodecWrite for Codec<R, W, ConnTypeReadWrite>
+        where
+            R: FrameRead + Send + Sync + Unpin,
+            W: FrameWrite + Send + Sync + Unpin,
+        {
+            async fn write_header<H>(&mut self, header: H) -> Result<(), Error>
+            where
+                H: serde::Serialize + Metadata + Send,
+            {
+                let writer = &mut self.writer;
+
+                let id = header.get_id();
+                let buf = Self::marshal(&header)?;
+                let frame = Frame::new(id, 0, PayloadType::Header, buf);
+
+                log::trace!("Header id: {} sent", &id);
+                writer.write_frame(frame).await
+            }
+
+            async fn write_body(
+                &mut self,
+                id: &MessageId,
+                body: &(dyn erased::Serialize + Send + Sync),
+            ) -> Result<(), Error> {
+                let writer = &mut self.writer;
+
+                let buf = Self::marshal(&body)?;
+                let frame = Frame::new(id.to_owned(), 1, PayloadType::Data, buf);
+
+                log::trace!("Body id: {} sent", id);
+
+                writer.write_frame(frame).await
+            }
         }
     }
 }
 
-#[cfg(all(
-    any(feature = "async_std_runtime", feature = "tokio_runtime"),
-    any(
-        feature = "serde_bincode",
-        feature = "serde_cbor",
-        feature = "serde_rmp",
-    )
-))]
-#[async_trait]
-// trait implementation for binary protocols
-impl<R, W> CodecWrite for Codec<R, W, ConnTypeReadWrite>
-where
-    R: FrameRead + Send + Sync + Unpin,
-    W: FrameWrite + Send + Sync + Unpin,
-{
-    async fn write_header<H>(&mut self, header: H) -> Result<(), Error>
-    where
-        H: serde::Serialize + Metadata + Send,
-    {
-        let writer = &mut self.writer;
-
-        let id = header.get_id();
-        let buf = Self::marshal(&header)?;
-        let frame = Frame::new(id, 0, PayloadType::Header, buf);
-
-        log::trace!("Header id: {} sent", &id);
-        writer.write_frame(frame).await
-    }
-
-    async fn write_body(
-        &mut self,
-        id: &MessageId,
-        body: &(dyn erased::Serialize + Send + Sync),
-    ) -> Result<(), Error> {
-        let writer = &mut self.writer;
-
-        let buf = Self::marshal(&body)?;
-        let frame = Frame::new(id.to_owned(), 1, PayloadType::Data, buf);
-
-        log::trace!("Body id: {} sent", id);
-
-        writer.write_frame(frame).await
-    }
-}
-
-#[cfg(all(
-    any(
-        feature = "serde_bincode",
-        feature = "serde_cbor",
-        feature = "serde_rmp",
-        feature = "serde_json",
-    ),
-    any(
-        feature = "async_std_runtime",
-        feature = "tokio_runtime",
-        feature = "http_tide",
-        feature = "http_warp",
-        feature = "http_actix_web"
-    )
-))]
-#[async_trait]
-impl<R, W> CodecRead for Codec<R, W, ConnTypePayload>
-where
-    R: PayloadRead + Send,
-    W: Send,
-{
-    async fn read_header<H>(&mut self) -> Option<Result<H, Error>>
-    where
-        H: serde::de::DeserializeOwned,
-    {
-        let reader = &mut self.reader;
-
-        Some(
-            reader
-                .read_payload()
-                .await?
-                .and_then(|payload| Self::unmarshal(&payload)),
+cfg_if!{
+    if #[cfg(all(
+        any(
+            feature = "serde_bincode",
+            feature = "serde_cbor",
+            feature = "serde_rmp",
+            feature = "serde_json",
+        ),
+        any(
+            feature = "async_std_runtime",
+            feature = "tokio_runtime",
+            feature = "http_tide",
+            feature = "http_warp",
+            feature = "http_actix_web"
         )
-    }
+    ))] {
+        #[async_trait]
+        impl<R, W> CodecRead for Codec<R, W, ConnTypePayload>
+        where
+            R: PayloadRead + Send,
+            W: Send,
+        {
+            async fn read_header<H>(&mut self) -> Option<Result<H, Error>>
+            where
+                H: serde::de::DeserializeOwned,
+            {
+                let reader = &mut self.reader;
 
-    async fn read_body(
-        &mut self,
-    ) -> Option<Result<Box<dyn erased::Deserializer<'static> + Send + 'static>, Error>> {
-        let reader = &mut self.reader;
-
-        match reader.read_payload().await? {
-            Ok(payload) => {
-                log::debug!("payload: {:?}", payload);
-                let de = Self::from_bytes(payload);
-                Some(Ok(de))
+                Some(
+                    reader
+                        .read_payload()
+                        .await?
+                        .and_then(|payload| Self::unmarshal(&payload)),
+                )
             }
-            Err(e) => return Some(Err(e)),
+
+            async fn read_body(
+                &mut self,
+            ) -> Option<Result<Box<dyn erased::Deserializer<'static> + Send + 'static>, Error>> {
+                let reader = &mut self.reader;
+
+                match reader.read_payload().await? {
+                    Ok(payload) => {
+                        log::debug!("payload: {:?}", payload);
+                        let de = Self::from_bytes(payload);
+                        Some(Ok(de))
+                    }
+                    Err(e) => return Some(Err(e)),
+                }
+            }
         }
-    }
-}
 
-#[cfg(all(
-    any(
-        feature = "serde_bincode",
-        feature = "serde_cbor",
-        feature = "serde_rmp",
-        feature = "serde_json",
-    ),
-    any(
-        feature = "async_std_runtime",
-        feature = "tokio_runtime",
-        feature = "http_tide",
-        feature = "http_warp",
-        feature = "http_actix_web"
-    )
-))]
-#[async_trait]
-impl<R, W> CodecWrite for Codec<R, W, ConnTypePayload>
-where
-    R: Send,
-    W: PayloadWrite + Send,
-{
-    async fn write_header<H>(&mut self, header: H) -> Result<(), Error>
-    where
-        H: serde::Serialize + Metadata + Send,
-    {
-        let writer = &mut self.writer;
-        let buf = Self::marshal(&header)?;
-        // log::trace!("Header id: {} sent", &id);
-        writer.write_payload(buf).await
-    }
+        #[async_trait]
+        impl<R, W> CodecWrite for Codec<R, W, ConnTypePayload>
+        where
+            R: Send,
+            W: PayloadWrite + Send,
+        {
+            async fn write_header<H>(&mut self, header: H) -> Result<(), Error>
+            where
+                H: serde::Serialize + Metadata + Send,
+            {
+                let writer = &mut self.writer;
+                let buf = Self::marshal(&header)?;
+                // log::trace!("Header id: {} sent", &id);
+                writer.write_payload(buf).await
+            }
 
-    async fn write_body(
-        &mut self,
-        _: &MessageId,
-        body: &(dyn erased::Serialize + Send + Sync),
-    ) -> Result<(), Error> {
-        let writer = &mut self.writer;
-        let buf = Self::marshal(&body)?;
-        // log::trace!("Body id: {} sent", id);
-        writer.write_payload(buf).await
+            async fn write_body(
+                &mut self,
+                _: &MessageId,
+                body: &(dyn erased::Serialize + Send + Sync),
+            ) -> Result<(), Error> {
+                let writer = &mut self.writer;
+                let buf = Self::marshal(&body)?;
+                // log::trace!("Body id: {} sent", id);
+                writer.write_payload(buf).await
+            }
+        }
+
+        /// A wrapper for erased serde deserializers to allow transfer of ownership
+        pub(crate) struct DeserializerOwned<D> {
+            inner: D,
+        }
+
+        impl<D> DeserializerOwned<D> {
+            pub fn new(inner: D) -> Self {
+                Self { inner }
+            }
+        }
     }
 }
 
@@ -586,47 +466,6 @@ where
         self.write_body(&id, body).await?;
 
         Ok(())
-    }
-}
-
-#[cfg(all(
-    any(
-        feature = "serde_bincode",
-        feature = "serde_cbor",
-        feature = "serde_rmp",
-        feature = "serde_json",
-    ),
-    any(
-        feature = "async_std_runtime",
-        feature = "tokio_runtime",
-        feature = "http_tide",
-        feature = "http_warp",
-        feature = "http_actix_web"
-    )
-))]
-/// A wrapper for erased serde deserializers to allow transfer of ownership
-pub(crate) struct DeserializerOwned<D> {
-    inner: D,
-}
-
-#[cfg(all(
-    any(
-        feature = "serde_bincode",
-        feature = "serde_cbor",
-        feature = "serde_rmp",
-        feature = "serde_json",
-    ),
-    any(
-        feature = "async_std_runtime",
-        feature = "tokio_runtime",
-        feature = "http_tide",
-        feature = "http_warp",
-        feature = "http_actix_web"
-    )
-))]
-impl<D> DeserializerOwned<D> {
-    pub fn new(inner: D) -> Self {
-        Self { inner }
     }
 }
 

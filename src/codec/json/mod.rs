@@ -2,6 +2,7 @@ use async_trait::async_trait;
 use erased_serde as erased;
 use serde::de::Visitor;
 use std::io::Cursor; // serde doesn't support AsyncRead
+use cfg_if::cfg_if;
 
 use super::{
     Codec, CodecRead, CodecWrite, DeserializerOwned, EraseDeserializer, Marshal, Unmarshal,
@@ -12,20 +13,35 @@ use crate::message::{MessageId, Metadata};
 
 use super::ConnTypeReadWrite;
 
-#[cfg(any(
-    all(feature = "async_std_runtime", not(feature = "tokio_runtime")),
-    all(feature = "http_tide", not(feature="http_actix_web"), not(feature = "http_warp"))
-))]
-mod async_std;
+cfg_if! {
+    if #[cfg(any(
+        feature = "async_std_runtime", 
+        feature = "http_tide"
+    ))] {
+        mod async_std;
+    } else if #[cfg(any(
+        feature = "tokio_runtime", 
+        feature = "http_warp", 
+        feature = "http_actix_web"
+    ))] {
+        mod tokio;
+    }
+}
 
-#[cfg(any(
-    all(feature = "tokio_runtime", not(feature = "async_std_runtime")),
-    all(
-        any(feature = "http_warp", feature = "http_actix_web"),
-        not(feature = "http_tide")
-    )
-))]
-mod tokio;
+// #[cfg(any(
+//     all(feature = "async_std_runtime", not(feature = "tokio_runtime")),
+//     all(feature = "http_tide", not(feature="http_actix_web"), not(feature = "http_warp"))
+// ))]
+// mod async_std;
+
+// #[cfg(any(
+//     all(feature = "tokio_runtime", not(feature = "async_std_runtime")),
+//     all(
+//         any(feature = "http_warp", feature = "http_actix_web"),
+//         not(feature = "http_tide")
+//     )
+// ))]
+// mod tokio;
 
 impl<'de, R> serde::Deserializer<'de> for DeserializerOwned<serde_json::Deserializer<R>>
 where
