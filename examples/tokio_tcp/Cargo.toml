@@ -21,4 +21,4 @@ env_logger = "0.8.2"
 log = "0.4.14"
 pretty_env_logger = "0.4.0"
 serde = { version = "1.0.123", features = ["derive"] }
-toy-rpc = { version = "0.5.0-beta.1", path = "../..", default-features = false, features = ["std", "serde_json", "tokio_runtime"]}
+toy-rpc = { version = "0.5.0-beta.1", path = "../..", default-features = false, features = ["std", "serde_bincode", "tokio_runtime"]}
