@@ -64,7 +64,38 @@ cfg_if! {
 
             /// Consumes `Server` and returns a `warp::filters::BoxedFilter`
             /// which can be chained with `warp` filters
-            pub fn boxed_filter(self) -> BoxedFilter<(impl Reply,)> {
+            ///
+            /// # Example 
+            /// ```rust 
+            /// use toy_rpc::Server;
+            /// use toy_rpc::macros::{export_impl, service};
+            /// use std::sync::Arc;
+            ///
+            /// struct FooService { }
+            ///
+            /// #[export_impl]
+            /// impl FooService {
+            ///     // define some "exported" functions here
+            /// }
+            ///
+            /// #[tokio::main]
+            /// async fn main() {
+            ///     env_logger::init();
+            ///
+            ///     let foo_service = Arc::new(FooService { });
+            ///
+            ///     let server = Server::builder()
+            ///         .register("foo", service!(foo_service, FooService))
+            ///         .build();
+            ///
+            ///     let routes = warp::path("rpc")
+            ///         .and(server.handle_http());
+            ///
+            ///     // RPC will be served at "ws://127.0.0.1/rpc/_rpc_"
+            ///     warp::serve(routes).run(([127, 0, 0, 1], 8888)).await;
+            /// }
+            /// ```
+            pub fn into_boxed_filter(self) -> BoxedFilter<(impl Reply,)> {
                 let state = Arc::new(self);
                 let state = warp::any().map(move || state.clone());
 
@@ -100,7 +131,7 @@ cfg_if! {
             /// | ------------ |---|
             /// | `http_tide`| [`into_endpoint`](#method.into_endpoint) |
             /// | `http_actix_web` | [`scope_config`](#method.scope_config) |
-            /// | `http_warp` | [`boxed_filter`](#method.boxed_filter) |
+            /// | `http_warp` | [`into_boxed_filter`](#method.into_boxed_filter) |
             ///
             /// This is enabled
             /// if and only if **exactly one** of the the following feature flag is turned on
@@ -109,8 +140,38 @@ cfg_if! {
             /// - `serde_cbor`
             /// - `serde_rmp`
             ///
+            /// # Example 
+            /// ```rust 
+            /// use toy_rpc::Server;
+            /// use toy_rpc::macros::{export_impl, service};
+            /// use std::sync::Arc;
+            ///
+            /// struct FooService { }
+            ///
+            /// #[export_impl]
+            /// impl FooService {
+            ///     // define some "exported" functions here
+            /// }
+            ///
+            /// #[tokio::main]
+            /// async fn main() {
+            ///     env_logger::init();
+            ///
+            ///     let foo_service = Arc::new(FooService { });
+            ///
+            ///     let server = Server::builder()
+            ///         .register("foo", service!(foo_service, FooService))
+            ///         .build();
+            ///
+            ///     let routes = warp::path("rpc")
+            ///         .and(server.handle_http());
+            ///
+            ///     // RPC will be served at "ws://127.0.0.1/rpc/_rpc_"
+            ///     warp::serve(routes).run(([127, 0, 0, 1], 8888)).await;
+            /// }
+            /// ```
             pub fn handle_http(self) -> BoxedFilter<(impl Reply,)> {
-                self.boxed_filter()
+                self.into_boxed_filter()
             }
         }
     }

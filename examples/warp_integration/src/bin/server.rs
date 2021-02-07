@@ -75,15 +75,9 @@ async fn main() {
         .register("bar_service", service!(bar_service, rpc::BarService))
         .build();
 
-    // let server = Arc::new(server);
-
-    // let state = warp::any().map(move || server.clone());
-    // let rpc_route = warp::path(Server::handler_path())
-    //     .and(state)
-    //     .and(warp::ws())
-    //     .map(Server::warp_websocket_handler);
     let routes = warp::path("rpc")
         .and(server.handle_http());
-    
+
+    // RPC will be served at "ws://127.0.0.1/rpc/_rpc_"
     warp::serve(routes).run(([127, 0, 0, 1], 23333)).await;
 }
