@@ -55,8 +55,8 @@ toy-rpc-macros = "0.1.0"
 serde_json = { version = "1.0", optional = true }
 serde_cbor = { version = "0.11", optional = true }
 rmp-serde = { version = "0.15", optional = true }
-tide = { version = "0.15.1", optional = true }
-tide-websockets =  { version = "0.1.0", optional = true }
+tide = { version = "0.16.0", optional = true }
+tide-websockets =  { version = "0.2.0", optional = true }
 actix-web = { version = "3.3", optional = true }
 actix = { version = "0.10.0", optional = true }
 actix-web-actors = { version = "3.0.0", optional = true }

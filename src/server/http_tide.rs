@@ -1,5 +1,5 @@
-use cfg_if::cfg_if;
 use tide_websockets as tide_ws;
+use cfg_if::cfg_if;
 
 use super::Server;
 use crate::transport::ws::WebSocketConn;
@@ -33,6 +33,7 @@ cfg_if!{
         feature = "docs"
     ))] {
         use crate::codec::DefaultCodec;
+        use super::DEFAULT_RPC_PATH;
 
         /// The following impl block is controlled by feature flag. It is enabled
         /// if and only if **exactly one** of the the following feature flag is turned on
@@ -42,7 +43,7 @@ cfg_if!{
         /// - `serde_rmp`
         impl Server {
             #[cfg(any(feature = "http_tide", feature = "docs"))]
-            #[cfg_attr(feature = "docs", doc(cfg(feature = "tide")))]
+            #[cfg_attr(feature = "docs", doc(cfg(feature = "http_tide")))]
             /// Creates a `tide::Endpoint` that handles http connections.
             /// A convienient function `handle_http` can be used to achieve the same thing
             /// with `tide` feature turned on
@@ -97,7 +98,7 @@ cfg_if!{
             pub fn into_endpoint(self) -> tide::Server<Server> {
                 let mut app = tide::Server::with_state(self);
                 // let mut app = tide::Server::new();
-                app.at(super::DEFAULT_RPC_PATH)
+                app.at(DEFAULT_RPC_PATH)
                     // .connect(|_| async move { Ok("CONNECT request is received") })
                     .get(tide_ws::WebSocket::new(
                         |req: tide::Request<Server>, ws_stream| async move {
@@ -117,18 +118,30 @@ cfg_if!{
                 app
             }
 
-            #[cfg(any(all(feature = "tide", not(feature = "actix-web"),), feature = "docs"))]
+            #[cfg(any(
+                all(
+                    feature = "http_tide", 
+                    not(feature = "http_actix_web"), 
+                    not(feature = "http_warp"),
+                ), 
+                feature = "docs"
+            ))]
             #[cfg_attr(
                 feature = "docs",
-                doc(cfg(all(feature = "tide", not(feature = "actix-web"))))
+                doc(cfg(all(
+                    feature = "http_tide", 
+                    not(feature = "http_actix_web"),
+                    not(feature = "http_warp"),
+                )))
             )]
             /// A conevience function that calls the corresponding http handling
             /// function depending on the enabled feature flag
             ///
             /// | feature flag | function name  |
             /// | ------------ |---|
-            /// | `tide`| [`into_endpoint`](#method.into_endpoint) |
-            /// | `actix-web` | [`scope_config`](#method.scope_config) |
+            /// | `http_tide`| [`into_endpoint`](#method.into_endpoint) |
+            /// | `http_actix_web` | [`scope_config`](#method.scope_config) |
+            /// |
             ///
             /// This is enabled
             /// if and only if **exactly one** of the the following feature flag is turned on
@@ -175,8 +188,8 @@ cfg_if!{
                 self.into_endpoint()
             }
         }
-
     }
 }
+
 
 

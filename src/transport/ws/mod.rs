@@ -199,7 +199,12 @@ impl PayloadWrite for SinkHalf<tide_websockets::WebSocketConnection, CannotSink>
 impl GracefulShutdown for SinkHalf<tide_websockets::WebSocketConnection, CannotSink> {
     async fn close(&mut self) {
         // tide-websocket does not provide a close method
+        // let msg = WsMessage::Close(None);
 
+        // self.inner
+        //     .send(msg)
+        //     .await
+        //     .map_err(|e| Error::TransportError { msg: e.to_string() })
     }
 } 
 
