@@ -1,17 +1,9 @@
-use tokio::net::{TcpListener, TcpStream};
-use tokio::task;
-use futures::StreamExt;
-use std::sync::Arc;
-use async_tungstenite::tokio::TokioAdapter;
+
 use cfg_if::cfg_if;
 
-use crate::error::Error;
-use crate::transport::ws::WebSocketConn;
-
-use super::{AsyncServiceMap, Server};
 
 cfg_if!{
- if #[cfg(any(
+    if #[cfg(any(
         all(
             feature = "serde_bincode",
             not(feature = "serde_json"),
@@ -38,6 +30,15 @@ cfg_if!{
         ),
         feature = "docs"
     ))] {
+        use tokio::net::{TcpListener, TcpStream};
+        use futures::StreamExt;
+        use tokio::task;
+        use async_tungstenite::tokio::TokioAdapter;
+        use std::sync::Arc;
+
+        use crate::error::Error;
+        use crate::transport::ws::WebSocketConn;
+        
         use crate::codec::DefaultCodec;
                 
         /// The following impl block is controlled by feature flag. It is enabled
@@ -47,6 +48,7 @@ cfg_if!{
         /// - `serde_cbor`
         /// - `serde_rmp`
         impl Server {
+
             /// Accepts connections on the listener and serves requests to default
             /// server for each incoming connection
             ///

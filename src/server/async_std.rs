@@ -1,13 +1,4 @@
-use async_std::net::{TcpListener, TcpStream};
-use async_std::task;
-use futures::StreamExt;
-use std::sync::Arc;
 use cfg_if::cfg_if;
-
-use crate::error::Error;
-use crate::transport::ws::WebSocketConn;
-
-use super::{AsyncServiceMap, Server};
 
 cfg_if!{
     if #[cfg(any(
@@ -37,7 +28,16 @@ cfg_if!{
         ),
         feature = "docs"
     ))] {
+        use async_std::net::{TcpListener, TcpStream};
+        use async_std::task;
+        use futures::StreamExt;
+        use std::sync::Arc;
         use crate::codec::DefaultCodec;
+
+        use crate::error::Error;
+        use crate::transport::ws::WebSocketConn;
+
+        use super::{AsyncServiceMap, Server};
 
         /// The following impl block is controlled by feature flag. It is enabled
         /// if and only if **exactly one** of the the following feature flag is turned on
