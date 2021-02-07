@@ -1,7 +1,11 @@
+/// This modules implements `Server`'s methods that require `feature = "async_std_runtime"` 
+/// or `feature = "http_tide"`.
+
 use cfg_if::cfg_if;
 
 cfg_if! {
     if #[cfg(any(
+        any(feature = "docs", doc),
         all(
             feature = "serde_bincode",
             not(feature = "serde_json"),
@@ -26,10 +30,9 @@ cfg_if! {
             not(feature = "serde_json"),
             not(feature = "serde_bincode"),
         ),
-        feature = "docs"
     ))] {
-        use async_std::net::{TcpListener, TcpStream};
-        use async_std::task;
+        use ::async_std::net::{TcpListener, TcpStream};
+        use ::async_std::task;
         use futures::StreamExt;
         use std::sync::Arc;
         use crate::codec::DefaultCodec;
@@ -46,8 +49,8 @@ cfg_if! {
         /// - `serde_cbor`
         /// - `serde_rmp`
         impl Server {
-            /// Accepts connections on the listener and serves requests to default
-            /// server for each incoming connection
+            /// Accepts connections on an `async_std::net::TcpListner` and serves requests to default
+            /// server for each incoming connection.
             ///
             /// This is enabled
             /// if and only if **exactly one** of the the following feature flag is turned on
@@ -92,7 +95,7 @@ cfg_if! {
                 Ok(())
             }
 
-            /// Similar to `accept`. This will accept connections on the listener and serves
+            /// Similar to `accept`. This will accept connections on an `async_std::net::TcpListner` and serves
             /// requests using WebSocket transport protocol and the default codec.
             ///
             /// This is enabled

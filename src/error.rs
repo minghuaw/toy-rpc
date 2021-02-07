@@ -110,7 +110,6 @@ impl From<serde_cbor::Error> for Error {
     }
 }
 
-// #[cfg(feature = "surf")]
 impl From<url::ParseError> for Error {
     fn from(err: url::ParseError) -> Self {
         Error::ParseError {
@@ -137,7 +136,7 @@ impl From<rmp_serde::encode::Error> for Error {
     }
 }
 
-#[cfg(feature = "actix-web")]
+#[cfg(feature = "http_actix_web")]
 impl From<Error> for actix_web::Error {
     fn from(err: crate::error::Error) -> Self {
         // wrap error with actix_web::error::InternalError for now

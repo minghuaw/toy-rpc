@@ -1,3 +1,5 @@
+/// This module implements integration with `tide`.
+
 use cfg_if::cfg_if;
 use tide_websockets as tide_ws;
 
@@ -6,6 +8,7 @@ use crate::transport::ws::WebSocketConn;
 
 cfg_if! {
     if #[cfg(any(
+        any(feature = "docs", doc),
         all(
             feature = "serde_bincode",
             not(feature = "serde_json"),
@@ -30,7 +33,6 @@ cfg_if! {
             not(feature = "serde_json"),
             not(feature = "serde_bincode"),
         ),
-        feature = "docs"
     ))] {
         use crate::codec::DefaultCodec;
         use super::DEFAULT_RPC_PATH;

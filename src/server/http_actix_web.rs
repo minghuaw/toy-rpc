@@ -1,3 +1,5 @@
+/// This module implements integration with `actix-web`.
+
 use cfg_if::cfg_if;
 use std::marker::PhantomData;
 
@@ -239,8 +241,8 @@ cfg_if! {
         /// - `serde_cbor`
         /// - `serde_rmp`
         impl Server {
-            #[cfg(any(feature = "actix-web", feature = "docs"))]
-            #[cfg_attr(feature = "docs", doc(cfg(feature = "actix-web")))]
+            #[cfg(any(feature = "http_actix_web", feature = "docs"))]
+            #[cfg_attr(feature = "docs", doc(cfg(feature = "http_actix_web")))]
             /// Configuration for integration with an actix-web scope.
             /// A convenient funciont "handle_http" may be used to achieve the same thing
             /// with the `actix-web` feature turned on.
@@ -301,23 +303,22 @@ cfg_if! {
             pub fn scope_config(cfg: &mut web::ServiceConfig) {
                 cfg.service(
                     web::scope("/")
-                        // .app_data(data)
                         .service(web::resource(super::DEFAULT_RPC_PATH).route(web::get().to(index))),
                 );
             }
 
-            #[cfg(any(all(feature = "actix-web", not(feature = "tide"),), feature = "docs"))]
+            #[cfg(any(all(feature = "http_actix_web", not(feature = "http_tide"),), feature = "docs"))]
             #[cfg_attr(
                 feature = "docs",
-                doc(cfg(all(feature = "actix-web", not(feature = "tide"))))
+                doc(cfg(all(feature = "http_actix_web", not(feature = "http_tide"))))
             )]
             /// A conevience function that calls the corresponding http handling
             /// function depending on the enabled feature flag
             ///
             /// | feature flag | function name  |
             /// | ------------ |---|
-            /// | `tide`| [`into_endpoint`](#method.into_endpoint) |
-            /// | `actix-web` | [`scope_config`](#method.scope_config) |
+            /// | `http_tide`| [`into_endpoint`](#method.into_endpoint) |
+            /// | `http_actix_web` | [`scope_config`](#method.scope_config) |
             ///
             /// This is enabled
             /// if and only if **exactly one** of the the following feature flag is turned on

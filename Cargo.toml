@@ -22,7 +22,20 @@ exclude = [
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [package.metadata.docs.rs]
-features = ["docs"]
+features = [
+    "docs",
+    "tokio_runtime", 
+    # "async-tungstenite/tokio-runtime", 
+    # "tokio-stream", 
+    # "async-std", 
+    # "async-tungstenite/async-std-runtime",
+    # "actix-web", 
+    # "actix", 
+    # "actix-web-actors", 
+    # "actix-http",
+    # "warp",
+    # "serde_bincode"
+]
 rustdoc-args = ["--cfg", "feature=\"docs\""]
 
 [features]
@@ -32,7 +45,9 @@ default = [
     "async_std_runtime"
 ]
 
-docs = ["default", "actix-web"]
+docs = [
+
+]
 
 std = ["serde/std"]
 

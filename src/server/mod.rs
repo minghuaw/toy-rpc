@@ -11,43 +11,42 @@ use crate::service::{
 };
 
 #[cfg(all(feature = "http_actix_web"))]
+#[doc(cfg(feature = "http_actix_web"))]
 pub mod http_actix_web;
 
 #[cfg(feature = "http_tide")]
+#[doc(cfg(feature = "http_tide"))]
 pub mod http_tide;
 
 #[cfg(all(feature = "http_warp"))]
+#[doc(cfg(feature = "http_warp"))]
 pub mod http_warp;
 
 cfg_if! {
-    if #[cfg(any(
+    if #[cfg(any(feature = "docs", doc))] {
+        #[doc(cfg(any(
+            feature = "async_std_runtime",
+            feature = "http_tide",
+        )))]
+        pub mod async_std;
+
+        #[doc(cfg(any(
+            feature = "tokio_runtime",
+            feature = "http_warp",
+            feature = "http_actix_web"
+        )))]
+        pub mod tokio;
+    } else if #[cfg(any(
         feature = "async_std_runtime",
-        feature = "http_tide"
+        feature = "http_tide",
     ))] {
-        #[cfg_attr(
-            feature = "docs",
-            doc(any(
-                all(feature = "async_std_runtime", not(feature = "tokio_runtime")),
-                all(feature = "http_tide", not(feature="http_actix_web"), not(feature = "http_warp"))
-            ))
-        )]
-        mod async_std;
+        pub mod async_std;
     } else if #[cfg(any(
         feature = "tokio_runtime",
         feature = "http_warp",
         feature = "http_actix_web"
     ))] {
-        #[cfg_attr(
-            feature = "docs",
-            doc(any(
-                all(feature = "tokio_runtime", not(feature = "async_std_runtime")),
-                all(
-                    any(feature = "http_warp", feature = "http_actix_web"),
-                    not(feature = "http_tide")
-                )
-            ))
-        )]
-        mod tokio;
+        pub mod tokio;
     }
 }
 

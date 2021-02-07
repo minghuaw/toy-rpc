@@ -1,3 +1,5 @@
+/// This module implements integration with `warp`.
+
 use cfg_if::cfg_if;
 use std::sync::Arc;
 
@@ -5,6 +7,7 @@ use super::Server;
 
 cfg_if! {
     if #[cfg(any(
+        any(feature = "docs", doc),
         all(
             feature = "serde_bincode",
             not(feature = "serde_json"),
@@ -29,7 +32,6 @@ cfg_if! {
             not(feature = "serde_json"),
             not(feature = "serde_bincode"),
         ),
-        feature = "docs"
     ))] {
         use crate::codec::DefaultCodec;
 

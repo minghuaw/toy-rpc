@@ -1,4 +1,6 @@
 #![cfg_attr(feature = "docs", feature(doc_cfg))]
+// #![warn(missing_docs)]
+
 // non-builtin inner attribute is not stable
 // #![cfg_attr(
 //     any(
@@ -11,8 +13,7 @@
 //     any_runtime
 // )]
 
-//! # A async RPC crate that mimics the `golang`'s `net/rpc` package and supports
-//! both `async-std` and `tokio`.
+//! # A async RPC crate that mimics the `golang`'s `net/rpc` package and supports both `async-std` and `tokio`.
 //!
 //! This crate aims at providing an easy-to-use RPC that is similar to `golang`'s
 //! `net/rpc`.

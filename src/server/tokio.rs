@@ -1,7 +1,11 @@
+/// This modules implements `Server`'s methods that require `feature = "tokio_runtime"`, 
+/// `feature = "http_actix_web"` or `feature = "http_warp"`.
+
 use cfg_if::cfg_if;
 
 cfg_if! {
     if #[cfg(any(
+        any(feature = "docs", doc),
         all(
             feature = "serde_bincode",
             not(feature = "serde_json"),
@@ -26,11 +30,10 @@ cfg_if! {
             not(feature = "serde_json"),
             not(feature = "serde_bincode"),
         ),
-        feature = "docs"
     ))] {
-        use tokio::net::{TcpListener, TcpStream};
+        use ::tokio::net::{TcpListener, TcpStream};
         use futures::StreamExt;
-        use tokio::task;
+        use ::tokio::task;
         use async_tungstenite::tokio::TokioAdapter;
         use std::sync::Arc;
 
@@ -48,7 +51,7 @@ cfg_if! {
         /// - `serde_rmp`
         impl Server {
 
-            /// Accepts connections on the listener and serves requests to default
+            /// Accepts connections on an `tokio::net::TcpListener` and serves requests to default
             /// server for each incoming connection
             ///
             /// This is enabled
@@ -94,7 +97,7 @@ cfg_if! {
                 Ok(())
             }
 
-            /// Similar to `accept`. This will accept connections on the listener and serves
+            /// Similar to `accept`. This will accept connections on a `tokio::net::TcpListener` and serves
             /// requests using WebSocket transport protocol and the default codec.
             ///
             /// This is enabled
@@ -136,8 +139,6 @@ cfg_if! {
 
                     task::spawn(Self::_serve_websocket(ws_stream, self.services.clone()));
                 }
-
-                unimplemented!()
             }
 
             /// Serves a single connection
