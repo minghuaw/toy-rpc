@@ -575,6 +575,9 @@
 //! ## Change Log
 //!
 //! ### 0.5.0-beta.3
+//! 
+//! Breaking changes
+//! 
 //! - HTTP integration is now accomplished using WebSocket with `async_tungstenite`, and thus HTTP connections
 //! of versions <0.5.0 are not compatible with versions >=0.5.0.
 //! - The custom binary transport protocol now includes a magic byte at the beginning, making
@@ -588,6 +591,10 @@
 //!     - added "http_warp" feature flag
 //!     - added "async_std_runtime"
 //!     - added "tokio_runtime"
+//! 
+//! Non-breaking changes
+//! 
+//! - Removed `Stream` and `Sink` impl from the custom binary transport protocol `Frame`
 //!
 //! ### 0.4.5
 //!
