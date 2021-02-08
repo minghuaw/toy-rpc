@@ -1,0 +1,34 @@
+[package]
+name = "docs_examples"
+version = "0.1.0"
+authors = ["minghuaw <michael.wu1107@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+
+[[bin]]
+name = "server"
+path = "src/bin/server.rs"
+
+[[bin]]
+name = "client"
+path = "src/bin/client.rs" 
+
+
+[dependencies]
+# you may need to change feature flags for different examples
+toy-rpc = { version = "0.5.0", path = "../..", default-features = false, features = ["serde_bincode", "tokio_runtime"]}
+
+# optional depending on the choice of runtime or http framework for different examples
+async-std = { version = "1.9.0", features = ["attributes"] } 
+tokio = { version = "1.2.0", features = ["rt", "rt-multi-thread", "macros", "net", "sync"] }
+tide = "0.16.0" 
+actix-web = "3.3.2"
+warp = "0.3.0" 
+ 
+# other dependencies needed for the examples here
+async-trait = "0.1.42"
+env_logger = "0.8.2"
+log = "0.4.14"
+serde = { version = "1.0.123", features = ["derive"] }

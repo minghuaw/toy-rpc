@@ -217,14 +217,21 @@ The examples here will also need some **other** dependencies
 ```toml
 [dependencies]
 # you may need to change feature flags for different examples
-toy_rpc = { version = "0.5.0" }
+toy-rpc = { version = "0.5.0" }
+
+# optional depending on the choice of runtime or http framework for different examples
+async-std = { version = "1.9.0", features = ["attributes"] }
+tokio = { version = "1.1.1", features = ["rt", "rt-multi-thread", "macros", "net", "sync"] }
+tide = "0.16.0"
+actix-web = "3.3.2"
+warp = "0.3.0"
 
 # other dependencies needed for the examples here
-async-std = { version = "1.9.0", features = ["attributes"] }
 async-trait = "0.1.42"
 env_logger = "0.8.2"
 log = "0.4.14"
 serde = { version = "1.0.123", features = ["derive"] }
+
 ```
 
 #### Example Service Definition
