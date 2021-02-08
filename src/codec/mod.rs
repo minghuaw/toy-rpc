@@ -14,8 +14,8 @@ use tungstenite::Message as WsMessage;
 use crate::error::Error;
 use crate::transport::ws::{CanSink, SinkHalf, StreamHalf, WebSocketConn};
 use crate::{
-    message::{MessageId, Metadata, RequestHeader, ResponseHeader},
-    GracefulShutdown,
+    message::{MessageId, Metadata, RequestHeader, ResponseHeader,
+    GracefulShutdown,}
 };
 
 cfg_if! {

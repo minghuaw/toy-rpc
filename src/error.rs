@@ -1,3 +1,5 @@
+//! Custom errors
+
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug)]

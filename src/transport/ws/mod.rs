@@ -7,7 +7,7 @@ use tungstenite::Message as WsMessage;
 use std::marker::PhantomData;
 
 use super::{PayloadRead, PayloadWrite};
-use crate::{error::Error, GracefulShutdown};
+use crate::{error::Error, message::GracefulShutdown};
 
 cfg_if! {
     if #[cfg(feature = "http_tide")] {

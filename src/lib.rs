@@ -27,6 +27,9 @@
 //!   - [RPC client for HTTP](#rpc-client-for-http)
 //! - [Change Log](#change-log)
 //! - [Future Plan](#future-plan)
+//! 
+//! - [Re-exports](#reexports)
+//! - [Modules](#modules)
 //!
 //! ## Breaking Changes 
 //! 
@@ -636,11 +639,14 @@
 //! - more tests
 //!
 
+use cfg_if::cfg_if;
+
 pub mod codec;
 pub mod error;
 pub mod message;
 pub mod service;
 pub mod transport;
+pub mod macros;
 
 cfg_if::cfg_if! {
     if #[cfg(any(
@@ -673,53 +679,8 @@ cfg_if!{
     }
 }
 
-pub mod macros {
-    pub use toy_rpc_macros::{export_impl, service};
+pub use error::Error;
 
-    #[cfg(all(
-        any(
-            feature = "async_std_runtime",
-            feature = "tokio_runtime",
-            feature = "http_tide",
-            feature = "http_warp",
-            feature = "http_actix_web"
-        ),
-        any(
-            all(
-                feature = "serde_bincode",
-                not(feature = "serde_json"),
-                not(feature = "serde_cbor"),
-                not(feature = "serde_rmp"),
-            ),
-            all(
-                feature = "serde_cbor",
-                not(feature = "serde_json"),
-                not(feature = "serde_bincode"),
-                not(feature = "serde_rmp"),
-            ),
-            all(
-                feature = "serde_json",
-                not(feature = "serde_bincode"),
-                not(feature = "serde_cbor"),
-                not(feature = "serde_rmp"),
-            ),
-            all(
-                feature = "serde_rmp",
-                not(feature = "serde_cbor"),
-                not(feature = "serde_json"),
-                not(feature = "serde_bincode"),
-            )
-        )
-    ))]
-    pub(crate) use toy_rpc_macros::impl_inner_deserializer;
-}
-
-use cfg_if::cfg_if;
 // re-export
 pub use erased_serde;
 pub use lazy_static;
-
-#[async_trait::async_trait]
-pub trait GracefulShutdown {
-    async fn close(&mut self);
-}

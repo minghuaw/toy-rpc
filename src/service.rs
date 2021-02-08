@@ -1,3 +1,5 @@
+//!  Service builder and registration
+
 use async_trait::async_trait;
 use erased_serde as erased;
 use futures::future::Future;
@@ -81,8 +83,6 @@ where
 
 #[allow(dead_code)]
 pub struct BuilderUninitialized;
-// pub struct BuilderStateReady;
-// pub struct BuilderHandlersReady;
 pub struct BuilderReady;
 
 pub struct ServiceBuilder<State, BuilderMode>

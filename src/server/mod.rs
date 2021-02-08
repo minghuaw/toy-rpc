@@ -1,3 +1,7 @@
+//! RPC server. There is only one `Server` defined, but some methods have 
+//! different implementations depending on the runtime feature flag
+//! 
+
 use cfg_if::cfg_if;
 use erased_serde as erased;
 use std::collections::HashMap;
