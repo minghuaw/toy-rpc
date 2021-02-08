@@ -68,10 +68,10 @@ cfg_if! {
             where
                 H: serde::Serialize + Metadata + Send,
             {
-                let id = header.get_id();
+                let _ = header.get_id();
                 let buf = Self::marshal(&header)?;
 
-                let bytes_sent = self.writer.write(&buf).await?;
+                let _ = self.writer.write(&buf).await?;
                 self.writer.flush().await?;
 
                 Ok(())
@@ -79,12 +79,12 @@ cfg_if! {
 
             async fn write_body(
                 &mut self,
-                id: &MessageId,
+                _id: &MessageId,
                 body: &(dyn erased::Serialize + Send + Sync),
             ) -> Result<(), Error> {
                 let buf = Self::marshal(&body)?;
 
-                let bytes_sent = self.writer.write(&buf).await?;
+                let _ = self.writer.write(&buf).await?;
                 self.writer.flush().await?;
 
                 Ok(())

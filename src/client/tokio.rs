@@ -431,7 +431,10 @@ impl Client<Connected> {
     {
         let res = done
             .try_recv()
-            .map_err(|e| Error::TransportError(e.to_string()))?;
+            .map_err(|e| Error::TransportError(format!(
+                "Done channel for id {} is canceled. Err found: {}",
+                &id, e.to_string()
+            )))?;
 
         match res {
             Ok(mut resp_body) => {
