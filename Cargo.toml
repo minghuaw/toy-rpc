@@ -27,14 +27,11 @@ rustdoc-args = ["--cfg", "feature=\"docs\""]
 
 [features]
 default = [
-    "std", 
     "serde_bincode",
-    "http_actix_web"
+    "async_std_runtime"
 ]
 
-docs = [
-
-]
+docs = []
 
 std = ["serde/std"]
 

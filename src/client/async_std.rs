@@ -6,6 +6,7 @@ use std::sync::Arc;
 use ::async_std::sync::Mutex;
 use ::async_std::task;
 use futures::channel::oneshot;
+use futures::{AsyncRead, AsyncWrite};
 use cfg_if::cfg_if;
 
 use super::*;
@@ -107,7 +108,7 @@ cfg_if! {
             ///
             /// #[async_std::main]
             /// async fn main() {
-            ///     let addr = "ws://127.0.0.1:8888";
+            ///     let addr = "ws://127.0.0.1:8080";
             ///     let client = Client::dial_http(addr).await.unwrap();
             /// }
             /// ```
@@ -153,7 +154,7 @@ cfg_if! {
             ///
             /// #[async_std::main]
             /// async fn main() {
-            ///     let addr = "ws://127.0.0.1:8888/rpc/";
+            ///     let addr = "ws://127.0.0.1:8080/rpc/";
             ///     let client = Client::dial_http(addr).await.unwrap();
             /// }
             /// ```
@@ -181,11 +182,14 @@ cfg_if! {
             ///
             /// #[async_std::main]
             /// async fn main() {
-            ///     let stream = TcpStream::connect("127.0.0.1:8888").await.unwrap();
+            ///     let stream = TcpStream::connect("127.0.0.1:8080").await.unwrap();
             ///     let client = Client::with_stream(stream);
             /// }
             /// ```
-            pub fn with_stream(stream: TcpStream) -> Client<Connected> {
+            pub fn with_stream<T>(stream: T) -> Client<Connected> 
+            where 
+                T: AsyncRead + AsyncWrite + Send + Sync + Unpin + 'static,
+            {
                 let codec = DefaultCodec::new(stream);
 
                 Self::with_codec(codec)
@@ -205,7 +209,7 @@ cfg_if! {
             ///
             /// #[async_std::main]
             /// async fn main() {
-            ///     let addr = "127.0.0.1:8888";
+            ///     let addr = "127.0.0.1:8080";
             ///     let stream = TcpStream::connect(addr).await.unwrap();
             ///     let codec = Codec::new(stream);
             ///     let client = Client::with_codec(codec);
@@ -244,7 +248,7 @@ impl Client<Connected> {
     ///
     /// #[async_std::main]
     /// async fn main() {
-    ///     let addr = "127.0.0.1:8888";
+    ///     let addr = "127.0.0.1:8080";
     ///     let client = Client::dial(addr).await.unwrap();
     ///
     ///     let args = "arguments";
@@ -270,7 +274,7 @@ impl Client<Connected> {
     ///
     /// #[async_std::main]
     /// async fn main() {
-    ///     let addr = "127.0.0.1:8888";
+    ///     let addr = "127.0.0.1:8080";
     ///     let client = Client::dial(addr).await.unwrap();
     ///
     ///     let args = "arguments";
@@ -307,7 +311,7 @@ impl Client<Connected> {
     ///
     /// #[async_std::main]
     /// async fn main() {
-    ///     let addr = "127.0.0.1:8888";
+    ///     let addr = "127.0.0.1:8080";
     ///     let client = Client::dial(addr).await.unwrap();
     ///
     ///     let args = "arguments";

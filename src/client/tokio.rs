@@ -6,6 +6,7 @@
 use std::sync::Arc;
 pub(crate) use ::tokio::sync::{oneshot, Mutex};
 use ::tokio::task;
+use ::tokio::io::{AsyncRead, AsyncWrite};
 
 use super::*;
 
@@ -109,7 +110,7 @@ cfg_if! {
             ///
             /// #[tokio::main]
             /// async fn main() {
-            ///     let addr = "ws://127.0.0.1:8888";
+            ///     let addr = "ws://127.0.0.1:8080";
             ///     let client = Client::dial_http(addr).await.unwrap();
             /// }
             /// ```
@@ -155,7 +156,7 @@ cfg_if! {
             ///
             /// #[tokio::main]
             /// async fn main() {
-            ///     let addr = "ws://127.0.0.1:8888/rpc/";
+            ///     let addr = "ws://127.0.0.1:8080/rpc/";
             ///     let client = Client::dial_http(addr).await.unwrap();
             /// }
             /// ```
@@ -185,11 +186,14 @@ cfg_if! {
             ///
             /// #[tokio::main]
             /// async fn main() {
-            ///     let stream = TcpStream::connect("127.0.0.1:8888").await.unwrap();
+            ///     let stream = TcpStream::connect("127.0.0.1:8080").await.unwrap();
             ///     let client = Client::with_stream(stream);
             /// }
             /// ```
-            pub fn with_stream(stream: TcpStream) -> Client<Connected> {
+            pub fn with_stream<T>(stream: T) -> Client<Connected> 
+            where 
+                T: AsyncRead + AsyncWrite + Send + Sync + Unpin + 'static
+            {
                 let codec = DefaultCodec::new(stream);
 
                 Self::with_codec(codec)
@@ -210,7 +214,7 @@ impl Client<NotConnected> {
     ///
     /// #[tokio::main]
     /// async fn main() {
-    ///     let addr = "127.0.0.1:8888";
+    ///     let addr = "127.0.0.1:8080";
     ///     let stream = TcpStream::connect(addr).await.unwrap();
     ///     let codec = Codec::new(stream);
     ///     let client = Client::with_codec(codec);
@@ -246,7 +250,7 @@ impl Client<Connected> {
     ///
     /// #[tokio::main]
     /// async fn main() {
-    ///     let addr = "127.0.0.1:8888";
+    ///     let addr = "127.0.0.1:8080";
     ///     let client = Client::dial(addr).await.unwrap();
     ///
     ///     let args = "arguments";
@@ -274,7 +278,7 @@ impl Client<Connected> {
     ///
     /// #[tokio::main]
     /// async fn main() {
-    ///     let addr = "127.0.0.1:8888";
+    ///     let addr = "127.0.0.1:8080";
     ///     let client = Client::dial(addr).await.unwrap();
     ///
     ///     let args = "arguments";
@@ -313,7 +317,7 @@ impl Client<Connected> {
     ///
     /// #[tokio::main]
     /// async fn main() {
-    ///     let addr = "127.0.0.1:8888";
+    ///     let addr = "127.0.0.1:8080";
     ///     let client = Client::dial(addr).await.unwrap();
     ///
     ///     let args = "arguments";

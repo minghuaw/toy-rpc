@@ -272,7 +272,7 @@ cfg_if! {
             ///
             /// #[actix::main]
             /// async fn main() -> std::io::Result<()> {
-            ///     let addr = "127.0.0.1:8888";
+            ///     let addr = "127.0.0.1:8080";
             ///
             ///     let foo_service = Arc::new(FooService { });
             ///
@@ -344,7 +344,7 @@ cfg_if! {
             ///
             /// #[actix::main]
             /// async fn main() -> std::io::Result<()> {
-            ///     let addr = "127.0.0.1:8888";
+            ///     let addr = "127.0.0.1:8080";
             ///
             ///     let foo_service = Arc::new(FooService { });
             ///

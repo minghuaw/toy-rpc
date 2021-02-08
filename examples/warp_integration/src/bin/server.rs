@@ -1,5 +1,6 @@
 use warp::Filter;
-use async_std::sync::{Arc, Mutex};
+use std::sync::Arc;
+use tokio::sync::Mutex;
 use async_trait::async_trait;
 
 use toy_rpc::macros::{export_impl, service};

@@ -75,7 +75,7 @@ cfg_if! {
             ///
             /// #[async_std::main]
             /// async fn main() -> tide::Result<()> {
-            ///     let addr = "127.0.0.1:8888";
+            ///     let addr = "127.0.0.1:8080";
             ///     let foo_service = Arc::new(FooService { });
             ///
             ///     let server = Server::builder()
@@ -167,7 +167,7 @@ cfg_if! {
             ///
             /// #[async_std::main]
             /// async fn main() -> tide::Result<()> {
-            ///     let addr = "127.0.0.1:8888";
+            ///     let addr = "127.0.0.1:8080";
             ///     let foo_service = Arc::new(FooService { });
             ///
             ///     let server = Server::builder()

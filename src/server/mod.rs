@@ -210,7 +210,7 @@ impl Server {
     /// #[async_std::main]
     /// async fn main() {
     ///     // assume the following connection can be established
-    ///     let stream = TcpStream::connect("127.0.0.1:8888").await.unwrap();
+    ///     let stream = TcpStream::connect("127.0.0.1:8080").await.unwrap();
     ///     let codec = Codec::new(stream);
     ///     
     ///     let server = Server::builder()
@@ -265,7 +265,7 @@ impl ServerBuilder {
     ///
     /// #[async_std::main]
     /// async fn main() {
-    ///     let addr = "127.0.0.1:8888";
+    ///     let addr = "127.0.0.1:8080";
     ///     
     ///     let echo_service = Arc::new(EchoService { });
     ///     let server = Server::builder()

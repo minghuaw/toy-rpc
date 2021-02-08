@@ -92,7 +92,7 @@ cfg_if! {
             ///         .and(server.handle_http());
             ///
             ///     // RPC will be served at "ws://127.0.0.1/rpc/_rpc_"
-            ///     warp::serve(routes).run(([127, 0, 0, 1], 8888)).await;
+            ///     warp::serve(routes).run(([127, 0, 0, 1], 8080)).await;
             /// }
             /// ```
             pub fn into_boxed_filter(self) -> BoxedFilter<(impl Reply,)> {
@@ -167,7 +167,7 @@ cfg_if! {
             ///         .and(server.handle_http());
             ///
             ///     // RPC will be served at "ws://127.0.0.1/rpc/_rpc_"
-            ///     warp::serve(routes).run(([127, 0, 0, 1], 8888)).await;
+            ///     warp::serve(routes).run(([127, 0, 0, 1], 8080)).await;
             /// }
             /// ```
             pub fn handle_http(self) -> BoxedFilter<(impl Reply,)> {
