@@ -1,6 +1,6 @@
 [package]
 name = "toy-rpc"
-version = "0.5.1-beta.0"
+version = "0.5.1"
 authors = ["Minghua Wu <michael.wu1107@gmail.com>"]
 edition = "2018"
 description = "An async RPC that mimics golang net/rpc's usage and supports both async-std and tokio"

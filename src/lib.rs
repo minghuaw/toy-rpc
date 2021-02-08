@@ -218,7 +218,7 @@
 //! ```toml
 //! [dependencies]
 //! # you may need to change feature flags for different examples
-//! toy-rpc = { version = "0.5.0" }
+//! toy-rpc = { version = "0.5.1" }
 //!
 //! # optional depending on the choice of runtime or http framework for different examples
 //! async-std = { version = "1.9.0", features = ["attributes"] } 
@@ -356,7 +356,7 @@
 //!
 //! ```rust
 //! [dependencies]
-//! toy_rpc = { version = "0.5.0", default-features = false, features = ["serde_bincode", "tokio_runtime"] }
+//! toy_rpc = { version = "0.5.1", default-features = false, features = ["serde_bincode", "tokio_runtime"] }
 //! ```
 //!
 //! server.rs
@@ -432,7 +432,7 @@
 //! the feature flags.
 //!
 //! ```toml
-//! toy_rpc = { version = "0.5.0", default-features = false, features = ["serde_bincode", "http_tide"] }
+//! toy_rpc = { version = "0.5.1", default-features = false, features = ["serde_bincode", "http_tide"] }
 //! ```
 //!
 //! server.rs
@@ -481,7 +481,7 @@
 //! the feature flags.
 //!
 //! ```toml
-//! toy_rpc = { version = "0.5.0", default-features = false, features = ["serde_bincode", "http_actix_web"] }
+//! toy_rpc = { version = "0.5.1", default-features = false, features = ["serde_bincode", "http_actix_web"] }
 //! ```
 //!
 //! server.rs
@@ -542,7 +542,7 @@
 //! the feature flags.
 //!
 //! ```toml
-//! toy_rpc = { version = "0.5.0", default-features = false, features = ["serde_bincode", "http_warp"] }
+//! toy_rpc = { version = "0.5.1", default-features = false, features = ["serde_bincode", "http_warp"] }
 //! ```
 //!
 //! server.rs
