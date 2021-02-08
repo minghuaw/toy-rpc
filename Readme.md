@@ -34,7 +34,7 @@ method "exported".
 
 The most recent breaking changes will be reflected here.
 
-#### Version 0.5.0-beta.3
+#### Version 0.5.0
 - HTTP integration is now accomplished via WebSocket using `async_tungstenite`, and thus HTTP connections
 of versions <0.5.0 are **NOT** compatible with versions >=0.5.0.
 - The custom binary transport protocol now includes a magic byte at the beginning, making
@@ -217,7 +217,7 @@ The examples here will also need some **other** dependencies
 ```toml
 [dependencies]
 # you may need to change feature flags for different examples
-toy_rpc = { version = "0.5.0-beta.3" }
+toy_rpc = { version = "0.5.0" }
 
 # other dependencies needed for the examples here
 async-std = { version = "1.9.0", features = ["attributes"] }
@@ -338,7 +338,7 @@ the feature flags.
 
 ```rust
 [dependencies]
-toy_rpc = { version = "0.5.0-beta.3", default-features = false, features = ["serde_bincode", "tokio_runtime"] }
+toy_rpc = { version = "0.5.0", default-features = false, features = ["serde_bincode", "tokio_runtime"] }
 ```
 
 server.rs
@@ -409,7 +409,7 @@ The default feature flags will **NOT** work with this example, and you need to c
 the feature flags.
 
 ```toml
-toy_rpc = { version = "0.5.0-beta.3", default-features = false, features = ["serde_bincode", "http_tide"] }
+toy_rpc = { version = "0.5.0", default-features = false, features = ["serde_bincode", "http_tide"] }
 ```
 
 server.rs
@@ -454,7 +454,7 @@ The default feature flags will **NOT** work with this example, and you need to c
 the feature flags.
 
 ```toml
-toy_rpc = { version = "0.5.0-beta.3", default-features = false, features = ["serde_bincode", "http_actix_web"] }
+toy_rpc = { version = "0.5.0", default-features = false, features = ["serde_bincode", "http_actix_web"] }
 ```
 
 server.rs
@@ -509,7 +509,7 @@ The default feature flags will **NOT** work with this example, and you need to c
 the feature flags.
 
 ```toml
-toy_rpc = { version = "0.5.0-beta.3", default-features = false, features = ["serde_bincode", "http_warp"] }
+toy_rpc = { version = "0.5.0", default-features = false, features = ["serde_bincode", "http_warp"] }
 ```
 
 server.rs
@@ -573,7 +573,7 @@ async fn main() {
 
 ### Change Log
 
-#### 0.5.0-beta.3
+#### 0.5.0
 
 Breaking changes
 
