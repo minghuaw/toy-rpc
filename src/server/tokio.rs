@@ -89,7 +89,7 @@ cfg_if! {
                 while let Some(conn) = incoming.next().await {
                     let stream = conn?;
 
-                    log::debug!("Accepting incoming connection from {}", stream.peer_addr()?);
+                    log::trace!("Accepting incoming connection from {}", stream.peer_addr()?);
 
                     task::spawn(Self::_serve_conn(stream, self.services.clone()));
                 }
@@ -132,10 +132,10 @@ cfg_if! {
 
                 while let Some(conn) = incoming.next().await {
                     let stream = conn?;
-
-                    log::debug!("Accepting incoming connection from {}", stream.peer_addr()?);
+                    log::trace!("Accepting incoming connection from {}", stream.peer_addr()?);
 
                     let ws_stream = async_tungstenite::tokio::accept_async(stream).await?;
+                    log::trace!("Established WebSocket connection.");
 
                     task::spawn(Self::_serve_websocket(ws_stream, self.services.clone()));
                 }
@@ -154,7 +154,7 @@ cfg_if! {
                 // let fut = task::spawn_blocking(|| Self::_serve_codec(codec, services)).await;
                 let fut = Self::_serve_codec(codec, services);
 
-                log::debug!("Client disconnected from {}", _peer_addr);
+                log::trace!("Client disconnected from {}", _peer_addr);
 
                 fut.await
             }
@@ -201,7 +201,7 @@ cfg_if! {
 
                 let fut = Self::_serve_codec(codec, services);
 
-                log::debug!("Client disconnected");
+                log::trace!("Client disconnected");
 
                 fut.await
             }

@@ -330,7 +330,6 @@ cfg_if! {
 
                 match reader.read_frame().await? {
                     Ok(frame) => {
-                        // log::debug!("frame: {:?}", frame);
                         let de = Self::from_bytes(frame.payload);
                         Some(Ok(de))
                     }
@@ -356,7 +355,6 @@ cfg_if! {
                 let buf = Self::marshal(&header)?;
                 let frame = Frame::new(id, 0, PayloadType::Header, buf);
 
-                log::trace!("Header id: {} sent", &id);
                 writer.write_frame(frame).await
             }
 
@@ -369,8 +367,6 @@ cfg_if! {
 
                 let buf = Self::marshal(&body)?;
                 let frame = Frame::new(id.to_owned(), 1, PayloadType::Data, buf);
-
-                log::trace!("Body id: {} sent", id);
 
                 writer.write_frame(frame).await
             }
@@ -443,7 +439,6 @@ cfg_if! {
 
                 match reader.read_payload().await? {
                     Ok(payload) => {
-                        log::debug!("payload: {:?}", payload);
                         let de = Self::from_bytes(payload);
                         Some(Ok(de))
                     }
@@ -464,7 +459,6 @@ cfg_if! {
             {
                 let writer = &mut self.writer;
                 let buf = Self::marshal(&header)?;
-                // log::trace!("Header id: {} sent", &id);
                 writer.write_payload(buf).await
             }
 
@@ -475,7 +469,6 @@ cfg_if! {
             ) -> Result<(), Error> {
                 let writer = &mut self.writer;
                 let buf = Self::marshal(&body)?;
-                // log::trace!("Body id: {} sent", id);
                 writer.write_payload(buf).await
             }
         }
@@ -523,7 +516,7 @@ where
     ) -> Result<(), Error> {
         let id = header.get_id();
 
-        log::trace!("Writing response id: {}", &id);
+        log::trace!("Sending response id: {}", &id);
 
         self.write_header(header).await?;
         self.write_body(&id, body).await?;
@@ -554,7 +547,7 @@ where
     ) -> Result<(), Error> {
         let id = header.get_id();
 
-        log::trace!("Writing request id: {}", &id);
+        log::trace!("Sending request id: {}", &id);
 
         self.write_header(header).await?;
         self.write_body(&id, body).await?;

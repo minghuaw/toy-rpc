@@ -41,7 +41,7 @@ where
         let HandlerResultMessage { id, res } = msg;
         match Self::send_response_via_context(id, res, ctx) {
             Ok(_) => (),
-            Err(e) => log::debug!("Error encountered sending response via context: {}", e),
+            Err(e) => log::error!("Error encountered sending response via context: {}", e),
         };
     }
 }
@@ -61,8 +61,7 @@ where
         match item {
             Ok(ws::Message::Ping(msg)) => ctx.pong(&msg),
             Ok(ws::Message::Text(text)) => {
-                log::debug!("Received Text message: {}", text);
-                // ctx.text(text)
+                log::error!("Received Text message: {} while expecting a binary message", text);
             }
             Ok(ws::Message::Binary(bin)) => {
                 match self.req_header.take() {
@@ -71,7 +70,7 @@ where
                             self.req_header.get_or_insert(h);
                         }
                         Err(e) => {
-                            log::debug!("Failed to unmarshal request header: {}", e);
+                            log::error!("Failed to unmarshal request header: {}", e);
                         }
                     },
                     Some(header) => {
@@ -84,7 +83,7 @@ where
                                 let err = Err(Error::RpcError(RpcError::MethodNotFound));
                                 match Self::send_response_via_context(id, err, ctx) {
                                     Ok(_) => (),
-                                    Err(e) => log::debug!(
+                                    Err(e) => log::error!(
                                         "Error encountered sending response via context: {}",
                                         e
                                     ),
@@ -95,8 +94,8 @@ where
                         let service_name = &service_method[..pos];
                         let method_name = service_method[pos + 1..].to_owned();
 
-                        log::debug!(
-                            "Message: {}, service: {}, method: {}",
+                        log::trace!(
+                            "Message id: {}, service: {}, method: {}",
                             id,
                             service_name,
                             method_name
@@ -109,7 +108,7 @@ where
                                 let err = Err(Error::RpcError(RpcError::MethodNotFound));
                                 match Self::send_response_via_context(id, err, ctx) {
                                     Ok(_) => (),
-                                    Err(e) => log::debug!(
+                                    Err(e) => log::error!(
                                         "Error encountered sending response via context: {}",
                                         e
                                     ),
@@ -127,7 +126,7 @@ where
                             match actor_addr.do_send(HandlerResultMessage { id, res }) {
                                 Ok(_) => (),
                                 Err(e) => {
-                                    log::debug!("Error encountered while sending message to actor. Error: {}", e);
+                                    log::error!("Error encountered while sending message to actor. Error: {}", e);
                                 }
                             };
                         };
@@ -152,7 +151,7 @@ where
     ) -> Result<(), Error> {
         match res {
             Ok(body) => {
-                log::debug!("Message {} Success", id.clone());
+                log::trace!("Message {} Success", id.clone());
 
                 // send response header first
                 let header = ResponseHeader {
@@ -167,7 +166,7 @@ where
                 ctx.binary(buf);
             }
             Err(e) => {
-                log::debug!("Message {} Error", id.clone());
+                log::trace!("Message {} Error", id.clone());
 
                 // compose error response header
                 let header = ResponseHeader { id, is_error: true };

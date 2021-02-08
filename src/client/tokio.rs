@@ -122,7 +122,6 @@ cfg_if! {
 
             async fn _dial_websocket(url: url::Url) -> Result<Client<Connected>, Error> {
                 let (ws_stream, _) = connect_async(&url).await?;
-                log::debug!("WebSocket handshake has been successfully completed");
 
                 let ws_stream = WebSocketConn::new(ws_stream);
                 let codec = DefaultCodec::with_websocket(ws_stream);
@@ -412,7 +411,6 @@ impl Client<Connected> {
             // send back response
             let mut _pending = pending.lock().await;
             if let Some(done_sender) = _pending.remove(&id) {
-                log::debug!("Sending ResponseBody over oneshot channel {}", &id);
                 done_sender.send(res).map_err(|_| Error::TransportError(
                     format!("Failed to send ResponseBody over oneshot channel {}", &id),
                 ))?;
@@ -429,8 +427,6 @@ impl Client<Connected> {
     where
         Res: serde::de::DeserializeOwned,
     {
-        log::debug!("Received response id: {}", &id);
-
         let res = done
             .try_recv()
             .map_err(|e| Error::TransportError(

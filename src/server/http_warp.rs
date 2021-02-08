@@ -52,7 +52,7 @@ cfg_if! {
                     let fut = Self::_serve_codec(codec, services);
                     match fut.await {
                         Ok(_) => (),
-                        Err(e) => log::debug!("{}", e),
+                        Err(e) => log::error!("Error encountered {}", e),
                     };
                 })
             }

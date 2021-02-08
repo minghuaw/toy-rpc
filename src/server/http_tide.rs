@@ -110,7 +110,7 @@ cfg_if! {
 
                             let fut = Self::_serve_codec(codec, services);
 
-                            log::debug!("Client disconnected from");
+                            log::trace!("Client disconnected.");
 
                             fut.await?;
                             Ok(())

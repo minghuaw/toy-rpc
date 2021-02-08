@@ -33,7 +33,6 @@ cfg_if!{
                         Some(Self::unmarshal(buf.as_bytes()))
                     }
                     Err(err) => {
-                        log::error!("{:?}", err.kind());
                         Some(Err(err.into()))
                     }
                 }
@@ -74,9 +73,7 @@ cfg_if!{
         
                 let bytes_sent = self.writer.write(&buf).await?;
                 self.writer.flush().await?;
-        
-                log::trace!("Header id: {} written with {} bytes", &id, &bytes_sent);
-        
+                
                 Ok(())
             }
         
@@ -89,9 +86,7 @@ cfg_if!{
         
                 let bytes_sent = self.writer.write(&buf).await?;
                 self.writer.flush().await?;
-        
-                log::trace!("Body id: {} written with {} bytes", id, &bytes_sent);
-        
+                
                 Ok(())
             }
         }

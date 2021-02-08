@@ -174,7 +174,6 @@ impl<R: AsyncRead + Unpin + Send + Sync> FrameRead for R {
         // read magic first
         let magic = &mut [0];
         let _ = self.read_exact(magic).await.ok()?;
-        log::debug!("MAGIC read: {:?}", &magic);
         if magic[0] != MAGIC {
             return Some(Err(Error::TransportError (
                 "Magic byte mismatch.

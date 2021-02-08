@@ -69,9 +69,7 @@ cfg_if!{
         
                 let bytes_sent = self.writer.write(&buf).await?;
                 self.writer.flush().await?;
-        
-                log::trace!("Header id: {} written with {} bytes", &id, &bytes_sent);
-        
+                
                 Ok(())
             }
         
@@ -84,9 +82,7 @@ cfg_if!{
         
                 let bytes_sent = self.writer.write(&buf).await?;
                 self.writer.flush().await?;
-        
-                log::trace!("Body id: {} written with {} bytes", id, &bytes_sent);
-        
+                
                 Ok(())
             }
         }

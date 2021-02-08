@@ -117,8 +117,6 @@ impl Server {
     {
         match codec.read_request_header().await {
             Some(header) => {
-                log::debug!("Request header: {:?}", &header);
-
                 // destructure header
                 let RequestHeader { id, service_method } = header?;
                 // let service_method = &service_method[..];
@@ -128,8 +126,8 @@ impl Server {
                 let service_name = &service_method[..pos];
                 let method_name = service_method[pos + 1..].to_owned();
 
-                log::debug!(
-                    "Message {}, service: {}, method: {}",
+                log::trace!(
+                    "Message id: {}, service: {}, method: {}",
                     id,
                     service_name,
                     method_name
@@ -144,12 +142,7 @@ impl Server {
 
                 // read body
                 let res = {
-                    log::debug!("Reading request body");
-
                     let deserializer = codec.read_request_body().await.unwrap()?;
-
-                    log::debug!("Calling handler");
-
                     // pass ownership to the `call`
                     call(method_name, deserializer).await
                 };
@@ -174,20 +167,17 @@ impl Server {
     {
         match res {
             Ok(b) => {
-                log::debug!("Message {} Success", id.clone());
+                log::trace!("Message {} Success", id.clone());
 
                 let header = ResponseHeader {
                     id,
                     is_error: false,
                 };
-
-                log::debug!("Writing response id: {}", &id);
-
                 _codec.write_response(header, &b).await?;
                 Ok(())
             }
             Err(e) => {
-                log::debug!("Message {} Error", id.clone());
+                log::trace!("Message {} Error", id.clone());
 
                 let header = ResponseHeader { id, is_error: true };
                 let body = match e {
@@ -195,9 +185,8 @@ impl Server {
                     _ => Box::new(RpcError::ServerError(e.to_string())),
                 };
 
-                //
-                let bytes_sent = _codec.write_response(header, &body).await?;
-                Ok(bytes_sent)
+                _codec.write_response(header, &body).await?;
+                Ok(())
             }
         }
     }
