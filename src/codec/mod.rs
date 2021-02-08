@@ -54,11 +54,9 @@ cfg_if! {
     }
 }
 
-#[cfg(any(feature = "docs", doc))]
-pub use Codec as DefaultCodec;
-
 cfg_if! {
     if #[cfg(any(
+        feature = "docs",
         all(
             feature = "serde_bincode",
             not(feature = "serde_json"),
