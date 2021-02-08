@@ -27,13 +27,13 @@
 //!   - [RPC client for HTTP](#rpc-client-for-http)
 //! - [Change Log](#change-log)
 //! - [Future Plan](#future-plan)
-//! 
+//!
 //! - [Re-exports](#reexports)
 //! - [Modules](#modules)
 //!
-//! ## Breaking Changes 
-//! 
-//! The most recent breaking changes will be reflected here. 
+//! ## Breaking Changes
+//!
+//! The most recent breaking changes will be reflected here.
 //!
 //! ### Version 0.5.0-beta.3
 //! - HTTP integration is now accomplished via WebSocket using `async_tungstenite`, and thus HTTP connections
@@ -52,11 +52,11 @@
 //!
 //! ## Crate Feature Flags
 //!
-//! The feature flags can be put into two categories. 
+//! The feature flags can be put into two categories.
 //!
-//! 
+//!
 //! Choice of serialization/deserialzation
-//! 
+//!
 //! - `serde_bincode`: the default codec will use `bincode`
 //! for serialization/deserialization
 //! - `serde_json`: the default codec will use `serde_json`
@@ -65,9 +65,9 @@
 //! for serialization/deserialization
 //! - `serde_rmp`: the default codec will use `rmp-serde`
 //! for serialization/deserialization
-//! 
+//!
 //! Choice of runtime
-//! 
+//!
 //! - `async_std_runtime`: supports usage with `async-std`
 //! - `tokio_runtime`: supports usage with `tokio`
 //! - `http_tide`: enables `tide` integration on the server side. This also enables `async_std_runtime`
@@ -75,10 +75,10 @@
 //! - `http_warp`: enables integration with `warp` on the server side. This also enables `tokio_runtime`
 //!
 //! Other trivial feature flags are listed below, and they are likely of no actual usage for you.
-//! 
+//!
 //! - `docs`
-//! - `std`: `serde/std`. There is no actual usage right now. 
-//! 
+//! - `std`: `serde/std`. There is no actual usage right now.
+//!
 //! ### Default Features
 //!
 //! ```toml
@@ -183,43 +183,43 @@
 //! The result can be obtained using the `JoinHandle`. Please note that
 //! `async_std::task::JoinHandle` and `tokio::task::JoinHandle` behave slightly different.
 //! Executing `.await` on `async_std::task::JoinHandle` returns `Result<Res, toy_rpc::error::Error>`.
-//! However, executing `.await` on `tokio::task::JoinHandle` returns 
+//! However, executing `.await` on `tokio::task::JoinHandle` returns
 //! `Result<Result<Res, toy_rpc::error::Error>, tokio::task::JoinError>.
-//! 
+//!
 //! Unless an explicity codec is set up (with `serve_codec` method, HTTP is *NOT* supported yet),
 //! the default codec specified by one of the following features tags (`serde_bincode`, `serde_json`
 //! `serde_cbor`, `serde_rmp`) will be used to transport data.
 //!
 //! ## `async-std` and `tokio`
-//! 
+//!
 //! Starting from version `0.5.0-beta.2`, you can use `toy-rpc` with either runtime by choosing
-//! the corresponding feature flag (`async_std_runtime`, `tokio_runtime`). 
+//! the corresponding feature flag (`async_std_runtime`, `tokio_runtime`).
 //!
 //! ## HTTP integrations
 //!
-//! Similar to choosing the runtimes, `toy-rpc` supports integration with `actix-web`, `tide`, 
-//! and `warp` by choosing the corresponding feature flag (`http_tide`, `http_actix_web` 
-//! `http_warp`). Starting from version `0.5.0-beta.0` the integration is implemented using 
+//! Similar to choosing the runtimes, `toy-rpc` supports integration with `actix-web`, `tide`,
+//! and `warp` by choosing the corresponding feature flag (`http_tide`, `http_actix_web`
+//! `http_warp`). Starting from version `0.5.0-beta.0` the integration is implemented using
 //! WebSocket as the transport protocol, and the `DEFAULT_RPC_SERVER=_rpc_` is appended to the path you
 //! supply to the HTTP framework. The client side support is not based on `async_tungstenite`
 //! and removed usage of `surf`. Thus versions >=`0.5.0-beta.0` are **NOT** compatible
-//! with versions <`0.5.0-beta.0`. The [examples](#examples) below are also updated to reflect 
+//! with versions <`0.5.0-beta.0`. The [examples](#examples) below are also updated to reflect
 //! the changes.
-//! 
+//!
 //!
 //! ## Examples
-//! 
+//!
 //! A few simple examples are shown below. More examples can be found in the `examples`
-//! directory in the repo. All examples here will assume the follwing 
+//! directory in the repo. All examples here will assume the follwing
 //! [RPC service definition](#example-service-definition) below.
-//! 
+//!
 //! The examples here will also need some **other** dependencies
-//! 
+//!
 //! ```toml
 //! [dependencies]
 //! # you may need to change feature flags for different examples
 //! toy_rpc = { version = "0.5.0-beta.3" }
-//! 
+//!
 //! # other dependencies needed for the examples here
 //! async-std = { version = "1.9.0", features = ["attributes"] }  
 //! async-trait = "0.1.42"
@@ -227,19 +227,19 @@
 //! log = "0.4.14"
 //! serde = { version = "1.0.123", features = ["derive"] }
 //! ```
-//! 
+//!
 //! ### Example Service Definition
-//! 
+//!
 //! ```rust
 //! mod rpc {
 //!     use serde::{Serialize, Deserialize};
 //!     use async_std::sync::{Arc, Mutex};
 //!     use toy_rpc::macros::export_impl;
-//! 
+//!
 //!     pub struct ExampleService {
 //!         counter: Mutex<i32>
 //!     }
-//! 
+//!
 //!     #[derive(Debug, Serialize, Deserialize)]
 //!     pub struct ExampleRequest {
 //!         pub a: u32,
@@ -272,7 +272,7 @@
 //!
 //! ### RPC over TCP with `async-std`
 //!
-//! This example will assume the [RPC service defined above](#example-service-definition). 
+//! This example will assume the [RPC service defined above](#example-service-definition).
 //! The default feature flags will work with the example below.
 //!
 //! server.rs
@@ -283,13 +283,13 @@
 //! use async_std::task;
 //! use toy_rpc::macros::service;
 //! use toy_rpc::Server;
-//! 
+//!
 //! use crate::rpc; // assume the rpc module can be found here
 //!
 //! #[async_std::main]
 //! async fn main() {
 //!     env_logger::init();
-//! 
+//!
 //!     let addr = "127.0.0.1:8080";
 //!     let example_service = Arc::new(
 //!         rpc::ExampleService {
@@ -317,9 +317,9 @@
 //! ```rust
 //! use toy_rpc::Client;
 //! use toy_rpc::error::Error;
-//! 
+//!
 //! use crate::rpc; // assume the rpc module can be found here
-//! 
+//!
 //! #[async_std::main]
 //! async fn main() {
 //!     let addr = "127.0.0.1:8080";
@@ -330,13 +330,13 @@
 //!     println!("{:?}", reply);
 //! }
 //! ```
-//! 
+//!
 //! ### RPC over TCP with `tokio`
 //!
-//! This example will assume the [RPC service defined above](#example-service-definition). 
+//! This example will assume the [RPC service defined above](#example-service-definition).
 //! The default feature flags will **NOT** work for this example, and you need to change
-//! the feature flags. 
-//! 
+//! the feature flags.
+//!
 //! ```rust
 //! [dependencies]
 //! toy_rpc = { version = "0.5.0-beta.3", default-features = false, features = ["serde_bincode", "tokio_runtime"] }
@@ -351,13 +351,13 @@
 //! use tokio::task;
 //! use toy_rpc::macros::service;
 //! use toy_rpc::Server;
-//! 
+//!
 //! use crate::rpc; // assume the rpc module can be found here
 //!
 //! #[tokio::main]
 //! async fn main() {
 //!     env_logger::init();
-//! 
+//!
 //!     let addr = "127.0.0.1:8080";
 //!     let example_service = Arc::new(
 //!         rpc::ExampleService {
@@ -376,7 +376,7 @@
 //!     let handle = task::spawn(async move {
 //!         server.accept(listener).await.unwrap();
 //!     });
-//! 
+//!
 //!     // tokio JoinHandle returns an extra result
 //!     handle.await.unwrap();
 //! }
@@ -387,9 +387,9 @@
 //! ```rust
 //! use toy_rpc::Client;
 //! use toy_rpc::error::Error;
-//! 
+//!
 //! use crate::rpc; // assume the rpc module can be found here
-//! 
+//!
 //! #[tokio::main]
 //! async fn main() {
 //!     let addr = "127.0.0.1:8080";
@@ -401,14 +401,14 @@
 //! }
 //! ```
 //!
-//! 
+//!
 //! ### HTTP integration with `tide`
-//! 
-//! This example will assume the [RPC service defined above](#example-service-definition). 
+//!
+//! This example will assume the [RPC service defined above](#example-service-definition).
 //! An example client to use with HTTP can be found in a separate example [here](#rpc-client-for-http).
 //! The default feature flags will **NOT** work with this example, and you need to change
-//! the feature flags. 
-//! 
+//! the feature flags.
+//!
 //! ```toml
 //! toy_rpc = { version = "0.5.0-beta.3", default-features = false, features = ["serde_bincode", "http_tide"] }
 //! ```
@@ -419,7 +419,7 @@
 //! use async_std::sync::{Arc, Mutex};
 //! use toy_rpc::macros::service;
 //! use toy_rpc::Server;
-//! 
+//!
 //! use crate::rpc; // assume the rpc module can be found here
 //!
 //! #[async_std::main]
@@ -449,11 +449,11 @@
 //!
 //! ### HTTP integration with `actix-web`
 //!
-//! This example will assume the [RPC service defined above](#example-service-definition). 
+//! This example will assume the [RPC service defined above](#example-service-definition).
 //! An example client to use with HTTP can be found in a another example [here](#rpc-client-for-http).
 //! The default feature flags will **NOT** work with this example, and you need to change
-//! the feature flags. 
-//! 
+//! the feature flags.
+//!
 //! ```toml
 //! toy_rpc = { version = "0.5.0-beta.3", default-features = false, features = ["serde_bincode", "http_actix_web"] }
 //! ```
@@ -466,7 +466,7 @@
 //! use actix_web::{App, HttpServer, web};
 //! use toy_rpc::macros::service;
 //! use toy_rpc::Server;
-//! 
+//!
 //! use crate::rpc; // assume the rpc module can be found here
 //!
 //! #[actix_web::main]
@@ -491,7 +491,7 @@
 //!                         .app_data(app_data.clone())
 //!                         .configure(Server::handle_http())
 //!                         // with `http_actix_web`, the line above can also be replaced with the line below
-//!                         //.configure(Server::scope_config) 
+//!                         //.configure(Server::scope_config)
 //!                 )
 //!         }
 //!     )
@@ -504,11 +504,11 @@
 //!
 //! ### HTTP integration with `warp`
 //!
-//! This example will assume the [RPC service defined above](#example-service-definition). 
+//! This example will assume the [RPC service defined above](#example-service-definition).
 //! An example client to use with HTTP can be found in a another example [here](#rpc-client-for-http).
 //! The default feature flags will **NOT** work with this example, and you need to change
-//! the feature flags. 
-//! 
+//! the feature flags.
+//!
 //! ```toml
 //! toy_rpc = { version = "0.5.0-beta.3", default-features = false, features = ["serde_bincode", "http_warp"] }
 //! ```
@@ -539,61 +539,61 @@
 //!
 //!     let routes = warp::path("rpc")
 //!         .and(server.handle_http());
-//! 
+//!
 //!     // RPC will be served at "ws://127.0.0.1:8080/rpc/_rpc_"
 //!     warp::serve(routes).run([127.0.0.1], 8080).await;
 //! }
 //!
 //! ```
-//! 
+//!
 //! ### RPC client for HTTP
-//! 
-//! This example will assume the [RPC service defined above](#example-service-definition). 
-//! The default feature flags will work with this example. However, you may also use 
+//!
+//! This example will assume the [RPC service defined above](#example-service-definition).
+//! The default feature flags will work with this example. However, you may also use
 //! client with any runtime or http feature flag.
-//! 
+//!
 //! All HTTP examples assumes that the RPC server is found at "127.0.0.1/rpc/" endpoint.
-//! 
+//!
 //! ```rust  
 //! use toy_rpc::Client;
 //! use toy_rpc::error::Error;
-//! 
+//!
 //! use crate::rpc; // assume the rpc module can be found here
-//! 
+//!
 //! #[async_std::main]
 //! async fn main() {
 //!     // note that the url scheme is "ws"
-//!     let addr = "ws://127.0.0.1:8080/rpc/"; 
-//!     let client = Client::dial_http(addr).await.unwrap(); 
+//!     let addr = "ws://127.0.0.1:8080/rpc/";
+//!     let client = Client::dial_http(addr).await.unwrap();
 //!
 //!     let args = rpc::ExampleRequest{a: 1};
 //!     let reply: Result<rpc::ExampleResponse, Error> = client.call("example.echo", &args);
 //!     println!("{:?}", reply);
 //! }
 //! ```
-//! 
+//!
 //! ## Change Log
 //!
 //! ### 0.5.0-beta.3
-//! 
+//!
 //! Breaking changes
-//! 
+//!
 //! - HTTP integration is now accomplished using WebSocket with `async_tungstenite`, and thus HTTP connections
 //! of versions <0.5.0 are not compatible with versions >=0.5.0.
 //! - The custom binary transport protocol now includes a magic byte at the beginning, making
 //! versions <0.5.0 **NOT** compatible with versions >= 0.5.0;
 //! - `toy_rpc::error::Error` changed from struct-like variants to simple enum variants
 //! - Changes to feature flags
-//!     - "logging" feature flag is removed 
+//!     - "logging" feature flag is removed
 //!     - "surf" feature flag is removed
 //!     - "tide" is changed to "http_tide"
 //!     - "actix-web" is changed to "http_actix_web"
 //!     - added "http_warp" feature flag
 //!     - added "async_std_runtime"
 //!     - added "tokio_runtime"
-//! 
+//!
 //! Non-breaking changes
-//! 
+//!
 //! - Removed `Stream` and `Sink` impl from the custom binary transport protocol `Frame`
 //!
 //! ### 0.4.5
@@ -638,9 +638,9 @@
 //!
 //!
 //! ## Future Plan
-//! 
+//!
 //! The following items are in no particulars order.
-//! 
+//!
 //! - improve logging message
 //! - support other I/O connection
 //! - more tests
@@ -650,10 +650,10 @@ use cfg_if::cfg_if;
 
 pub mod codec;
 pub mod error;
+pub mod macros;
 pub mod message;
 pub mod service;
 pub mod transport;
-pub mod macros;
 
 cfg_if::cfg_if! {
     if #[cfg(any(
@@ -671,7 +671,7 @@ cfg_if::cfg_if! {
     }
 }
 
-cfg_if!{
+cfg_if! {
     if #[cfg(any(
         feature = "async_std_runtime",
         feature = "http_tide"

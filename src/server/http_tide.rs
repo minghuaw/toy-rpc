@@ -1,5 +1,4 @@
 /// This module implements integration with `tide`.
-
 use cfg_if::cfg_if;
 use tide_websockets as tide_ws;
 

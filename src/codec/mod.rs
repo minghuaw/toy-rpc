@@ -1,4 +1,4 @@
-//! `ServerCodec` and `ClientCodec` are defined in this module, and they are implemented 
+//! `ServerCodec` and `ClientCodec` are defined in this module, and they are implemented
 //! for the `DefaultCodec`
 //! Default codec implementations are feature gated behind the following features
 //! `serde_bincode`, `serde_json`, `serde_cbor`, `serde_rmp`.
@@ -12,11 +12,8 @@ use std::marker::PhantomData;
 use tungstenite::Message as WsMessage;
 
 use crate::error::Error;
+use crate::message::{GracefulShutdown, MessageId, Metadata, RequestHeader, ResponseHeader};
 use crate::transport::ws::{CanSink, SinkHalf, StreamHalf, WebSocketConn};
-use crate::{
-    message::{MessageId, Metadata, RequestHeader, ResponseHeader,
-    GracefulShutdown,}
-};
 
 cfg_if! {
     if #[cfg(feature = "http_tide")] {
@@ -91,7 +88,7 @@ cfg_if! {
     }
 }
 
-cfg_if!{
+cfg_if! {
     if #[cfg(any(
         feature = "async_std_runtime",
         feature = "tokio_runtime",
@@ -101,7 +98,7 @@ cfg_if!{
         feature = "docs",
     ))] {
         #[cfg_attr(
-            doc, 
+            doc,
             doc(cfg(all(
                 feature = "serde_bincode",
                 not(feature = "serde_json"),
@@ -112,7 +109,7 @@ cfg_if!{
         pub mod bincode;
 
         #[cfg_attr(
-            doc, 
+            doc,
             doc(cfg(all(
                 feature = "serde_json",
                 not(feature = "serde_bincode"),
@@ -123,7 +120,7 @@ cfg_if!{
         pub mod json;
 
         #[cfg_attr(
-            doc, 
+            doc,
             doc(cfg(all(
                 feature = "serde_cbor",
                 not(feature = "serde_json"),
@@ -134,7 +131,7 @@ cfg_if!{
         pub mod cbor;
 
         #[cfg_attr(
-            doc, 
+            doc,
             doc(cfg(all(
                 feature = "serde_rmp",
                 not(feature = "serde_cbor"),
@@ -153,7 +150,7 @@ pub(crate) struct ConnTypeReadWrite {}
 /// type state for PayloadRead and PayloadWrite connections
 pub(crate) struct ConnTypePayload {}
 
-/// Default codec. `Codec` is re-exported as `DefaultCodec` when one of these feature 
+/// Default codec. `Codec` is re-exported as `DefaultCodec` when one of these feature
 /// flags is toggled (`serde_bincode`, `serde_json`, `serde_cbor`, `serde_rmp`")
 pub struct Codec<R, W, C> {
     pub reader: R,

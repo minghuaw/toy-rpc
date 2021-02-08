@@ -1,5 +1,4 @@
 /// This module implements integration with `warp`.
-
 use cfg_if::cfg_if;
 use std::sync::Arc;
 
@@ -65,8 +64,8 @@ cfg_if! {
             /// Consumes `Server` and returns a `warp::filters::BoxedFilter`
             /// which can be chained with `warp` filters
             ///
-            /// # Example 
-            /// ```rust 
+            /// # Example
+            /// ```rust
             /// use toy_rpc::Server;
             /// use toy_rpc::macros::{export_impl, service};
             /// use std::sync::Arc;
@@ -140,8 +139,8 @@ cfg_if! {
             /// - `serde_cbor`
             /// - `serde_rmp`
             ///
-            /// # Example 
-            /// ```rust 
+            /// # Example
+            /// ```rust
             /// use toy_rpc::Server;
             /// use toy_rpc::macros::{export_impl, service};
             /// use std::sync::Arc;

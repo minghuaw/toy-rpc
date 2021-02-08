@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug)]
 pub enum Error {
     IoError(std::io::Error),
-    ParseError (Box<dyn std::error::Error + Send + Sync>),
+    ParseError(Box<dyn std::error::Error + Send + Sync>),
     TransportError(String),
     RpcError(RpcError),
 }
@@ -14,7 +14,7 @@ impl std::error::Error for Error {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
             Error::IoError(ref e) => Some(e),
-            Error::ParseError ( source ) => Some(&**source),
+            Error::ParseError(source) => Some(&**source),
             Error::TransportError { .. } => None,
             // Error::NoneError => None,
             Error::RpcError(ref e) => Some(e),
@@ -26,8 +26,8 @@ impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Error::IoError(ref err) => err.fmt(f),
-            Error::ParseError ( source ) => std::fmt::Display::fmt(&*source, f),
-            Error::TransportError (msg ) => write!(f, "Transport Error Message: {}", msg),
+            Error::ParseError(source) => std::fmt::Display::fmt(&*source, f),
+            Error::TransportError(msg) => write!(f, "Transport Error Message: {}", msg),
             // Error::NoneError => write!(f, "None error"),
             Error::RpcError(ref err) => std::fmt::Display::fmt(err, f),
         }
@@ -93,7 +93,7 @@ impl From<serde_json::error::Error> for Error {
 /// Convert from bincode::Error to the custom Error
 impl From<bincode::Error> for Error {
     fn from(err: bincode::Error) -> Self {
-        Error::ParseError ( err )
+        Error::ParseError(err)
     }
 }
 

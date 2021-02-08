@@ -1,22 +1,21 @@
+use ::async_std::sync::Mutex;
+use ::async_std::task;
+use cfg_if::cfg_if;
+use futures::channel::oneshot;
+use futures::{AsyncRead, AsyncWrite};
 /// This module implements the traits/methods that require `async-std`
 /// runtime for the RPC client. The module is enabled if either
 /// `feature = "async_std_runtime"` or `featue = "http_tide"` is true.
-
 use std::sync::Arc;
-use ::async_std::sync::Mutex;
-use ::async_std::task;
-use futures::channel::oneshot;
-use futures::{AsyncRead, AsyncWrite};
-use cfg_if::cfg_if;
 
 use super::*;
 
 type Codec = Arc<Mutex<Box<dyn ClientCodec>>>;
 type ResponseMap = HashMap<u16, oneshot::Sender<Result<ResponseBody, ResponseBody>>>;
 
-/// RPC Client. Unlike [`Server`](../../server/struct.Server.html), the `Client` 
+/// RPC Client. Unlike [`Server`](../../server/struct.Server.html), the `Client`
 /// struct contains field that uses runtime dependent synchronization primitives,
-/// thus there is a separate 'Client' struct defined for each of the `async-std` 
+/// thus there is a separate 'Client' struct defined for each of the `async-std`
 /// and `tokio` runtime.
 pub struct Client<Mode> {
     count: AtomicMessageId,
@@ -127,11 +126,11 @@ cfg_if! {
                 Ok(Self::with_codec(codec))
             }
 
-            /// Connects to an HTTP RPC server at the specified network address using WebSocket and the defatul codec. 
-            /// 
+            /// Connects to an HTTP RPC server at the specified network address using WebSocket and the defatul codec.
+            ///
             /// It is recommended to use "ws://" as the url scheme as opposed to "http://"; however, internally the url scheme
-            /// is changed to "ws://". Internally, `DEFAULT_RPC_PATH="_rpc"` is appended to the end of `addr`, 
-            /// and the rest is the same is calling `dial_websocket`. 
+            /// is changed to "ws://". Internally, `DEFAULT_RPC_PATH="_rpc"` is appended to the end of `addr`,
+            /// and the rest is the same is calling `dial_websocket`.
             /// If a network path were to be supplpied, the network path must end with a slash "/".
             /// For example, a valid path could be "ws://127.0.0.1/rpc/".
             ///
@@ -185,8 +184,8 @@ cfg_if! {
             ///     let client = Client::with_stream(stream);
             /// }
             /// ```
-            pub fn with_stream<T>(stream: T) -> Client<Connected> 
-            where 
+            pub fn with_stream<T>(stream: T) -> Client<Connected>
+            where
                 T: AsyncRead + AsyncWrite + Send + Sync + Unpin + 'static,
             {
                 let codec = DefaultCodec::new(stream);
@@ -196,7 +195,7 @@ cfg_if! {
         }
 
         impl Client<NotConnected> {
-            /// Creates an RPC 'Client` with a specified codec. The codec must 
+            /// Creates an RPC 'Client` with a specified codec. The codec must
             /// implement `ClientCodec` trait and `GracefulShutdown` trait.
             ///
             /// Example
@@ -405,9 +404,12 @@ impl Client<Connected> {
             // send back response
             let mut _pending = pending.lock().await;
             if let Some(done_sender) = _pending.remove(&id) {
-                done_sender.send(res).map_err(|_| Error::TransportError (
-                    format!("Failed to send ResponseBody over oneshot channel {}", &id),
-                ))?;
+                done_sender.send(res).map_err(|_| {
+                    Error::TransportError(format!(
+                        "Failed to send ResponseBody over oneshot channel {}",
+                        &id
+                    ))
+                })?;
             }
         }
 
@@ -426,32 +428,32 @@ impl Client<Connected> {
             Ok(o) => match o {
                 Some(r) => r,
                 None => {
-                    return Err(Error::TransportError (
-                        format!("Done channel for id {} is out of date", &id),
-                    ))
+                    return Err(Error::TransportError(format!(
+                        "Done channel for id {} is out of date",
+                        &id
+                    )))
                 }
             },
             _ => {
-                return Err(Error::TransportError (
-                    format!("Done channel for id {} is canceled", &id),
-                ))
+                return Err(Error::TransportError(format!(
+                    "Done channel for id {} is canceled",
+                    &id
+                )))
             }
         };
 
         // deserialize Ok message and Err message
         match res {
             Ok(mut resp_body) => {
-                let resp = erased::deserialize(&mut resp_body).map_err(|e| 
-                    Error::ParseError (Box::new(e))
-                )?;
+                let resp = erased::deserialize(&mut resp_body)
+                    .map_err(|e| Error::ParseError(Box::new(e)))?;
 
                 // upon successful deserializing, an Ok() must be returned
                 Ok(resp)
             }
             Err(mut err_body) => {
-                let err = erased::deserialize(&mut err_body).map_err(|e| 
-                    Error::ParseError (Box::new(e))
-                )?;
+                let err = erased::deserialize(&mut err_body)
+                    .map_err(|e| Error::ParseError(Box::new(e)))?;
 
                 // upon successful deserializing, an Err() must be returned
                 Err(Error::RpcError(err))

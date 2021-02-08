@@ -1,13 +1,13 @@
-//! There are two `Client` struct defined, one for `feature = "async_std_runtime"` 
-//! and the other for `feature = "tokio_runtime"`. 
-//! 
-//! When either `feature = "async_std_runtime"` or `feature = "http_tide"` is true 
+//! There are two `Client` struct defined, one for `feature = "async_std_runtime"`
+//! and the other for `feature = "tokio_runtime"`.
+//!
+//! When either `feature = "async_std_runtime"` or `feature = "http_tide"` is true
 //! and none of `feature = "tokio_runtime"`, `feature = "http_actix_web"`, or
-//! `feature = "http_warp"` is toggled, [`client::async_std::Client`](async_std/struct.Client.html) 
+//! `feature = "http_warp"` is toggled, [`client::async_std::Client`](async_std/struct.Client.html)
 //! will be re-exported as `client::Client`.
 //!
 //! When one of `feature = "tokio_runtime"`, `feature = "http_actix_web"`, or
-//! `feature = "http_warp"` is true and none of `feature = "async_std_runtime"` 
+//! `feature = "http_warp"` is true and none of `feature = "async_std_runtime"`
 //! or `feature = "http_tide"` is [`client::tokio::Client`](tokio/struct.Client.html)
 //! will be re-exported as `client::Client`.
 
@@ -52,17 +52,14 @@ cfg_if! {
     }
 }
 
-#[cfg(any(
-    feature = "async_std_runtime",
-    feature = "http_tide"
-))] 
+#[cfg(any(feature = "async_std_runtime", feature = "http_tide"))]
 pub mod async_std;
 
 #[cfg(any(
     feature = "tokio_runtime",
     feature = "http_warp",
     feature = "http_actix_web",
-))] 
+))]
 pub mod tokio;
 
 cfg_if! {
@@ -86,4 +83,3 @@ pub struct NotConnected {}
 pub struct Connected {}
 
 type ResponseBody = Box<dyn erased::Deserializer<'static> + Send>;
-

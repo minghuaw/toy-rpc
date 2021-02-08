@@ -80,7 +80,7 @@ impl FrameHeader {
         DefaultOptions::new()
             .with_fixint_encoding()
             .deserialize(&buf)
-            .map_err(|err| Error::ParseError (err))
+            .map_err(|err| Error::ParseError(err))
     }
 
     pub fn to_vec(&self) -> Result<Vec<u8>, Error> {
@@ -175,11 +175,11 @@ impl<R: AsyncRead + Unpin + Send + Sync> FrameRead for R {
         let magic = &mut [0];
         let _ = self.read_exact(magic).await.ok()?;
         if magic[0] != MAGIC {
-            return Some(Err(Error::TransportError (
+            return Some(Err(Error::TransportError(
                 "Magic byte mismatch.
                 Client may be using a different protocol or version.\r
                 Client of version <0.5.0 is not compatible with Server of version >0.5.0"
-                .into(),
+                    .into(),
             )));
         }
 
@@ -216,13 +216,11 @@ impl<W: AsyncWrite + Unpin + Send + Sync> FrameWrite for W {
 
         // check if buf length exceed maximum
         if payload.len() > PayloadLen::MAX as usize {
-            return Err(Error::TransportError(
-                format!(
-                    "Payload length exceeded maximum. Max is {}, found {}",
-                    PayloadLen::MAX,
-                    payload.len()
-                ),
-            ));
+            return Err(Error::TransportError(format!(
+                "Payload length exceeded maximum. Max is {}, found {}",
+                PayloadLen::MAX,
+                payload.len()
+            )));
         }
 
         // construct frame header

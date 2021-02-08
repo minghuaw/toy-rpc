@@ -1,6 +1,5 @@
-/// This modules implements `Server`'s methods that require `feature = "async_std_runtime"` 
+/// This modules implements `Server`'s methods that require `feature = "async_std_runtime"`
 /// or `feature = "http_tide"`.
-
 use cfg_if::cfg_if;
 
 cfg_if! {

@@ -1,5 +1,4 @@
 /// This module implements integration with `actix-web`.
-
 use cfg_if::cfg_if;
 use std::marker::PhantomData;
 
@@ -61,7 +60,10 @@ where
         match item {
             Ok(ws::Message::Ping(msg)) => ctx.pong(&msg),
             Ok(ws::Message::Text(text)) => {
-                log::error!("Received Text message: {} while expecting a binary message", text);
+                log::error!(
+                    "Received Text message: {} while expecting a binary message",
+                    text
+                );
             }
             Ok(ws::Message::Binary(bin)) => {
                 match self.req_header.take() {
