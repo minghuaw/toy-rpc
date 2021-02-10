@@ -242,7 +242,7 @@
 //!     use serde::{Serialize, Deserialize};
 //!     use toy_rpc::macros::export_impl;
 //!     
-//!     // use tokio::sync::Mutex; // uncomment this for the examples that use tokio runtim
+//!     // use tokio::sync::Mutex; // uncomment this for the examples that use tokio runtime
 //!     // use async_std::sync::Mutex; // uncomment this for the examples that use async-std runtime
 //!
 //!     pub struct ExampleService {

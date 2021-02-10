@@ -1,4 +1,7 @@
 {
     "rust-analyzer.cargo.allFeatures": false,
-    "rust-analyzer.checkOnSave.allFeatures": false
+    "rust-analyzer.checkOnSave.allFeatures": false,
+    "rust-analyzer.diagnostics.disabled": [
+        "macro-error"
+      ]
 }

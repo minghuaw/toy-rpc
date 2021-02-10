@@ -1,0 +1,18 @@
+[env]
+CARGO_MAKE_EXTEND_WORKSPACE_MAKEFILE = true
+CARGO_MAKE_WORKSPACE_SKIP_MEMBERS = ["macros"]
+# this tells cargo-make that this directory acts as a workspace root
+CARGO_MAKE_WORKSPACE_EMULATION = true
+
+# a list of crate members. since we do not have a Cargo.toml, we will need to specify this in here.
+CARGO_MAKE_CRATE_WORKSPACE_MEMBERS = [
+    "./"
+]
+
+[tasks.format]
+command = "cargo"
+args = ["fmt", "--", "--emit=files"]
+
+[tasks.test_async_std_tcp]
+command = "cargo"
+args = ["test", "--package", "toy-rpc", "--test", "async_std_tcp", "--", "--nocapture"]

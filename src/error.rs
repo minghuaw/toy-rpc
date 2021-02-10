@@ -40,7 +40,7 @@ impl From<std::io::Error> for Error {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub enum RpcError {
     ParseError,
     InvalidRequest,
