@@ -1,6 +1,5 @@
 
 use anyhow::Result;
-use rpc::{COMMON_TEST_MAGIC_U8, COMMON_TEST_SERVICE_NAME};
 
 // use cfg_if::cfg_if;
 // cfg_if!{
@@ -45,8 +44,12 @@ async fn test_client(addr: impl ToSocketAddrs, mut ready: Receiver<()>) -> Resul
     Ok(())
 }
 
-async fn test_server(addr: impl ToSocketAddrs) -> Result<()> {
+async fn run() {
+    let addr = "127.0.0.1:8080";
+    let (tx, rx) = channel::<()>();
     let common_test_service = Arc::new(rpc::CommonTestService::new());
+    
+    // start testing server
     let server = Server::builder()
         .register(rpc::COMMON_TEST_SERVICE_NAME, service!(common_test_service, rpc::CommonTestService))
         .build();
@@ -54,21 +57,15 @@ async fn test_server(addr: impl ToSocketAddrs) -> Result<()> {
     let listener = TcpListener::bind(addr).await
         .expect("Cannot bind to address");
     
-    let handle = task::spawn(async move {
+    let server_handle = task::spawn(async move {
         server.accept(listener).await.unwrap();
     });
 
-    handle.await;
-    Ok(())
-}
-
-async fn run() {
-    let addr = "127.0.0.1:8080";
-    let (tx, rx) = channel::<()>();
     println!("Starting server at {}", &addr);
-    let server_handle = task::spawn(test_server(addr.clone()));
+    // let server_handle = task::spawn(test_server(addr.clone()));u
 
     tx.send(()).expect("Error sending ready");
+
     let client_handle = task::spawn(test_client(addr, rx));
 
     // stop server after all clients finishes
