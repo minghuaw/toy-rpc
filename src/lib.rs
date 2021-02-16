@@ -676,7 +676,7 @@
 //!
 //! ## Future Plan
 //!
-//! The following items are in no particulars order.
+//! The following items are in no particular order.
 //!
 //! - improve logging message
 //! - support other I/O connection

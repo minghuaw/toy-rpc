@@ -217,7 +217,7 @@ The examples here will also need some **other** dependencies
 ```toml
 [dependencies]
 # you may need to change feature flags for different examples
-toy-rpc = { version = "0.5.0" }
+toy-rpc = { version = "0.5.1" }
 
 # optional depending on the choice of runtime or http framework for different examples
 async-std = { version = "1.9.0", features = ["attributes"] }
@@ -241,7 +241,7 @@ pub mod rpc {
     use serde::{Serialize, Deserialize};
     use toy_rpc::macros::export_impl;
 
-    // use tokio::sync::Mutex; // uncomment this for the examples that use tokio runtim
+    // use tokio::sync::Mutex; // uncomment this for the examples that use tokio runtime
     // use async_std::sync::Mutex; // uncomment this for the examples that use async-std runtime
 
     pub struct ExampleService {
@@ -355,7 +355,7 @@ the feature flags.
 
 ```rust
 [dependencies]
-toy_rpc = { version = "0.5.0", default-features = false, features = ["serde_bincode", "tokio_runtime"] }
+toy_rpc = { version = "0.5.1", default-features = false, features = ["serde_bincode", "tokio_runtime"] }
 ```
 
 server.rs
@@ -431,7 +431,7 @@ The default feature flags will **NOT** work with this example, and you need to c
 the feature flags.
 
 ```toml
-toy_rpc = { version = "0.5.0", default-features = false, features = ["serde_bincode", "http_tide"] }
+toy_rpc = { version = "0.5.1", default-features = false, features = ["serde_bincode", "http_tide"] }
 ```
 
 server.rs
@@ -480,7 +480,7 @@ The default feature flags will **NOT** work with this example, and you need to c
 the feature flags.
 
 ```toml
-toy_rpc = { version = "0.5.0", default-features = false, features = ["serde_bincode", "http_actix_web"] }
+toy_rpc = { version = "0.5.1", default-features = false, features = ["serde_bincode", "http_actix_web"] }
 ```
 
 server.rs
@@ -541,7 +541,7 @@ The default feature flags will **NOT** work with this example, and you need to c
 the feature flags.
 
 ```toml
-toy_rpc = { version = "0.5.0", default-features = false, features = ["serde_bincode", "http_warp"] }
+toy_rpc = { version = "0.5.1", default-features = false, features = ["serde_bincode", "http_warp"] }
 ```
 
 server.rs
@@ -674,7 +674,7 @@ lifetime with async task is figured out. As a result, `Client` no longer needs t
 
 ### Future Plan
 
-The following items are in no particulars order.
+The following items are in no particular order.
 
 - improve logging message
 - support other I/O connection
