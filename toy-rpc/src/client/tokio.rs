@@ -429,12 +429,13 @@ impl Client<Connected> {
     where
         Res: serde::de::DeserializeOwned,
     {
-        let res = done
-            .try_recv()
-            .map_err(|e| Error::TransportError(format!(
+        let res = done.try_recv().map_err(|e| {
+            Error::TransportError(format!(
                 "Done channel for id {} is canceled. Err found: {}",
-                &id, e.to_string()
-            )))?;
+                &id,
+                e.to_string()
+            ))
+        })?;
 
         match res {
             Ok(mut resp_body) => {

@@ -222,18 +222,18 @@
 //! toy-rpc = { version = "0.5.1" }
 //!
 //! # optional depending on the choice of runtime or http framework for different examples
-//! async-std = { version = "1.9.0", features = ["attributes"] } 
+//! async-std = { version = "1.9.0", features = ["attributes"] }
 //! tokio = { version = "1.2.0", features = ["rt", "rt-multi-thread", "macros", "net", "sync"] }
-//! tide = "0.16.0" 
+//! tide = "0.16.0"
 //! actix-web = "3.3.2"
-//! warp = "0.3.0" 
-//! 
+//! warp = "0.3.0"
+//!
 //! # other dependencies needed for the examples here
 //! async-trait = "0.1.42"
 //! env_logger = "0.8.2"
 //! log = "0.4.14"
 //! serde = { version = "1.0.123", features = ["derive"] }
-//! 
+//!
 //! ```
 //!
 //! ### Example Service Definition
@@ -283,9 +283,9 @@
 //! ### RPC over TCP with `async-std`
 //!
 //! This example will assume the [RPC service defined above](#example-service-definition),
-//! and you may need to uncomment the line `use async_std::sync::Mutex;` in the RPC service definition 
+//! and you may need to uncomment the line `use async_std::sync::Mutex;` in the RPC service definition
 //! for this example.
-//! 
+//!
 //! The default feature flags will work with the example below.
 //!
 //! server.rs
@@ -341,7 +341,7 @@
 //!     let args = rpc::ExampleRequest{a: 1};
 //!     let reply: Result<rpc::ExampleResponse, Error> = client.call("example.echo", &args);
 //!     println!("{:?}", reply);
-//! 
+//!
 //!     client.close().await;
 //! }
 //! ```
@@ -349,9 +349,9 @@
 //! ### RPC over TCP with `tokio`
 //!
 //! This example will assume the [RPC service defined above](#example-service-definition)
-//! and you may need to uncomment the line `use tokio::sync::Mutex;` in the RPC service definition 
+//! and you may need to uncomment the line `use tokio::sync::Mutex;` in the RPC service definition
 //! for this example.
-//! 
+//!
 //! The default feature flags will **NOT** work for this example, and you need to change
 //! the feature flags.
 //!
@@ -416,7 +416,7 @@
 //!     let args = rpc::ExampleRequest{a: 1};
 //!     let reply: Result<rpc::ExampleResponse, Error> = client.call("example.echo", &args);
 //!     println!("{:?}", reply);
-//! 
+//!
 //!     client.close().await;
 //! }
 //! ```
@@ -425,9 +425,9 @@
 //! ### HTTP integration with `tide`
 //!
 //! This example will assume the [RPC service defined above](#example-service-definition)
-//! and you may need to uncomment the line `use async_std::sync::Mutex;` in the RPC service definition 
+//! and you may need to uncomment the line `use async_std::sync::Mutex;` in the RPC service definition
 //! for this example.
-//! 
+//!
 //! An example client to use with HTTP can be found in a separate example [here](#rpc-client-for-http).
 //! The default feature flags will **NOT** work with this example, and you need to change
 //! the feature flags.
@@ -448,7 +448,7 @@
 //! #[async_std::main]
 //! async fn main() -> tide::Result<()> {
 //!     env_logger::init();
-//! 
+//!
 //!     let addr = "127.0.0.1:8080";
 //!     let example_service = Arc::new(
 //!         rpc::ExampleService {
@@ -474,9 +474,9 @@
 //! ### HTTP integration with `actix-web`
 //!
 //! This example will assume the [RPC service defined above](#example-service-definition)
-//! and you may need to uncomment the line `use tokio::sync::Mutex;` in the RPC service definition 
+//! and you may need to uncomment the line `use tokio::sync::Mutex;` in the RPC service definition
 //! for this example.
-//! 
+//!
 //! An example client to use with HTTP can be found in a another example [here](#rpc-client-for-http).
 //! The default feature flags will **NOT** work with this example, and you need to change
 //! the feature flags.
@@ -499,7 +499,7 @@
 //! #[actix_web::main]
 //! async fn main() -> std::io::Result<()> {
 //!     env_logger::init();
-//! 
+//!
 //!     let addr = "127.0.0.1:8080";
 //!     let example_service = Arc::new(
 //!         rpc::ExampleService {
@@ -535,9 +535,9 @@
 //! ### HTTP integration with `warp`
 //!
 //! This example will assume the [RPC service defined above](#example-service-definition)
-//! and you may need to uncomment the line `use tokio::sync::Mutex;` in the RPC service definition 
+//! and you may need to uncomment the line `use tokio::sync::Mutex;` in the RPC service definition
 //! for this example.
-//! 
+//!
 //! An example client to use with HTTP can be found in a another example [here](#rpc-client-for-http).
 //! The default feature flags will **NOT** work with this example, and you need to change
 //! the feature flags.
@@ -594,7 +594,7 @@
 //! use crate::rpc; // assume the rpc module can be found here
 //!
 //! // choose the runtime attribute accordingly
-//! //#[tokio::main] 
+//! //#[tokio::main]
 //! #[async_std::main]
 //! async fn main() {
 //!     // note that the url scheme is "ws"
@@ -604,7 +604,7 @@
 //!     let args = rpc::ExampleRequest{a: 1};
 //!     let reply: Result<rpc::ExampleResponse, Error> = client.call("example.echo", &args);
 //!     println!("{:?}", reply);
-//! 
+//!
 //!     client.close().await;
 //! }
 //! ```

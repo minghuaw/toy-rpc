@@ -1,0 +1,8 @@
+[tasks.test_async_std_tcp]
+command = "cargo"
+args = ["test", 
+    "--features", "serde_bincode async_std_runtime", 
+    "--no-default-features", 
+    "--test", "async_std_tcp", 
+    "--", "--nocapture"
+]

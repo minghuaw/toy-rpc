@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
-use serde::{Serialize, Deserialize};
 use async_trait::async_trait;
+use serde::{Deserialize, Serialize};
 
 use toy_rpc::macros::export_impl;
 
@@ -21,14 +21,14 @@ pub const COMMON_TEST_SERVICE_NAME: &str = "common";
 #[derive(Debug, Default, Serialize, Deserialize, PartialOrd, Ord, PartialEq, Eq)]
 pub struct CustomStruct {
     field_u8: u8,
-    field_string: String
+    field_string: String,
 }
 
 impl CustomStruct {
     pub fn new() -> Self {
         Self {
             field_u8: 13,
-            field_string: "ahahahd".to_string()
+            field_string: "ahahahd".to_string(),
         }
     }
 }
@@ -91,6 +91,3 @@ impl CommonTestGetMagic for CommonTestService {
         Ok(self.magic_u32)
     }
 }
-
-
-
