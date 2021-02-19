@@ -1,6 +1,5 @@
 #![allow(dead_code)]
 
-use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 
 use toy_rpc::macros::export_impl;
@@ -66,16 +65,8 @@ impl CommonTestService {
     }
 }
 
-#[async_trait]
-pub trait CommonTestGetMagic {
-    async fn get_magic_u8(&self, _: ()) -> Result<u8, String>;
-    async fn get_magic_u16(&self, _: ()) -> Result<u16, String>;
-    async fn get_magic_u32(&self, _: ()) -> Result<u32, String>;
-}
-
-#[async_trait]
 #[export_impl]
-impl CommonTestGetMagic for CommonTestService {
+impl CommonTestService {
     #[export_method]
     async fn get_magic_u8(&self, _: ()) -> Result<u8, String> {
         Ok(self.magic_u8)
@@ -89,5 +80,9 @@ impl CommonTestGetMagic for CommonTestService {
     #[export_method]
     async fn get_magic_u32(&self, _: ()) -> Result<u32, String> {
         Ok(self.magic_u32)
+    }
+
+    async fn get_magic_u64(&self, _: ()) -> Result<u64, String> {
+        Ok(self.magic_u64)
     }
 }
