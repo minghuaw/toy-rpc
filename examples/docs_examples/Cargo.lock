@@ -573,16 +573,16 @@ dependencies = [
 
 [[package]]
 name = "async-tungstenite"
-version = "0.12.0"
+version = "0.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e00550829ef8e2c4115250d0ee43305649b0fa95f78a32ce5b07da0b73d95c5c"
+checksum = "5cb4e1f5450b0f41b0dad072f176f2faca87dab540492ee17d73615d5e6f4ee1"
 dependencies = [
  "futures-io",
  "futures-util",
  "log",
  "pin-project-lite 0.2.4",
  "tokio 1.2.0",
- "tungstenite",
+ "tungstenite 0.13.0",
 ]
 
 [[package]]
@@ -2899,7 +2899,7 @@ dependencies = [
  "log",
  "pin-project 1.0.5",
  "tokio 1.2.0",
- "tungstenite",
+ "tungstenite 0.12.0",
 ]
 
 [[package]]
@@ -2938,7 +2938,7 @@ checksum = "360dfd1d6d30e05fda32ace2c8c70e9c0a9da713275777f5a4dbb8a1893930c6"
 
 [[package]]
 name = "toy-rpc"
-version = "0.5.0"
+version = "0.5.2"
 dependencies = [
  "async-trait",
  "async-tungstenite",
@@ -2953,7 +2953,7 @@ dependencies = [
  "tokio 1.2.0",
  "tokio-stream",
  "toy-rpc-macros",
- "tungstenite",
+ "tungstenite 0.13.0",
  "url",
 ]
 
@@ -3057,9 +3057,29 @@ dependencies = [
  "httparse",
  "input_buffer",
  "log",
+ "rand 0.8.3",
+ "sha-1 0.9.3",
+ "url",
+ "utf-8",
+]
+
+[[package]]
+name = "tungstenite"
+version = "0.13.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5fe8dada8c1a3aeca77d6b51a4f1314e0f4b8e438b7b1b71e3ddaca8080e4093"
+dependencies = [
+ "base64 0.13.0",
+ "byteorder",
+ "bytes 1.0.1",
+ "http",
+ "httparse",
+ "input_buffer",
+ "log",
  "native-tls",
  "rand 0.8.3",
  "sha-1 0.9.3",
+ "thiserror",
  "url",
  "utf-8",
 ]

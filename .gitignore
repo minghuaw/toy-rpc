@@ -6,3 +6,10 @@ Notes.md
 .idea/toy-rpc.iml
 .idea/vcs.xml
 *.DS_STORE
+
+
+# Added by cargo
+#
+# already existing elements were commented out
+
+#/target
