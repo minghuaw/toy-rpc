@@ -726,5 +726,6 @@ cfg_if! {
 pub use error::Error;
 
 // re-export
+pub use serde;
 pub use erased_serde;
 pub use lazy_static;

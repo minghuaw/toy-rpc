@@ -1,6 +1,6 @@
 [package]
 name = "toy-rpc-macros"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Minghua Wu <michael.wu1107@gmail.com>"]
 edition = "2018"
 description = "Macros for toy-rpc"
@@ -16,6 +16,9 @@ readme = "Readme.md"
 
 [lib]
 proc-macro = true
+
+[dev-dependencies]
+toy-rpc = { version = "0.5.2", path = "../../toy-rpc" }
 
 [dependencies]
 syn = { version = "1.0.51", features = ["full", "derive", "extra-traits"] }

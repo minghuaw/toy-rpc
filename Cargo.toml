@@ -11,5 +11,6 @@ exclude = [
     "examples/actix_v3_integration",
     "examples/websocket",
     "examples/warp_integration",
-    "examples/docs_examples"
+    "examples/docs_examples",
+    "examples/macro_expand"
 ]
