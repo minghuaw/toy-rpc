@@ -1,6 +1,6 @@
 use proc_macro::TokenStream;
 use quote::quote;
-use syn::{GenericArgument, Ident, TypeParamBound, TypePath, parse_macro_input, parse_quote};
+use syn::{GenericArgument, Ident, parse_macro_input, parse_quote};
 
 const SERVICE_PREFIX: &str = "STATIC_TOY_RPC_SERVICE";
 const ATTR_EXPORT_METHOD: &str = "export_method";
@@ -419,136 +419,85 @@ fn client_stub_impl(client_ident: &Ident, input: syn::ItemImpl) -> syn::ItemImpl
 
 fn generate_client_stub_method(f: &mut syn::ImplItemMethod) -> Option<syn::ImplItemMethod> {
     if let syn::FnArg::Typed(pt) = f.sig.inputs.last().unwrap() {
-        let ident = &f.sig.ident;
-        let method = ident.to_string();
+        let fn_ident = &f.sig.ident;
         let req_ty = &pt.ty;
         
-        let orig_ret_ty = f.sig.output.clone();
-        
-        if let syn::ReturnType::Type(_, ret_ty) = orig_ret_ty {
-            // if let syn::Type::Path(path) = Box::leak(ret_ty) {
-            //     let seg_ident = &path.path.segments.first()?.ident.to_string()[..];
-            //     println!("{:?}", &seg_ident);
-                
-            //     let ok_ty: GenericArgument = match seg_ident {
-            //         "Result" => {
-            //             println!("is result");
-            //             get_ok_ident_from_result_path(path)?
-            //         },
-            //         _ => {
-            //             get_ok_ident_from_async_trait_path(path)?
-            //         }
-            //     };
-            // }
-            
+        if let syn::ReturnType::Type(_, ret_ty) = f.sig.output.clone() {
             let ok_ty = get_ok_ident_from_type(ret_ty)?;
-
-            let generated: syn::ImplItemMethod = parse_quote!(
-                async fn #ident<A>(&'c self, args: A) -> Result<#ok_ty, toy_rpc::error::Error>
-                where 
-                    A: std::borrow::Borrow<#req_ty> + Send + Sync + toy_rpc::serde::Serialize,
-                {
-                    let method = #method;
-                    let service_method = format!("{}.{}", self.service_name, method);
-
-                    self.client.async_call(service_method, args).await
-                }
-            );
-
-            return Some(generated)
+            return Some(generate_client_stub_method_impl(fn_ident, &req_ty, &ok_ty))
         }
     }
 
     return None
 }   
 
+fn generate_client_stub_method_impl(fn_ident: &Ident, req_ty: &Box<syn::Type>, ok_ty: &GenericArgument) -> syn::ImplItemMethod {
+    let method = fn_ident.to_string();
+    parse_quote!(
+        pub async fn #fn_ident<A>(&'c self, args: A) -> Result<#ok_ty, toy_rpc::error::Error>
+        where 
+            A: std::borrow::Borrow<#req_ty> + Send + Sync + toy_rpc::serde::Serialize,
+        {
+            let method = #method;
+            let service_method = format!("{}.{}", self.service_name, method);
+
+            self.client.async_call(service_method, args).await
+        }
+    )
+}
+
 fn get_ok_ident_from_type(ty: Box<syn::Type>) -> Option<GenericArgument> {
     let ty = Box::leak(ty);
-    return recusively_get_result_from_type(ty)
+    let arg = syn::GenericArgument::Type(ty.to_owned());
+    return recursively_get_restul_from_generic_arg(&arg)
+}
+
+fn recursively_get_restul_from_generic_arg(arg: &GenericArgument) -> Option<GenericArgument> {
+    match &arg {
+        &syn::GenericArgument::Type(ty) => {
+            return recusively_get_result_from_type(&ty);
+        },
+        &syn::GenericArgument::Binding(binding) => {
+            return recusively_get_result_from_type(&binding.ty);
+        },
+        _ => { None }
+    }
 }
 
 fn recusively_get_result_from_type(ty: &syn::Type) -> Option<GenericArgument> {
     match ty {
         &syn::Type::Path(ref path) => {
-            // println!("{:?}", path.path.segments);
             let ident = &path.path.segments.last()?.ident.to_string()[..];
-            // if let syn::PathArguments::AngleBracketed(angle_bracket) = 
-            
             match &path.path.segments.last()?.arguments {
                 syn::PathArguments::AngleBracketed(angle_bracket) => {
-                    // println!("{:?}", angle_bracket.args.first()?);
                     if ident == "Result" {
                         return angle_bracket.args.first()
                             .map(|g| g.to_owned())
                     }
-                    if let syn::GenericArgument::Type(ty) = angle_bracket.args.first()? {
-                        return recusively_get_result_from_type(ty)
-                    }
+                    return recursively_get_restul_from_generic_arg(angle_bracket.args.first()?)
                 },
                 _ => {
-                    
+                    return None
                 }
             }
-            None
         },
         &syn::Type::TraitObject(ref tobj) => {
             if let syn::TypeParamBound::Trait(bound) = tobj.bounds.first()? {
                 match &bound.path.segments.last()?.arguments {
                     syn::PathArguments::AngleBracketed(angle_bracket) => {
-                        match angle_bracket.args.first()? {
-                            syn::GenericArgument::Binding(binding) => {
-                                return recusively_get_result_from_type(&binding.ty);
-                            },
-                            syn::GenericArgument::Type(ty) => {
-                                return recusively_get_result_from_type(ty);
-                            }
-                            _ => {
-                                
-                            }
-                        }
+                        return recursively_get_restul_from_generic_arg(angle_bracket.args.first()?)
                     },
-                    args => {
-                        // None
-                        println!("others");
-                        println!("5--> {:?}", args);
+                    _ => {
                         return None
                     }
                 }
-
             }
-
             None
         }
         _ => {
-            println!("others");
             None
         }
     }    
-}
-
-fn get_ok_ident_from_async_trait_path(path: &mut TypePath) -> Option<GenericArgument> {
-    if let syn::PathArguments::AngleBracketed(angle_bracket) = &path.path.segments.last()?.arguments {
-        if let syn::GenericArgument::Type(ty) = angle_bracket.args.last()? {
-            if let syn::Type::Path(path) = ty {
-                if let syn::PathArguments::AngleBracketed(angle_bracket) = &path.path.segments.last()?.arguments {
-                    // now enters trait object
-                    if let syn::GenericArgument::Type(ty) = angle_bracket.args.last()? {
-                        
-                        println!("{:?}", ty);
-
-                    }
-
-                }
-            }
-        }
-    }
-
-    // if let 
-    None
-}
-
-fn get_ok_ident_recursive(ty: &syn::Type) -> Option<GenericArgument> {
-    unimplemented!()
 }
 
 struct ServiceExport {
