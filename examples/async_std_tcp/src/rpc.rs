@@ -24,13 +24,13 @@ pub trait Rpc {
     async fn get_counter(&self, _: ()) -> Result<u32, String>;
 }
 
-pub struct FooService {
+pub struct Foo {
     pub counter: Mutex<u32>,
 }
 
 #[async_trait]
 #[export_impl]
-impl Rpc for FooService {
+impl Rpc for Foo {
     #[export_method]
     async fn echo(&self, req: FooRequest) -> Result<FooResponse, String> {
         let mut counter = self.counter.lock().await;
@@ -88,10 +88,10 @@ pub struct BarResponse {
     pub is_modified: bool,
 }
 
-pub struct BarService {}
+pub struct Bar {}
 
 #[export_impl]
-impl BarService {
+impl Bar {
     #[export_method]
     pub async fn echo(&self, req: BarRequest) -> Result<BarResponse, String> {
         let res = BarResponse {
