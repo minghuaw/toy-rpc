@@ -4,6 +4,8 @@ Notes.md
 .idea/
 .vscode/
 *.DS_STORE
+Cargo.lock
+macros/Cargo.lock
 
 
 # Added by cargo

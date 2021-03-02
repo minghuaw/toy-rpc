@@ -17,9 +17,6 @@ readme = "Readme.md"
 [lib]
 proc-macro = true
 
-[dev-dependencies]
-toy-rpc = { version = "0.5.2", path = "../../toy-rpc" }
-
 [dependencies]
 syn = { version = "1.0.51", features = ["full", "derive", "extra-traits"] }
 quote = { version = "1.0.7" }
