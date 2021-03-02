@@ -1,3 +1,5 @@
+//! Provides proc_macros for toy-rpc.
+
 use proc_macro::TokenStream;
 use quote::quote;
 use syn::{GenericArgument, Ident, parse_macro_input, parse_quote};
@@ -215,7 +217,60 @@ pub fn impl_inner_deserializer(_: TokenStream) -> TokenStream {
 }
 
 /// Export methods in the impl block with #[export_method] attribute. Methods without
-/// the attribute will not be affected
+/// the attribute will not be affected. This will also generate client stub.
+///
+/// When using with `#[async_trait]`, place `#[async_trait]` before `#[export_macro]`. 
+///
+/// Example - Export impl block
+///
+/// ```rust
+/// struct ExampleService { }
+///
+/// #[export_impl]
+/// impl ExampleService {
+///     #[export_method]
+///     async fn exported_method(&self, args: ()) -> Result<String, String> {
+///         Ok("This is an exported method".to_string())
+///     }
+///
+///     async fn not_exported_method(&self, args: ()) -> Result<String, String> {
+///         Ok("This method is NOT exported".to_string())
+///     }
+/// }
+/// ```
+///
+/// Example - use client stub
+///
+/// ```rust 
+/// mod rpc {
+///     // service state
+///     pub struct Foo { 
+///         pub id: i32
+///     }       
+/// 
+///     // service impl
+///     #[export_impl] 
+///     impl Foo {
+///         pub async fn get_id(&self, _: ()) -> Result<i32, String> {
+///             Ok(self.id)
+///         }
+///     }
+/// }
+/// 
+/// use toy_rpc::Client;
+/// use rpc::*;
+/// 
+/// #[async_std::main]
+/// async fn main() {
+///     let addr = "127.0.0.1:23333";
+///     let client = Client::dial(addr).await.unwrap();
+/// 
+///     // assume the `Foo` service is registered as "foo_service" 
+///     // on the server
+///     let reply = client.foo("foo_service").get_id(()).await.unwrap();
+/// }
+/// 
+/// ```
 #[proc_macro_attribute]
 pub fn export_impl(_attr: TokenStream, item: TokenStream) -> TokenStream {
     // parse item
@@ -232,7 +287,7 @@ pub fn export_impl(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let static_ident = Ident::new(&static_name, ident.span());
 
     // generate client stub
-    let (client_ty, client_impl, stub_trait, stub_impl) = client_stub_ty(&ident, input.clone());
+    let (client_ty, client_impl, stub_trait, stub_impl) = generate_client_stub(&ident, input.clone());
 
     let lazy = quote! {
         // store the handler functions in a gloabl lazy hashmap
@@ -264,13 +319,10 @@ pub fn export_impl(_attr: TokenStream, item: TokenStream) -> TokenStream {
     output.into()
 }
 
+/// transform impl block to meet the signature of service function
 fn transform_impl(input: syn::ItemImpl) -> (syn::ItemImpl, Vec<String>, Vec<Ident>) {
     let mut names = Vec::new();
     let mut idents = Vec::new();
-    // let mut output = input;
-    // let self_ty = &output.self_ty;
-    // println!("{:?}", &output.self_ty);
-
     let mut output = filter_exported_methods(input);
 
     output.trait_ = None;
@@ -291,6 +343,7 @@ fn transform_impl(input: syn::ItemImpl) -> (syn::ItemImpl, Vec<String>, Vec<Iden
     (output, names, idents)
 }
 
+/// transform method to meet the signature of service function
 fn transform_method(f: &mut syn::ImplItemMethod) {
     // change function ident
     let ident = f.sig.ident.clone();
@@ -331,6 +384,7 @@ fn transform_method(f: &mut syn::ImplItemMethod) {
     f.sig.ident = handler_ident;
 }
 
+/// remove #[export_method] attribute
 fn remove_export_method_attr(mut input: syn::ItemImpl) -> syn::ItemImpl {
     input
         .items
@@ -351,7 +405,8 @@ fn remove_export_method_attr(mut input: syn::ItemImpl) -> syn::ItemImpl {
     input
 }
 
-fn client_stub_ty(ident: &Ident, input: syn::ItemImpl) -> (syn::Item, syn::ItemImpl, syn::Item, syn::ItemImpl) {
+/// Generate client stub for the service impl block
+fn generate_client_stub(ident: &Ident, input: syn::ItemImpl) -> (syn::Item, syn::ItemImpl, syn::Item, syn::ItemImpl) {
     let concat_name = format!("{}{}", &ident.to_string(), CLIENT_SUFFIX);
     let client_ident = Ident::new(&concat_name, ident.span());
 
