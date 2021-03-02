@@ -574,6 +574,39 @@ impl syn::parse::Parse for ServiceExport {
 }
 
 /// Find the exported methods with the provided path
+/// 
+/// Example 
+/// 
+/// ```rust
+/// struct Foo { }
+/// 
+/// #[export_impl]
+/// impl Foo { 
+///     //rpc service impl here
+/// }
+/// 
+/// mod rpc {
+///     pub struct Bar { }
+/// 
+///     #[export_impl]
+///     impl Bar {
+///         //rpc service impl here
+///     }
+/// }
+/// 
+/// use toy_rpc::Server;
+/// 
+/// fn main() {
+///     let foo = Arc::new(Foo {});
+///     let bar = Arc::new(rpc::Bar {});
+///     
+///     let server = Server::builder()
+///         .register("foo_service", service!(foo, Foo))
+///         .register("bar_service", service!(bar, rpc::Bar))
+///         .build();
+/// }
+/// 
+/// ```
 #[proc_macro]
 pub fn service(input: TokenStream) -> TokenStream {
     let ServiceExport {
