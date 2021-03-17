@@ -6,6 +6,7 @@ Notes.md
 *.DS_STORE
 Cargo.lock
 macros/Cargo.lock
+toy-rpc/Cargo.lock
 
 
 # Added by cargo
