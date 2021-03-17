@@ -209,7 +209,9 @@
 //! The `#[export_impl]` macro now also generates client stubs that internally uses `async_call`.
 //! For example, if the `Example {}` service is registered on the server as `"example_service"`.
 //! If you want to call the `echo(&self, arg: u32)` RPC method on the `Example {}` service, you 
-//! can conveniently use `client.example("example_service").echo(3).await.unwrap()`.
+//! can conveniently use `client.example("example_service").echo(3).await.unwrap()`. Please note
+//! that because multiple instance of the same type is allowed, you are required to specify the 
+//! name under which the particular service is registered.
 //!
 //! ```rust
 //! /// client.rs
@@ -645,6 +647,10 @@
 //! ```
 //!
 //! ## Change Log
+//!
+//! ### 0.5.3
+//! 
+//! - The `#[export_impl]` macro now generates client stub functions by generating a new trait for `toy_rpc::Client`.
 //!
 //! ### 0.5.0
 //!
