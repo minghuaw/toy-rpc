@@ -172,9 +172,6 @@
 //! connection. A `Client` with HTTP connection or socket connection has three methods, `call`, `async_call`,
 //! and `spawn_task`, to specify the service and method to call and the argument.
 //!
-//! Please note that `call_http`, `async_call_http` and `spawn_task_http` are becoming deprecated
-//! as the same API now can be called for both a socket client and an HTTP client.
-//!
 //! - `call` method is synchronous and waits for the remote call
 //! to complete and then returns the result in a blocking manner.
 //! - `async_call` is the `async` versions of `call` and `call_http`,
@@ -206,6 +203,44 @@
 //! and removed usage of `surf`. Thus versions >=`0.5.0-beta.0` are **NOT** compatible
 //! with versions <`0.5.0-beta.0`. The [examples](#examples) below are also updated to reflect
 //! the changes.
+//!
+//! ## Client Stub
+//!
+//! The `#[export_impl]` macro now also generates client stubs that internally uses `async_call`.
+//! For example, if the `Example {}` service is registered on the server as `"example_service"`.
+//! If you want to call the `echo(&self, arg: u32)` RPC method on the `Example {}` service, you 
+//! can conveniently use `client.example("example_service").echo(3).await.unwrap()`.
+//!
+//! ```rust
+//! /// client.rs
+//!
+//! pub mod rpc {
+//!     use toy_rpc::macros::export_impl;
+//!     use serde::{Serialize, Deserialze};
+//!
+//!     pub struct Example { }
+//!     
+//!     #[export_impl]   
+//!     impl Example {
+//!         pub async fn echo(&self, arg: u32) -> Result<u32, String> {
+//!             Ok(arg)
+//!         }
+//!     }
+//! }
+//! 
+//! use rpc::*;
+//! 
+//! #[async_std::main] 
+//! async fn main() {
+//!     let addr = "127.0.0.1:23333";
+//!     let client = Client::dial(addr).await.unwrap();
+//! 
+//!     // assume the service is registered as "example" on the server side
+//!     let reply = client.example("example_service").echo(3).await.unwrap();
+//!     println!("Reply: {}", reply);
+//! }
+//!
+//! ```
 //!
 //!
 //! ## Examples
