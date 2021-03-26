@@ -50,6 +50,7 @@ http_warp = ["warp", "tokio_runtime"]
 [dev-dependencies]
 async-std = "1.9.0"
 anyhow = "1.0.38"
+tokio = { version = "1.2.0", features = ["rt", "rt-multi-thread", "sync", "io-util", "net"]}
 
 [dependencies]
 # local imports
@@ -88,3 +89,8 @@ tungstenite = "0.13.0"
 name = "async_std_tcp"
 path = "tests/async_std_tcp.rs"
 required-features = ["async_std_runtime"]
+
+[[test]]
+name = "tokio_tcp"
+path = "tests/tokio_tcp.rs"
+required-features = ["tokio_runtime"]

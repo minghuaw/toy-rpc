@@ -1,11 +1,11 @@
 use anyhow::Result;
 
-use async_std::net::ToSocketAddrs;
-use async_std::{net::TcpListener, task};
+use toy_rpc::macros::{service};
+use tokio::task;
 use futures::channel::oneshot::{channel, Receiver};
 use std::sync::Arc;
-use toy_rpc::macros::service;
 use toy_rpc::{Client, Server};
+use tokio::net::{TcpListener, ToSocketAddrs};
 
 mod rpc;
 
@@ -14,7 +14,8 @@ async fn test_client(addr: impl ToSocketAddrs, mut ready: Receiver<()>) -> Resul
 
     println!("Client received ready");
 
-    let client = Client::dial(addr).await.expect("Error dialing server");
+    let client = Client::dial(addr).await
+        .expect("Error dialing server");
 
     rpc::test_get_magic_u8(&client).await;
     rpc::test_get_magic_u16(&client).await;
@@ -32,7 +33,7 @@ async fn test_client(addr: impl ToSocketAddrs, mut ready: Receiver<()>) -> Resul
 }
 
 async fn run() {
-    let addr = "127.0.0.1:8080";
+    let addr = "127.0.0.1:8081";
     let (tx, rx) = channel::<()>();
     let common_test_service = Arc::new(rpc::CommonTest::new());
 
@@ -58,12 +59,15 @@ async fn run() {
     let client_handle = task::spawn(test_client(addr, rx));
 
     // stop server after all clients finishes
-    client_handle.await.expect("Error testing client");
+    client_handle.await
+        .expect("Error joining client thread")
+        .expect("Error testing client");
 
-    server_handle.cancel().await;
+    server_handle.abort();
 }
 
 #[test]
 fn test_main() {
-    task::block_on(run());
+    let rt = tokio::runtime::Runtime::new().unwrap();
+    rt.block_on(run());
 }
