@@ -646,6 +646,10 @@ async fn main() {
 
 ### Change Log
 
+#### 0.5.4
+
+- Handlers are now stored as a `fn` pointer as opposed to a trait object.
+
 #### 0.5.3
 
 - The `#[export_impl]` macro now generates client stub functions by generating a new trait for `toy_rpc::Client`.
