@@ -57,13 +57,10 @@ where
         deserializer: Box<dyn erased::Deserializer<'static> + Send>,
     ) -> HandlerResultFut {
         let _state = self.get_state();
-        let _method = match self.get_method(name) {
-            Some(m) => m.clone(),
-            None => return Box::pin(async move { Err(Error::RpcError(RpcError::MethodNotFound)) }),
-        };
-
-        // return future of method execution
-        _method(_state, deserializer)
+        match self.get_method(name) {
+            Some(m) => m(_state, deserializer),
+            None => Box::pin(async move { Err(Error::RpcError(RpcError::MethodNotFound)) }),
+        }
     }
 }
 
