@@ -293,11 +293,11 @@ pub fn export_impl(_attr: TokenStream, item: TokenStream) -> TokenStream {
         // store the handler functions in a gloabl lazy hashmap
         toy_rpc::lazy_static::lazy_static! {
             pub static ref #static_ident:
-                std::collections::HashMap<&'static str, toy_rpc::service::ArcAsyncHandler<#self_ty>>
+                std::collections::HashMap<&'static str, toy_rpc::service::AsyncHandler<#self_ty>>
                 = {
-                    let mut map: std::collections::HashMap<&'static str, toy_rpc::service::ArcAsyncHandler<#self_ty>>
+                    let mut map: std::collections::HashMap<&'static str, toy_rpc::service::AsyncHandler<#self_ty>>
                         = std::collections::HashMap::new();
-                    #(map.insert(#names, std::sync::Arc::new(#self_ty::#fn_idents));)*;
+                    #(map.insert(#names, #self_ty::#fn_idents);)*;
                     map
                 };
         }
