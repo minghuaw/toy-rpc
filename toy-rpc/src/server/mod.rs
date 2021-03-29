@@ -12,7 +12,9 @@ use crate::error::{Error, RpcError};
 use crate::message::{MessageId, RequestHeader, ResponseHeader};
 use crate::service::{
     ArcAsyncServiceCall, AsyncServiceMap, HandleService, HandlerResult, HandlerResultFut,
+    build_service,
 };
+use crate::util::{RegisterService};
 
 #[cfg(all(feature = "http_actix_web"))]
 #[cfg_attr(doc, doc(cfg(feature = "http_actix_web")))]
@@ -274,17 +276,39 @@ impl ServerBuilder {
     ///     handle.await;
     /// }
     /// ```
-    pub fn register<S, T>(self, service_name: &'static str, service: S) -> Self
-    where
-        S: HandleService<T> + Send + Sync + 'static,
-        T: Send + Sync + 'static,
+    // pub fn register<S, T>(self, service_name: &'static str, service: S) -> Self
+    // where
+    //     S: HandleService<T> + Send + Sync + 'static,
+    //     T: Send + Sync + 'static,
+    // {
+    //     let call = move |method_name: String,
+    //                      _deserializer: Box<(dyn erased::Deserializer<'static> + Send)>|
+    //           -> HandlerResultFut { service.call(&method_name, _deserializer) };
+
+    //     let mut ret = self;
+    //     ret.services.insert(service_name, Arc::new(call));
+    //     ret
+    // }
+
+    pub fn register<S>(self, service: Arc<S>) -> Self 
+    where 
+        S: RegisterService + Send + Sync + 'static,
     {
+        let name = S::default_name();
+        self.register_with_name(service, name)
+    }
+
+    pub fn register_with_name<S>(self, service: Arc<S>, name: &'static str) -> Self 
+    where 
+        S: RegisterService + Send + Sync + 'static,
+    {
+        let service = build_service(service, S::handlers());
         let call = move |method_name: String,
                          _deserializer: Box<(dyn erased::Deserializer<'static> + Send)>|
               -> HandlerResultFut { service.call(&method_name, _deserializer) };
 
         let mut ret = self;
-        ret.services.insert(service_name, Arc::new(call));
+        ret.services.insert(name, Arc::new(call));
         ret
     }
 

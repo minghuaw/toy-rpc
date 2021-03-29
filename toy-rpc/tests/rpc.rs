@@ -16,7 +16,7 @@ pub const COMMON_TEST_MAGIC_I64: i64 = 8912386968;
 pub const COMMON_TEST_MAGIC_BOOL: bool = false;
 pub const COMMON_TEST_MAGIC_STR: &str = "a magic";
 
-pub const COMMON_TEST_SERVICE_NAME: &str = "common";
+pub const COMMON_TEST_SERVICE_NAME: &str = "CommonTest";
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialOrd, Ord, PartialEq, Eq)]
 pub struct CustomStruct {

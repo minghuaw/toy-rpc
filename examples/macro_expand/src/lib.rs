@@ -3,7 +3,7 @@ use toy_rpc::Server;
 use async_trait::async_trait;
 use std::sync::Arc;
 
-struct Example { }
+pub struct Example { }
 
 #[async_trait]
 pub trait ExampleService {
@@ -20,10 +20,10 @@ impl ExampleService for Example {
         Ok(args)
     }
 
-    // #[export_method]
-    // async fn bar(&self, args: bool) -> Result<bool, String> {
-    //     Ok(!args)
-    // }
+    #[export_method]
+    async fn bar(&self, args: bool) -> Result<bool, String> {
+        Ok(!args)
+    }
 }
 
 fn expand_service() {

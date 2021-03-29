@@ -1,7 +1,7 @@
 //! Provides proc_macros for toy-rpc.
 
 use proc_macro::TokenStream;
-use quote::quote;
+use quote::{ToTokens, quote};
 use syn::{GenericArgument, Ident, parse_macro_input, parse_quote};
 
 const SERVICE_PREFIX: &str = "STATIC_TOY_RPC_SERVICE";
@@ -303,6 +303,8 @@ pub fn export_impl(_attr: TokenStream, item: TokenStream) -> TokenStream {
         }
     };
 
+    let register_service_impl = generate_register_service_impl(ident);
+
     let input = remove_export_method_attr(input);
     let client_impl = remove_export_method_attr(client_impl);
     let handler_impl = remove_export_method_attr(handler_impl);
@@ -315,6 +317,7 @@ pub fn export_impl(_attr: TokenStream, item: TokenStream) -> TokenStream {
         #stub_trait
         #stub_impl
         #lazy
+        #register_service_impl
     };
     output.into()
 }
@@ -555,6 +558,25 @@ fn recusively_get_result_from_type(ty: &syn::Type) -> Option<GenericArgument> {
     }    
 }
 
+fn generate_register_service_impl(ident: &Ident) -> impl ToTokens {
+    let name = ident.to_string();
+    let static_name = format!("{}_{}", SERVICE_PREFIX, &name.to_uppercase());
+    let static_ident = syn::Ident::new(&static_name, ident.span());
+    let ret = quote! {
+        impl toy_rpc::util::RegisterService for #ident {
+            fn handlers() -> &'static std::collections::HashMap<&'static str, toy_rpc::service::AsyncHandler<Self>> {
+                &*#static_ident
+            }
+
+            fn default_name() -> &'static str {
+                let name = #name;
+                name.as_ref()
+            }
+        }
+    };
+
+    ret
+}
 struct ServiceExport {
     instance_id: syn::Ident,
     impl_path: syn::Path,

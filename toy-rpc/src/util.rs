@@ -2,8 +2,7 @@ use std::collections::HashMap;
 
 use crate::service::AsyncHandler;
 
-pub trait ServiceUtil {
-    type State;
-
-    fn get_handlers() -> &'static HashMap<&'static str, AsyncHandler<Self::State>>;
+pub trait RegisterService {
+    fn handlers() -> &'static HashMap<&'static str, AsyncHandler<Self>>;
+    fn default_name() -> &'static str;
 }

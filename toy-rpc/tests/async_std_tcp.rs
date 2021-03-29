@@ -38,10 +38,7 @@ async fn run() {
 
     // start testing server
     let server = Server::builder()
-        .register(
-            rpc::COMMON_TEST_SERVICE_NAME,
-            service!(common_test_service, rpc::CommonTest),
-        )
+        .register(common_test_service)
         .build();
 
     let listener = TcpListener::bind(addr)
