@@ -4,7 +4,6 @@ use async_std::net::ToSocketAddrs;
 use async_std::{net::TcpListener, task};
 use futures::channel::oneshot::{channel, Receiver};
 use std::sync::Arc;
-use toy_rpc::macros::service;
 use toy_rpc::{Client, Server};
 
 mod rpc;

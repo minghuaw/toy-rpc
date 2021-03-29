@@ -629,6 +629,10 @@ impl syn::parse::Parse for ServiceExport {
 /// }
 /// 
 /// ```
+#[deprecated(
+    since = "0.3.0",
+    note = "Service can be registered without explicitly using the service macro"
+)]
 #[proc_macro]
 pub fn service(input: TokenStream) -> TokenStream {
     let ServiceExport {
