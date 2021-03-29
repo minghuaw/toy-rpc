@@ -1986,7 +1986,7 @@ dependencies = [
 
 [[package]]
 name = "toy-rpc"
-version = "0.5.4"
+version = "0.6.0"
 dependencies = [
  "actix",
  "actix-http",
@@ -2011,9 +2011,7 @@ dependencies = [
 
 [[package]]
 name = "toy-rpc-macros"
-version = "0.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "429cd068906d2c8b7730d9f4aed8437c7014a5d362e18b6d83a06e4241adfc5a"
+version = "0.3.0"
 dependencies = [
  "quote",
  "syn",

@@ -3,7 +3,7 @@ use async_trait::async_trait;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
-use toy_rpc::macros::{export_impl, service};
+use toy_rpc::macros::{export_impl};
 use toy_rpc::Server;
 
 use actix_v3_integration::rpc::{Rpc, BarService, FooRequest, FooResponse};
@@ -79,8 +79,10 @@ async fn main() -> std::io::Result<()> {
     let bar_service = Arc::new(BarService {});
 
     let server = Server::builder()
-        .register("foo_service", service!(foo_service, FooService))
-        .register("bar_service", service!(bar_service, actix_v3_integration::rpc::BarService))
+        // .register("foo_service", service!(foo_service, FooService))
+        // .register("bar_service", service!(bar_service, actix_v3_integration::rpc::BarService))
+        .register(foo_service)
+        .register(bar_service)
         .build();
 
     let app_data = web::Data::new(server);
