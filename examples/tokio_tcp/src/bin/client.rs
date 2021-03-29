@@ -12,7 +12,7 @@ async fn main() {
 
     // first request, echo
     let args = FooRequest { a: 1, b: 3 };
-    let reply: Result<FooResponse, Error> = client.call("foo_service.echo", &args);
+    let reply: Result<FooResponse, Error> = client.call("FooService.echo", &args);
     println!("{:?}", reply);
 
     // second request, increment_a
@@ -20,7 +20,7 @@ async fn main() {
     //     a: reply.a,
     //     b: reply.b,
     // };
-    let reply: Result<FooResponse, Error> = client.async_call("foo_service.increment_a", &args).await;
+    let reply: Result<FooResponse, Error> = client.async_call("FooService.increment_a", &args).await;
     println!("{:?}", reply);
 
     // second request, increment_b
@@ -28,7 +28,7 @@ async fn main() {
     //     a: reply.a,
     //     b: reply.b,
     // };
-    let handle = client.spawn_task("foo_service.increment_b", args);
+    let handle = client.spawn_task("FooService.increment_b", args);
 
     // Please note that tokio's JoinHandle is slightly 
     // different from that of async-std's
@@ -39,16 +39,16 @@ async fn main() {
     let args = BarRequest {
         content: "bar".to_string(),
     };
-    let reply: BarResponse = client.call("bar_service.echo", &args).unwrap();
+    let reply: BarResponse = client.call("BarService.echo", &args).unwrap();
     println!("{:?}", reply);
 
     // fourth request, bar exclaim
-    let reply: BarResponse = client.async_call("bar_service.exclaim", &args).await.unwrap();
+    let reply: BarResponse = client.async_call("BarService.exclaim", &args).await.unwrap();
     println!("{:?}", reply);
 
     // third request, get_counter
     let args = ();
-    let handle = client.spawn_task("foo_service.get_counter", args);
+    let handle = client.spawn_task("FooService.get_counter", args);
 
     // Please note that tokio's JoinHandle is slightly 
     // different from that of async-std's
