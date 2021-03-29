@@ -736,6 +736,7 @@ pub mod macros;
 pub mod message;
 pub mod service;
 pub mod transport;
+pub mod util;
 
 cfg_if::cfg_if! {
     if #[cfg(any(

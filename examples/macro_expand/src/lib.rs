@@ -1,5 +1,7 @@
-use toy_rpc_macros::{export_impl};
+use toy_rpc_macros::{export_impl, service};
+use toy_rpc::Server;
 use async_trait::async_trait;
+use std::sync::Arc;
 
 struct Example { }
 
@@ -22,6 +24,14 @@ impl ExampleService for Example {
     // async fn bar(&self, args: bool) -> Result<bool, String> {
     //     Ok(!args)
     // }
+}
+
+fn expand_service() {
+    let example = Arc::new(Example{});
+
+    let server = Server::builder()
+        .register("example", service!(example, Example))
+        .build();
 }
 
 #[cfg(test)]
