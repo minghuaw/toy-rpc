@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use toy_rpc::macros::export_impl;
 use toy_rpc::Server;
 use async_trait::async_trait;
@@ -29,7 +31,7 @@ impl ExampleService for Example {
 fn expand_service() {
     let example = Arc::new(Example{});
 
-    let server = Server::builder()
+    let _server = Server::builder()
         .register(example)
         .build();
 }
