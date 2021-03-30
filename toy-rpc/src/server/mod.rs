@@ -299,6 +299,7 @@ impl ServerBuilder {
               -> HandlerResultFut { service.call(&method_name, _deserializer) };
 
         let mut ret = self;
+        log::debug!("Registering service: {}", S::default_name());
         ret.services.insert(S::default_name(), Arc::new(call));
         ret
     }

@@ -126,7 +126,7 @@ impl CommonTest {
 
 pub async fn test_get_magic_u8(client: &Client<Connected>) {
     let reply: u8 = client
-        .common_test(COMMON_TEST_SERVICE_NAME)
+        .common_test()
         .get_magic_u8(())
         .await
         .expect("Unexpected error executing RPC");
@@ -135,7 +135,7 @@ pub async fn test_get_magic_u8(client: &Client<Connected>) {
 
 pub async fn test_get_magic_u16(client: &Client<Connected>) {
     let reply: u16 = client
-        .common_test(COMMON_TEST_SERVICE_NAME)
+        .common_test()
         .get_magic_u16(())
         .await
         .expect("Unexpected error executing RPC");
@@ -144,7 +144,7 @@ pub async fn test_get_magic_u16(client: &Client<Connected>) {
 
 pub async fn test_get_magic_u32(client: &Client<Connected>) {
     let reply: u32 = client
-        .common_test(COMMON_TEST_SERVICE_NAME)
+        .common_test()
         .get_magic_u32(())
         .await
         .expect("Unexpected error executing RPC");
@@ -153,7 +153,7 @@ pub async fn test_get_magic_u32(client: &Client<Connected>) {
 
 pub async fn test_get_magic_u64(client: &Client<Connected>) {
     let reply: u64 = client
-        .common_test(COMMON_TEST_SERVICE_NAME)
+        .common_test()
         .get_magic_u64(())
         .await
         .expect("Unexpected error executing RPC");
@@ -162,7 +162,7 @@ pub async fn test_get_magic_u64(client: &Client<Connected>) {
 
 pub async fn test_get_magic_i8(client: &Client<Connected>) {
     let reply: i8 = client
-        .common_test(COMMON_TEST_SERVICE_NAME)
+        .common_test()
         .get_magic_i8(())
         .await
         .expect("Unexpected error executing RPC");
@@ -171,7 +171,7 @@ pub async fn test_get_magic_i8(client: &Client<Connected>) {
 
 pub async fn test_get_magic_i16(client: &Client<Connected>) {
     let reply: i16 = client
-        .common_test(COMMON_TEST_SERVICE_NAME)
+        .common_test()
         .get_magic_i16(())
         .await
         .expect("Unexpected error executing RPC");
@@ -180,7 +180,7 @@ pub async fn test_get_magic_i16(client: &Client<Connected>) {
 
 pub async fn test_get_magic_i32(client: &Client<Connected>) {
     let reply: i32 = client
-        .common_test(COMMON_TEST_SERVICE_NAME)
+        .common_test()
         .get_magic_i32(())
         .await
         .expect("Unexpected error executing RPC");
@@ -189,7 +189,7 @@ pub async fn test_get_magic_i32(client: &Client<Connected>) {
 
 pub async fn test_get_magic_i64(client: &Client<Connected>) {
     let reply: i64 = client
-        .common_test(COMMON_TEST_SERVICE_NAME)
+        .common_test()
         .get_magic_i64(())
         .await
         .expect("Unexpected error executing RPC");
@@ -198,7 +198,7 @@ pub async fn test_get_magic_i64(client: &Client<Connected>) {
 
 pub async fn test_get_magic_bool(client: &Client<Connected>) {
     let reply: bool = client
-        .common_test(COMMON_TEST_SERVICE_NAME)
+        .common_test()
         .get_magic_bool(())
         .await
         .expect("Unexpected error executing RPC");
@@ -207,7 +207,7 @@ pub async fn test_get_magic_bool(client: &Client<Connected>) {
 
 pub async fn test_get_magic_str(client: &Client<Connected>) {
     let reply: String = client
-        .common_test(COMMON_TEST_SERVICE_NAME)
+        .common_test()
         .get_magic_str(())
         .await
         .expect("Unexpected error executing RPC");
