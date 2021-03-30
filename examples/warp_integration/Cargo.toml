@@ -12,7 +12,7 @@ pretty_env_logger = "0.4.0"
 tokio = { version = "1.4.0", features = ["rt", "rt-multi-thread", "macros"] }
 warp = "0.3.0"
 
-toy-rpc = {version = "0.6", path = "../../toy-rpc", default-features = false, features = [ "serde_json", "http_warp"]}
+toy-rpc = {version = "0.6.0-alpha", path = "../../toy-rpc", default-features = false, features = [ "serde_json", "http_warp"]}
 async-trait = "0.1.42"
 serde = { version = "1.0.123", features = ["derive"] }
 async-std = { version = "1.9.0", features = ["attributes"] }
