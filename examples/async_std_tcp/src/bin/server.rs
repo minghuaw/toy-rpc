@@ -18,8 +18,6 @@ async fn main() {
     let bar_service = Arc::new(Bar {});
 
     let server = Server::builder()
-        // .register("foo_service", service!(foo_service, Foo))
-        // .register("bar_service", service!(bar_service, Bar))
         .register(foo_service)
         .register(bar_service)
         .build();

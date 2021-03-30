@@ -79,8 +79,6 @@ async fn main() -> std::io::Result<()> {
     let bar_service = Arc::new(BarService {});
 
     let server = Server::builder()
-        // .register("foo_service", service!(foo_service, FooService))
-        // .register("bar_service", service!(bar_service, actix_v3_integration::rpc::BarService))
         .register(foo_service)
         .register(bar_service)
         .build();

@@ -20,7 +20,7 @@ async fn main() {
 
     // notice that the second argument in `service!()` macro is a path
     let server = Server::builder()
-        .register("example", service!(example_service, rpc::ExampleService))
+        .register(example_service)
         .build();
 
     let listener = TcpListener::bind(addr).await.unwrap();

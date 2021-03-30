@@ -624,8 +624,8 @@ impl syn::parse::Parse for ServiceExport {
 ///     let bar = Arc::new(rpc::Bar {});
 ///     
 ///     let server = Server::builder()
-///         .register("foo_service", service!(foo, Foo))
-///         .register("bar_service", service!(bar, rpc::Bar))
+///         .register(foo)
+///         .register(bar)
 ///         .build();
 /// }
 /// 
