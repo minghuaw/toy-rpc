@@ -36,7 +36,15 @@
 //!
 //! The most recent breaking changes will be reflected here.
 //!
+//! ### Version 0.6.0-alpha
+//!
+//! - Service registration is simplified to `Server::builder().register(foo_service).build()`. Thus
+//!     - `service!()` macro is now deprecated
+//!     - 
+//! 
+//! 
 //! ### Version 0.5.0
+//! 
 //! - HTTP integration is now accomplished via WebSocket using `async_tungstenite`, and thus HTTP connections
 //! of versions <0.5.0 are **NOT** compatible with versions >=0.5.0.
 //! - The custom binary transport protocol now includes a magic byte at the beginning, making
