@@ -757,6 +757,7 @@ lifetime with async task is figured out. As a result, `Client` no longer needs t
 
 The following items are in no particular order.
 
+- improve error handling
 - improve logging message
 - support other I/O connection
 - more tests

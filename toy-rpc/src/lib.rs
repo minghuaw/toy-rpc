@@ -759,6 +759,7 @@
 //!
 //! The following items are in no particular order.
 //!
+//! - improve error handling
 //! - improve logging message
 //! - support other I/O connection
 //! - more tests
