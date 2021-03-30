@@ -236,6 +236,7 @@
 //!     }
 //! }
 //! 
+//! // import everything from the `rpc` mod to include generated client stub
 //! use rpc::*;
 //! 
 //! #[async_std::main] 
@@ -374,6 +375,7 @@
 //! use toy_rpc::Client;
 //! use toy_rpc::error::Error;
 //!
+//! // import everything from the `rpc` mod to include generated client stub
 //! use crate::rpc::*; // assume the rpc module can be found here
 //!
 //! #[async_std::main]
@@ -454,6 +456,7 @@
 //! use toy_rpc::Client;
 //! use toy_rpc::error::Error;
 //!
+//! // import everything from the `rpc` mod to include generated client stub
 //! use crate::rpc::*; // assume the rpc module can be found here
 //!
 //! #[tokio::main]
