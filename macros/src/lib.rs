@@ -429,16 +429,17 @@ fn generate_client_stub(ident: &Ident, input: syn::ItemImpl) -> (syn::Item, syn:
     
     let stub_trait = parse_quote!(
         pub trait #stub_ident {
-            fn #stub_fn<'c>(&'c self, service_name: &'c str) -> #client_ident;
+            fn #stub_fn<'c>(&'c self) -> #client_ident;
         }
     );
 
+    let service_name = ident.to_string();
     let stub_impl: syn::ItemImpl = parse_quote!(
         impl #stub_ident for toy_rpc::client::Client<toy_rpc::client::Connected> {
-            fn #stub_fn<'c>(&'c self, service_name: &'c str) -> #client_ident {
+            fn #stub_fn<'c>(&'c self) -> #client_ident {
                 #client_ident {
                     client: self,
-                    service_name,
+                    service_name: #service_name,
                 }
             }
         }  

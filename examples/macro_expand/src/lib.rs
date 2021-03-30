@@ -1,4 +1,4 @@
-use toy_rpc_macros::{export_impl, service};
+use toy_rpc::macros::export_impl;
 use toy_rpc::Server;
 use async_trait::async_trait;
 use std::sync::Arc;
@@ -30,7 +30,7 @@ fn expand_service() {
     let example = Arc::new(Example{});
 
     let server = Server::builder()
-        .register("example", service!(example, Example))
+        .register(example)
         .build();
 }
 
