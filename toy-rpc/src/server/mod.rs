@@ -209,7 +209,7 @@ impl Server {
     ///     let codec = Codec::new(stream);
     ///     
     ///     let server = Server::builder()
-    ///         .register("example", service!(example_service, ExampleService))
+    ///         .register(example_service)
     ///         .build();
     ///     // assume `ExampleService` exist
     ///     let handle = task::spawn(async move {
@@ -264,7 +264,7 @@ impl ServerBuilder {
     ///     
     ///     let echo_service = Arc::new(EchoService { });
     ///     let server = Server::builder()
-    ///         .register("echo_service", service!(echo_service, EchoService))
+    ///         .register(echo_service)
     ///         .build();
     ///     
     ///     let listener = TcpListener::bind(addr).await.unwrap();
@@ -276,19 +276,6 @@ impl ServerBuilder {
     ///     handle.await;
     /// }
     /// ```
-    // pub fn register<S, T>(self, service_name: &'static str, service: S) -> Self
-    // where
-    //     S: HandleService<T> + Send + Sync + 'static,
-    //     T: Send + Sync + 'static,
-    // {
-    //     let call = move |method_name: String,
-    //                      _deserializer: Box<(dyn erased::Deserializer<'static> + Send)>|
-    //           -> HandlerResultFut { service.call(&method_name, _deserializer) };
-
-    //     let mut ret = self;
-    //     ret.services.insert(service_name, Arc::new(call));
-    //     ret
-    // }
     pub fn register<S>(self, service: Arc<S>) -> Self 
     where 
         S: RegisterService + Send + Sync + 'static,

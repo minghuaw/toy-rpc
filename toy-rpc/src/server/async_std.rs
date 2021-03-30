@@ -67,7 +67,7 @@ cfg_if! {
             ///     // assume `ExampleService` exist
             ///     let example_service = ExampleService {};
             ///     let server = Server::builder()
-            ///         .register("example", service!(example_service, ExampleService))
+            ///         .register(example_service)
             ///         .build();
             ///
             ///     let listener = TcpListener::bind(addr).await.unwrap();
@@ -113,7 +113,7 @@ cfg_if! {
             ///     // assume `ExampleService` exist
             ///     let example_service = ExampleService {};
             ///     let server = Server::builder()
-            ///         .register("example", service!(example_service, ExampleService))
+            ///         .register(example_service)
             ///         .build();
             ///
             ///     let listener = TcpListener::bind(addr).await.unwrap();
@@ -172,7 +172,7 @@ cfg_if! {
             ///     // assume `ExampleService` exist
             ///     let example_service = ExampleService {};
             ///     let server = Server::builder()
-            ///         .register("example", service!(example_service, ExampleService))
+            ///         .register(example_service)
             ///         .build();
             ///
             ///     let conn = TcpStream::connect(addr).await.unwrap();
