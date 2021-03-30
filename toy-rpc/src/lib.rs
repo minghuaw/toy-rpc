@@ -38,10 +38,12 @@
 //!
 //! ### Version 0.6.0-alpha
 //!
-//! - Service registration is simplified to `Server::builder().register(foo_service).build()`. Thus
-//!     - `service!()` macro is now deprecated
-//!     - 
-//! 
+//! - Service registration is simplified to `Server::builder().register(foo_service).build()`. The examples will be 
+//! updated accordingly. Thus
+//!     - `service!()` macro will be deprecated
+//!     - `register` function now takes only one argument, which is the instance of the service
+//!     - a new function `register_with_name` is added to allow adding multiple instances of the same 
+//!         type
 //! 
 //! ### Version 0.5.0
 //! 

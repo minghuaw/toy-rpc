@@ -289,16 +289,7 @@ impl ServerBuilder {
     //     ret.services.insert(service_name, Arc::new(call));
     //     ret
     // }
-
     pub fn register<S>(self, service: Arc<S>) -> Self 
-    where 
-        S: RegisterService + Send + Sync + 'static,
-    {
-        let name = S::default_name();
-        self.register_with_name(service, name)
-    }
-
-    pub fn register_with_name<S>(self, service: Arc<S>, name: &'static str) -> Self 
     where 
         S: RegisterService + Send + Sync + 'static,
     {
@@ -308,9 +299,23 @@ impl ServerBuilder {
               -> HandlerResultFut { service.call(&method_name, _deserializer) };
 
         let mut ret = self;
-        ret.services.insert(name, Arc::new(call));
+        ret.services.insert(S::default_name(), Arc::new(call));
         ret
     }
+
+    // pub fn register_with_name<S>(self, service: Arc<S>, name: &'static str) -> Self 
+    // where 
+    //     S: RegisterService + Send + Sync + 'static,
+    // {
+    //     let service = build_service(service, S::handlers());
+    //     let call = move |method_name: String,
+    //                      _deserializer: Box<(dyn erased::Deserializer<'static> + Send)>|
+    //           -> HandlerResultFut { service.call(&method_name, _deserializer) };
+
+    //     let mut ret = self;
+    //     ret.services.insert(name, Arc::new(call));
+    //     ret
+    // }
 
     /// Creates an RPC `Server`
     pub fn build(self) -> Server {
