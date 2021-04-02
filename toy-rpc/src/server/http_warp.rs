@@ -84,7 +84,7 @@ cfg_if! {
             ///     let foo_service = Arc::new(FooService { });
             ///
             ///     let server = Server::builder()
-            ///         .register("foo", service!(foo_service, FooService))
+            ///         .register(foo_service)
             ///         .build();
             ///
             ///     let routes = warp::path("rpc")
@@ -159,7 +159,7 @@ cfg_if! {
             ///     let foo_service = Arc::new(FooService { });
             ///
             ///     let server = Server::builder()
-            ///         .register("foo", service!(foo_service, FooService))
+            ///         .register(foo_service)
             ///         .build();
             ///
             ///     let routes = warp::path("rpc")

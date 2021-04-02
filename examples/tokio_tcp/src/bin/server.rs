@@ -4,10 +4,9 @@ use tokio::sync::Mutex;
 use tokio::task;
 use async_trait::async_trait;
 
-use toy_rpc::macros::{export_impl, service};
+use toy_rpc::macros::{export_impl};
 use toy_rpc::Server;
 
-use tokio_tcp::rpc;
 use tokio_tcp::rpc::{BarService, FooRequest, FooResponse, Rpc};
 
 pub struct FooService {
@@ -73,8 +72,8 @@ async fn main() {
     let bar_service = Arc::new(BarService {});
 
     let server = Server::builder()
-        .register("foo_service", service!(foo_service, FooService))
-        .register("bar_service", service!(bar_service, rpc::BarService))
+        .register(foo_service)
+        .register(bar_service)
         .build();
 
     let listener = TcpListener::bind(addr).await.unwrap();

@@ -4,7 +4,6 @@ use async_std::net::ToSocketAddrs;
 use async_std::{net::TcpListener, task};
 use futures::channel::oneshot::{channel, Receiver};
 use std::sync::Arc;
-use toy_rpc::macros::service;
 use toy_rpc::{Client, Server};
 
 mod rpc;
@@ -38,10 +37,7 @@ async fn run() {
 
     // start testing server
     let server = Server::builder()
-        .register(
-            rpc::COMMON_TEST_SERVICE_NAME,
-            service!(common_test_service, rpc::CommonTest),
-        )
+        .register(common_test_service)
         .build();
 
     let listener = TcpListener::bind(addr)

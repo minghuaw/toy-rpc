@@ -2,7 +2,6 @@ use async_std::net::TcpListener;
 use async_std::sync::{Arc, Mutex};
 use async_std::task;
 
-use toy_rpc::macros::{service};
 use toy_rpc::Server;
 
 use async_std_tcp::rpc::*;
@@ -18,8 +17,8 @@ async fn main() {
     let bar_service = Arc::new(Bar {});
 
     let server = Server::builder()
-        .register("foo_service", service!(foo_service, Foo))
-        .register("bar_service", service!(bar_service, Bar))
+        .register(foo_service)
+        .register(bar_service)
         .build();
 
     let listener = TcpListener::bind(addr).await.unwrap();

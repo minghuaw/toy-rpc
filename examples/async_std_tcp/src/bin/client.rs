@@ -13,7 +13,7 @@ async fn main() {
 
     // first request, echo
     let args = FooRequest { a: 1, b: 3 };
-    let reply: FooResponse = client.call("foo_service.echo", &args).unwrap();
+    let reply: FooResponse = client.call("Foo.echo", &args).unwrap();
     println!("{:?}", reply);
 
     // second request, increment_a
@@ -21,7 +21,7 @@ async fn main() {
         a: reply.a,
         b: reply.b,
     };
-    let reply: Result<FooResponse, Error> = client.foo("foo_service").increment_a(&args).await;
+    let reply: Result<FooResponse, Error> = client.foo("Foo").increment_a(&args).await;
     println!("{:?}", reply);
 
     // second request, increment_b
@@ -29,7 +29,7 @@ async fn main() {
     //     a: reply.a,
     //     b: reply.b,
     // };
-    let handle = client.spawn_task("foo_service.increment_b", args);
+    let handle = client.spawn_task("Foo.increment_b", args);
     let reply: Result<FooResponse, Error> = handle.await;
     println!("{:?}", reply);
 
@@ -37,17 +37,17 @@ async fn main() {
     let args = BarRequest {
         content: "bar".to_string(),
     };
-    let reply: BarResponse = client.call("bar_service.echo", &args).unwrap();
+    let reply: BarResponse = client.call("Bar.echo", &args).unwrap();
     println!("{:?}", reply);
 
     // fourth request, bar exclaim
     // let reply: BarResponse = client.async_call("bar_service.exclaim", &args).await.unwrap();
-    let reply = client.bar("bar_service").exclaim(&args).await.unwrap();
+    let reply = client.bar("Bar").exclaim(&args).await.unwrap();
     println!("{:?}", reply);
 
     // third request, get_counter
     let args = ();
-    let handle = client.spawn_task("foo_service.get_counter", args);
+    let handle = client.spawn_task("Foo.get_counter", args);
     let reply: u32 = handle.await.unwrap();
     println!("{:?}", reply);
 

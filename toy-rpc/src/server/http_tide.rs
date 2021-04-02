@@ -78,7 +78,7 @@ cfg_if! {
             ///     let foo_service = Arc::new(FooService { });
             ///
             ///     let server = Server::builder()
-            ///         .register("foo", service!(foo_service, FooService))
+            ///         .register(foo_service)
             ///         .build();
             ///
             ///     let mut app = tide::new();
@@ -170,7 +170,7 @@ cfg_if! {
             ///     let foo_service = Arc::new(FooService { });
             ///
             ///     let server = Server::builder()
-            ///         .register("foo", service!(foo_service, FooService))
+            ///         .register(foo_service)
             ///         .build();
             ///
             ///     let mut app = tide::new();

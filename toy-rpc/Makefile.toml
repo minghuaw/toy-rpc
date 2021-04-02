@@ -23,3 +23,10 @@ args = ["test",
     "--test", "tokio_tcp", 
     "--", "--nocapture"
 ]
+
+[tasks.doctest]
+toolchain = "nightly"
+command = "cargo"
+args = [
+    "doc", "--no-deps", "--all-features", "--open"
+]

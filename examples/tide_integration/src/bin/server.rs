@@ -3,12 +3,10 @@ use async_trait::async_trait;
 use tide::prelude::*;
 use tide::Request;
 
-use toy_rpc::macros::{export_impl, service};
+use toy_rpc::macros::{export_impl};
 use toy_rpc::server::Server;
 
 use tide_integration::rpc::{BarService, FooRequest, FooResponse, Rpc};
-
-use tide_integration::rpc;
 
 pub struct FooService {
     counter: Mutex<u32>,
@@ -81,8 +79,8 @@ async fn main() -> tide::Result<()> {
     let bar_service = Arc::new(BarService {});
 
     let server = Server::builder()
-        .register("foo_service", service!(foo_service, FooService))
-        .register("bar_service", service!(bar_service, rpc::BarService))
+        .register(foo_service)
+        .register(bar_service)
         .build();
 
     let mut app = tide::new();

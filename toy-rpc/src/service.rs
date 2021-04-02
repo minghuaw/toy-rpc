@@ -13,12 +13,10 @@ use crate::error::Error;
 // async versions of handlers
 pub type HandlerResult = Result<Box<dyn erased::Serialize + Send + Sync + 'static>, Error>;
 pub type HandlerResultFut = Pin<Box<dyn Future<Output = HandlerResult> + Send>>;
-pub type AsyncHandler<S> = dyn Fn(Arc<S>, Box<dyn erased::Deserializer<'static> + Send>) -> HandlerResultFut
-    + Send
-    + Sync
-    + 'static;
-pub type ArcAsyncHandler<S> = Arc<AsyncHandler<S>>;
+pub type AsyncHandler<S> = fn(Arc<S>, Box<dyn erased::Deserializer<'static> + Send>) -> HandlerResultFut;
+// pub type ArcAsyncHandler<S> = Arc<AsyncHandler<S>>;
 
+// trait objects to invoke a service
 pub type AsyncServiceCall = dyn Fn(String, Box<dyn erased::Deserializer<'static> + Send>) -> HandlerResultFut
     + Send
     + Sync
@@ -31,7 +29,7 @@ where
     State: Send + Sync + 'static,
 {
     state: Arc<State>,
-    handlers: HashMap<&'static str, ArcAsyncHandler<State>>,
+    handlers: HashMap<&'static str, AsyncHandler<State>>,
 }
 
 impl<State> Service<State>
@@ -49,7 +47,7 @@ where
     State: Send + Sync + 'static,
 {
     fn get_state(&self) -> Arc<State>;
-    fn get_method(&self, name: &str) -> Option<ArcAsyncHandler<State>>;
+    fn get_method(&self, name: &str) -> Option<AsyncHandler<State>>;
 
     fn call(
         &self,
@@ -57,13 +55,10 @@ where
         deserializer: Box<dyn erased::Deserializer<'static> + Send>,
     ) -> HandlerResultFut {
         let _state = self.get_state();
-        let _method = match self.get_method(name) {
-            Some(m) => m.clone(),
-            None => return Box::pin(async move { Err(Error::RpcError(RpcError::MethodNotFound)) }),
-        };
-
-        // return future of method execution
-        _method(_state, deserializer)
+        match self.get_method(name) {
+            Some(m) => m(_state, deserializer),
+            None => Box::pin(async move { Err(Error::RpcError(RpcError::MethodNotFound)) }),
+        }
     }
 }
 
@@ -75,7 +70,7 @@ where
         self.state.clone()
     }
 
-    fn get_method(&self, name: &str) -> Option<ArcAsyncHandler<State>> {
+    fn get_method(&self, name: &str) -> Option<AsyncHandler<State>> {
         // self.handlers.get(name).map(|m| m.clone())
         self.handlers.get(name).cloned()
     }
@@ -90,7 +85,7 @@ where
     State: Send + Sync + 'static,
 {
     pub state: Option<Arc<State>>,
-    pub handlers: HashMap<&'static str, ArcAsyncHandler<State>>,
+    pub handlers: HashMap<&'static str, AsyncHandler<State>>,
 
     // helper members for TypeState only
     mode: PhantomData<BuilderMode>,
@@ -143,7 +138,7 @@ where
 
     pub fn register_handlers(
         self,
-        map: &'static HashMap<&'static str, ArcAsyncHandler<State>>,
+        map: &'static HashMap<&'static str, AsyncHandler<State>>,
     ) -> Self {
         let mut builder = self;
         for (key, val) in map.iter() {
@@ -168,7 +163,7 @@ where
 
 pub fn build_service<State>(
     state: Arc<State>,
-    handlers: &'static HashMap<&'static str, ArcAsyncHandler<State>>,
+    handlers: &'static HashMap<&'static str, AsyncHandler<State>>,
 ) -> Service<State>
 where
     State: Send + Sync + 'static,

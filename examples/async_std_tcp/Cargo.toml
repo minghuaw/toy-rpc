@@ -22,4 +22,4 @@ futures = "0.3.12"
 log = "0.4.14"
 pretty_env_logger = "0.4.0"
 serde = { version = "1.0.123", features = ["derive"] }
-toy-rpc = { version = "0.5.2", path = "../../toy-rpc", default-features = false, features = ["serde_bincode", "async_std_runtime"]}
+toy-rpc = { version = "0.6.0-alpha", path = "../../toy-rpc", default-features = false, features = ["serde_bincode", "async_std_runtime"]}

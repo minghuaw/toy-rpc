@@ -1,7 +1,7 @@
 //! Provides proc_macros for toy-rpc.
 
 use proc_macro::TokenStream;
-use quote::quote;
+use quote::{ToTokens, quote};
 use syn::{GenericArgument, Ident, parse_macro_input, parse_quote};
 
 const SERVICE_PREFIX: &str = "STATIC_TOY_RPC_SERVICE";
@@ -293,15 +293,17 @@ pub fn export_impl(_attr: TokenStream, item: TokenStream) -> TokenStream {
         // store the handler functions in a gloabl lazy hashmap
         toy_rpc::lazy_static::lazy_static! {
             pub static ref #static_ident:
-                std::collections::HashMap<&'static str, toy_rpc::service::ArcAsyncHandler<#self_ty>>
+                std::collections::HashMap<&'static str, toy_rpc::service::AsyncHandler<#self_ty>>
                 = {
-                    let mut map: std::collections::HashMap<&'static str, toy_rpc::service::ArcAsyncHandler<#self_ty>>
+                    let mut map: std::collections::HashMap<&'static str, toy_rpc::service::AsyncHandler<#self_ty>>
                         = std::collections::HashMap::new();
-                    #(map.insert(#names, std::sync::Arc::new(#self_ty::#fn_idents));)*;
+                    #(map.insert(#names, #self_ty::#fn_idents);)*;
                     map
                 };
         }
     };
+
+    let register_service_impl = generate_register_service_impl(ident);
 
     let input = remove_export_method_attr(input);
     let client_impl = remove_export_method_attr(client_impl);
@@ -315,6 +317,7 @@ pub fn export_impl(_attr: TokenStream, item: TokenStream) -> TokenStream {
         #stub_trait
         #stub_impl
         #lazy
+        #register_service_impl
     };
     output.into()
 }
@@ -426,16 +429,17 @@ fn generate_client_stub(ident: &Ident, input: syn::ItemImpl) -> (syn::Item, syn:
     
     let stub_trait = parse_quote!(
         pub trait #stub_ident {
-            fn #stub_fn<'c>(&'c self, service_name: &'c str) -> #client_ident;
+            fn #stub_fn<'c>(&'c self) -> #client_ident;
         }
     );
 
+    let service_name = ident.to_string();
     let stub_impl: syn::ItemImpl = parse_quote!(
         impl #stub_ident for toy_rpc::client::Client<toy_rpc::client::Connected> {
-            fn #stub_fn<'c>(&'c self, service_name: &'c str) -> #client_ident {
+            fn #stub_fn<'c>(&'c self) -> #client_ident {
                 #client_ident {
                     client: self,
-                    service_name,
+                    service_name: #service_name,
                 }
             }
         }  
@@ -555,6 +559,25 @@ fn recusively_get_result_from_type(ty: &syn::Type) -> Option<GenericArgument> {
     }    
 }
 
+fn generate_register_service_impl(ident: &Ident) -> impl ToTokens {
+    let name = ident.to_string();
+    let static_name = format!("{}_{}", SERVICE_PREFIX, &name.to_uppercase());
+    let static_ident = syn::Ident::new(&static_name, ident.span());
+    let ret = quote! {
+        impl toy_rpc::util::RegisterService for #ident {
+            fn handlers() -> &'static std::collections::HashMap<&'static str, toy_rpc::service::AsyncHandler<Self>> {
+                &*#static_ident
+            }
+
+            fn default_name() -> &'static str {
+                let name = #name;
+                name.as_ref()
+            }
+        }
+    };
+
+    ret
+}
 struct ServiceExport {
     instance_id: syn::Ident,
     impl_path: syn::Path,
@@ -601,12 +624,16 @@ impl syn::parse::Parse for ServiceExport {
 ///     let bar = Arc::new(rpc::Bar {});
 ///     
 ///     let server = Server::builder()
-///         .register("foo_service", service!(foo, Foo))
-///         .register("bar_service", service!(bar, rpc::Bar))
+///         .register(foo)
+///         .register(bar)
 ///         .build();
 /// }
 /// 
 /// ```
+#[deprecated(
+    since = "0.3.0",
+    note = "Service can be registered without explicitly using the service macro"
+)]
 #[proc_macro]
 pub fn service(input: TokenStream) -> TokenStream {
     let ServiceExport {

@@ -310,9 +310,9 @@ dependencies = [
 
 [[package]]
 name = "async-tungstenite"
-version = "0.13.0"
+version = "0.13.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5cb4e1f5450b0f41b0dad072f176f2faca87dab540492ee17d73615d5e6f4ee1"
+checksum = "07b30ef0ea5c20caaa54baea49514a206308989c68be7ecd86c7f956e4da6378"
 dependencies = [
  "async-std",
  "futures-io",
@@ -1795,9 +1795,9 @@ dependencies = [
 
 [[package]]
 name = "tide-websockets"
-version = "0.2.0"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ca9eef759bbe19bd62693c01f1ac58207290513096caccafed140dbc81deaa47"
+checksum = "e779e18072c7b59c45bdd60a5611c27ee304c41b7c430532ac98de4d6e7d3a2d"
 dependencies = [
  "async-dup",
  "async-std",
@@ -1890,11 +1890,11 @@ checksum = "cda74da7e1a664f795bb1f8a87ec406fb89a02522cf6e50620d016add6dbbf5c"
 
 [[package]]
 name = "toy-rpc"
-version = "0.5.2"
+version = "0.6.0-alpha"
 dependencies = [
  "async-std",
  "async-trait",
- "async-tungstenite 0.13.0",
+ "async-tungstenite 0.13.1",
  "bincode",
  "cfg-if 1.0.0",
  "erased-serde",
@@ -1913,9 +1913,7 @@ dependencies = [
 
 [[package]]
 name = "toy-rpc-macros"
-version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a6d2fa12b5666c1191febf7058acf8e0a6ea2e14cd7f2438c577b4c7287e6e9a"
+version = "0.3.0"
 dependencies = [
  "quote",
  "syn",

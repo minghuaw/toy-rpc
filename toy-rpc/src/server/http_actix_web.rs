@@ -278,7 +278,7 @@ cfg_if! {
             ///     let foo_service = Arc::new(FooService { });
             ///
             ///     let server = Server::builder()
-            ///         .register("foo_service", service!(foo_servicem FooService))
+            ///         .register(foo_service)
             ///         .build();
             ///
             ///     let app_data = web::Data::new(server);
@@ -350,7 +350,7 @@ cfg_if! {
             ///     let foo_service = Arc::new(FooService { });
             ///
             ///     let server = Server::builder()
-            ///         .register("foo_service", service!(foo_servicem FooService))
+            ///         .register(foo_service)
             ///         .build();
             ///
             ///     let app_data = web::Data::new(server);
