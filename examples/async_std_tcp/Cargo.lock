@@ -1121,7 +1121,9 @@ checksum = "cda74da7e1a664f795bb1f8a87ec406fb89a02522cf6e50620d016add6dbbf5c"
 
 [[package]]
 name = "toy-rpc"
-version = "0.6.0-alpha"
+version = "0.6.0-beta"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0b95499c8d13668b00bb4d14708f49b828ac5baf7fdfae4c4e16b7278a3eea72"
 dependencies = [
  "async-std",
  "async-trait",
@@ -1143,6 +1145,8 @@ dependencies = [
 [[package]]
 name = "toy-rpc-macros"
 version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4dee76236dc5bbc6758dde10c1089bf1eb626433d147e64e6049d7669ce5b76e"
 dependencies = [
  "quote",
  "syn",
