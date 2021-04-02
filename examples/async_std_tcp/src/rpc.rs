@@ -111,4 +111,9 @@ impl Bar {
 
         Ok(res)
     }
+
+    #[export_method]
+    pub async fn echo_error(&self, req: String) -> Result<(), String> {
+        Err(req)
+    }
 }

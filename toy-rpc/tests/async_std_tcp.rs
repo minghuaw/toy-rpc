@@ -25,6 +25,10 @@ async fn test_client(addr: impl ToSocketAddrs, mut ready: Receiver<()>) -> Resul
     rpc::test_get_magic_i64(&client).await;
     rpc::test_get_magic_bool(&client).await;
     rpc::test_get_magic_str(&client).await;
+    rpc::test_imcomplete_service_method(&client).await;
+    rpc::test_service_not_found(&client).await;
+    rpc::test_method_not_found(&client).await;
+    rpc::test_execution_error(&client).await;
 
     println!("Client received correct RPC result");
     Ok(())

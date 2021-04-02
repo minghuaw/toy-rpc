@@ -65,5 +65,9 @@ async fn main() {
     let res: Result<(), Error> = client.call("Foo.method", &args);
     println!("{:?}", res);
 
+    // return error
+    let res = client.bar().echo_error("an error message".to_string()).await;
+    println!("{:?}", res);
+
     client.close().await;
 }
