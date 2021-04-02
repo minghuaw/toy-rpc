@@ -8,6 +8,8 @@ use futures::{AsyncRead, AsyncWrite};
 /// `feature = "async_std_runtime"` or `featue = "http_tide"` is true.
 use std::sync::Arc;
 
+use crate::message::ErrorMessage;
+
 use super::*;
 
 type Codec = Arc<Mutex<Box<dyn ClientCodec>>>;
@@ -404,14 +406,11 @@ impl Client<Connected> {
                 true => Err(deserializer),
             };
 
-            // send back response
+            //[3] send back response
             let mut _pending = pending.lock().await;
             if let Some(done_sender) = _pending.remove(&id) {
                 done_sender.send(res).map_err(|_| {
-                    Error::TransportError(format!(
-                        "Failed to send ResponseBody over oneshot channel {}",
-                        &id
-                    ))
+                    Error::Internal("InternalError: client failed to send response over channel".into())
                 })?;
             }
         }
@@ -431,17 +430,13 @@ impl Client<Connected> {
             Ok(o) => match o {
                 Some(r) => r,
                 None => {
-                    return Err(Error::TransportError(format!(
-                        "Done channel for id {} is out of date",
-                        &id
-                    )))
+                    return Err(Error::Internal(
+                        format!("Done channel for id {} is out of date", &id).into()
+                    ))
                 }
             },
-            _ => {
-                return Err(Error::TransportError(format!(
-                    "Done channel for id {} is canceled",
-                    &id
-                )))
+            Err(e) => {
+                return Err(Error::Internal(e.into()))
             }
         };
 
@@ -455,11 +450,12 @@ impl Client<Connected> {
                 Ok(resp)
             }
             Err(mut err_body) => {
-                let err = erased::deserialize(&mut err_body)
+                let msg: ErrorMessage = erased::deserialize(&mut err_body)
                     .map_err(|e| Error::ParseError(Box::new(e)))?;
+                let err = Error::from_err_msg(msg);
 
                 // upon successful deserializing, an Err() must be returned
-                Err(Error::RpcError(err))
+                Err(err)
             }
         }
     }
