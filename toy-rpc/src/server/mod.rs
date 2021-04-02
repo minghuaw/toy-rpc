@@ -126,9 +126,6 @@ impl Server {
 
                 // [1] destructure header
                 let RequestHeader { id, service_method } = header?;
-                // if keep_reading == false {
-                //     return Ok(ConnectionStatus::Stop)
-                // }
 
                 // [2] split service name and method name
                 // return early send back Error::MethodNotFound if no "." is found
