@@ -36,6 +36,11 @@
 //!
 //! The most recent breaking changes will be reflected here.
 //!
+//! ### Version 0.6.0-beta
+//!
+//! - Re-defined the custom `Error` type
+//! - Fixed bug where client does not interpret error message correctly
+//! 
 //! ### Version 0.6.0-alpha
 //!
 //! - In short, this update makes the crate resemble closer to the usage of `go`'s `net/rpc` package
@@ -263,7 +268,7 @@
 //! ```toml
 //! [dependencies]
 //! # you may need to change feature flags for different examples
-//! toy-rpc = { version = "0.6.0-alpha" }
+//! toy-rpc = { version = "0.6.0-beta" }
 //!
 //! # optional depending on the choice of runtime or http framework for different examples
 //! async-std = { version = "1.9.0", features = ["attributes"] }
@@ -407,7 +412,7 @@
 //!
 //! ```rust
 //! [dependencies]
-//! toy_rpc = { version = "0.6.0-alpha", default-features = false, features = ["serde_bincode", "tokio_runtime"] }
+//! toy_rpc = { version = "0.6.0-beta", default-features = false, features = ["serde_bincode", "tokio_runtime"] }
 //! ```
 //!
 //! server.rs
@@ -491,7 +496,7 @@
 //! the feature flags.
 //!
 //! ```toml
-//! toy_rpc = { version = "0.6.0-alpha", default-features = false, features = ["serde_bincode", "http_tide"] }
+//! toy_rpc = { version = "0.6.0-beta", default-features = false, features = ["serde_bincode", "http_tide"] }
 //! ```
 //!
 //! server.rs
@@ -540,7 +545,7 @@
 //! the feature flags.
 //!
 //! ```toml
-//! toy_rpc = { version = "0.6.0-alpha", default-features = false, features = ["serde_bincode", "http_actix_web"] }
+//! toy_rpc = { version = "0.6.0-beta", default-features = false, features = ["serde_bincode", "http_actix_web"] }
 //! ```
 //!
 //! server.rs
@@ -601,7 +606,7 @@
 //! the feature flags.
 //!
 //! ```toml
-//! toy_rpc = { version = "0.6.0-alpha", default-features = false, features = ["serde_bincode", "http_warp"] }
+//! toy_rpc = { version = "0.6.0-beta", default-features = false, features = ["serde_bincode", "http_warp"] }
 //! ```
 //!
 //! server.rs
@@ -674,7 +679,12 @@
 //!
 //! ## Change Log
 //! 
-//! ### Version 0.6.0-alpha
+//! ### 0.6.0-beta
+//!
+//! - Re-defined the custom `Error` type
+//! - Fixed bug where client does not interpret error message correctly
+//! 
+//! ### 0.6.0-alpha
 //!
 //! - In short, this update makes the crate resemble closer to the usage of `go`'s `net/rpc` package
 //! - Service registration is simplified to `Server::builder().register(foo_service).build()`. The examples will be 

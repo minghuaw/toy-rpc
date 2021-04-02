@@ -21,4 +21,4 @@ env_logger = "0.8.2"
 futures = "0.3.12"
 log = "0.4.14"
 serde = { version = "1.0.123", features = ["derive"] }
-toy-rpc = { version = "0.6.0-alpha", path = "../../toy-rpc", default-features = false, features = ["std", "serde_bincode", "async_std_runtime"] }
+toy-rpc = { version = "0.6.0-beta", path = "../../toy-rpc", default-features = false, features = ["std", "serde_bincode", "async_std_runtime"] }
