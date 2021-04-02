@@ -8,8 +8,8 @@ use actix_web_actors::ws;
 
 use crate::{
     codec::{ConnTypePayload, EraseDeserializer, Marshal, Unmarshal},
-    error::{Error, RpcError},
-    message::ResponseHeader,
+    error::{Error},
+    message::{ResponseHeader, ErrorMessage},
 };
 
 use super::{
@@ -76,13 +76,17 @@ where
                         }
                     },
                     Some(header) => {
+                        // [0] read request body
+                        let deserializer = C::from_bytes(bin.to_vec());
+                        // [1] destructure header
                         let RequestHeader { id, service_method } = header;
 
-                        // split service and method
+                        // [2] split service name and method name
+                        // return early send back Error::MethodNotFound if no "." is found
                         let pos = match service_method.rfind('.') {
                             Some(idx) => idx,
                             None => {
-                                let err = Err(Error::RpcError(RpcError::MethodNotFound));
+                                let err = Err(Error::MethodNotFound);
                                 match Self::send_response_via_context(id, err, ctx) {
                                     Ok(_) => (),
                                     Err(e) => log::error!(
@@ -90,24 +94,20 @@ where
                                         e
                                     ),
                                 };
+                                log::error!("Method not supplied from request: '{}'", service_method);
                                 return;
                             }
                         };
-                        let service_name = &service_method[..pos];
-                        let method_name = service_method[pos + 1..].to_owned();
+                        let service = service_method[..pos].to_owned();
+                        let method = service_method[pos + 1..].to_owned();
+                        log::trace!("Message id: {}, service: {}, method: {}", id, service, method);
 
-                        log::trace!(
-                            "Message id: {}, service: {}, method: {}",
-                            id,
-                            service_name,
-                            method_name
-                        );
-
-                        // look up the service
-                        let call: ArcAsyncServiceCall = match self.services.get(service_name) {
-                            Some(c) => c.clone(),
+                        // [3] look up the service
+                        // return early and send back Error::ServiceNotFound if key is not found
+                        let call: ArcAsyncServiceCall = match self.services.get(&service[..]) {
+                            Some(serv_call) => serv_call.clone(),
                             None => {
-                                let err = Err(Error::RpcError(RpcError::MethodNotFound));
+                                let err = Err(Error::ServiceNotFound);
                                 match Self::send_response_via_context(id, err, ctx) {
                                     Ok(_) => (),
                                     Err(e) => log::error!(
@@ -115,16 +115,27 @@ where
                                         e
                                     ),
                                 };
+                                log::error!("Service not found: '{}'", service);
                                 return;
                             }
                         };
 
-                        let deserializer = C::from_bytes(bin.to_vec());
-
-                        // perform RPC
+                        // [4] execute the call
                         let actor_addr = ctx.address().recipient();
                         let future = async move {
-                            let res = call(method_name, deserializer).await;
+                            let res = call(method.clone(), deserializer).await
+                                .map_err(|err| {
+                                    log::error!("Error found calling service: '{}', method: '{}', error: '{}'", service, method, err);
+                                    match err {
+                                        // if serde cannot parse request, the argument is likely mistaken
+                                        Error::ParseError(e) => {
+                                            log::error!("ParseError {:?}", e);
+                                            Error::InvalidArgument
+                                        },
+                                        e @ _ => e
+                                    }
+                                });
+
                             match actor_addr.do_send(HandlerResultMessage { id, res }) {
                                 Ok(_) => (),
                                 Err(e) => {
@@ -154,8 +165,6 @@ where
         match res {
             Ok(body) => {
                 log::trace!("Message {} Success", id.clone());
-
-                // send response header first
                 let header = ResponseHeader {
                     id,
                     is_error: false,
@@ -167,20 +176,27 @@ where
                 let buf = C::marshal(&body)?;
                 ctx.binary(buf);
             }
-            Err(e) => {
+            Err(err) => {
                 log::trace!("Message {} Error", id.clone());
+                let header = ResponseHeader { id, is_error: true };
+                let msg = match ErrorMessage::from_err(err) {
+                    Ok(m) => m,
+                    Err(e) => {
+                        log::error!("Cannot send back IoError or ParseError: {:?}", e);
+                        return Err(e)
+                    }
+                };
 
                 // compose error response header
-                let header = ResponseHeader { id, is_error: true };
                 let buf = C::marshal(&header)?;
                 ctx.binary(buf);
 
                 // compose error response body
-                let body = match e {
-                    Error::RpcError(rpc_err) => Box::new(rpc_err),
-                    _ => Box::new(RpcError::ServerError(e.to_string())),
-                };
-                let buf = C::marshal(&body)?;
+                // let body = match e {
+                //     Error::RpcError(rpc_err) => Box::new(rpc_err),
+                //     _ => Box::new(RpcError::ServerError(e.to_string())),
+                // };
+                let buf = C::marshal(&msg)?;
                 ctx.binary(buf);
             }
         }

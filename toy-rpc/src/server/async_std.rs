@@ -129,10 +129,10 @@ cfg_if! {
 
                 while let Some(conn) = incoming.next().await {
                     let stream = conn?;
-                    log::trace!("Accepting incoming connection from {}", stream.peer_addr()?);
+                    log::info!("Accepting incoming connection from {}", stream.peer_addr()?);
 
                     let ws_stream = async_tungstenite::accept_async(stream).await?;
-                    log::trace!("Established WebSocket connection.");
+                    log::info!("Established WebSocket connection.");
 
                     task::spawn(Self::_serve_websocket(ws_stream, self.services.clone()));
                 }
@@ -195,7 +195,7 @@ cfg_if! {
                 let codec = DefaultCodec::with_websocket(ws_stream);
 
                 let ret = Self::_serve_codec(codec, services).await;
-                log::trace!("Client disconnected from WebSocket connection");
+                log::info!("Client disconnected from WebSocket connection");
                 ret
             }
         }

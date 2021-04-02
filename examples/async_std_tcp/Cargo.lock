@@ -1122,8 +1122,6 @@ checksum = "cda74da7e1a664f795bb1f8a87ec406fb89a02522cf6e50620d016add6dbbf5c"
 [[package]]
 name = "toy-rpc"
 version = "0.6.0-beta"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0b95499c8d13668b00bb4d14708f49b828ac5baf7fdfae4c4e16b7278a3eea72"
 dependencies = [
  "async-std",
  "async-trait",

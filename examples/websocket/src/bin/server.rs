@@ -79,7 +79,10 @@ async fn main() {
     
     let handle = task::spawn(async move {
         log::info!("Starting WebSocket server at {}", &addr);
-        server.accept_websocket(listener).await.unwrap();
+        match server.accept_websocket(listener).await {
+            Ok(_) => {},
+            Err(e) => println!("{}", e)
+        }
     });
 
     handle.await;

@@ -3,7 +3,7 @@ skip_core_tasks = true
 
 [tasks.test]
 run_task = [
-    { name = ["test_async_std_tcp", "test_tokio_tcp"] },
+    { name = ["test_async_std_tcp", "test_tokio_tcp", "test_async_std_ws"] },
 ]
 
 [tasks.test_async_std_tcp]
