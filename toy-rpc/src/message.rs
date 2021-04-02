@@ -53,15 +53,16 @@ pub(crate) enum ErrorMessage {
 }
 
 impl ErrorMessage {
-    pub(crate) fn from_err(err: impl Borrow<Error>) -> Option<Self> {
-        match err.borrow() {
-            Error::InvalidArgument => Some(Self::InvalidArgument),
-            Error::ServiceNotFound => Some(Self::ServiceNotFound),
-            Error::MethodNotFound => Some(Self::MethodNotFound),
-            Error::ExecutionError(s) => Some(Self::ExecutionError(s.into())),
-            Error::IoError(_) => None,
-            Error::ParseError(_) => None,
-            Error::Internal(_) => None,
+    pub(crate) fn from_err(err: Error) -> Result<Self, Error> {
+        match err {
+            Error::InvalidArgument => Ok(Self::InvalidArgument),
+            Error::ServiceNotFound => Ok(Self::ServiceNotFound),
+            Error::MethodNotFound => Ok(Self::MethodNotFound),
+            Error::ExecutionError(s) => Ok(Self::ExecutionError(s.into())),
+            e @ Error::IoError(_) => Err(e),
+            e @ Error::ParseError(_) => Err(e),
+            e @ Error::Internal(_) => Err(e),
         }
     }
 }
+

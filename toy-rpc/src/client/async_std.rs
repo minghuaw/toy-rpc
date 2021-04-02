@@ -385,7 +385,10 @@ impl Client<Connected> {
     ) -> Result<(), Error> {
         // wait for response
         if let Some(header) = codec.read_response_header().await {
+            // [1] destructure response header
             let ResponseHeader { id, is_error } = header?;
+
+            // [2] get response body and deserialize
             let deserializer =
                 codec
                     .read_response_body()

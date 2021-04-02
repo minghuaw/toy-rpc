@@ -189,12 +189,12 @@ impl Server {
                 _codec.write_response(header, &b).await?;
                 Ok(())
             }
-            Err(e) => {
+            Err(err) => {
                 log::trace!("Message {} Error", id.clone());
                 let header = ResponseHeader { id, is_error: true };
-                let msg = match ErrorMessage::from_err(&e) {
-                    Some(m) => m,
-                    None => {
+                let msg = match ErrorMessage::from_err(err) {
+                    Ok(m) => m,
+                    Err(e) => {
                         log::error!("Cannot send back IoError or ParseError: {:?}", e);
                         return Err(e)
                     }

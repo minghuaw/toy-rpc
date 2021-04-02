@@ -1,6 +1,8 @@
 //! Custom errors
 use std::io::ErrorKind;
 
+use crate::message::ErrorMessage;
+
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error("{0}")]
@@ -17,6 +19,17 @@ pub enum Error {
     MethodNotFound,
     #[error("{0}")]
     ExecutionError(String),
+}
+
+impl Error {
+    pub(crate) fn from_err_msg(msg: ErrorMessage) -> Self {
+        match msg {
+            ErrorMessage::InvalidArgument => Self::InvalidArgument,
+            ErrorMessage::ServiceNotFound => Self::ServiceNotFound,
+            ErrorMessage::MethodNotFound => Self::MethodNotFound,
+            ErrorMessage::ExecutionError(s) => Self::ExecutionError(s)
+        }
+    }
 }
 
 // impl std::error::Error for Error {
@@ -117,6 +130,13 @@ pub enum Error {
 //         Box::new(err)
 //     }
 // }
+
+
+impl From<ErrorMessage> for Error {
+    fn from(msg: ErrorMessage) -> Self {
+        Self::from_err_msg(msg)
+    }
+}
 
 /// Convert from serde_json::Error to the custom Error
 #[cfg(feature = "serde_json")]
