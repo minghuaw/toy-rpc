@@ -8,8 +8,8 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use crate::codec::ServerCodec;
-use crate::error::{Error, RpcError};
-use crate::message::{MessageId, RequestHeader, ResponseHeader};
+use crate::error::Error;
+use crate::message::{MessageId, RequestHeader, ResponseHeader, ErrorMessage};
 use crate::service::{
     ArcAsyncServiceCall, AsyncServiceMap, HandleService, HandlerResult, HandlerResultFut,
     build_service,
@@ -119,39 +119,51 @@ impl Server {
     {
         match codec.read_request_header().await {
             Some(header) => {
-                // destructure header
+                // [1] destructure header
                 let RequestHeader { id, service_method } = header?;
-                // let service_method = &service_method[..];
-                let pos = service_method
-                    .rfind('.')
-                    .ok_or(Error::RpcError(RpcError::MethodNotFound))?;
-                let service_name = &service_method[..pos];
-                let method_name = service_method[pos + 1..].to_owned();
+                
+                // [2] split service name and method name
+                // return early send back Error::MethodNotFound if no "." is found
+                let pos = match service_method.rfind('.') {
+                    Some(p) => p,
+                    None => {
+                        Self::_send_response(codec, id, Err(Error::MethodNotFound)).await?;
+                        return Err(Error::MethodNotFound)
+                    }
+                };  
+                let service = &service_method[..pos];
+                let method = service_method[pos + 1..].to_owned();
+                log::trace!("Message id: {}, service: {}, method: {}", id, service, method);
 
-                log::trace!(
-                    "Message id: {}, service: {}, method: {}",
-                    id,
-                    service_name,
-                    method_name
-                );
+                // [3] look up the service
+                // return early and send back Error::ServiceNotFound if key is not found
+                let call: ArcAsyncServiceCall = match services.get(service) {
+                    Some(serv_call) => serv_call.clone(),
+                    None => {
+                        Self::_send_response(codec, id, Err(Error::ServiceNotFound)).await?;
+                        return Err(Error::ServiceNotFound)
+                    }
+                };
 
-                // look up the service
-                // TODO; consider adding a new error type
-                let call: ArcAsyncServiceCall = services
-                    .get(service_name)
-                    .ok_or(Error::RpcError(RpcError::MethodNotFound))?
-                    .clone();
-
-                // read body
+                // [4] execute the call
                 let res = {
                     let deserializer = codec.read_request_body().await.unwrap()?;
                     // pass ownership to the `call`
-                    call(method_name, deserializer).await
+                    call(method, deserializer).await
+                        .map_err(|err| {
+                            match err {
+                                // if serde cannot parse request, the argument is likely mistaken
+                                Error::ParseError(e) => {
+                                    log::error!("ParseError {:?}", e);
+                                    Error::InvalidArgument
+                                },
+                                e @ _ => e
+                            }
+                        })
                 };
 
-                // send back result
+                // [5] send back result
                 Self::_send_response(codec, id, res).await?;
-
                 Ok(ConnectionStatus::KeepReading)
             }
             None => Ok(ConnectionStatus::Stop),
@@ -170,7 +182,6 @@ impl Server {
         match res {
             Ok(b) => {
                 log::trace!("Message {} Success", id.clone());
-
                 let header = ResponseHeader {
                     id,
                     is_error: false,
@@ -180,14 +191,21 @@ impl Server {
             }
             Err(e) => {
                 log::trace!("Message {} Error", id.clone());
-
                 let header = ResponseHeader { id, is_error: true };
-                let body = match e {
-                    Error::RpcError(rpc_err) => Box::new(rpc_err),
-                    _ => Box::new(RpcError::ServerError(e.to_string())),
+                let msg = match ErrorMessage::from_err(&e) {
+                    Some(m) => m,
+                    None => {
+                        log::error!("Cannot send back IoError or ParseError: {:?}", e);
+                        return Err(e)
+                    }
                 };
 
-                _codec.write_response(header, &body).await?;
+                // let body = match e {
+                //     Error::RpcError(rpc_err) => Box::new(rpc_err),
+                //     _ => Box::new(RpcError::ServerError(e.to_string())),
+                // };
+
+                _codec.write_response(header, &msg).await?;
                 Ok(())
             }
         }

@@ -1,5 +1,5 @@
 //! Custom errors
-use serde::{Deserialize, Serialize};
+use std::io::ErrorKind;
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
@@ -7,6 +7,8 @@ pub enum Error {
     IoError(#[from] std::io::Error),
     #[error("{0}")]
     ParseError(Box<dyn std::error::Error + Send + Sync>),
+    #[error("{0}")]
+    Internal(Box<dyn std::error::Error + Send + Sync>),
     #[error("InvalidArgument")]
     InvalidArgument,
     #[error("ServiceNotFound")]
@@ -116,75 +118,80 @@ pub enum Error {
 //     }
 // }
 
-// /// Convert from serde_json::Error to the custom Error
-// #[cfg(feature = "serde_json")]
-// impl From<serde_json::error::Error> for Error {
-//     fn from(err: serde_json::error::Error) -> Self {
-//         Error::ParseError(Box::new(err))
-//     }
-// }
+/// Convert from serde_json::Error to the custom Error
+#[cfg(feature = "serde_json")]
+impl From<serde_json::error::Error> for Error {
+    fn from(err: serde_json::error::Error) -> Self {
+        Error::ParseError(Box::new(err))
+    }
+}
 
-// /// Convert from bincode::Error to the custom Error
-// impl From<bincode::Error> for Error {
-//     fn from(err: bincode::Error) -> Self {
-//         Error::ParseError(err)
-//     }
-// }
+/// Convert from bincode::Error to the custom Error
+impl From<bincode::Error> for Error {
+    fn from(err: bincode::Error) -> Self {
+        Error::ParseError(err)
+    }
+}
 
-// #[cfg(feature = "serde_cbor")]
-// impl From<serde_cbor::Error> for Error {
-//     fn from(err: serde_cbor::Error) -> Self {
-//         Error::ParseError(Box::new(err))
-//     }
-// }
+#[cfg(feature = "serde_cbor")]
+impl From<serde_cbor::Error> for Error {
+    fn from(err: serde_cbor::Error) -> Self {
+        Error::ParseError(Box::new(err))
+    }
+}
 
-// impl From<url::ParseError> for Error {
-//     fn from(err: url::ParseError) -> Self {
-//         Error::ParseError(Box::new(err))
-//     }
-// }
+impl From<url::ParseError> for Error {
+    fn from(err: url::ParseError) -> Self {
+        Error::ParseError(Box::new(err))
+    }
+}
 
-// #[cfg(feature = "serde_rmp")]
-// impl From<rmp_serde::decode::Error> for Error {
-//     fn from(err: rmp_serde::decode::Error) -> Self {
-//         Error::ParseError(Box::new(err))
-//     }
-// }
+#[cfg(feature = "serde_rmp")]
+impl From<rmp_serde::decode::Error> for Error {
+    fn from(err: rmp_serde::decode::Error) -> Self {
+        Error::ParseError(Box::new(err))
+    }
+}
 
-// #[cfg(feature = "serde_rmp")]
-// impl From<rmp_serde::encode::Error> for Error {
-//     fn from(err: rmp_serde::encode::Error) -> Self {
-//         Error::ParseError(Box::new(err))
-//     }
-// }
+#[cfg(feature = "serde_rmp")]
+impl From<rmp_serde::encode::Error> for Error {
+    fn from(err: rmp_serde::encode::Error) -> Self {
+        Error::ParseError(Box::new(err))
+    }
+}
 
-// #[cfg(feature = "http_actix_web")]
-// impl From<Error> for actix_web::Error {
-//     fn from(err: crate::error::Error) -> Self {
-//         // wrap error with actix_web::error::InternalError for now
-//         // TODO: imporve error handling
-//         actix_web::error::InternalError::new(err, actix_web::http::StatusCode::OK).into()
-//     }
-// }
+#[cfg(feature = "http_actix_web")]
+impl From<Error> for actix_web::Error {
+    fn from(err: crate::error::Error) -> Self {
+        // wrap error with actix_web::error::InternalError for now
+        // TODO: imporve error handling
+        actix_web::error::InternalError::new(err, actix_web::http::StatusCode::OK).into()
+    }
+}
 
-// impl From<tungstenite::Error> for crate::error::Error {
-//     fn from(err: tungstenite::Error) -> Self {
-//         crate::error::Error::TransportError(err.to_string())
-//     }
-// }
+impl From<tungstenite::Error> for crate::error::Error {
+    fn from(err: tungstenite::Error) -> Self {
+        Self::IoError(
+            std::io::Error::new(
+                ErrorKind::InvalidData,
+                err.to_string()
+            )
+        )
+    }
+}
 
-// impl From<futures::channel::mpsc::SendError> for crate::error::Error {
-//     fn from(err: futures::channel::mpsc::SendError) -> Self {
-//         Self::TransportError(err.to_string())
-//     }
-// }
+impl From<futures::channel::mpsc::SendError> for crate::error::Error {
+    fn from(err: futures::channel::mpsc::SendError) -> Self {
+        Self::Internal(Box::new(err))
+    }
+}
 
-// #[cfg(feature = "tokio")]
-// impl<T> From<tokio::sync::mpsc::error::SendError<T>> for crate::error::Error {
-//     fn from(err: tokio::sync::mpsc::error::SendError<T>) -> Self {
-//         Self::TransportError(err.to_string())
-//     }
-// }
+#[cfg(feature = "tokio")]
+impl<T> From<tokio::sync::mpsc::error::SendError<T>> for crate::error::Error {
+    fn from(err: tokio::sync::mpsc::error::SendError<T>) -> Self {
+        Self::Internal(Box::new(err))
+    }
+}
 
 #[cfg(test)]
 mod test {
