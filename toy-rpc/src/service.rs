@@ -11,7 +11,8 @@ use std::sync::Arc;
 use crate::error::Error;
 
 // async versions of handlers
-pub type HandlerResult = Result<Box<dyn erased::Serialize + Send + Sync + 'static>, Error>;
+pub(crate) type Success = Box<dyn erased::Serialize + Send + Sync + 'static>;
+pub type HandlerResult = Result<Success, Error>;
 pub type HandlerResultFut = Pin<Box<dyn Future<Output = HandlerResult> + Send>>;
 pub type AsyncHandler<S> = fn(Arc<S>, Box<dyn erased::Deserializer<'static> + Send>) -> HandlerResultFut;
 // pub type ArcAsyncHandler<S> = Arc<AsyncHandler<S>>;

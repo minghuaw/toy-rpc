@@ -16,6 +16,7 @@ pub trait Metadata {
 #[derive(Serialize, Deserialize, Debug, Default)]
 pub struct RequestHeader {
     pub id: MessageId,
+    // pub keep_reading: bool,
     pub service_method: String,
 }
 

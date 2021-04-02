@@ -5,7 +5,7 @@ use crate::message::ErrorMessage;
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
-    #[error("{0}")]
+    #[error("{0:?}")]
     IoError(#[from] std::io::Error),
     #[error("{0}")]
     ParseError(Box<dyn std::error::Error + Send + Sync>),

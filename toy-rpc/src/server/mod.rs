@@ -99,11 +99,13 @@ impl Server {
             match Self::_serve_codec_once(&mut codec, &services).await {
                 Ok(stat) => match stat {
                     ConnectionStatus::KeepReading => {}
-                    ConnectionStatus::Stop => return Ok(()),
+                    ConnectionStatus::Stop => {
+                        log::debug!("Stop serving codec");
+                        return Ok(())
+                    },
                 },
-                Err(e) => {
-                    log::error!("Error encountered serving codec \n{}", e);
-                    return Err(e);
+                Err(err) => {
+                    log::error!("Error encountered serving codec: '{}'", err);
                 }
             }
         }
@@ -119,20 +121,27 @@ impl Server {
     {
         match codec.read_request_header().await {
             Some(header) => {
+                // [0] read request body
+                let deserializer = codec.read_request_body().await.unwrap()?;
+
                 // [1] destructure header
                 let RequestHeader { id, service_method } = header?;
-                
+                // if keep_reading == false {
+                //     return Ok(ConnectionStatus::Stop)
+                // }
+
                 // [2] split service name and method name
                 // return early send back Error::MethodNotFound if no "." is found
                 let pos = match service_method.rfind('.') {
                     Some(p) => p,
                     None => {
                         Self::_send_response(codec, id, Err(Error::MethodNotFound)).await?;
-                        return Err(Error::MethodNotFound)
+                        log::error!("Method not supplied from request: '{}'", service_method);
+                        return Ok(ConnectionStatus::KeepReading)
                     }
                 };  
                 let service = &service_method[..pos];
-                let method = service_method[pos + 1..].to_owned();
+                let method = &service_method[pos + 1..];
                 log::trace!("Message id: {}, service: {}, method: {}", id, service, method);
 
                 // [3] look up the service
@@ -141,16 +150,17 @@ impl Server {
                     Some(serv_call) => serv_call.clone(),
                     None => {
                         Self::_send_response(codec, id, Err(Error::ServiceNotFound)).await?;
-                        return Err(Error::ServiceNotFound)
+                        log::error!("Service not found: '{}'", service);
+                        return Ok(ConnectionStatus::KeepReading)
                     }
                 };
 
                 // [4] execute the call
-                let res = {
-                    let deserializer = codec.read_request_body().await.unwrap()?;
+                let res: HandlerResult = {
                     // pass ownership to the `call`
-                    call(method, deserializer).await
+                    call(method.into(), deserializer).await
                         .map_err(|err| {
+                            log::error!("Error found calling service: '{}', method: '{}', error: '{}'", service, method, err);
                             match err {
                                 // if serde cannot parse request, the argument is likely mistaken
                                 Error::ParseError(e) => {
@@ -199,11 +209,6 @@ impl Server {
                         return Err(e)
                     }
                 };
-
-                // let body = match e {
-                //     Error::RpcError(rpc_err) => Box::new(rpc_err),
-                //     _ => Box::new(RpcError::ServerError(e.to_string())),
-                // };
 
                 _codec.write_response(header, &msg).await?;
                 Ok(())

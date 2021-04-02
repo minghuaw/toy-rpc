@@ -21,7 +21,7 @@ async fn main() {
         a: reply.a,
         b: reply.b,
     };
-    let reply: Result<FooResponse, Error> = client.foo("Foo").increment_a(&args).await;
+    let reply: Result<FooResponse, Error> = client.foo().increment_a(&args).await;
     println!("{:?}", reply);
 
     // second request, increment_b
@@ -42,7 +42,7 @@ async fn main() {
 
     // fourth request, bar exclaim
     // let reply: BarResponse = client.async_call("bar_service.exclaim", &args).await.unwrap();
-    let reply = client.bar("Bar").exclaim(&args).await.unwrap();
+    let reply = client.bar().exclaim(&args).await.unwrap();
     println!("{:?}", reply);
 
     // third request, get_counter
@@ -50,6 +50,20 @@ async fn main() {
     let handle = client.spawn_task("Foo.get_counter", args);
     let reply: u32 = handle.await.unwrap();
     println!("{:?}", reply);
+
+    let args = ();
+
+    // test service not found
+    let res: Result<(), Error> = client.call("Service.method", &args);
+    println!("{:?}", res);
+
+    // method not found if no method is supplied
+    let res: Result<(), Error> = client.call("Foo", &args);
+    println!("{:?}", res);
+
+    // method not found
+    let res: Result<(), Error> = client.call("Foo.method", &args);
+    println!("{:?}", res);
 
     client.close().await;
 }
