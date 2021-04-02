@@ -3,9 +3,9 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
-    #[error("{0:?}")]
+    #[error("{0}")]
     IoError(#[from] std::io::Error),
-    #[error("{0:?}")]
+    #[error("{0}")]
     ParseError(Box<dyn std::error::Error + Send + Sync>),
     #[error("InvalidArgument")]
     InvalidArgument,
@@ -13,7 +13,7 @@ pub enum Error {
     ServiceNotFound,
     #[error("MethodNotFound")]
     MethodNotFound,
-    #[error("{0:?}")]
+    #[error("{0}")]
     ExecutionError(String),
 }
 
