@@ -364,7 +364,7 @@ fn transform_method(f: &mut syn::ImplItemMethod) {
             Box::pin(
                 async move {
                     let req: #req_ty = toy_rpc::erased_serde::deserialize(&mut deserializer)
-                        .map_err(|e| toy_rpc::error::Error::ParseError(e))?;
+                        .map_err(|e| toy_rpc::error::Error::ParseError(Box::new(e)))?;
                     let res = self.#ident(req).await
                         .map(|r| Box::new(r) as Box<dyn toy_rpc::erased_serde::Serialize + Send + Sync + 'static>)
                         .map_err(|e| toy_rpc::error::Error::ExecutionError(e.to_string()));

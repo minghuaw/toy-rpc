@@ -7,6 +7,8 @@ use ::tokio::task;
 /// `feature = "http_actix_web`" is true.
 use std::sync::Arc;
 
+use crate::message::ErrorMessage;
+
 use super::*;
 
 type Codec = Arc<Mutex<Box<dyn ClientCodec>>>;
@@ -391,7 +393,10 @@ impl Client<Connected> {
     ) -> Result<(), Error> {
         // wait for response
         if let Some(header) = codec.read_response_header().await {
+            // [1] destructure response header
             let ResponseHeader { id, is_error } = header?;
+            
+            // [2] get response body and deserialize
             let deserializer =
                 codec
                     .read_response_body()
@@ -407,14 +412,11 @@ impl Client<Connected> {
                 true => Err(deserializer),
             };
 
-            // send back response
+            // [] send back response
             let mut _pending = pending.lock().await;
             if let Some(done_sender) = _pending.remove(&id) {
                 done_sender.send(res).map_err(|_| {
-                    Error::TransportError(format!(
-                        "Failed to send ResponseBody over oneshot channel {}",
-                        &id
-                    ))
+                    Error::Internal("InternalError: client failed to send response over channel".into())
                 })?;
             }
         }
@@ -429,13 +431,14 @@ impl Client<Connected> {
     where
         Res: serde::de::DeserializeOwned,
     {
-        let res = done.try_recv().map_err(|e| {
-            Error::TransportError(format!(
-                "Done channel for id {} is canceled. Err found: {}",
-                &id,
-                e.to_string()
+        // wait for result from oneshot channel
+        let res = match done.try_recv() {
+            Ok(r) => r,
+            Err(e) => return Err(Error::Internal(
+                format!("Failed to read from done channel for id; {} with error: {}", id, e)
+                .into()
             ))
-        })?;
+        };
 
         match res {
             Ok(mut resp_body) => {
@@ -444,9 +447,10 @@ impl Client<Connected> {
                 Ok(resp)
             }
             Err(mut err_body) => {
-                let resp = erased::deserialize(&mut err_body)
+                let msg: ErrorMessage = erased::deserialize(&mut err_body)
                     .map_err(|e| Error::ParseError(Box::new(e)))?;
-                Err(Error::RpcError(resp))
+                let err = Error::from_err_msg(msg);
+                Err(err)
             }
         }
     }

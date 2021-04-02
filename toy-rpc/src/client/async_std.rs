@@ -406,7 +406,7 @@ impl Client<Connected> {
                 true => Err(deserializer),
             };
 
-            //[3] send back response
+            // [3] send back response
             let mut _pending = pending.lock().await;
             if let Some(done_sender) = _pending.remove(&id) {
                 done_sender.send(res).map_err(|_| {
@@ -431,7 +431,7 @@ impl Client<Connected> {
                 Some(r) => r,
                 None => {
                     return Err(Error::Internal(
-                        format!("Done channel for id {} is out of date", &id).into()
+                        format!("Failed to read from done channel for id {}.", &id).into()
                     ))
                 }
             },
@@ -445,16 +445,12 @@ impl Client<Connected> {
             Ok(mut resp_body) => {
                 let resp = erased::deserialize(&mut resp_body)
                     .map_err(|e| Error::ParseError(Box::new(e)))?;
-
-                // upon successful deserializing, an Ok() must be returned
                 Ok(resp)
             }
             Err(mut err_body) => {
                 let msg: ErrorMessage = erased::deserialize(&mut err_body)
                     .map_err(|e| Error::ParseError(Box::new(e)))?;
                 let err = Error::from_err_msg(msg);
-
-                // upon successful deserializing, an Err() must be returned
                 Err(err)
             }
         }

@@ -200,19 +200,6 @@ impl From<tungstenite::Error> for crate::error::Error {
     }
 }
 
-impl From<futures::channel::mpsc::SendError> for crate::error::Error {
-    fn from(err: futures::channel::mpsc::SendError) -> Self {
-        Self::Internal(Box::new(err))
-    }
-}
-
-#[cfg(feature = "tokio")]
-impl<T> From<tokio::sync::mpsc::error::SendError<T>> for crate::error::Error {
-    fn from(err: tokio::sync::mpsc::error::SendError<T>) -> Self {
-        Self::Internal(Box::new(err))
-    }
-}
-
 #[cfg(test)]
 mod test {
     use super::*;

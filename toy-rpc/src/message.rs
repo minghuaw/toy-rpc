@@ -1,7 +1,7 @@
 //! Custom definition of rpc request and response headers
 
 use serde::{Deserialize, Serialize};
-use std::{borrow::Borrow, sync::atomic::AtomicU16};
+use std::{sync::atomic::AtomicU16};
 
 use crate::error::Error;
 
