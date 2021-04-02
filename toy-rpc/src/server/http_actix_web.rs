@@ -247,7 +247,6 @@ cfg_if! {
                 phantom: PhantomData,
             };
             let resp = ws::start(actor, &req, stream);
-            println!("{:?}", resp);
             resp
         }
 
