@@ -3,10 +3,12 @@ use bincode::{DefaultOptions, Options};
 use cfg_if::cfg_if;
 use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
-// use pin_project::pin_project;
+use std::io::ErrorKind;
 
 use crate::error::Error;
 use crate::message::MessageId;
+
+const INVALID_PROTOCOL: &str = "Magic byte mismatch.\rClient may be using a different protocol or version.\rClient of version <0.5.0 is not compatible with Server of version >0.5.0";
 
 cfg_if! {
     if #[cfg(any(
@@ -175,12 +177,13 @@ impl<R: AsyncRead + Unpin + Send + Sync> FrameRead for R {
         let magic = &mut [0];
         let _ = self.read_exact(magic).await.ok()?;
         if magic[0] != MAGIC {
-            return Some(Err(Error::TransportError(
-                "Magic byte mismatch.
-                Client may be using a different protocol or version.\r
-                Client of version <0.5.0 is not compatible with Server of version >0.5.0"
-                    .into(),
-            )));
+            return Some(
+                Err(
+                    Error::IoError(
+                        std::io::Error::new(ErrorKind::InvalidData, INVALID_PROTOCOL)
+                    )
+                )
+            );
         }
 
         // read header
@@ -216,11 +219,16 @@ impl<W: AsyncWrite + Unpin + Send + Sync> FrameWrite for W {
 
         // check if buf length exceed maximum
         if payload.len() > PayloadLen::MAX as usize {
-            return Err(Error::TransportError(format!(
-                "Payload length exceeded maximum. Max is {}, found {}",
-                PayloadLen::MAX,
-                payload.len()
-            )));
+            return Err(Error::IoError(
+                std::io::Error::new(
+                    ErrorKind::InvalidData, 
+                    format!(
+                        "Payload length exceeded maximum. Max is {}, found {}",
+                        PayloadLen::MAX,
+                        payload.len()
+                    )
+                )
+            ));
         }
 
         // construct frame header

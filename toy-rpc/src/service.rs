@@ -57,7 +57,7 @@ where
         let _state = self.get_state();
         match self.get_method(name) {
             Some(m) => m(_state, deserializer),
-            None => Box::pin(async move { Err(Error::RpcError(RpcError::MethodNotFound)) }),
+            None => Box::pin(async move { Err(Error::MethodNotFound) }),
         }
     }
 }

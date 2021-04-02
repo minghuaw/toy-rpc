@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error("{0:?}")]
-    IoError(std::io::Error),
+    IoError(#[from] std::io::Error),
     #[error("{0:?}")]
     ParseError(Box<dyn std::error::Error + Send + Sync>),
     #[error("InvalidArgument")]
