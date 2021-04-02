@@ -1,18 +1,19 @@
 use anyhow::Result;
-use tokio::task;
+
+use async_std::{net::TcpListener, task};
 use futures::channel::oneshot::{channel, Receiver};
-use std::{str, sync::Arc};
+use std::sync::Arc;
 use toy_rpc::{Client, Server};
-use tokio::net::{TcpListener};
 
 mod rpc;
 
-async fn test_client(addr: &'static str, mut ready: Receiver<()>) -> Result<()> {
+async fn test_client(base: &'static str, mut ready: Receiver<()>) -> Result<()> {
+    let addr = format!("ws://{}", base);
     let _ = ready.try_recv()?.expect("Error receiving ready");
 
     println!("Client received ready");
 
-    let client = Client::dial(addr).await
+    let client = Client::dial_websocket(&addr).await
         .expect("Error dialing server");
 
     rpc::test_get_magic_u8(&client).await;
@@ -34,7 +35,8 @@ async fn test_client(addr: &'static str, mut ready: Receiver<()>) -> Result<()> 
     Ok(())
 }
 
-async fn run(addr: &'static str) {
+async fn run(base: &'static str) {
+    let addr = base;
     let (tx, rx) = channel::<()>();
     let common_test_service = Arc::new(rpc::CommonTest::new());
 
@@ -49,7 +51,7 @@ async fn run(addr: &'static str) {
 
     let server_handle = task::spawn(async move {
         println!("Starting server at {}", &addr);
-        server.accept(listener).await.unwrap();
+        server.accept_websocket(listener).await.unwrap();
     });
 
     tx.send(()).expect("Error sending ready");
@@ -57,15 +59,11 @@ async fn run(addr: &'static str) {
     let client_handle = task::spawn(test_client(addr, rx));
 
     // stop server after all clients finishes
-    client_handle.await
-        .expect("Error joining client thread")
-        .expect("Error testing client");
+    client_handle.await.expect("Error testing client");
 
-    server_handle.abort();
+    server_handle.cancel().await;
 }
-
 #[test]
-fn test_main() {
-    let rt = tokio::runtime::Runtime::new().unwrap();
-    rt.block_on(run(rpc::ADDR));
+fn websocket_with_async_std() {
+    task::block_on(run(rpc::ADDR));
 }

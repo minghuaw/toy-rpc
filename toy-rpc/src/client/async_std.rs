@@ -114,7 +114,7 @@ cfg_if! {
             /// }
             /// ```
             ///
-            pub async fn dial_websocket(addr: &'static str) -> Result<Client<Connected>, Error> {
+            pub async fn dial_websocket(addr: &str) -> Result<Client<Connected>, Error> {
                 let url = url::Url::parse(addr)?;
                 Self::_dial_websocket(url).await
             }
@@ -159,7 +159,7 @@ cfg_if! {
             /// }
             /// ```
             ///
-            pub async fn dial_http(addr: &'static str) -> Result<Client<Connected>, Error> {
+            pub async fn dial_http(addr: &str) -> Result<Client<Connected>, Error> {
                 let mut url = url::Url::parse(addr)?.join(DEFAULT_RPC_PATH)?;
                 url.set_scheme("ws").expect("Failed to change scheme to ws");
 

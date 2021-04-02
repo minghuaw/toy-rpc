@@ -95,3 +95,7 @@ required-features = ["async_std_runtime"]
 name = "tokio_tcp"
 path = "tests/tokio_tcp.rs"
 required-features = ["tokio_runtime"]
+
+[[test]]
+name = "async_std_ws"
+path = "tests/async_std_ws.rs"

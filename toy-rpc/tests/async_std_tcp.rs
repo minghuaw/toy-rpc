@@ -1,6 +1,5 @@
 use anyhow::Result;
 
-use async_std::net::ToSocketAddrs;
 use async_std::{net::TcpListener, task};
 use futures::channel::oneshot::{channel, Receiver};
 use std::sync::Arc;
@@ -8,7 +7,7 @@ use toy_rpc::{Client, Server};
 
 mod rpc;
 
-async fn test_client(addr: impl ToSocketAddrs, mut ready: Receiver<()>) -> Result<()> {
+async fn test_client(addr: &'static str, mut ready: Receiver<()>) -> Result<()> {
     let _ = ready.try_recv()?.expect("Error receiving ready");
 
     println!("Client received ready");
@@ -34,8 +33,7 @@ async fn test_client(addr: impl ToSocketAddrs, mut ready: Receiver<()>) -> Resul
     Ok(())
 }
 
-async fn run() {
-    let addr = "127.0.0.1:8080";
+async fn run(addr: &'static str) {
     let (tx, rx) = channel::<()>();
     let common_test_service = Arc::new(rpc::CommonTest::new());
 
@@ -65,5 +63,5 @@ async fn run() {
 
 #[test]
 fn test_main() {
-    task::block_on(run());
+    task::block_on(run(rpc::ADDR));
 }
