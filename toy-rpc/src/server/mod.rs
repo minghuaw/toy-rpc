@@ -6,6 +6,7 @@ use cfg_if::cfg_if;
 use erased_serde as erased;
 use std::collections::HashMap;
 use std::sync::Arc;
+use std::io::ErrorKind;
 
 use crate::codec::ServerCodec;
 use crate::error::Error;
@@ -122,7 +123,16 @@ impl Server {
         match codec.read_request_header().await {
             Some(header) => {
                 // [0] read request body
-                let deserializer = codec.read_request_body().await.unwrap()?;
+                let deserializer = match codec.read_request_body().await {
+                    Some(r) => r?,
+                    None => {
+                        let err = Error::IoError(
+                            std::io::Error::new(ErrorKind::UnexpectedEof, "Failed to read message body")
+                        );
+                        log::error!("{}", &err);
+                        return Err(err)
+                    }
+                };
 
                 // [1] destructure header
                 let RequestHeader { id, service_method } = header?;

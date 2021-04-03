@@ -31,7 +31,7 @@ async fn test_client(base: &'static str, mut ready: Receiver<()>) -> Result<()> 
     rpc::test_method_not_found(&client).await;
     rpc::test_execution_error(&client).await;
 
-    println!("Client received correct RPC result");
+    println!("Client received all correct RPC result");
     Ok(())
 }
 

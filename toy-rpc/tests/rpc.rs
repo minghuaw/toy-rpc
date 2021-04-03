@@ -277,3 +277,7 @@ pub async fn test_execution_error(client: &Client<Connected>) {
     };
 }
 
+pub fn simply_panic() {
+    panic!("just panics");
+}
+
