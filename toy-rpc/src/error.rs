@@ -3,20 +3,34 @@ use std::io::ErrorKind;
 
 use crate::message::ErrorMessage;
 
+/// Custom error type
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
+    /// Errors with IO including that from the transport layer
     #[error("{0:?}")]
     IoError(#[from] std::io::Error),
+
+    /// Errors with serialization/deserialization
     #[error("{0}")]
     ParseError(Box<dyn std::error::Error + Send + Sync>),
+
+    /// Errors with server or client
     #[error("{0}")]
     Internal(Box<dyn std::error::Error + Send + Sync>),
+
+    /// The supplied argument for the function is invalid
     #[error("InvalidArgument")]
     InvalidArgument,
+
+    /// The specified service is not found on server side
     #[error("ServiceNotFound")]
     ServiceNotFound,
+
+    /// The specified method is not found on the specified service
     #[error("MethodNotFound")]
     MethodNotFound,
+
+    /// Execution error returned by RPC method
     #[error("{0}")]
     ExecutionError(String),
 }

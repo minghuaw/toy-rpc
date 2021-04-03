@@ -7,8 +7,8 @@ This crate aims at providing an easy-to-use RPC that is similar to `golang`'s
 
 The usage is similar to that of `golang`'s `net/rpc` with functions sharing similar
 names and functionalities. Certain function names are changed to be more "rusty".
-Because `rust` doesn't have reflection, attribute macros are used to make certain
-method "exported".
+Because `rust` doesn't come with reflection built-in, attribute macros are used to make certain
+methods as if they were "exported".
 
 ### Content
 
@@ -32,9 +32,11 @@ method "exported".
 
 ### Breaking Changes
 
-The most recent breaking changes will be reflected here.
+The most recent breaking changes will be reflected here. Change logs can be found in [Change Log](#change-log).
 
-#### Version 0.6.0
+#### 0.6.0
+
+**Breaking Changes**
 
 - In short, this update makes the crate resemble closer to the usage of `go`'s `net/rpc` package
 - Service registration is simplified to `Server::builder().register(foo_service).build()`. The examples will be
@@ -47,6 +49,9 @@ updated accordingly. Thus
     - you can still register multiple services on the same server. However, only one object of the same type
         can be registered on the same server. Multiple servers are needed to have multiple objects of the same type.
 - Re-defined the custom `Error` type
+
+Non-breaking changes
+
 - Fixed bug where client does not interpret error message correctly
 - Fixed bug with `accept_websocket` crashes with incorrect protocol
 
@@ -95,18 +100,20 @@ The following documentation is adapted based on `golang`'s documentation.
 
 This crate provides access to the methods marked with `#[export_impl]`
 and `#[export_method]` of an object across a network connection. A server
-registers an object, making it visible as a service with a name provided by the user.
+registers an object, making it visible as a service with the name of the type of the object.
 After the registration, the "exported" methods will be accessible remotely.
-A server may register multiple objects as multiple services, and multiple
-objects of **different** types could be registered on the same
-`Server` object. Only one object(service) of the same type can be registered on
-one server; multiple servers are needed for multiple objects of the same type.
+A server may register multiple objects (services) of **different** types but
+may **not** register multiple objects of the same type.
 
 To export a method, use `#[export_method]` attribute in an impl block marked with
 `#[export_impl]` attribute. This crate currently `only` support using `#[export_impl]` attribute
-on `one` impl block per type.
+on `one` impl block per type. Please note that the service name and method name is case
+sensitive (ie. the "exported" service and method in the example below can be remotely
+accessed via `"ExampleService.exported_method"`).
 
 ```rust
+use toy_rpc::macros::export_impl;
+
 struct ExampleService { }
 
 #[export_impl]
@@ -135,10 +142,10 @@ The methods to export must meet the following criteria on the server side
 - the method is essentially in the form
 
 ```rust
-struct ServiceState { }
+struct Service { }
 
 #[export_impl]
-impl ServiceState {
+impl Service {
     #[export_method]
     async fn method_name(&self, args: Req) -> Result<Res, ErrorMsg>
     where
@@ -156,24 +163,24 @@ Realistically the `Req` and `Res` type must also be marshaled/unmarshaled on
 the client side, and thus `Req` and `Res` must both implement *both*
 `serde::Serialize` and `serde::Deserialize`.
 
-The method's argument reprements the argument provided by the client caller,
+The method's argument represents the argument provided by the client caller,
 and the `Ok` type of result represents success parameters to be returned to
 the client caller. The `Err` type of result is passed back to the client as
 a `String`.
 
 The server may handle requests on a single connection by calling `serve_conn`,
-and it may handle multiple connections by creating a `async_std::net::TcpListener`
-and call `accept`. Integration with HTTP currently only supports `tide` by calling
-`into_endpoint`.
+and it may handle multiple connections by creating a `TcpListener`
+and call `accept`. HTTP integration is accomplished with WebSocket and currently
+supports `actix-web`, `warp`, and `tide`.
 
-A client wishing to use the service establishes a `async_std::net::TcpStream` connection
+A client wishing to use the service establishes a `TcpStream` connection
 and then creates `Client` over the connection. The convenience function `dial` performs
 this step for raw TCP socket connection, and `dial_http` performs this for an HTTP
 connection. A `Client` with HTTP connection or socket connection has three methods, `call`, `async_call`,
 and `spawn_task`, to specify the service and method to call and the argument. Please note that
 the service and method name is case sensitive, and following Rust's naming convention,
-the service name should be in CamelCase, for example, if a service is defined as `pub struct Foo {}`,
-the client needs to use `async_call("Foo.echo").await` to make the remote call.
+the service name should be in CamelCase, for example, if a service is defined as `pub struct FooBar {}`,
+the client needs to use `async_call("FooBar.echo").await` to make the remote call.
 
 - `call` method is synchronous and waits for the remote call
 to complete and then returns the result in a blocking manner.
@@ -182,17 +189,17 @@ respectively. Because they are `async` functions, they must be called with `.awa
 be executed.
 - `spawn_task` method spawns an `async` task and returns a `JoinHandle`.
 The result can be obtained using the `JoinHandle`. Please note that
-`async_std::task::JoinHandle` and `tokio::task::JoinHandle` behave slightly different.
+`async_std::task::JoinHandle` and `tokio::task::JoinHandle` behave slightly differently.
 Executing `.await` on `async_std::task::JoinHandle` returns `Result<Res, toy_rpc::error::Error>`.
 However, executing `.await` on `tokio::task::JoinHandle` returns
-`Result<Result<Res, toy_rpc::error::Error>, tokio::task::JoinError>.
-- A client stub trait is generated automatically which allows usage such as `client.foo().echo("data").await`
-where `foo()` represents a call to the `Foo{}` service while `echo()` represents the RPC method
-for the `Foo{}` service. More details can be found [below](#client-stub)
+`Result<Result<Res, toy_rpc::Error>, tokio::task::JoinError>.
+- A client stub trait is generated automatically which allows usage such as `client.foo_bar().echo("data").await`
+where `foo_bar()` represents a call to the `FooBar{}` service while `echo()` represents the RPC method
+for the `FooBar{}` service. More details can be found [below](#client-stub)
 
 Unless an explicity codec is set up (with `serve_codec` method, HTTP is *NOT* supported yet),
 the default codec specified by one of the following features tags (`serde_bincode`, `serde_json`
-`serde_cbor`, `serde_rmp`) will be used to transport data.
+`serde_cbor`, `serde_rmp`) will be used to marshal/unmarshal data.
 
 ### `async-std` and `tokio`
 
@@ -202,19 +209,19 @@ the corresponding feature flag (`async_std_runtime`, `tokio_runtime`).
 ### HTTP integrations
 
 Similar to choosing the runtimes, `toy-rpc` supports integration with `actix-web`, `tide`,
-and `warp` by choosing the corresponding feature flag (`http_tide`, `http_actix_web`
+and `warp` by choosing the corresponding feature flag (`http_actix_web`, `http_tide`,
 `http_warp`). Starting from version `0.5.0-beta.0` the integration is implemented using
 WebSocket as the transport protocol, and the `DEFAULT_RPC_SERVER=_rpc_` is appended to the path you
-supply to the HTTP framework. The client side support is not based on `async_tungstenite`
-and removed usage of `surf`. Thus versions >=`0.5.0-beta.0` are **NOT** compatible
+supply to the HTTP framework. The client side support is now based on `async_tungstenite`.
+Please note that `toy-rpc` versions >=`0.5.0-beta.0` are **NOT** compatible
 with versions <`0.5.0-beta.0`. The [examples](#examples) below are also updated to reflect
 the changes.
 
 ### Client Stub
 
 The `#[export_impl]` macro now also generates client stubs that internally uses `async_call`.
-For example, if the `Example {}` service is registered on the server as `"example_service"`.
-If you want to call the `echo(&self, arg: u32)` RPC method on the `Example {}` service, you
+For example, if the `Example {}` service is registered on the server with the `echo(&self, arg: u32)` method.
+If you want to call the `echo()` RPC method on the `Example {}` service, you
 can conveniently use `client.example().echo(3).await.unwrap()`. The generated stub follows the
 snake case, for example
     - if a service is defined as `pub struct Foo {}`, the generated stub will be `foo()`
@@ -222,7 +229,6 @@ snake case, for example
     - if a service is defined asx `pub struct FooBarService {}`, the generated stub will be `foo_bar_service()`
 
 ```rust
-
 pub mod rpc {
     use toy_rpc::macros::export_impl;
     use serde::{Serialize, Deserialze};
@@ -237,7 +243,7 @@ pub mod rpc {
     }
 }
 
-// import everything from the `rpc` mod to include generated client stub
+// import everything from the `rpc` mod to include the generated client stub
 use rpc::*;
 
 #[async_std::main]
@@ -245,7 +251,9 @@ async fn main() {
     let addr = "127.0.0.1:23333";
     let client = Client::dial(addr).await.unwrap();
 
-    // assume the service is registered as "example" on the server side
+    // The generated client stub will provide a function `example()`
+    // for convenience.
+    // The line below is equivalent to `let reply = client.async_call("Example.echo", 3).await.unwrap();`
     let reply = client.example().echo(3).await.unwrap();
     println!("Reply: {}", reply);
 }
@@ -268,7 +276,7 @@ toy-rpc = { version = "0.6.0" }
 
 # optional depending on the choice of runtime or http framework for different examples
 async-std = { version = "1.9.0", features = ["attributes"] }
-tokio = { version = "1.2.0", features = ["rt", "rt-multi-thread", "macros", "net", "sync"] }
+tokio = { version = "1.4.0", features = ["rt", "rt-multi-thread", "macros", "net", "sync"] }
 tide = "0.16.0"
 actix-web = "3.3.2"
 warp = "0.3.0"
@@ -287,9 +295,13 @@ serde = { version = "1.0.123", features = ["derive"] }
 pub mod rpc {
     use serde::{Serialize, Deserialize};
     use toy_rpc::macros::export_impl;
+    use async_trait::async_trait;
 
-    // use tokio::sync::Mutex; // uncomment this for the examples that use tokio runtime
-    // use async_std::sync::Mutex; // uncomment this for the examples that use async-std runtime
+    // uncomment the line below for the examples that use tokio runtime
+    // use tokio::sync::Mutex;
+
+    // uncomment the line below for the examples that use async-std runtime
+    // use async_std::sync::Mutex;
 
     pub struct ExampleService {
         pub counter: Mutex<i32>
@@ -305,12 +317,12 @@ pub mod rpc {
         a: u32,
     }
 
-    #[async_trait::async_trait]
+    #[async_trait]
     trait Rpc {
         async fn echo(&self, req: ExampleRequest) -> Result<ExampleResponse, String>;
     }
 
-    #[async_trait::async_trait]
+    #[async_trait]
     #[export_impl]
     impl Rpc for ExampleService {
         #[export_method]
@@ -390,8 +402,8 @@ async fn main() {
     let reply: Result<rpc::ExampleResponse, Error> = client.call("Example.echo", &args);
     println!("{:?}", reply);
 
-    // or use the generated client stub
-    let reply = client.example().echo(&args).await;
+    // or use the generated client stub for `ExampleService`
+    let reply = client.example_service().echo(&args).await;
     println!("{:?}", reply);
     client.close().await;
 }
@@ -471,8 +483,8 @@ async fn main() {
     let reply: Result<rpc::ExampleResponse, Error> = client.call("Example.echo", &args);
     println!("{:?}", reply);
 
-    // or use the generated client stub
-    let reply = client.example().echo(&args).await;
+    // or use the generated client stub for `ExampleService`
+    let reply = client.example_service().echo(&args).await;
     println!("{:?}", reply);
     client.close().await;
 
@@ -665,8 +677,8 @@ async fn main() {
     let reply: Result<rpc::ExampleResponse, Error> = client.call("Example.echo", &args);
     println!("{:?}", reply);
 
-    // or use the generated client stub
-    let reply = client.example().echo(&args).await;
+    // or use the generated client stub for `ExampleService`
+    let reply = client.example_service().echo(&args).await;
     println!("{:?}", reply);
 
     client.close().await;
@@ -676,6 +688,8 @@ async fn main() {
 ### Change Log
 
 #### 0.6.0
+
+**Breaking Changes**
 
 - In short, this update makes the crate resemble closer to the usage of `go`'s `net/rpc` package
 - Service registration is simplified to `Server::builder().register(foo_service).build()`. The examples will be
@@ -688,6 +702,9 @@ updated accordingly. Thus
     - you can still register multiple services on the same server. However, only one object of the same type
         can be registered on the same server. Multiple servers are needed to have multiple objects of the same type.
 - Re-defined the custom `Error` type
+
+Non-breaking changes
+
 - Fixed bug where client does not interpret error message correctly
 - Fixed bug with `accept_websocket` crashes with incorrect protocol
 
@@ -701,7 +718,7 @@ updated accordingly. Thus
 
 #### 0.5.0
 
-Breaking changes
+**Breaking changes**
 
 - HTTP integration is now accomplished using WebSocket with `async_tungstenite`, and thus HTTP connections
 of versions <0.5.0 are not compatible with versions >=0.5.0.
@@ -766,7 +783,8 @@ lifetime with async task is figured out. As a result, `Client` no longer needs t
 
 The following items are in no particular order.
 
-- improve error handling
+- improve error handling (sort of done)
+- improve documentation
 - improve logging message
 - support other I/O connection
 - more tests
