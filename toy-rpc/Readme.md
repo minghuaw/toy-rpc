@@ -34,12 +34,7 @@ method "exported".
 
 The most recent breaking changes will be reflected here.
 
-#### Version 0.6.0-beta
-
-- Re-defined the custom `Error` type
-- Fixed bug where client does not interpret error message correctly
-
-#### Version 0.6.0-alpha
+#### Version 0.6.0
 
 - In short, this update makes the crate resemble closer to the usage of `go`'s `net/rpc` package
 - Service registration is simplified to `Server::builder().register(foo_service).build()`. The examples will be
@@ -51,6 +46,9 @@ updated accordingly. Thus
         `.async_call("Foo.<method>").await` where `<method>` should be replaced with the RPC method
     - you can still register multiple services on the same server. However, only one object of the same type
         can be registered on the same server. Multiple servers are needed to have multiple objects of the same type.
+- Re-defined the custom `Error` type
+- Fixed bug where client does not interpret error message correctly
+- Fixed bug with `accept_websocket` crashes with incorrect protocol
 
 ### Crate Feature Flags
 
@@ -266,7 +264,7 @@ The examples here will also need some **other** dependencies
 ```toml
 [dependencies]
 # you may need to change feature flags for different examples
-toy-rpc = { version = "0.6.0-beta" }
+toy-rpc = { version = "0.6.0" }
 
 # optional depending on the choice of runtime or http framework for different examples
 async-std = { version = "1.9.0", features = ["attributes"] }
@@ -410,7 +408,7 @@ the feature flags.
 
 ```rust
 [dependencies]
-toy_rpc = { version = "0.6.0-beta", default-features = false, features = ["serde_bincode", "tokio_runtime"] }
+toy_rpc = { version = "0.6.0", default-features = false, features = ["serde_bincode", "tokio_runtime"] }
 ```
 
 server.rs
@@ -494,7 +492,7 @@ The default feature flags will **NOT** work with this example, and you need to c
 the feature flags.
 
 ```toml
-toy_rpc = { version = "0.6.0-beta", default-features = false, features = ["serde_bincode", "http_tide"] }
+toy_rpc = { version = "0.6.0", default-features = false, features = ["serde_bincode", "http_tide"] }
 ```
 
 server.rs
@@ -543,7 +541,7 @@ The default feature flags will **NOT** work with this example, and you need to c
 the feature flags.
 
 ```toml
-toy_rpc = { version = "0.6.0-beta", default-features = false, features = ["serde_bincode", "http_actix_web"] }
+toy_rpc = { version = "0.6.0", default-features = false, features = ["serde_bincode", "http_actix_web"] }
 ```
 
 server.rs
@@ -604,7 +602,7 @@ The default feature flags will **NOT** work with this example, and you need to c
 the feature flags.
 
 ```toml
-toy_rpc = { version = "0.6.0-beta", default-features = false, features = ["serde_bincode", "http_warp"] }
+toy_rpc = { version = "0.6.0", default-features = false, features = ["serde_bincode", "http_warp"] }
 ```
 
 server.rs
@@ -677,12 +675,7 @@ async fn main() {
 
 ### Change Log
 
-#### 0.6.0-beta
-
-- Re-defined the custom `Error` type
-- Fixed bug where client does not interpret error message correctly
-
-#### 0.6.0-alpha
+#### 0.6.0
 
 - In short, this update makes the crate resemble closer to the usage of `go`'s `net/rpc` package
 - Service registration is simplified to `Server::builder().register(foo_service).build()`. The examples will be
@@ -694,6 +687,9 @@ updated accordingly. Thus
         `.async_call("Foo.<method>").await` where `<method>` should be replaced with the RPC method
     - you can still register multiple services on the same server. However, only one object of the same type
         can be registered on the same server. Multiple servers are needed to have multiple objects of the same type.
+- Re-defined the custom `Error` type
+- Fixed bug where client does not interpret error message correctly
+- Fixed bug with `accept_websocket` crashes with incorrect protocol
 
 #### 0.5.4
 
