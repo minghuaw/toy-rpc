@@ -116,10 +116,10 @@ cfg_if! {
             ///
             pub async fn dial_websocket(addr: &str) -> Result<Client<Connected>, Error> {
                 let url = url::Url::parse(addr)?;
-                Self::_dial_websocket(url).await
+                Self::dial_websocket_url(url).await
             }
 
-            async fn _dial_websocket(url: url::Url) -> Result<Client<Connected>, Error> {
+            async fn dial_websocket_url(url: url::Url) -> Result<Client<Connected>, Error> {
                 let (ws_stream, _) = connect_async(&url).await?;
 
                 let ws_stream = WebSocketConn::new(ws_stream);
@@ -163,7 +163,7 @@ cfg_if! {
                 let mut url = url::Url::parse(addr)?.join(DEFAULT_RPC_PATH)?;
                 url.set_scheme("ws").expect("Failed to change scheme to ws");
 
-                Self::_dial_websocket(url).await
+                Self::dial_websocket_url(url).await
             }
 
             /// Creates an RPC `Client` over socket with a specified `async_std::net::TcpStream` and the default codec
@@ -297,7 +297,7 @@ impl Client<Connected> {
         let id = self.count.fetch_add(1u16, Ordering::Relaxed);
 
         task::spawn(
-            async move { Self::_async_call(service_method, &args, id, codec, pending).await },
+            async move { Self::execute_call(service_method, &args, id, codec, pending).await },
         )
     }
 
@@ -332,10 +332,10 @@ impl Client<Connected> {
         let pending = self.pending.clone();
         let id = self.count.fetch_add(1u16, Ordering::Relaxed);
 
-        Self::_async_call(service_method, &args, id, codec, pending).await
+        Self::execute_call(service_method, &args, id, codec, pending).await
     }
 
-    async fn _async_call<Req, Res>(
+    async fn execute_call<Req, Res>(
         service_method: impl ToString,
         args: &Req,
         id: MessageId,
@@ -365,9 +365,9 @@ impl Client<Connected> {
             _pending.insert(id, done_sender);
         }
 
-        Client::<Connected>::_read_response(_codec.as_mut(), pending).await?;
+        Client::<Connected>::read_response(_codec.as_mut(), pending).await?;
 
-        Client::<Connected>::_handle_response(done, &id)
+        Client::<Connected>::handle_response(done, &id)
     }
 
     /// Gracefully shutdown the connection.
@@ -381,7 +381,7 @@ impl Client<Connected> {
 }
 
 impl Client<Connected> {
-    async fn _read_response(
+    async fn read_response(
         codec: &mut dyn ClientCodec,
         pending: Arc<Mutex<ResponseMap>>,
     ) -> Result<(), Error> {
@@ -418,7 +418,7 @@ impl Client<Connected> {
         Ok(())
     }
 
-    fn _handle_response<Res>(
+    fn handle_response<Res>(
         mut done: oneshot::Receiver<Result<ResponseBody, ResponseBody>>,
         id: &MessageId,
     ) -> Result<Res, Error>

@@ -90,13 +90,13 @@ impl Server {
     }
 
     /// Serves using a specified codec
-    async fn _serve_codec<C>(mut codec: C, services: Arc<AsyncServiceMap>) -> Result<(), Error>
+    async fn serve_codec_loop<C>(mut codec: C, services: Arc<AsyncServiceMap>) -> Result<(), Error>
     where
         C: ServerCodec + Send + Sync,
     {
         log::debug!("Start serving codec");
         loop {
-            match Self::_serve_codec_once(&mut codec, &services).await {
+            match Self::serve_codec_once(&mut codec, &services).await {
                 Ok(stat) => match stat {
                     ConnectionStatus::KeepReading => {}
                     ConnectionStatus::Stop => {
@@ -112,7 +112,7 @@ impl Server {
     }
 
     /// Serves using the specified codec only once
-    async fn _serve_codec_once<C>(
+    async fn serve_codec_once<C>(
         codec: &mut C,
         services: &Arc<AsyncServiceMap>,
     ) -> Result<ConnectionStatus, Error>
@@ -132,7 +132,7 @@ impl Server {
                 let pos = match service_method.rfind('.') {
                     Some(p) => p,
                     None => {
-                        Self::_send_response(codec, id, Err(Error::MethodNotFound)).await?;
+                        Self::send_response(codec, id, Err(Error::MethodNotFound)).await?;
                         log::error!("Method not supplied from request: '{}'", service_method);
                         return Ok(ConnectionStatus::KeepReading)
                     }
@@ -146,7 +146,7 @@ impl Server {
                 let call: ArcAsyncServiceCall = match services.get(service) {
                     Some(serv_call) => serv_call.clone(),
                     None => {
-                        Self::_send_response(codec, id, Err(Error::ServiceNotFound)).await?;
+                        Self::send_response(codec, id, Err(Error::ServiceNotFound)).await?;
                         log::error!("Service not found: '{}'", service);
                         return Ok(ConnectionStatus::KeepReading)
                     }
@@ -170,7 +170,7 @@ impl Server {
                 };
 
                 // [5] send back result
-                Self::_send_response(codec, id, res).await?;
+                Self::send_response(codec, id, res).await?;
                 Ok(ConnectionStatus::KeepReading)
             }
             None => Ok(ConnectionStatus::Stop),
@@ -178,7 +178,7 @@ impl Server {
     }
 
     /// Sends back the response with the specified codec
-    async fn _send_response<C>(
+    async fn send_response<C>(
         _codec: &mut C,
         id: MessageId,
         res: HandlerResult,
@@ -242,7 +242,7 @@ impl Server {
     where
         C: ServerCodec + Send + Sync,
     {
-        Self::_serve_codec(codec, self.services.clone()).await
+        Self::serve_codec_loop(codec, self.services.clone()).await
     }
 }
 

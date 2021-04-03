@@ -88,7 +88,7 @@ cfg_if! {
 
                     log::trace!("Accepting incoming connection from {}", stream.peer_addr()?);
 
-                    task::spawn(Self::_serve_conn(stream, self.services.clone()));
+                    task::spawn(Self::serve_tcp_connection(stream, self.services.clone()));
                 }
 
                 Ok(())
@@ -142,14 +142,14 @@ cfg_if! {
                         .expect("Error during the websocket handshake occurred");
                     log::trace!("Established WebSocket connection.");
 
-                match Self::_serve_websocket(ws_stream, services).await {
+                match Self::serve_ws_connection(ws_stream, services).await {
                     Ok(_) => {},
                     Err(e) => log::error!("{}", e),
                 };
             }
 
             /// Serves a single connection
-            async fn _serve_conn(stream: TcpStream, services: Arc<AsyncServiceMap>) -> Result<(), Error> {
+            async fn serve_tcp_connection(stream: TcpStream, services: Arc<AsyncServiceMap>) -> Result<(), Error> {
                 // let _stream = stream;
                 let _peer_addr = stream.peer_addr()?;
 
@@ -157,7 +157,7 @@ cfg_if! {
                 let codec = DefaultCodec::new(stream);
 
                 // let fut = task::spawn_blocking(|| Self::_serve_codec(codec, services)).await;
-                let ret = Self::_serve_codec(codec, services).await;
+                let ret = Self::serve_codec_loop(codec, services).await;
                 log::trace!("Client disconnected from {}", _peer_addr);
                 ret
             }
@@ -192,17 +192,17 @@ cfg_if! {
             /// }
             /// ```
             pub async fn serve_conn(&self, stream: TcpStream) -> Result<(), Error> {
-                Self::_serve_conn(stream, self.services.clone()).await
+                Self::serve_tcp_connection(stream, self.services.clone()).await
             }
 
-            async fn _serve_websocket(
+            async fn serve_ws_connection(
                 ws_stream: async_tungstenite::WebSocketStream<TcpStream>,
                 services: Arc<AsyncServiceMap>,
             ) -> Result<(), Error> {
                 let ws_stream = WebSocketConn::new(ws_stream);
                 let codec = DefaultCodec::with_websocket(ws_stream);
 
-                let ret = Self::_serve_codec(codec, services).await;
+                let ret = Self::serve_codec_loop(codec, services).await;
                 log::info!("Client disconnected from WebSocket connection");
                 ret
             }
