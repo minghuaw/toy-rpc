@@ -1,6 +1,6 @@
 # toy-rpc
 
-## A async RPC crate that mimics the `golang`'s `net/rpc` package and supports both `async-std` and `tokio`.
+## An async RPC crate that mimics the `golang`'s `net/rpc` package and supports both `async-std` and `tokio`.
 
 This crate aims at providing an easy-to-use RPC that is similar to `golang`'s
 `net/rpc`.
