@@ -3,7 +3,14 @@ skip_core_tasks = true
 
 [tasks.test]
 run_task = [
-    { name = ["test_async_std_tcp", "test_tokio_tcp", "test_async_std_ws"] },
+    { name = [
+        "test_async_std_tcp", 
+        "test_tokio_tcp", 
+        "test_async_std_ws",
+        "test_tokio_ws",
+        "test_tide_integration",
+
+    ] },
 ]
 
 [tasks.test_async_std_tcp]
@@ -30,6 +37,33 @@ args = ["test",
     "--features", "serde_bincode async_std_runtime",
     "--no-default-features",
     "--test", "async_std_ws",
+    "--", "--nocapture"
+]
+
+[tasks.test_tokio_ws]
+command = "cargo"
+args = ["test",
+    "--features", "serde_bincode tokio_runtime",
+    "--no-default-features",
+    "--test", "tokio_ws",
+    "--", "--nocapture"
+]
+
+[tasks.test_tide_integration]
+command = "cargo"
+args = ["test",
+    "--features", "serde_bincode http_tide",
+    "--no-default-features",
+    "--test", "tide_integration",
+    "--", "--nocapture"
+]
+
+[tasks.test_warp_integration]
+command = "cargo"
+args = ["test",
+    "--features", "serde_bincode http_warp",
+    "--no-default-features",
+    "--test", "warp_integration",
     "--", "--nocapture"
 ]
 

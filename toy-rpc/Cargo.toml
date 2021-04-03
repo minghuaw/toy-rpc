@@ -29,7 +29,7 @@ rustdoc-args = ["--cfg", "feature=\"docs\""]
 [features]
 default = [
     "serde_bincode",
-    "tokio_runtime"
+    "async_std_runtime"
 ]
 
 docs = []
@@ -51,6 +51,7 @@ http_warp = ["warp", "tokio_runtime"]
 async-std = "1.9.0"
 anyhow = "1.0.38"
 tokio = { version = "1.2.0", features = ["rt", "rt-multi-thread", "sync", "io-util", "net"]}
+warp = { version = "0.3" }
 
 [dependencies]
 # local imports
@@ -99,3 +100,19 @@ required-features = ["tokio_runtime"]
 [[test]]
 name = "async_std_ws"
 path = "tests/async_std_ws.rs"
+required-features = ["async_std_runtime"]
+
+[[test]]
+name = "tokio_ws"
+path = "tests/tokio_ws.rs"
+required-features = ["tokio_runtime"]
+
+[[test]]
+name = "tide_integration"
+path = "tests/tide_integration.rs"
+required-features = ["http_tide"]
+
+[[test]]
+name = "warp_integration"
+path = "tests/warp_integration.rs"
+required-features = ["http_warp"]

@@ -48,7 +48,7 @@ cfg_if! {
                     let codec = DefaultCodec::with_warp_websocket(websocket);
                     let services = state.services.clone();
 
-                    let fut = Self::_serve_codec(codec, services);
+                    let fut = Self::serve_codec_loop(codec, services);
                     match fut.await {
                         Ok(_) => (),
                         Err(e) => log::error!("Error encountered {}", e),
