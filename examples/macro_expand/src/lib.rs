@@ -5,7 +5,7 @@ use toy_rpc::Server;
 use async_trait::async_trait;
 use std::sync::Arc;
 
-pub struct Example { }
+pub struct FooBarService { }
 
 #[async_trait]
 pub trait ExampleService {
@@ -15,7 +15,7 @@ pub trait ExampleService {
 
 #[async_trait]
 #[export_impl]
-impl ExampleService for Example {
+impl ExampleService for FooBarService {
 // impl Example {
     #[export_method]
     async fn foo(&self, args: i32) -> Result<i32, String> {
@@ -29,7 +29,7 @@ impl ExampleService for Example {
 }
 
 fn expand_service() {
-    let example = Arc::new(Example{});
+    let example = Arc::new(FooBarService{});
 
     let _server = Server::builder()
         .register(example)
