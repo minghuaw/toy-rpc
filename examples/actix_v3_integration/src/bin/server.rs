@@ -92,7 +92,7 @@ async fn main() -> std::io::Result<()> {
                 .service(
                     web::scope("/rpc/")
                         .app_data(app_data.clone())
-                        // .configure(Server::scope_config())
+                        // .configure(Server::scope_config)
                         .configure(Server::handle_http())
                 )
         }
