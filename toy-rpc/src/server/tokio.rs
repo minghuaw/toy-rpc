@@ -133,13 +133,21 @@ cfg_if! {
                     let stream = conn?;
                     log::trace!("Accepting incoming connection from {}", stream.peer_addr()?);
 
-                    let ws_stream = async_tungstenite::tokio::accept_async(stream).await?;
-                    log::trace!("Established WebSocket connection.");
-
-                    task::spawn(Self::_serve_websocket(ws_stream, self.services.clone()));
+                    task::spawn(Self::accept_ws_connection(stream, self.services.clone()));
                 }
 
                 Ok(())
+            }
+
+            async fn accept_ws_connection(stream: TcpStream, services: Arc<AsyncServiceMap>) {
+                let ws_stream = async_tungstenite::tokio::accept_async(stream).await        
+                        .expect("Error during the websocket handshake occurred");
+                    log::trace!("Established WebSocket connection.");
+
+                match Self::_serve_websocket(ws_stream, services).await {
+                    Ok(_) => {},
+                    Err(e) => log::error!("{}", e),
+                };
             }
 
             /// Serves a single connection

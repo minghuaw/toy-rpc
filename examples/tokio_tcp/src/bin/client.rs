@@ -7,7 +7,7 @@ use tokio_tcp::rpc::{BarRequest, BarResponse, FooRequest, FooResponse};
 async fn main() {
     env_logger::init();
 
-    let addr = "127.0.0.1:23333";
+    let addr = "127.0.0.1:8080";
     let client = Client::dial(addr).await.unwrap();
 
     // first request, echo

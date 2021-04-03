@@ -3,6 +3,7 @@ use toy_rpc::Client;
 
 use websocket::rpc::{BarRequest, BarResponse, FooRequest, FooResponse};
 
+// #[tokio::main]
 #[async_std::main]
 async fn main() {
     env_logger::init();
