@@ -29,6 +29,7 @@ pub struct Client<Mode> {
 
 cfg_if! {
     if #[cfg(any(
+        any(feature = "docs", doc),
         all(
             feature = "serde_bincode",
             not(feature = "serde_json"),
@@ -82,7 +83,7 @@ cfg_if! {
             ///
             /// #[async_std::main]
             /// async fn main() {
-            ///     let addr = "127.0.0.1";
+            ///     let addr = "127.0.0.1:8080";
             ///     let client = Client::dial(addr).await;
             /// }
             ///
@@ -195,44 +196,42 @@ cfg_if! {
                 Self::with_codec(codec)
             }
         }
+    } 
+}
 
-        impl Client<NotConnected> {
-            /// Creates an RPC 'Client` with a specified codec. The codec must
-            /// implement `ClientCodec` trait and `GracefulShutdown` trait.
-            ///
-            /// Example
-            ///
-            /// ```rust
-            /// use async_std::net::TcpStream;
-            /// use toy_rpc::codec::bincode::Codec;
-            /// use toy_rpc::Client;
-            ///
-            /// #[async_std::main]
-            /// async fn main() {
-            ///     let addr = "127.0.0.1:8080";
-            ///     let stream = TcpStream::connect(addr).await.unwrap();
-            ///     let codec = Codec::new(stream);
-            ///     let client = Client::with_codec(codec);
-            /// }
-            /// ```
-            pub fn with_codec<C>(codec: C) -> Client<Connected>
-            where
-                C: ClientCodec + Send + Sync + 'static,
-            {
-                let box_codec: Box<dyn ClientCodec> = Box::new(codec);
+impl Client<NotConnected> {
+    /// Creates an RPC 'Client` with a specified codec. The codec must
+    /// implement `ClientCodec` trait and `GracefulShutdown` trait.
+    ///
+    /// Example
+    ///
+    /// ```rust
+    /// use async_std::net::TcpStream;
+    /// use toy_rpc::codec::bincode::Codec;
+    /// use toy_rpc::Client;
+    ///
+    /// #[async_std::main]
+    /// async fn main() {
+    ///     let addr = "127.0.0.1:8080";
+    ///     let stream = TcpStream::connect(addr).await.unwrap();
+    ///     let codec = Codec::new(stream);
+    ///     let client = Client::with_codec(codec);
+    /// }
+    /// ```
+    pub fn with_codec<C>(codec: C) -> Client<Connected>
+    where
+        C: ClientCodec + Send + Sync + 'static,
+    {
+        let box_codec: Box<dyn ClientCodec> = Box::new(codec);
 
-                Client::<Connected> {
-                    count: AtomicMessageId::new(0u16),
-                    inner_codec: Arc::new(Mutex::new(box_codec)),
-                    pending: Arc::new(Mutex::new(HashMap::new())),
+        Client::<Connected> {
+            count: AtomicMessageId::new(0u16),
+            inner_codec: Arc::new(Mutex::new(box_codec)),
+            pending: Arc::new(Mutex::new(HashMap::new())),
 
-                    mode: PhantomData,
-                }
-            }
+            mode: PhantomData,
         }
-
     }
-
 }
 
 impl Client<Connected> {
@@ -252,7 +251,7 @@ impl Client<Connected> {
     ///     let client = Client::dial(addr).await.unwrap();
     ///
     ///     let args = "arguments";
-    ///     let reply: Result<String, Error> = client.call("echo_service.echo", &args);
+    ///     let reply: Result<String, Error> = client.call("EchoService.echo", &args);
     ///     println!("{:?}", reply);
     /// }
     /// ```
@@ -278,7 +277,7 @@ impl Client<Connected> {
     ///     let client = Client::dial(addr).await.unwrap();
     ///
     ///     let args = "arguments";
-    ///     let handle: task::JoinHandle<Result<Res, Error>> = client.spawn_task("echo_service.echo", args);
+    ///     let handle: task::JoinHandle<Result<Res, Error>> = client.spawn_task("EchoService.echo", args);
     ///     let reply: Result<String, Error> = handle.await;
     ///     println!("{:?}", reply);
     /// }
@@ -315,7 +314,7 @@ impl Client<Connected> {
     ///     let client = Client::dial(addr).await.unwrap();
     ///
     ///     let args = "arguments";
-    ///     let reply: Result<String, Error> = client.async_call("echo_service.echo", &args).await;
+    ///     let reply: Result<String, Error> = client.async_call("EchoService.echo", &args).await;
     ///     println!("{:?}", reply);
     /// }
     /// ```

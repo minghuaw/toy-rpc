@@ -28,6 +28,7 @@ pub struct Client<Mode> {
 
 cfg_if! {
     if #[cfg(any(
+        any(feature = "docs", doc),
         all(
             feature = "serde_bincode",
             not(feature = "serde_json"),
@@ -83,7 +84,7 @@ cfg_if! {
             ///
             /// #[tokio::main]
             /// async fn main() {
-            ///     let addr = "127.0.0.1";
+            ///     let addr = "127.0.0.1:8080";
             ///     let client = Client::dial(addr).await;
             /// }
             ///
@@ -254,7 +255,7 @@ impl Client<Connected> {
     ///     let client = Client::dial(addr).await.unwrap();
     ///
     ///     let args = "arguments";
-    ///     let reply: Result<String, Error> = client.call("echo_service.echo", &args);
+    ///     let reply: Result<String, Error> = client.call("EchoService.echo", &args);
     ///     println!("{:?}", reply);
     /// }
     /// ```
@@ -282,7 +283,7 @@ impl Client<Connected> {
     ///     let client = Client::dial(addr).await.unwrap();
     ///
     ///     let args = "arguments";
-    ///     let handle: task::JoinHandle<Result<Res, Error>> = client.spawn_task("echo_service.echo", args);
+    ///     let handle: task::JoinHandle<Result<Res, Error>> = client.spawn_task("EchoService.echo", args);
     ///     let reply: Result<String, Error> = handle.await;
     ///     println!("{:?}", reply);
     /// }
@@ -321,7 +322,7 @@ impl Client<Connected> {
     ///     let client = Client::dial(addr).await.unwrap();
     ///
     ///     let args = "arguments";
-    ///     let reply: Result<String, Error> = client.async_call("echo_service.echo", &args).await;
+    ///     let reply: Result<String, Error> = client.async_call("EchoService.echo", &args).await;
     ///     println!("{:?}", reply);
     /// }
     /// ```
