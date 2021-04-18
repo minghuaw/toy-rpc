@@ -4,6 +4,28 @@
 
 //! # An async RPC crate that mimics the `golang`'s `net/rpc` package and supports both `async-std` and `tokio`.
 //!
+//! <div align="center">
+//! <!-- Crates version -->
+//! <a href="https://crates.io/crates/toy-rpc">
+//! <img src="https://img.shields.io/crates/v/toy-rpc.svg?style=flat"
+//! alt="Crates.io version" />
+//! </a>
+//! <!-- docs.rs docs -->
+//! <a href="https://docs.rs/toy-rpc">
+//! <img src="https://img.shields.io/badge/docs-latest-blue.svg?style=flat"
+//! alt="docs.rs docs" />
+//! </a>
+//! <!-- Downloads -->
+//! <a href="https://crates.io/crates/toy-rpc">
+//! <img src="https://img.shields.io/crates/d/toy-rpc.svg?style=flat"
+//! alt="Download" />
+//! </a>
+//! <a href="https://github.com/rust-secure-code/safety-dance/">
+//! <img src="https://img.shields.io/badge/unsafe-forbidden-success.svg?style=flat"
+//! alt="Unsafe Rust forbidden" />
+//! </a>
+//! </div>
+//! 
 //! This crate aims at providing an easy-to-use RPC that is similar to `golang`'s
 //! `net/rpc`.
 //!
