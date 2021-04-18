@@ -63,10 +63,14 @@ pub trait HandleService<State>
 where
     State: Send + Sync + 'static,
 {
-    /// Returns a reference to the internal state
+    /// Returns a `Arc` of the internal state
     fn get_state(&self) -> Arc<State>;
+
+    /// Returns a function pointer to the requested method
     fn get_method(&self, name: &str) -> Option<AsyncHandler<State>>;
 
+    /// Returns a future that will execute the RPC method when `.await`ed. 
+    /// Returns `Error::MethodNotFound` if the requested method is not registered.
     fn call(
         &self,
         name: &str,
@@ -94,15 +98,23 @@ where
     }
 }
 
-#[allow(dead_code)]
+/// Type state for the `ServiceBuilder` when the builder is NOT ready to build a `Service`
 pub struct BuilderUninitialized;
+/// Type state for the `ServiceBuilder` when the builder is ready to build a `Service`
 pub struct BuilderReady;
 
+/// Service builder. The builder uses type state to control whether the builder is ready
+/// to build a `Service`. 
+/// 
+/// A `Service` can be built without any handler but cannot be built without internal state. 
 pub struct ServiceBuilder<State, BuilderMode>
 where
     State: Send + Sync + 'static,
 {
+    /// Internal state of the builder, which will be the internal state of the `Service`
     pub state: Option<Arc<State>>,
+
+    /// RPC method handlers
     pub handlers: HashMap<&'static str, AsyncHandler<State>>,
 
     // helper members for TypeState only
@@ -113,6 +125,7 @@ impl<State> ServiceBuilder<State, BuilderUninitialized>
 where
     State: Send + Sync + 'static,
 {
+    /// Creates a new builder without any internal state.
     pub fn new() -> ServiceBuilder<State, BuilderUninitialized> {
         ServiceBuilder::<State, BuilderUninitialized> {
             state: None,
@@ -122,6 +135,7 @@ where
         }
     }
 
+    /// Creates a new builder with an internal state.
     pub fn with_state(s: Arc<State>) -> ServiceBuilder<State, BuilderReady> {
         ServiceBuilder::<State, BuilderReady> {
             state: Some(s),
@@ -145,6 +159,7 @@ impl<State, BuilderMode> ServiceBuilder<State, BuilderMode>
 where
     State: Send + Sync + 'static,
 {
+    /// Register the internal state
     pub fn register_state(self, s: Arc<State>) -> ServiceBuilder<State, BuilderReady> {
         ServiceBuilder::<State, BuilderReady> {
             state: Some(s),
@@ -154,15 +169,27 @@ where
         }
     }
 
+    /// Register a hashmap of RPC handlers
     pub fn register_handlers(
         self,
         map: &'static HashMap<&'static str, AsyncHandler<State>>,
     ) -> Self {
         let mut builder = self;
         for (key, val) in map.iter() {
-            builder.handlers.insert(key, val.clone());
+            builder = builder.register_handler(key, *val);
         }
 
+        builder
+    }
+
+    /// Register a handler for a service
+    pub fn register_handler(
+        self,
+        method: &'static str,
+        handler: AsyncHandler<State>
+    ) -> Self {
+        let mut builder = self;
+        builder.handlers.insert(method, handler);
         builder
     }
 }
@@ -171,6 +198,7 @@ impl<State> ServiceBuilder<State, BuilderReady>
 where
     State: Send + Sync + 'static,
 {
+    /// Build a `Service`
     pub fn build(mut self) -> Service<State> {
         let state = self.state.take().unwrap();
         let handlers = self.handlers;
@@ -179,6 +207,7 @@ where
     }
 }
 
+/// Convenience function to build a `Service` with the internal state and the handlers
 pub fn build_service<State>(
     state: Arc<State>,
     handlers: &'static HashMap<&'static str, AsyncHandler<State>>,
