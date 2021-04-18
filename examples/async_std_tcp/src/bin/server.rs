@@ -4,7 +4,8 @@ use async_std::task;
 
 use toy_rpc::Server;
 
-use async_std_tcp::rpc::*;
+// use async_std_tcp::rpc::*;
+use async_std_tcp::rpc::{Foo, Bar};
 
 #[async_std::main]
 async fn main() {

@@ -568,8 +568,7 @@ fn generate_register_service_impl(ident: &Ident) -> impl ToTokens {
             }
 
             fn default_name() -> &'static str {
-                let name = #name;
-                name.as_ref()
+                #name
             }
         }
     };
