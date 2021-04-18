@@ -19,9 +19,7 @@ cfg_if! {
 }
 pub(crate) struct CanSink {}
 
-// #[pin_project]
 pub struct WebSocketConn<S, N> {
-    // #[pin]
     pub inner: S,
     can_sink: PhantomData<N>,
 }
