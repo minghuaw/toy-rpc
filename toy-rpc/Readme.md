@@ -34,6 +34,14 @@ methods as if they were "exported".
 
 The most recent breaking changes will be reflected here. Change logs can be found in [Change Log](#change-log).
 
+#### 0.6.1
+
+Non-breaking change
+
+- Multiple objects of the same types can be registered on the same server again, but you will need to
+use the `ServerBuilder::register_service` method as opposed to the regular `ServerBuilder::register`.
+More details can be found in `ServerBuilder::register_service`'s documentation.
+
 #### 0.6.0
 
 **Breaking Changes**
@@ -102,8 +110,11 @@ This crate provides access to the methods marked with `#[export_impl]`
 and `#[export_method]` of an object across a network connection. A server
 registers an object, making it visible as a service with the name of the type of the object.
 After the registration, the "exported" methods will be accessible remotely.
-A server may register multiple objects (services) of **different** types but
-may **not** register multiple objects of the same type.
+A server may register multiple objects (services) of **different** types If multiple
+objects (services) of the same type need to be registered, you will need to use the
+`ServerBuilder::register_service` method instead of the regular
+`ServerBuilder::register` method. More details can be found in
+`ServerBuilder::register_service`'s documentation.
 
 To export a method, use `#[export_method]` attribute in an impl block marked with
 `#[export_impl]` attribute. This crate currently `only` support using `#[export_impl]` attribute
@@ -686,6 +697,12 @@ async fn main() {
 ```
 
 ### Change Log
+
+#### 0.6.1
+
+- Multiple objects of the same types can be registered on the same server again, but you will need to
+use the `ServerBuilder::register_service` method as opposed to the regular `ServerBuilder::register`.
+More details can be found in `ServerBuilder::register_service`'s documentation.
 
 #### 0.6.0
 

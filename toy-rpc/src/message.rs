@@ -5,7 +5,10 @@ use std::sync::atomic::AtomicU16;
 
 use crate::error::Error;
 
+/// Type of message id is u16
 pub type MessageId = u16;
+
+/// Atomic type of MessageId
 pub type AtomicMessageId = AtomicU16;
 
 /// Returning the metadata
@@ -13,6 +16,7 @@ pub trait Metadata {
     fn get_id(&self) -> MessageId;
 }
 
+/// Header of a request
 #[derive(Serialize, Deserialize, Debug, Default)]
 pub struct RequestHeader {
     pub id: MessageId,
@@ -25,6 +29,7 @@ impl Metadata for RequestHeader {
     }
 }
 
+/// Header of a response
 #[derive(Serialize, Deserialize, Debug, Default)]
 pub struct ResponseHeader {
     pub id: MessageId,
@@ -44,6 +49,7 @@ pub trait GracefulShutdown {
     async fn close(&mut self);
 }
 
+/// The Error message that will be sent over for a error response
 #[derive(Serialize, Deserialize)]
 pub(crate) enum ErrorMessage {
     InvalidArgument,
