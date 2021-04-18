@@ -418,7 +418,7 @@ fn generate_client_stub(ident: &Ident, input: syn::ItemImpl) -> (syn::Item, syn:
         }
     );
 
-    let client_impl = client_stub_impl(&client_ident, input);
+    let client_impl = client_stub_impl(ident, &client_ident, input);
 
     let concat_name = format!("{}{}", &ident.to_string(), CLIENT_STUB_SUFFIX);
     let stub_ident = Ident::new(&concat_name, ident.span());
@@ -446,7 +446,7 @@ fn generate_client_stub(ident: &Ident, input: syn::ItemImpl) -> (syn::Item, syn:
     return (client_struct, client_impl, stub_trait, stub_impl)
 }
 
-fn client_stub_impl(client_ident: &Ident, input: syn::ItemImpl) -> syn::ItemImpl {
+fn client_stub_impl(service_ident: &Ident, client_ident: &Ident, input: syn::ItemImpl) -> syn::ItemImpl {
     let mut input = filter_exported_methods(input);
     let mut generated_items: Vec<syn::ImplItem> = Vec::new();
     input.trait_ = None;
@@ -459,7 +459,7 @@ fn client_stub_impl(client_ident: &Ident, input: syn::ItemImpl) -> syn::ItemImpl
             _ => None,
         })
         .for_each(|f| {
-            if let Some(gen) = generate_client_stub_method(f) {
+            if let Some(gen) = generate_client_stub_method(service_ident, f) {
                 generated_items.push(syn::ImplItem::Method(gen));
             }
         });
@@ -474,31 +474,30 @@ fn client_stub_impl(client_ident: &Ident, input: syn::ItemImpl) -> syn::ItemImpl
     output
 }
 
-fn generate_client_stub_method(f: &mut syn::ImplItemMethod) -> Option<syn::ImplItemMethod> {
+fn generate_client_stub_method(service_ident: &Ident, f: &mut syn::ImplItemMethod) -> Option<syn::ImplItemMethod> {
     if let syn::FnArg::Typed(pt) = f.sig.inputs.last().unwrap() {
         let fn_ident = &f.sig.ident;
         let req_ty = &pt.ty;
         
         if let syn::ReturnType::Type(_, ret_ty) = f.sig.output.clone() {
             let ok_ty = get_ok_ident_from_type(ret_ty)?;
-            return Some(generate_client_stub_method_impl(fn_ident, &req_ty, &ok_ty))
+            return Some(generate_client_stub_method_impl(service_ident, fn_ident, &req_ty, &ok_ty))
         }
     }
 
     return None
 }   
 
-fn generate_client_stub_method_impl(fn_ident: &Ident, req_ty: &Box<syn::Type>, ok_ty: &GenericArgument) -> syn::ImplItemMethod {
+fn generate_client_stub_method_impl(service_ident: &Ident, fn_ident: &Ident, req_ty: &Box<syn::Type>, ok_ty: &GenericArgument) -> syn::ImplItemMethod {
+    let service = service_ident.to_string();
     let method = fn_ident.to_string();
+    let service_method = format!("{}.{}", service, method);
     parse_quote!(
         pub async fn #fn_ident<A>(&'c self, args: A) -> Result<#ok_ty, toy_rpc::error::Error>
         where 
             A: std::borrow::Borrow<#req_ty> + Send + Sync + toy_rpc::serde::Serialize,
         {
-            let method = #method;
-            let service_method = format!("{}.{}", self.service_name, method);
-
-            self.client.async_call(service_method, args).await
+            self.client.async_call(#service_method, args).await
         }
     )
 }
