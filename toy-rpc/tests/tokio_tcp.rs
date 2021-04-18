@@ -1,9 +1,9 @@
 use anyhow::Result;
-use tokio::task;
 use futures::channel::oneshot::{channel, Receiver};
 use std::{str, sync::Arc};
+use tokio::net::TcpListener;
+use tokio::task;
 use toy_rpc::{Client, Server};
-use tokio::net::{TcpListener};
 
 mod rpc;
 
@@ -12,8 +12,7 @@ async fn test_client(addr: &'static str, mut ready: Receiver<()>) -> Result<()> 
 
     println!("Client received ready");
 
-    let client = Client::dial(addr).await
-        .expect("Error dialing server");
+    let client = Client::dial(addr).await.expect("Error dialing server");
 
     rpc::test_get_magic_u8(&client).await;
     rpc::test_get_magic_u16(&client).await;
@@ -39,9 +38,7 @@ async fn run(addr: &'static str) {
     let common_test_service = Arc::new(rpc::CommonTest::new());
 
     // start testing server
-    let server = Server::builder()
-        .register(common_test_service)
-        .build();
+    let server = Server::builder().register(common_test_service).build();
 
     let listener = TcpListener::bind(addr)
         .await
@@ -57,7 +54,8 @@ async fn run(addr: &'static str) {
     let client_handle = task::spawn(test_client(addr, rx));
 
     // stop server after all clients finishes
-    client_handle.await
+    client_handle
+        .await
         .expect("Error joining client thread")
         .expect("Error testing client");
 

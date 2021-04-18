@@ -10,21 +10,34 @@ use std::sync::Arc;
 
 use crate::error::Error;
 
-// async versions of handlers
+/// Ok type of HandlerResult
 pub(crate) type Success = Box<dyn erased::Serialize + Send + Sync + 'static>;
-pub type HandlerResult = Result<Success, Error>;
-pub type HandlerResultFut = Pin<Box<dyn Future<Output = HandlerResult> + Send>>;
-pub type AsyncHandler<S> = fn(Arc<S>, Box<dyn erased::Deserializer<'static> + Send>) -> HandlerResultFut;
-// pub type ArcAsyncHandler<S> = Arc<AsyncHandler<S>>;
 
-// trait objects to invoke a service
+/// Return type of RPC handler
+pub type HandlerResult = Result<Success, Error>;
+
+/// Future of RPC handler, this must be `.await`ed to obtain the result
+pub type HandlerResultFut = Pin<Box<dyn Future<Output = HandlerResult> + Send>>;
+
+/// Async handler definition
+pub type AsyncHandler<S> =
+    fn(Arc<S>, Box<dyn erased::Deserializer<'static> + Send>) -> HandlerResultFut;
+
+/// Async trait objects to invoke a service
 pub type AsyncServiceCall = dyn Fn(String, Box<dyn erased::Deserializer<'static> + Send>) -> HandlerResultFut
     + Send
     + Sync
     + 'static;
+
+/// Arc wrapper of `AsyncServiceCall`
 pub type ArcAsyncServiceCall = Arc<AsyncServiceCall>;
+
+/// Hashmap of services. 
+/// 
+/// The keys are service names and the values are function trait objects `ArcAsyncServiceCall`
 pub type AsyncServiceMap = HashMap<&'static str, ArcAsyncServiceCall>;
 
+/// A RPC service that can hold an internal state
 pub struct Service<State>
 where
     State: Send + Sync + 'static,
@@ -37,16 +50,20 @@ impl<State> Service<State>
 where
     State: Send + Sync + 'static,
 {
+    /// Creates a `ServiceBuilder`
     pub fn builder() -> ServiceBuilder<State, BuilderUninitialized> {
         ServiceBuilder::new()
     }
 }
 
+/// The `HandleService` trait provides the method `call` which will execute the 
+/// RPC method
 #[async_trait]
 pub trait HandleService<State>
 where
     State: Send + Sync + 'static,
 {
+    /// Returns a reference to the internal state
     fn get_state(&self) -> Arc<State>;
     fn get_method(&self, name: &str) -> Option<AsyncHandler<State>>;
 

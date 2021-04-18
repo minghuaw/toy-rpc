@@ -5,17 +5,17 @@
 use cfg_if::cfg_if;
 use erased_serde as erased;
 use std::collections::HashMap;
-use std::sync::Arc;
 use std::io::ErrorKind;
+use std::sync::Arc;
 
 use crate::codec::ServerCodec;
 use crate::error::Error;
-use crate::message::{MessageId, RequestHeader, ResponseHeader, ErrorMessage};
+use crate::message::{ErrorMessage, MessageId, RequestHeader, ResponseHeader};
 use crate::service::{
-    ArcAsyncServiceCall, AsyncServiceMap, HandleService, HandlerResult, HandlerResultFut,
-    build_service,
+    build_service, ArcAsyncServiceCall, AsyncServiceMap, HandleService, HandlerResult,
+    HandlerResultFut,
 };
-use crate::util::{RegisterService};
+use crate::util::RegisterService;
 
 #[cfg(all(feature = "http_actix_web"))]
 #[cfg_attr(doc, doc(cfg(feature = "http_actix_web")))]
@@ -102,8 +102,8 @@ impl Server {
                     ConnectionStatus::KeepReading => {}
                     ConnectionStatus::Stop => {
                         log::debug!("Stop serving codec");
-                        return Ok(())
-                    },
+                        return Ok(());
+                    }
                 },
                 Err(err) => {
                     log::error!("Error encountered serving codec: '{}'", err);
@@ -126,11 +126,12 @@ impl Server {
                 let deserializer = match codec.read_request_body().await {
                     Some(r) => r?,
                     None => {
-                        let err = Error::IoError(
-                            std::io::Error::new(ErrorKind::UnexpectedEof, "Failed to read message body")
-                        );
+                        let err = Error::IoError(std::io::Error::new(
+                            ErrorKind::UnexpectedEof,
+                            "Failed to read message body",
+                        ));
                         log::error!("{}", &err);
-                        return Err(err)
+                        return Err(err);
                     }
                 };
 
@@ -144,12 +145,17 @@ impl Server {
                     None => {
                         Self::send_response(codec, id, Err(Error::MethodNotFound)).await?;
                         log::error!("Method not supplied from request: '{}'", service_method);
-                        return Ok(ConnectionStatus::KeepReading)
+                        return Ok(ConnectionStatus::KeepReading);
                     }
-                };  
+                };
                 let service = &service_method[..pos];
                 let method = &service_method[pos + 1..];
-                log::trace!("Message id: {}, service: {}, method: {}", id, service, method);
+                log::trace!(
+                    "Message id: {}, service: {}, method: {}",
+                    id,
+                    service,
+                    method
+                );
 
                 // [3] look up the service
                 // return early and send back Error::ServiceNotFound if key is not found
@@ -158,25 +164,29 @@ impl Server {
                     None => {
                         Self::send_response(codec, id, Err(Error::ServiceNotFound)).await?;
                         log::error!("Service not found: '{}'", service);
-                        return Ok(ConnectionStatus::KeepReading)
+                        return Ok(ConnectionStatus::KeepReading);
                     }
                 };
 
                 // [4] execute the call
                 let res: HandlerResult = {
                     // pass ownership to the `call`
-                    call(method.into(), deserializer).await
-                        .map_err(|err| {
-                            log::error!("Error found calling service: '{}', method: '{}', error: '{}'", service, method, err);
-                            match err {
-                                // if serde cannot parse request, the argument is likely mistaken
-                                Error::ParseError(e) => {
-                                    log::error!("ParseError {:?}", e);
-                                    Error::InvalidArgument
-                                },
-                                e @ _ => e
+                    call(method.into(), deserializer).await.map_err(|err| {
+                        log::error!(
+                            "Error found calling service: '{}', method: '{}', error: '{}'",
+                            service,
+                            method,
+                            err
+                        );
+                        match err {
+                            // if serde cannot parse request, the argument is likely mistaken
+                            Error::ParseError(e) => {
+                                log::error!("ParseError {:?}", e);
+                                Error::InvalidArgument
                             }
-                        })
+                            e @ _ => e,
+                        }
+                    })
                 };
 
                 // [5] send back result
@@ -213,7 +223,7 @@ impl Server {
                     Ok(m) => m,
                     Err(e) => {
                         log::error!("Cannot send back IoError or ParseError: {:?}", e);
-                        return Err(e)
+                        return Err(e);
                     }
                 };
 
@@ -306,8 +316,8 @@ impl ServerBuilder {
     ///     handle.await;
     /// }
     /// ```
-    pub fn register<S>(self, service: Arc<S>) -> Self 
-    where 
+    pub fn register<S>(self, service: Arc<S>) -> Self
+    where
         S: RegisterService + Send + Sync + 'static,
     {
         let service = build_service(service, S::handlers());
@@ -321,8 +331,8 @@ impl ServerBuilder {
         ret
     }
 
-    // pub fn register_with_name<S>(self, service: Arc<S>, name: &'static str) -> Self 
-    // where 
+    // pub fn register_with_name<S>(self, service: Arc<S>, name: &'static str) -> Self
+    // where
     //     S: RegisterService + Send + Sync + 'static,
     // {
     //     let service = build_service(service, S::handlers());

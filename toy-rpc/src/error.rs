@@ -41,7 +41,7 @@ impl Error {
             ErrorMessage::InvalidArgument => Self::InvalidArgument,
             ErrorMessage::ServiceNotFound => Self::ServiceNotFound,
             ErrorMessage::MethodNotFound => Self::MethodNotFound,
-            ErrorMessage::ExecutionError(s) => Self::ExecutionError(s)
+            ErrorMessage::ExecutionError(s) => Self::ExecutionError(s),
         }
     }
 }
@@ -60,8 +60,8 @@ impl Error {
 // }
 
 // impl std::fmt::Display for Error {
-//     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {    
-    
+//     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+
 //     }
 // }
 
@@ -145,7 +145,6 @@ impl Error {
 //     }
 // }
 
-
 impl From<ErrorMessage> for Error {
     fn from(msg: ErrorMessage) -> Self {
         Self::from_err_msg(msg)
@@ -205,12 +204,7 @@ impl From<Error> for actix_web::Error {
 
 impl From<tungstenite::Error> for crate::error::Error {
     fn from(err: tungstenite::Error) -> Self {
-        Self::IoError(
-            std::io::Error::new(
-                ErrorKind::InvalidData,
-                err.to_string()
-            )
-        )
+        Self::IoError(std::io::Error::new(ErrorKind::InvalidData, err.to_string()))
     }
 }
 

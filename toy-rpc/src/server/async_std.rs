@@ -138,7 +138,7 @@ cfg_if! {
             }
 
             async fn accept_ws_connection(stream: TcpStream, services: Arc<AsyncServiceMap>) {
-                let ws_stream = async_tungstenite::accept_async(stream).await        
+                let ws_stream = async_tungstenite::accept_async(stream).await
                         .expect("Error during the websocket handshake occurred");
                     log::trace!("Established WebSocket connection.");
 

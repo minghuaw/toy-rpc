@@ -39,24 +39,24 @@
 //! ### 0.6.0
 //!
 //! **Breaking Changes**
-//! 
+//!
 //! - In short, this update makes the crate resemble closer to the usage of `go`'s `net/rpc` package
-//! - Service registration is simplified to `Server::builder().register(foo_service).build()`. The examples will be 
+//! - Service registration is simplified to `Server::builder().register(foo_service).build()`. The examples will be
 //! updated accordingly. Thus
 //!     - `service!()` macro will be deprecated
 //!     - `register` function now takes only one argument, which is the instance of the service
-//!     - on the client side, the service name will just be the name of the struct. for example, 
-//!         to call a RPC method on `struct Foo { }` service, the client simply uses 
+//!     - on the client side, the service name will just be the name of the struct. for example,
+//!         to call a RPC method on `struct Foo { }` service, the client simply uses
 //!         `.async_call("Foo.<method>").await` where `<method>` should be replaced with the RPC method
-//!     - you can still register multiple services on the same server. However, only one object of the same type 
+//!     - you can still register multiple services on the same server. However, only one object of the same type
 //!         can be registered on the same server. Multiple servers are needed to have multiple objects of the same type.
 //! - Re-defined the custom `Error` type
-//! 
+//!
 //! Non-breaking changes
-//! 
+//!
 //! - Fixed bug where client does not interpret error message correctly
 //! - Fixed bug with `accept_websocket` crashes with incorrect protocol
-//! 
+//!
 //! ## Crate Feature Flags
 //!
 //! The feature flags can be put into two categories.
@@ -110,12 +110,12 @@
 //! To export a method, use `#[export_method]` attribute in an impl block marked with
 //! `#[export_impl]` attribute. This crate currently `only` support using `#[export_impl]` attribute
 //! on `one` impl block per type. Please note that the service name and method name is case
-//! sensitive (ie. the "exported" service and method in the example below can be remotely 
+//! sensitive (ie. the "exported" service and method in the example below can be remotely
 //! accessed via `"ExampleService.exported_method"`).
 //!
 //! ```rust
 //! use toy_rpc::macros::export_impl;
-//! 
+//!
 //! struct ExampleService { }
 //!
 //! #[export_impl]
@@ -211,10 +211,10 @@
 //! ## HTTP integrations
 //!
 //! Similar to choosing the runtimes, `toy-rpc` supports integration with `actix-web`, `tide`,
-//! and `warp` by choosing the corresponding feature flag (`http_actix_web`, `http_tide`, 
+//! and `warp` by choosing the corresponding feature flag (`http_actix_web`, `http_tide`,
 //! `http_warp`). Starting from version `0.5.0-beta.0` the integration is implemented using
 //! WebSocket as the transport protocol, and the `DEFAULT_RPC_SERVER=_rpc_` is appended to the path you
-//! supply to the HTTP framework. The client side support is now based on `async_tungstenite`. 
+//! supply to the HTTP framework. The client side support is now based on `async_tungstenite`.
 //! Please note that `toy-rpc` versions >=`0.5.0-beta.0` are **NOT** compatible
 //! with versions <`0.5.0-beta.0`. The [examples](#examples) below are also updated to reflect
 //! the changes.
@@ -223,8 +223,8 @@
 //!
 //! The `#[export_impl]` macro now also generates client stubs that internally uses `async_call`.
 //! For example, if the `Example {}` service is registered on the server with the `echo(&self, arg: u32)` method.
-//! If you want to call the `echo()` RPC method on the `Example {}` service, you 
-//! can conveniently use `client.example().echo(3).await.unwrap()`. The generated stub follows the 
+//! If you want to call the `echo()` RPC method on the `Example {}` service, you
+//! can conveniently use `client.example().echo(3).await.unwrap()`. The generated stub follows the
 //! snake case, for example
 //!     - if a service is defined as `pub struct Foo {}`, the generated stub will be `foo()`
 //!     - if a service is defined as `pub struct FooBar {}`, the generated stub will be `foo_bar()`
@@ -244,15 +244,15 @@
 //!         }
 //!     }
 //! }
-//! 
+//!
 //! // import everything from the `rpc` mod to include the generated client stub
 //! use rpc::*;
-//! 
-//! #[async_std::main] 
+//!
+//! #[async_std::main]
 //! async fn main() {
 //!     let addr = "127.0.0.1:23333";
 //!     let client = Client::dial(addr).await.unwrap();
-//! 
+//!
 //!     // The generated client stub will provide a function `example()`
 //!     // for convenience.
 //!     // The line below is equivalent to `let reply = client.async_call("Example.echo", 3).await.unwrap();`
@@ -298,12 +298,12 @@
 //!     use serde::{Serialize, Deserialize};
 //!     use toy_rpc::macros::export_impl;
 //!     use async_trait::async_trait;
-//! 
+//!
 //!     // uncomment the line below for the examples that use tokio runtime
-//!     // use tokio::sync::Mutex; 
+//!     // use tokio::sync::Mutex;
 //!     
 //!     // uncomment the line below for the examples that use async-std runtime
-//!     // use async_std::sync::Mutex; 
+//!     // use async_std::sync::Mutex;
 //!
 //!     pub struct ExampleService {
 //!         pub counter: Mutex<i32>
@@ -371,7 +371,7 @@
 //!
 //!     // notice that the`service!()` macro is no longer needed
 //!     let server = Server::builder()
-//!         .register(example_service) 
+//!         .register(example_service)
 //!         .build();
 //!
 //!     let listener = TcpListener::bind(addr).await.unwrap();
@@ -480,7 +480,7 @@
 //!     let client = Client::dial(addr).await.unwrap();
 //!
 //!     let args = rpc::ExampleRequest{a: 1};
-//! 
+//!
 //!     // Use synchronous call
 //!     let reply: Result<rpc::ExampleResponse, Error> = client.call("Example.echo", &args);
 //!     println!("{:?}", reply);
@@ -688,34 +688,34 @@
 //! ```
 //!
 //! ## Change Log
-//! 
+//!
 //! ### 0.6.0
 //!
 //! **Breaking Changes**
-//! 
+//!
 //! - In short, this update makes the crate resemble closer to the usage of `go`'s `net/rpc` package
-//! - Service registration is simplified to `Server::builder().register(foo_service).build()`. The examples will be 
+//! - Service registration is simplified to `Server::builder().register(foo_service).build()`. The examples will be
 //! updated accordingly. Thus
 //!     - `service!()` macro will be deprecated
 //!     - `register` function now takes only one argument, which is the instance of the service
-//!     - on the client side, the service name will just be the name of the struct. for example, 
-//!         to call a RPC method on `struct Foo { }` service, the client simply uses 
+//!     - on the client side, the service name will just be the name of the struct. for example,
+//!         to call a RPC method on `struct Foo { }` service, the client simply uses
 //!         `.async_call("Foo.<method>").await` where `<method>` should be replaced with the RPC method
-//!     - you can still register multiple services on the same server. However, only one object of the same type 
+//!     - you can still register multiple services on the same server. However, only one object of the same type
 //!         can be registered on the same server. Multiple servers are needed to have multiple objects of the same type.
 //! - Re-defined the custom `Error` type
-//! 
+//!
 //! Non-breaking changes
-//! 
+//!
 //! - Fixed bug where client does not interpret error message correctly
 //! - Fixed bug with `accept_websocket` crashes with incorrect protocol
 //!
 //! ### 0.5.4
-//! 
+//!
 //! - Handlers are now stored as a `fn` pointer as opposed to a trait object.
 //!
 //! ### 0.5.3
-//! 
+//!
 //! - The `#[export_impl]` macro now generates client stub functions by generating a new trait for `toy_rpc::Client`.
 //!
 //! ### 0.5.0
@@ -836,6 +836,6 @@ cfg_if! {
 pub use error::Error;
 
 // re-export
-pub use serde;
 pub use erased_serde;
 pub use lazy_static;
+pub use serde;

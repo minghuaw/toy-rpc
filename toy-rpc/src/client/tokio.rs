@@ -396,7 +396,7 @@ impl Client<Connected> {
         if let Some(header) = codec.read_response_header().await {
             // [1] destructure response header
             let ResponseHeader { id, is_error } = header?;
-            
+
             // [2] get response body and deserialize
             let deserializer =
                 codec
@@ -417,7 +417,9 @@ impl Client<Connected> {
             let mut _pending = pending.lock().await;
             if let Some(done_sender) = _pending.remove(&id) {
                 done_sender.send(res).map_err(|_| {
-                    Error::Internal("InternalError: client failed to send response over channel".into())
+                    Error::Internal(
+                        "InternalError: client failed to send response over channel".into(),
+                    )
                 })?;
             }
         }
@@ -435,10 +437,15 @@ impl Client<Connected> {
         // wait for result from oneshot channel
         let res = match done.try_recv() {
             Ok(r) => r,
-            Err(e) => return Err(Error::Internal(
-                format!("Failed to read from done channel for id; {} with error: {}", id, e)
-                .into()
-            ))
+            Err(e) => {
+                return Err(Error::Internal(
+                    format!(
+                        "Failed to read from done channel for id; {} with error: {}",
+                        id, e
+                    )
+                    .into(),
+                ))
+            }
         };
 
         match res {

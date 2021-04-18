@@ -177,13 +177,10 @@ impl<R: AsyncRead + Unpin + Send + Sync> FrameRead for R {
         let magic = &mut [0];
         let _ = self.read_exact(magic).await.ok()?;
         if magic[0] != MAGIC {
-            return Some(
-                Err(
-                    Error::IoError(
-                        std::io::Error::new(ErrorKind::InvalidData, INVALID_PROTOCOL)
-                    )
-                )
-            );
+            return Some(Err(Error::IoError(std::io::Error::new(
+                ErrorKind::InvalidData,
+                INVALID_PROTOCOL,
+            ))));
         }
 
         // read header
@@ -219,16 +216,14 @@ impl<W: AsyncWrite + Unpin + Send + Sync> FrameWrite for W {
 
         // check if buf length exceed maximum
         if payload.len() > PayloadLen::MAX as usize {
-            return Err(Error::IoError(
-                std::io::Error::new(
-                    ErrorKind::InvalidData, 
-                    format!(
-                        "Payload length exceeded maximum. Max is {}, found {}",
-                        PayloadLen::MAX,
-                        payload.len()
-                    )
-                )
-            ));
+            return Err(Error::IoError(std::io::Error::new(
+                ErrorKind::InvalidData,
+                format!(
+                    "Payload length exceeded maximum. Max is {}, found {}",
+                    PayloadLen::MAX,
+                    payload.len()
+                ),
+            )));
         }
 
         // construct frame header

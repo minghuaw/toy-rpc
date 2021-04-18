@@ -11,7 +11,7 @@
 // async fn test_client(base: &str) -> Result<()> {
 //     // let _ = ready.try_recv()?.expect("Error receiving ready");
 //     // println!("Client received ready");
-    
+
 //     actix_rt::time::delay_for(std::time::Duration::from_secs(2)).await;
 
 //     let addr = format!("ws://{}/rpc/", base);

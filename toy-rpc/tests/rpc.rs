@@ -2,8 +2,8 @@
 
 use serde::{Deserialize, Serialize};
 
-use toy_rpc::macros::export_impl;
 use toy_rpc::client::{Client, Connected};
+use toy_rpc::macros::export_impl;
 
 pub const COMMON_TEST_MAGIC_U8: u8 = 167;
 pub const COMMON_TEST_MAGIC_U16: u16 = 512;
@@ -223,9 +223,7 @@ pub async fn test_get_magic_str(client: &Client<Connected>) {
 }
 
 pub async fn test_service_not_found(client: &Client<Connected>) {
-    let reply: Result<(), toy_rpc::Error> = client
-        .async_call("UndefinedService.method", ())
-        .await;
+    let reply: Result<(), toy_rpc::Error> = client.async_call("UndefinedService.method", ()).await;
     let expected = toy_rpc::Error::ServiceNotFound;
     match reply {
         Ok(_) => panic!("Expecting an error"),
@@ -237,9 +235,7 @@ pub async fn test_service_not_found(client: &Client<Connected>) {
 
 pub async fn test_method_not_found(client: &Client<Connected>) {
     let service_method = format!("{}.undefined_method", COMMON_TEST_SERVICE_NAME);
-    let reply: Result<(), toy_rpc::Error> = client
-        .async_call(service_method, ())
-        .await;
+    let reply: Result<(), toy_rpc::Error> = client.async_call(service_method, ()).await;
     let expected = toy_rpc::Error::MethodNotFound;
     match reply {
         Ok(_) => panic!("Expecting an error"),
@@ -251,9 +247,7 @@ pub async fn test_method_not_found(client: &Client<Connected>) {
 
 pub async fn test_imcomplete_service_method(client: &Client<Connected>) {
     let service_method = format!("{}", COMMON_TEST_SERVICE_NAME);
-    let reply: Result<(), toy_rpc::Error> = client
-        .async_call(service_method, ())
-        .await;
+    let reply: Result<(), toy_rpc::Error> = client.async_call(service_method, ()).await;
     let expected = toy_rpc::Error::MethodNotFound;
     match reply {
         Ok(_) => panic!("Expecting an error"),
@@ -265,9 +259,7 @@ pub async fn test_imcomplete_service_method(client: &Client<Connected>) {
 
 pub async fn test_execution_error(client: &Client<Connected>) {
     let val = "an error message".to_string();
-    let reply = client.common_test()
-        .echo_error(&val)
-        .await;
+    let reply = client.common_test().echo_error(&val).await;
     let expected = toy_rpc::Error::ExecutionError(val);
     match reply {
         Ok(_) => panic!("Expecting an error"),
@@ -280,4 +272,3 @@ pub async fn test_execution_error(client: &Client<Connected>) {
 pub fn simply_panic() {
     panic!("just panics");
 }
-

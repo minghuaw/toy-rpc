@@ -38,9 +38,7 @@ async fn run(addr: &'static str) {
     let common_test_service = Arc::new(rpc::CommonTest::new());
 
     // start testing server
-    let server = Server::builder()
-        .register(common_test_service)
-        .build();
+    let server = Server::builder().register(common_test_service).build();
 
     let listener = TcpListener::bind(addr)
         .await

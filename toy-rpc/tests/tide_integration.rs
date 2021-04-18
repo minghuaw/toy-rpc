@@ -1,5 +1,5 @@
-use async_std::sync::Arc;
 use anyhow::Result;
+use async_std::sync::Arc;
 use async_std::task;
 use futures::channel::oneshot::{channel, Receiver};
 
@@ -10,9 +10,10 @@ mod rpc;
 async fn test_client(base: &str, mut ready: Receiver<()>) -> Result<()> {
     let _ = ready.try_recv()?.expect("Error receiving ready");
     println!("Client received ready");
-    
+
     let addr = format!("ws://{}/rpc/", base);
-    let client = Client::dial_http(&addr).await
+    let client = Client::dial_http(&addr)
+        .await
         .expect("Error dialing http server");
 
     rpc::test_get_magic_u8(&client).await;
@@ -39,9 +40,7 @@ async fn run(base: &'static str) {
     let common_test_service = Arc::new(rpc::CommonTest::new());
 
     // start testing server
-    let server = Server::builder()
-        .register(common_test_service)
-        .build();
+    let server = Server::builder().register(common_test_service).build();
 
     let mut app = tide::new();
     app.at("/rpc/").nest(server.into_endpoint());

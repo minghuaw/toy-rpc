@@ -1,7 +1,7 @@
 //! Custom definition of rpc request and response headers
 
 use serde::{Deserialize, Serialize};
-use std::{sync::atomic::AtomicU16};
+use std::sync::atomic::AtomicU16;
 
 use crate::error::Error;
 
@@ -65,4 +65,3 @@ impl ErrorMessage {
         }
     }
 }
-

@@ -196,7 +196,7 @@ cfg_if! {
                 Self::with_codec(codec)
             }
         }
-    } 
+    }
 }
 
 impl Client<NotConnected> {
@@ -409,7 +409,9 @@ impl Client<Connected> {
             let mut _pending = pending.lock().await;
             if let Some(done_sender) = _pending.remove(&id) {
                 done_sender.send(res).map_err(|_| {
-                    Error::Internal("InternalError: client failed to send response over channel".into())
+                    Error::Internal(
+                        "InternalError: client failed to send response over channel".into(),
+                    )
                 })?;
             }
         }
@@ -430,13 +432,11 @@ impl Client<Connected> {
                 Some(r) => r,
                 None => {
                     return Err(Error::Internal(
-                        format!("Failed to read from done channel for id {}.", &id).into()
+                        format!("Failed to read from done channel for id {}.", &id).into(),
                     ))
                 }
             },
-            Err(e) => {
-                return Err(Error::Internal(e.into()))
-            }
+            Err(e) => return Err(Error::Internal(e.into())),
         };
 
         // deserialize Ok message and Err message

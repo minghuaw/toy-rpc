@@ -13,7 +13,8 @@ async fn test_client(base: &'static str, mut ready: Receiver<()>) -> Result<()> 
 
     println!("Client received ready");
 
-    let client = Client::dial_websocket(&addr).await
+    let client = Client::dial_websocket(&addr)
+        .await
         .expect("Error dialing server");
 
     rpc::test_get_magic_u8(&client).await;
@@ -41,9 +42,7 @@ async fn run(base: &'static str) {
     let common_test_service = Arc::new(rpc::CommonTest::new());
 
     // start testing server
-    let server = Server::builder()
-        .register(common_test_service)
-        .build();
+    let server = Server::builder().register(common_test_service).build();
 
     let listener = TcpListener::bind(addr)
         .await

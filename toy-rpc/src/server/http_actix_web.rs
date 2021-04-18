@@ -8,8 +8,8 @@ use actix_web_actors::ws;
 
 use crate::{
     codec::{ConnTypePayload, EraseDeserializer, Marshal, Unmarshal},
-    error::{Error},
-    message::{ResponseHeader, ErrorMessage},
+    error::Error,
+    message::{ErrorMessage, ResponseHeader},
 };
 
 use super::{
@@ -94,13 +94,21 @@ where
                                         e
                                     ),
                                 };
-                                log::error!("Method not supplied from request: '{}'", service_method);
+                                log::error!(
+                                    "Method not supplied from request: '{}'",
+                                    service_method
+                                );
                                 return;
                             }
                         };
                         let service = service_method[..pos].to_owned();
                         let method = service_method[pos + 1..].to_owned();
-                        log::trace!("Message id: {}, service: {}, method: {}", id, service, method);
+                        log::trace!(
+                            "Message id: {}, service: {}, method: {}",
+                            id,
+                            service,
+                            method
+                        );
 
                         // [3] look up the service
                         // return early and send back Error::ServiceNotFound if key is not found
@@ -123,18 +131,22 @@ where
                         // [4] execute the call
                         let actor_addr = ctx.address().recipient();
                         let future = async move {
-                            let res = call(method.clone(), deserializer).await
-                                .map_err(|err| {
-                                    log::error!("Error found calling service: '{}', method: '{}', error: '{}'", service, method, err);
-                                    match err {
-                                        // if serde cannot parse request, the argument is likely mistaken
-                                        Error::ParseError(e) => {
-                                            log::error!("ParseError {:?}", e);
-                                            Error::InvalidArgument
-                                        },
-                                        e @ _ => e
+                            let res = call(method.clone(), deserializer).await.map_err(|err| {
+                                log::error!(
+                                    "Error found calling service: '{}', method: '{}', error: '{}'",
+                                    service,
+                                    method,
+                                    err
+                                );
+                                match err {
+                                    // if serde cannot parse request, the argument is likely mistaken
+                                    Error::ParseError(e) => {
+                                        log::error!("ParseError {:?}", e);
+                                        Error::InvalidArgument
                                     }
-                                });
+                                    e @ _ => e,
+                                }
+                            });
 
                             match actor_addr.do_send(HandlerResultMessage { id, res }) {
                                 Ok(_) => (),
@@ -183,7 +195,7 @@ where
                     Ok(m) => m,
                     Err(e) => {
                         log::error!("Cannot send back IoError or ParseError: {:?}", e);
-                        return Err(e)
+                        return Err(e);
                     }
                 };
 
