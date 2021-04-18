@@ -1,11 +1,11 @@
 [package]
 name = "toy-rpc"
-version = "0.6.0"
+version = "0.6.1"
 authors = ["Minghua Wu <michael.wu1107@gmail.com>"]
 edition = "2018"
 description = "An async RPC that mimics golang net/rpc's usage and supports both async-std and tokio"
 license = "MIT/Apache-2.0"
-documentation = "https://docs.rs/toy-rpc/0.6.0/toy_rpc/"
+documentation = "https://docs.rs/toy-rpc/0.6.1/toy_rpc/"
 homepage = "https://github.com/minghuaw/toy-rpc"
 repository = "https://github.com/minghuaw/toy-rpc"
 keywords = ["async", "rpc", "go", "async-std", "tokio"]
@@ -55,8 +55,8 @@ warp = { version = "0.3" }
 
 [dependencies]
 # local imports
-toy-rpc-macros = { version = "0.4.1", path="../macros" }
-# toy-rpc-macros = "0.4.0"
+# toy-rpc-macros = { version = "0.4.1", path="../macros" }
+toy-rpc-macros = "0.4.1"
 
 # feature gated optional dependecies
 serde_json = { version = "1.0", optional = true }
