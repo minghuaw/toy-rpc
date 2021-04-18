@@ -150,25 +150,6 @@ impl Frame {
     }
 }
 
-// #[pin_project]
-// pub struct FrameStream<'r, T>
-// where
-//     T: Send + Sync + Unpin,
-// {
-//     #[pin]
-//     inner: &'r mut T,
-//     header: Option<FrameHeader>,
-// }
-
-// #[pin_project]
-// pub struct FrameSink<'w, T>
-// where
-//     T: Send + Sync + Unpin,
-// {
-//     #[pin]
-//     inner: &'w mut T,
-//     buf: Vec<u8>,
-// }
 
 #[async_trait]
 impl<R: AsyncRead + Unpin + Send + Sync> FrameRead for R {
