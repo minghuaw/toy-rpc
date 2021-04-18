@@ -50,7 +50,7 @@ cfg_if! {
             fn from_bytes(buf: Vec<u8>) -> Box<dyn erased::Deserializer<'static> + Send> {
                 let de = rmp_serde::Deserializer::new(Cursor::new(buf));
                 let de_owned = DeserializerOwned::new(de);
-                Box::new(erased::Deserializer::erase(de_owned))
+                Box::new(<dyn erased::Deserializer>::erase(de_owned))
             }
         }
     }

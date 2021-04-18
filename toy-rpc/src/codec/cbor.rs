@@ -46,7 +46,7 @@ cfg_if! {
                 let de = serde_cbor::Deserializer::from_reader(Cursor::new(buf));
 
                 let de_owned = DeserializerOwned::new(de);
-                Box::new(erased::Deserializer::erase(de_owned))
+                Box::new(<dyn erased::Deserializer>::erase(de_owned))
             }
         }
     }
