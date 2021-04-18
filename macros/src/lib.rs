@@ -1,4 +1,6 @@
 //! Provides proc_macros for toy-rpc.
+//! 
+//! This is exported in `toy_rpc` as the `toy_rpc::macros` module.
 
 use proc_macro::TokenStream;
 use quote::{ToTokens, quote};

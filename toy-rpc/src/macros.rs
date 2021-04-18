@@ -1,6 +1,6 @@
 //! Re-export of proc_macros defined in `toy_rpc_macros`
 
-pub use toy_rpc_macros::{export_impl, service};
+pub use toy_rpc_macros::{export_impl};
 
 #[cfg(all(
     any(
