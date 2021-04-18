@@ -654,10 +654,6 @@ fn generate_register_service_impl(ident: &Ident) -> impl ToTokens {
     ret
 }
 
-#[deprecated(
-    since = "0.3.0",
-    note = "Service can be registered without explicitly using the service macro"
-)]
 struct ServiceExport {
     instance_id: syn::Ident,
     impl_path: syn::Path,
