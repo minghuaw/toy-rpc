@@ -324,11 +324,10 @@ impl ServerBuilder {
     where
         S: RegisterService + Send + Sync + 'static,
     {
-        let service = build_service(service, S::handlers());
-        self.register_service(S::default_name(), service)
+        self.register_with_name(S::default_name(), service)
     }
 
-    /// Register a `Service` instance. This allows registering multiple instances
+    /// Register a a service with a name. This allows registering multiple instances
     /// of the same type on the server. 
     /// 
     /// Example
@@ -354,16 +353,10 @@ impl ServerBuilder {
     ///     let foo1 = Arc::new(Foo { });
     ///     let foo2 = Arc::new(Foo { });
     /// 
-    ///     // construct `Service` for `foo2`
-    ///     let foo2_service = Service::builder()
-    ///         .register_state(foo2)
-    ///         .register_handlers(Foo::handlers())
-    ///         .build();
-    /// 
     ///     // construct server
     ///     let server = Server::builder()
     ///         .register(foo1) // this will register `foo1` with the default name `Foo`
-    ///         .register_service("Foo2", foo2_service)
+    ///         .register_with_name("Foo2", foo2) // this will register `foo2` with the name `Foo2`
     ///         .build();
     /// 
     ///     let addr = "127.0.0.1:8080";
@@ -376,6 +369,16 @@ impl ServerBuilder {
     ///     handle.await;
     /// }
     /// ```
+    pub fn register_with_name<S>(self, name: &'static str, service: Arc<S>) -> Self 
+    where 
+        S: RegisterService + Send + Sync + 'static
+    {
+        let service = build_service(service, S::handlers());
+        self.register_service(name, service)
+    }
+    
+    /// Register a `Service` instance. This allows registering multiple instances
+    /// of the same type on the server. 
     pub fn register_service<S>(self, name: &'static str, service: Service<S>) -> Self 
     where 
         S: Send + Sync + 'static
@@ -383,26 +386,12 @@ impl ServerBuilder {
         let call = move |method_name: String,
                          _deserializer: Box<(dyn erased::Deserializer<'static> + Send)>|
               -> HandlerResultFut { service.call(&method_name, _deserializer) };
-
+    
         log::debug!("Registering service: {}", name);
         let mut builder = self;
         builder.services.insert(name, Arc::new(call));
         builder
     }
-
-    // pub fn register_with_name<S>(self, service: Arc<S>, name: &'static str) -> Self
-    // where
-    //     S: RegisterService + Send + Sync + 'static,
-    // {
-    //     let service = build_service(service, S::handlers());
-    //     let call = move |method_name: String,
-    //                      _deserializer: Box<(dyn erased::Deserializer<'static> + Send)>|
-    //           -> HandlerResultFut { service.call(&method_name, _deserializer) };
-
-    //     let mut ret = self;
-    //     ret.services.insert(name, Arc::new(call));
-    //     ret
-    // }
 
     /// Creates an RPC `Server`
     pub fn build(self) -> Server {

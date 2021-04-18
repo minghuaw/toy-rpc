@@ -39,8 +39,8 @@ The most recent breaking changes will be reflected here. Change logs can be foun
 Non-breaking change
 
 - Multiple objects of the same types can be registered on the same server again, but you will need to
-use the `ServerBuilder::register_service` method as opposed to the regular `ServerBuilder::register`.
-More details can be found in `ServerBuilder::register_service`'s documentation.
+use the `ServerBuilder::register_with_name` method as opposed to the regular `ServerBuilder::register`.
+More details can be found in `ServerBuilder::register_with_name`'s documentation.
 
 #### 0.6.0
 
@@ -112,9 +112,9 @@ registers an object, making it visible as a service with the name of the type of
 After the registration, the "exported" methods will be accessible remotely.
 A server may register multiple objects (services) of **different** types If multiple
 objects (services) of the same type need to be registered, you will need to use the
-`ServerBuilder::register_service` method instead of the regular
+`ServerBuilder::register_with_name` method instead of the regular
 `ServerBuilder::register` method. More details can be found in
-`ServerBuilder::register_service`'s documentation.
+`ServerBuilder::register_with_name`'s documentation.
 
 To export a method, use `#[export_method]` attribute in an impl block marked with
 `#[export_impl]` attribute. This crate currently `only` support using `#[export_impl]` attribute
@@ -230,7 +230,9 @@ the changes.
 
 ### Client Stub
 
-The `#[export_impl]` macro now also generates client stubs that internally uses `async_call`.
+The `#[export_impl]` macro now also generates client stubs that internally uses `async_call`. Please
+note that the client stub will only use the default service name. If the client is trying to access RPC
+method on a service that is registered under a non-default name, the generated client stub will NOT work.
 For example, if the `Example {}` service is registered on the server with the `echo(&self, arg: u32)` method.
 If you want to call the `echo()` RPC method on the `Example {}` service, you
 can conveniently use `client.example().echo(3).await.unwrap()`. The generated stub follows the
@@ -701,8 +703,8 @@ async fn main() {
 #### 0.6.1
 
 - Multiple objects of the same types can be registered on the same server again, but you will need to
-use the `ServerBuilder::register_service` method as opposed to the regular `ServerBuilder::register`.
-More details can be found in `ServerBuilder::register_service`'s documentation.
+use the `ServerBuilder::register_with_name` method as opposed to the regular `ServerBuilder::register`.
+More details can be found in `ServerBuilder::register_with_name`'s documentation.
 
 #### 0.6.0
 
