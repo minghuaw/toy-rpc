@@ -226,6 +226,8 @@ pub trait ServerCodec: Send + Sync {
         &mut self,
     ) -> Option<Result<Box<dyn erased::Deserializer<'static> + Send + 'static>, Error>>;
 
+    // (Probably) don't need to worry about header/body interleaving
+    // because rust guarantees only one mutable reference at a time
     async fn write_response(
         &mut self,
         header: ResponseHeader,
@@ -239,7 +241,9 @@ pub trait ClientCodec: GracefulShutdown + Send + Sync {
     async fn read_response_body(
         &mut self,
     ) -> Option<Result<Box<dyn erased::Deserializer<'static> + Send + 'static>, Error>>;
-
+    
+    // (Probably) don't need to worry about header/body interleaving
+    // because rust guarantees only one mutable reference at a time
     async fn write_request(
         &mut self,
         header: RequestHeader,
