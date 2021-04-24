@@ -15,6 +15,9 @@ use crate::error::Error;
 use crate::message::{GracefulShutdown, MessageId, Metadata, RequestHeader, ResponseHeader};
 use crate::transport::ws::{CanSink, SinkHalf, StreamHalf, WebSocketConn};
 
+mod split;
+use split::CodecSplit;
+
 cfg_if! {
     if #[cfg(feature = "http_tide")] {
         use tide_websockets as tide_ws;
@@ -142,10 +145,10 @@ cfg_if! {
 }
 
 #[cfg(any(feature = "async_std_runtime", feature = "tokio_runtime"))]
-/// type state for AsyncRead and AsyncWrite connections
+/// type state for AsyncRead and AsyncWrite connections (ie. raw TCP)
 pub(crate) struct ConnTypeReadWrite {}
 
-/// type state for PayloadRead and PayloadWrite connections
+/// type state for PayloadRead and PayloadWrite connections (ie. WebSocket)
 pub(crate) struct ConnTypePayload {}
 
 /// Default codec. `Codec` is re-exported as `DefaultCodec` when one of these feature
