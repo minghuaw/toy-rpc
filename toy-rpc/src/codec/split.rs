@@ -4,13 +4,6 @@ use std::marker::PhantomData;
 
 use super::*;
 
-pub trait CodecSplit<R, W, ConnType>
-where 
-    Self: Sized
-{
-    fn split(self) -> (CodecReadHalf<R, Self, ConnType>, CodecWriteHalf<W, Self, ConnType>);
-}
-
 pub struct CodecReadHalf<R, C, CT>{
     pub reader: R,
     marker: PhantomData<C>,
@@ -49,7 +42,7 @@ where
     }
 }
 
-impl<R, W, ConnType> CodecSplit<R, W, ConnType> for  Codec<R, W, ConnType> {
+impl<R, W, ConnType> Codec<R, W, ConnType> {
     fn split(self) -> (CodecReadHalf<R, Self, ConnType>, CodecWriteHalf<W, Self, ConnType>) {
         (
             CodecReadHalf {
