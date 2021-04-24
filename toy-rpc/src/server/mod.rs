@@ -123,33 +123,32 @@ impl Server {
         match codec.read_request_header().await {
             Some(header) => {
                 // [0] read request body
-                let deserializer = match codec.read_request_body().await {
-                    Some(r) => r?,
-                    None => {
-                        let err = Error::IoError(std::io::Error::new(
-                            ErrorKind::UnexpectedEof,
-                            "Failed to read message body",
-                        ));
-                        log::error!("{}", &err);
-                        return Err(err);
-                    }
-                };
+                let deserializer = Server::get_request_body_deserializer(codec).await?;
 
                 // [1] destructure header
                 let RequestHeader { id, service_method } = header?;
 
                 // [2] split service name and method name
                 // return early send back Error::MethodNotFound if no "." is found
-                let pos = match service_method.rfind('.') {
-                    Some(p) => p,
-                    None => {
-                        Self::send_response(codec, id, Err(Error::MethodNotFound)).await?;
-                        log::error!("Method not supplied from request: '{}'", service_method);
-                        return Ok(ConnectionStatus::KeepReading);
+                // let pos = match service_method.rfind('.') {
+                //     Some(p) => p,
+                //     None => {
+                //         Self::send_response(codec, id, Err(Error::MethodNotFound)).await?;
+                //         log::error!("Method not supplied from request: '{}'", service_method);
+                //         return Ok(ConnectionStatus::KeepReading);
+                //     }
+                // };
+                // let service = &service_method[..pos];
+                // let method = &service_method[pos + 1..];
+                let (service, method) = match Server::split_service_method(&service_method) {
+                    Ok(pair) => pair,
+                    Err(err) => {
+                        Server::send_response(codec, id, Err(err)).await?;
+                        // Can't return err because err doesn't impl Clone
+                        return Ok(ConnectionStatus::KeepReading); 
                     }
                 };
-                let service = &service_method[..pos];
-                let method = &service_method[pos + 1..];
+
                 log::trace!(
                     "Message id: {}, service: {}, method: {}",
                     id,
@@ -195,6 +194,38 @@ impl Server {
             }
             None => Ok(ConnectionStatus::Stop),
         }
+    }
+
+    async fn get_request_body_deserializer<C>(codec: &mut C) -> Result<Box<dyn erased::Deserializer<'static> + Send + 'static>, Error>
+    where 
+        C: ServerCodec + Send + Sync,
+    {
+        match codec.read_request_body().await {
+            Some(r) => r,
+            None => {
+                let err = Error::IoError(std::io::Error::new(
+                    ErrorKind::UnexpectedEof,
+                    "Failed to read message body",
+                ));
+                log::error!("{}", &err);
+                return Err(err);
+            }
+        }
+    }
+
+    fn split_service_method(service_method: &str) -> Result<(&str, &str), Error> {
+        let pos = match service_method.rfind('.') {
+            Some(p) => p,
+            None => {
+                // Self::send_response(codec, id, Err(Error::MethodNotFound)).await?;
+                log::error!("Method not supplied from request: '{}'", service_method);
+                // return Ok(ConnectionStatus::KeepReading);
+                return Err(Error::MethodNotFound)
+            }
+        };
+        let service = &service_method[..pos];
+        let method = &service_method[pos + 1..];
+        Ok((service, method))
     }
 
     /// Sends back the response with the specified codec
