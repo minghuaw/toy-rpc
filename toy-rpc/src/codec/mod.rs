@@ -15,8 +15,7 @@ use crate::error::Error;
 use crate::message::{GracefulShutdown, MessageId, Metadata, RequestHeader, ResponseHeader};
 use crate::transport::ws::{CanSink, SinkHalf, StreamHalf, WebSocketConn};
 
-mod split;
-use split::CodecSplit;
+pub mod split;
 
 cfg_if! {
     if #[cfg(feature = "http_tide")] {

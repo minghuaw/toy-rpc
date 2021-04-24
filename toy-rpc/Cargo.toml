@@ -85,6 +85,7 @@ url = "2.2.0"
 cfg-if = "1.0.0"
 tungstenite = "0.13.0"
 thiserror = "1.0.24"
+flume = "0.10.4"
 
 [[test]]
 name = "async_std_tcp"

@@ -66,71 +66,100 @@ impl<R, W, ConnType> CodecSplit<R, W, ConnType> for  Codec<R, W, ConnType> {
     }
 }
 
-#[async_trait]
-impl<R, C> CodecRead for CodecReadHalf<R, C, ConnTypeReadWrite> 
-where 
-    R: FrameRead + Send + Sync + Unpin,
-    C: Unmarshal + EraseDeserializer + Send
-{
-    async fn read_header<H>(&mut self) -> Option<Result<H, Error>>
-    where
-        H: serde::de::DeserializeOwned,
-    {
-        let reader = &mut self.reader;
 
-        Some(
-            reader
-                .read_frame()
-                .await?
-                .and_then(|frame| Self::unmarshal(&frame.payload)),
+cfg_if! {
+    if #[cfg(all(
+        any(feature = "async_std_runtime", feature = "tokio_runtime"),
+        any(
+            all(
+                feature = "serde_bincode",
+                not(feature = "serde_json"),
+                not(feature = "serde_cbor"),
+                not(feature = "serde_rmp"),
+            ),
+            all(
+                feature = "serde_cbor",
+                not(feature = "serde_json"),
+                not(feature = "serde_bincode"),
+                not(feature = "serde_rmp"),
+            ),
+            all(
+                feature = "serde_rmp",
+                not(feature = "serde_cbor"),
+                not(feature = "serde_json"),
+                not(feature = "serde_bincode"),
+            )
         )
-    }
+    ))] {
+        use crate::transport::frame::{Frame, PayloadType, FrameRead, FrameWrite};
 
-    async fn read_body(
-        &mut self,
-    ) -> Option<Result<Box<dyn erased::Deserializer<'static> + Send + 'static>, Error>> {
-        let reader = &mut self.reader;
-
-        match reader.read_frame().await? {
-            Ok(frame) => {
-                let de = C::from_bytes(frame.payload);
-                Some(Ok(de))
+        #[async_trait]
+        impl<R, C> CodecRead for CodecReadHalf<R, C, ConnTypeReadWrite> 
+        where 
+            R: FrameRead + Send + Sync + Unpin,
+            C: Unmarshal + EraseDeserializer + Send
+        {
+            async fn read_header<H>(&mut self) -> Option<Result<H, Error>>
+            where
+                H: serde::de::DeserializeOwned,
+            {
+                let reader = &mut self.reader;
+        
+                Some(
+                    reader
+                        .read_frame()
+                        .await?
+                        .and_then(|frame| Self::unmarshal(&frame.payload)),
+                )
             }
-            Err(e) => return Some(Err(e)),
+        
+            async fn read_body(
+                &mut self,
+            ) -> Option<Result<Box<dyn erased::Deserializer<'static> + Send + 'static>, Error>> {
+                let reader = &mut self.reader;
+        
+                match reader.read_frame().await? {
+                    Ok(frame) => {
+                        let de = C::from_bytes(frame.payload);
+                        Some(Ok(de))
+                    }
+                    Err(e) => return Some(Err(e)),
+                }
+            }
         }
-    }
-}
-
-#[async_trait]
-impl<W, C> CodecWrite for CodecWriteHalf<W, C, ConnTypeReadWrite> 
-where 
-    W: FrameWrite + Send + Sync + Unpin,
-    C: Marshal + Send,
-{
-    async fn write_header<H>(&mut self, header: H) -> Result<(), Error>
-    where
-        H: serde::Serialize + Metadata + Send,
-    {
-        let writer = &mut self.writer;
-
-        let id = header.get_id();
-        let buf = Self::marshal(&header)?;
-        let frame = Frame::new(id, 0, PayloadType::Header, buf);
-
-        writer.write_frame(frame).await
-    }
-
-    async fn write_body(
-        &mut self,
-        id: &MessageId,
-        body: &(dyn erased::Serialize + Send + Sync),
-    ) -> Result<(), Error> {
-        let writer = &mut self.writer;
-
-        let buf = Self::marshal(&body)?;
-        let frame = Frame::new(id.to_owned(), 1, PayloadType::Data, buf);
-
-        writer.write_frame(frame).await
+        
+        #[async_trait]
+        impl<W, C> CodecWrite for CodecWriteHalf<W, C, ConnTypeReadWrite> 
+        where 
+            W: FrameWrite + Send + Sync + Unpin,
+            C: Marshal + Send,
+        {
+            async fn write_header<H>(&mut self, header: H) -> Result<(), Error>
+            where
+                H: serde::Serialize + Metadata + Send,
+            {
+                let writer = &mut self.writer;
+        
+                let id = header.get_id();
+                let buf = Self::marshal(&header)?;
+                let frame = Frame::new(id, 0, PayloadType::Header, buf);
+        
+                writer.write_frame(frame).await
+            }
+        
+            async fn write_body(
+                &mut self,
+                id: &MessageId,
+                body: &(dyn erased::Serialize + Send + Sync),
+            ) -> Result<(), Error> {
+                let writer = &mut self.writer;
+        
+                let buf = Self::marshal(&body)?;
+                let frame = Frame::new(id.to_owned(), 1, PayloadType::Data, buf);
+        
+                writer.write_frame(frame).await
+            }
+        }
     }
 }
 
