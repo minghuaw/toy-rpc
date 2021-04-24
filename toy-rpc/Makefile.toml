@@ -14,9 +14,46 @@ run_task = [
 ]
 
 [tasks.test_async_std_tcp]
+run_task = [
+    { name = [
+        "test_async_std_tcp_bincode",
+        "test_async_std_tcp_json",
+        "test_async_std_tcp_cbor",
+        "test_async_std_tcp_rmp",
+    ] },
+]
+
+[tasks.test_async_std_tcp_bincode]
 command = "cargo"
 args = ["test", 
     "--features", "serde_bincode async_std_runtime", 
+    "--no-default-features", 
+    "--test", "async_std_tcp", 
+    "--", "--nocapture"
+]
+
+[tasks.test_async_std_tcp_json]
+command = "cargo"
+args = ["test", 
+    "--features", "serde_json async_std_runtime", 
+    "--no-default-features", 
+    "--test", "async_std_tcp", 
+    "--", "--nocapture"
+]
+
+[tasks.test_async_std_tcp_cbor]
+command = "cargo"
+args = ["test", 
+    "--features", "serde_cbor async_std_runtime", 
+    "--no-default-features", 
+    "--test", "async_std_tcp", 
+    "--", "--nocapture"
+]
+
+[tasks.test_async_std_tcp_rmp]
+command = "cargo"
+args = ["test", 
+    "--features", "serde_rmp async_std_runtime", 
     "--no-default-features", 
     "--test", "async_std_tcp", 
     "--", "--nocapture"
