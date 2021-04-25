@@ -3,7 +3,7 @@
 use serde::{Deserialize, Serialize};
 use std::sync::atomic::AtomicU16;
 
-use crate::error::Error;
+use crate::{codec::RequestDeserializer, error::Error, service::{ArcAsyncServiceCall, HandlerResult}};
 
 /// Type of message id is u16
 pub type MessageId = u16;
@@ -70,4 +70,17 @@ impl ErrorMessage {
             e @ Error::Internal(_) => Err(e),
         }
     }
+}
+
+pub(crate) struct ExecutionMessage {
+    pub call: ArcAsyncServiceCall,
+    pub id: MessageId,
+    // pub service: String,
+    pub method: String,
+    pub deserializer: RequestDeserializer,
+}
+
+pub(crate) struct ResultMessage {
+    pub id: MessageId,
+    pub result: HandlerResult
 }

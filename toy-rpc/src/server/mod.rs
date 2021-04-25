@@ -7,8 +7,9 @@ use erased_serde as erased;
 use std::collections::HashMap;
 use std::io::ErrorKind;
 use std::sync::Arc;
+use flume::{unbounded, Receiver, Sender};
 
-use crate::codec::ServerCodec;
+use crate::{codec::{ServerCodec, RequestDeserializer, split::{ServerCodecRead, ServerCodecSplit, ServerCodecWrite}}, message::{ExecutionMessage, ResultMessage}};
 use crate::error::Error;
 use crate::message::{ErrorMessage, MessageId, RequestHeader, ResponseHeader};
 use crate::service::{
@@ -88,6 +89,135 @@ impl Server {
     /// ```
     pub fn builder() -> ServerBuilder {
         ServerBuilder::new()
+    }
+
+    // Spawn tasks for the reader/broker/writer loops
+    fn serve_codec_setup<C>(mut codec: C, services: Arc<AsyncServiceMap>) -> Result<(), Error> 
+    where 
+        C: ServerCodecSplit
+    {
+        unimplemented!()
+    }
+
+    async fn serve_codec_reader_loop(
+        mut codec_reader: impl ServerCodecRead, 
+        services: Arc<AsyncServiceMap>,
+        executor: Sender<ExecutionMessage>,
+        writer: Sender<HandlerResult>,
+    ) -> Result<(), Error> {
+        // Keep reading until no header can be read
+        while let Some(header) = codec_reader.read_request_header().await {
+            // [0] read request body
+            let deserializer = Server::get_request_deserializer(&mut codec_reader).await?;
+            // [1] destructure header
+            let RequestHeader { id, service_method } = header?;
+            // [2] split service name and method name
+            let (service, method) = match Server::split_service_method(&service_method) {
+                Ok(pair) => pair,
+                Err(err) => {
+                    // should not stop the reader if the service is not found
+                    writer.send_async(Err(err)).await?;
+                    continue;
+                }
+            };
+            log::trace!("Message id: {}, service: {}, method: {}", id, service, method);
+            // [3] look up the service
+            let call: ArcAsyncServiceCall = match services.get(service) {
+                Some(serv_call) => serv_call.clone(),
+                None => {
+                    // should not stop the reader if the method is not found
+                    writer.send_async(Err(Error::ServiceNotFound)).await?;
+                    continue;
+                }
+            };
+            // [4] send to executor
+            executor.send_async(
+                ExecutionMessage {
+                    call,
+                    id, 
+                    // service: service.into(),
+                    method: method.into(),
+                    deserializer,
+                }
+            ).await?;
+        }
+        Ok(())
+    }
+
+    async fn serve_codec_executor_loop(
+        reader: Receiver<ExecutionMessage>,
+        writer: Sender<ResultMessage>
+    ) -> Result<(), Error> {
+        // [5] receive execution
+        while let Ok(execution) = reader.recv_async().await {
+            let ExecutionMessage{
+                call, 
+                id, 
+                // service,
+                method,
+                deserializer
+            } = execution;
+
+            // Execute the call
+            let result: HandlerResult = call(method, deserializer).await
+                .map_err(|err| {
+                    log::error!("Error found executing request id: {}, error msg: {}", &id, &err);
+                    match err {
+                        // if serde cannot parse request, the argument is likely mistaken
+                        Error::ParseError(e) => {
+                            log::error!("ParseError {:?}", e);
+                            Error::InvalidArgument
+                        }
+                        e @ _ => e,
+                    }
+                });
+
+            // [6] send result to response writer
+            writer.send_async(
+                ResultMessage {
+                    id,
+                    result
+                }
+            ).await?;
+        }
+        Ok(())
+    }
+
+    async fn serve_codec_writer_loop(
+        mut codec_writer: impl ServerCodecWrite,
+        results: Receiver<ResultMessage>,
+    ) -> Result<(), Error> {
+        // [7] send result back to client
+        while let Ok(msg) = results.recv_async().await {
+            let ResultMessage { 
+                id, 
+                result 
+            } = msg;
+
+            match result {
+                Ok(b) => {
+                    log::trace!("Message {} Success", &id);
+                    let header = ResponseHeader {
+                        id, 
+                        is_error: false,
+                    };
+                    codec_writer.write_response(header, &b).await?;
+                },
+                Err(err) => {
+                    log::trace!("Message {} Error", &id);
+                    let header = ResponseHeader { id, is_error: true };
+                    let msg = match ErrorMessage::from_err(err) {
+                        Ok(m) => m,
+                        Err(e) => {
+                            log::error!("Cannot send back IoError or ParseError: {:?}", e);
+                            continue;
+                        }
+                    };
+                    codec_writer.write_response(header, &msg).await?;
+                }
+            }
+        }
+        Ok(())
     }
 
     /// Serves using a specified codec
@@ -196,11 +326,27 @@ impl Server {
         }
     }
 
-    async fn get_request_body_deserializer<C>(codec: &mut C) -> Result<Box<dyn erased::Deserializer<'static> + Send + 'static>, Error>
+    async fn get_request_body_deserializer<C>(codec: &mut C) -> Result<RequestDeserializer, Error>
     where 
         C: ServerCodec + Send + Sync,
     {
         match codec.read_request_body().await {
+            Some(r) => r,
+            None => {
+                let err = Error::IoError(std::io::Error::new(
+                    ErrorKind::UnexpectedEof,
+                    "Failed to read message body",
+                ));
+                log::error!("{}", &err);
+                return Err(err);
+            }
+        }
+    }
+
+    async fn get_request_deserializer(
+        codec_reader: &mut impl ServerCodecRead
+    ) -> Result<RequestDeserializer, Error> {
+        match codec_reader.read_request_body().await {
             Some(r) => r,
             None => {
                 let err = Error::IoError(std::io::Error::new(

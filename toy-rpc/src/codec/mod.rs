@@ -17,6 +17,8 @@ use crate::transport::ws::{CanSink, SinkHalf, StreamHalf, WebSocketConn};
 
 pub mod split;
 
+pub(crate) type RequestDeserializer = Box<dyn erased::Deserializer<'static> + Send + 'static>;
+
 cfg_if! {
     if #[cfg(feature = "http_tide")] {
         use tide_websockets as tide_ws;
@@ -226,7 +228,7 @@ pub trait ServerCodec: Send + Sync {
     async fn read_request_header(&mut self) -> Option<Result<RequestHeader, Error>>;
     async fn read_request_body(
         &mut self,
-    ) -> Option<Result<Box<dyn erased::Deserializer<'static> + Send + 'static>, Error>>;
+    ) -> Option<Result<RequestDeserializer, Error>>;
 
     // (Probably) don't need to worry about header/body interleaving
     // because rust guarantees only one mutable reference at a time
@@ -242,7 +244,7 @@ pub trait ClientCodec: GracefulShutdown + Send + Sync {
     async fn read_response_header(&mut self) -> Option<Result<ResponseHeader, Error>>;
     async fn read_response_body(
         &mut self,
-    ) -> Option<Result<Box<dyn erased::Deserializer<'static> + Send + 'static>, Error>>;
+    ) -> Option<Result<RequestDeserializer, Error>>;
     
     // (Probably) don't need to worry about header/body interleaving
     // because rust guarantees only one mutable reference at a time
@@ -261,7 +263,7 @@ pub trait CodecRead: Unmarshal + EraseDeserializer {
 
     async fn read_body(
         &mut self,
-    ) -> Option<Result<Box<dyn erased::Deserializer<'static> + Send + 'static>, Error>>;
+    ) -> Option<Result<RequestDeserializer, Error>>;
 }
 
 #[async_trait]
@@ -326,7 +328,7 @@ cfg_if! {
 
             async fn read_body(
                 &mut self,
-            ) -> Option<Result<Box<dyn erased::Deserializer<'static> + Send + 'static>, Error>> {
+            ) -> Option<Result<RequestDeserializer, Error>> {
                 let reader = &mut self.reader;
 
                 match reader.read_frame().await? {
@@ -435,7 +437,7 @@ cfg_if! {
 
             async fn read_body(
                 &mut self,
-            ) -> Option<Result<Box<dyn erased::Deserializer<'static> + Send + 'static>, Error>> {
+            ) -> Option<Result<RequestDeserializer, Error>> {
                 let reader = &mut self.reader;
 
                 match reader.read_payload().await? {
@@ -506,7 +508,7 @@ where
 
     async fn read_request_body(
         &mut self,
-    ) -> Option<Result<Box<dyn erased::Deserializer<'static> + Send + 'static>, Error>> {
+    ) -> Option<Result<RequestDeserializer, Error>> {
         self.read_body().await
     }
 
@@ -537,7 +539,7 @@ where
 
     async fn read_response_body(
         &mut self,
-    ) -> Option<Result<Box<dyn erased::Deserializer<'static> + Send + 'static>, Error>> {
+    ) -> Option<Result<RequestDeserializer, Error>> {
         self.read_body().await
     }
 

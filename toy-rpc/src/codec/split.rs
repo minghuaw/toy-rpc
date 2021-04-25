@@ -4,7 +4,7 @@ use std::marker::PhantomData;
 
 use super::*;
 
-pub trait Split {
+pub trait ServerCodecSplit {
     type Reader: ServerCodecRead;
     type Writer: ServerCodecWrite;
 
@@ -75,7 +75,7 @@ cfg_if! {
     ))] {
         use crate::transport::frame::{Frame, PayloadType, FrameRead, FrameWrite};
 
-        impl<R, W> Split for Codec<R, W, ConnTypeReadWrite> 
+        impl<R, W> ServerCodecSplit for Codec<R, W, ConnTypeReadWrite> 
         where 
             R: FrameRead + Send + Sync + Unpin,
             W: FrameWrite + Send + Sync + Unpin,
@@ -207,7 +207,7 @@ cfg_if!{
     ))] {
         use crate::transport::{PayloadRead, PayloadWrite};
 
-        impl<R, W> Split for Codec<R, W, ConnTypePayload> 
+        impl<R, W> ServerCodecSplit for Codec<R, W, ConnTypePayload> 
         where 
             R: PayloadRead + Send,
             W: PayloadWrite + Send,
