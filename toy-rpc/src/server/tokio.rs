@@ -213,7 +213,7 @@ cfg_if! {
                 fut.await
             }
 
-            async fn serve_codec_setup(
+            pub(crate) async fn serve_codec_setup(
                 codec: impl ServerCodecSplit + 'static,
                 services: Arc<AsyncServiceMap>
             ) -> Result<(), Error> {

@@ -1,11 +1,11 @@
-// use async_std::net::TcpListener;
-// use async_std::sync::{Arc, Mutex};
-// use async_std::task;
+use async_std::net::TcpListener;
+use async_std::sync::{Arc, Mutex};
+use async_std::task;
 
-use tokio::net::TcpListener;
-use std::sync::Arc;
-use tokio::sync::Mutex;
-use tokio::task;
+// use tokio::net::TcpListener;
+// use std::sync::Arc;
+// use tokio::sync::Mutex;
+// use tokio::task;
 
 use async_trait::async_trait;
 
@@ -66,8 +66,8 @@ impl Rpc for FooService {
     }
 }
 
-// #[async_std::main]
-#[tokio::main]
+#[async_std::main]
+// #[tokio::main]
 async fn main() {
     env_logger::init();
 

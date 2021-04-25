@@ -205,13 +205,13 @@ cfg_if! {
                 let ws_stream = WebSocketConn::new(ws_stream);
                 let codec = DefaultCodec::with_websocket(ws_stream);
 
-                let ret = Self::serve_codec_loop(codec, services).await;
+                let ret = Self::serve_codec_setup(codec, services).await;
                 log::info!("Client disconnected from WebSocket connection");
                 ret
             }
 
             // Spawn tasks for the reader/broker/writer loops
-            async fn serve_codec_setup(
+            pub(crate) async fn serve_codec_setup(
                 codec: impl ServerCodecSplit + 'static, 
                 services: Arc<AsyncServiceMap>
             ) -> Result<(), Error> {

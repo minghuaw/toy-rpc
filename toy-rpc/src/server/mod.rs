@@ -9,7 +9,7 @@ use std::io::ErrorKind;
 use std::sync::Arc;
 use flume::{Receiver, Sender};
 
-use crate::{codec::{ServerCodec, RequestDeserializer, split::{ServerCodecRead, ServerCodecWrite}}, message::{ExecutionMessage, ResultMessage}};
+use crate::{codec::{RequestDeserializer, ServerCodec, split::{ServerCodecRead, ServerCodecSplit, ServerCodecWrite}}, message::{ExecutionMessage, ResultMessage}};
 use crate::error::Error;
 use crate::message::{ErrorMessage, MessageId, RequestHeader, ResponseHeader};
 use crate::service::{
@@ -222,128 +222,128 @@ impl Server {
         Ok(())
     }
 
-    /// Serves using a specified codec
-    async fn serve_codec_loop<C>(mut codec: C, services: Arc<AsyncServiceMap>) -> Result<(), Error>
-    where
-        C: ServerCodec + Send + Sync,
-    {
-        log::debug!("Start serving codec");
-        loop {
-            match Self::serve_codec_once(&mut codec, &services).await {
-                Ok(stat) => match stat {
-                    ConnectionStatus::KeepReading => {}
-                    ConnectionStatus::Stop => {
-                        log::debug!("Stop serving codec");
-                        return Ok(());
-                    }
-                },
-                Err(err) => {
-                    log::error!("Error encountered serving codec: '{}'", err);
-                }
-            }
-        }
-    }
+    // /// Serves using a specified codec
+    // async fn serve_codec_loop<C>(mut codec: C, services: Arc<AsyncServiceMap>) -> Result<(), Error>
+    // where
+    //     C: ServerCodec + Send + Sync,
+    // {
+    //     log::debug!("Start serving codec");
+    //     loop {
+    //         match Self::serve_codec_once(&mut codec, &services).await {
+    //             Ok(stat) => match stat {
+    //                 ConnectionStatus::KeepReading => {}
+    //                 ConnectionStatus::Stop => {
+    //                     log::debug!("Stop serving codec");
+    //                     return Ok(());
+    //                 }
+    //             },
+    //             Err(err) => {
+    //                 log::error!("Error encountered serving codec: '{}'", err);
+    //             }
+    //         }
+    //     }
+    // }
 
-    /// Serves using the specified codec only once
-    async fn serve_codec_once<C>(
-        codec: &mut C,
-        services: &Arc<AsyncServiceMap>,
-    ) -> Result<ConnectionStatus, Error>
-    where
-        C: ServerCodec + Send + Sync,
-    {
-        match codec.read_request_header().await {
-            Some(header) => {
-                // [0] read request body
-                let deserializer = Server::get_request_body_deserializer(codec).await?;
+    // /// Serves using the specified codec only once
+    // async fn serve_codec_once<C>(
+    //     codec: &mut C,
+    //     services: &Arc<AsyncServiceMap>,
+    // ) -> Result<ConnectionStatus, Error>
+    // where
+    //     C: ServerCodec + Send + Sync,
+    // {
+    //     match codec.read_request_header().await {
+    //         Some(header) => {
+    //             // [0] read request body
+    //             let deserializer = Server::get_request_body_deserializer(codec).await?;
 
-                // [1] destructure header
-                let RequestHeader { id, service_method } = header?;
+    //             // [1] destructure header
+    //             let RequestHeader { id, service_method } = header?;
 
-                // [2] split service name and method name
-                // return early send back Error::MethodNotFound if no "." is found
-                // let pos = match service_method.rfind('.') {
-                //     Some(p) => p,
-                //     None => {
-                //         Self::send_response(codec, id, Err(Error::MethodNotFound)).await?;
-                //         log::error!("Method not supplied from request: '{}'", service_method);
-                //         return Ok(ConnectionStatus::KeepReading);
-                //     }
-                // };
-                // let service = &service_method[..pos];
-                // let method = &service_method[pos + 1..];
-                let (service, method) = match Server::split_service_method(&service_method) {
-                    Ok(pair) => pair,
-                    Err(err) => {
-                        Server::send_response(codec, id, Err(err)).await?;
-                        // Can't return err because err doesn't impl Clone
-                        return Ok(ConnectionStatus::KeepReading); 
-                    }
-                };
+    //             // [2] split service name and method name
+    //             // return early send back Error::MethodNotFound if no "." is found
+    //             // let pos = match service_method.rfind('.') {
+    //             //     Some(p) => p,
+    //             //     None => {
+    //             //         Self::send_response(codec, id, Err(Error::MethodNotFound)).await?;
+    //             //         log::error!("Method not supplied from request: '{}'", service_method);
+    //             //         return Ok(ConnectionStatus::KeepReading);
+    //             //     }
+    //             // };
+    //             // let service = &service_method[..pos];
+    //             // let method = &service_method[pos + 1..];
+    //             let (service, method) = match Server::split_service_method(&service_method) {
+    //                 Ok(pair) => pair,
+    //                 Err(err) => {
+    //                     Server::send_response(codec, id, Err(err)).await?;
+    //                     // Can't return err because err doesn't impl Clone
+    //                     return Ok(ConnectionStatus::KeepReading); 
+    //                 }
+    //             };
 
-                log::trace!(
-                    "Message id: {}, service: {}, method: {}",
-                    id,
-                    service,
-                    method
-                );
+    //             log::trace!(
+    //                 "Message id: {}, service: {}, method: {}",
+    //                 id,
+    //                 service,
+    //                 method
+    //             );
 
-                // [3] look up the service
-                // return early and send back Error::ServiceNotFound if key is not found
-                let call: ArcAsyncServiceCall = match services.get(service) {
-                    Some(serv_call) => serv_call.clone(),
-                    None => {
-                        Self::send_response(codec, id, Err(Error::ServiceNotFound)).await?;
-                        log::error!("Service not found: '{}'", service);
-                        return Ok(ConnectionStatus::KeepReading);
-                    }
-                };
+    //             // [3] look up the service
+    //             // return early and send back Error::ServiceNotFound if key is not found
+    //             let call: ArcAsyncServiceCall = match services.get(service) {
+    //                 Some(serv_call) => serv_call.clone(),
+    //                 None => {
+    //                     Self::send_response(codec, id, Err(Error::ServiceNotFound)).await?;
+    //                     log::error!("Service not found: '{}'", service);
+    //                     return Ok(ConnectionStatus::KeepReading);
+    //                 }
+    //             };
 
-                // [4] execute the call
-                let res: HandlerResult = {
-                    // pass ownership to the `call`
-                    call(method.into(), deserializer).await.map_err(|err| {
-                        log::error!(
-                            "Error found calling service: '{}', method: '{}', error: '{}'",
-                            service,
-                            method,
-                            err
-                        );
-                        match err {
-                            // if serde cannot parse request, the argument is likely mistaken
-                            Error::ParseError(e) => {
-                                log::error!("ParseError {:?}", e);
-                                Error::InvalidArgument
-                            }
-                            e @ _ => e,
-                        }
-                    })
-                };
+    //             // [4] execute the call
+    //             let res: HandlerResult = {
+    //                 // pass ownership to the `call`
+    //                 call(method.into(), deserializer).await.map_err(|err| {
+    //                     log::error!(
+    //                         "Error found calling service: '{}', method: '{}', error: '{}'",
+    //                         service,
+    //                         method,
+    //                         err
+    //                     );
+    //                     match err {
+    //                         // if serde cannot parse request, the argument is likely mistaken
+    //                         Error::ParseError(e) => {
+    //                             log::error!("ParseError {:?}", e);
+    //                             Error::InvalidArgument
+    //                         }
+    //                         e @ _ => e,
+    //                     }
+    //                 })
+    //             };
 
-                // [5] send back result
-                Self::send_response(codec, id, res).await?;
-                Ok(ConnectionStatus::KeepReading)
-            }
-            None => Ok(ConnectionStatus::Stop),
-        }
-    }
+    //             // [5] send back result
+    //             Self::send_response(codec, id, res).await?;
+    //             Ok(ConnectionStatus::KeepReading)
+    //         }
+    //         None => Ok(ConnectionStatus::Stop),
+    //     }
+    // }
 
-    async fn get_request_body_deserializer<C>(codec: &mut C) -> Result<RequestDeserializer, Error>
-    where 
-        C: ServerCodec + Send + Sync,
-    {
-        match codec.read_request_body().await {
-            Some(r) => r,
-            None => {
-                let err = Error::IoError(std::io::Error::new(
-                    ErrorKind::UnexpectedEof,
-                    "Failed to read message body",
-                ));
-                log::error!("{}", &err);
-                return Err(err);
-            }
-        }
-    }
+    // async fn get_request_body_deserializer<C>(codec: &mut C) -> Result<RequestDeserializer, Error>
+    // where 
+    //     C: ServerCodec + Send + Sync,
+    // {
+    //     match codec.read_request_body().await {
+    //         Some(r) => r,
+    //         None => {
+    //             let err = Error::IoError(std::io::Error::new(
+    //                 ErrorKind::UnexpectedEof,
+    //                 "Failed to read message body",
+    //             ));
+    //             log::error!("{}", &err);
+    //             return Err(err);
+    //         }
+    //     }
+    // }
 
     async fn get_request_deserializer(
         codec_reader: &mut impl ServerCodecRead
@@ -376,41 +376,41 @@ impl Server {
         Ok((service, method))
     }
 
-    /// Sends back the response with the specified codec
-    async fn send_response<C>(
-        _codec: &mut C,
-        id: MessageId,
-        res: HandlerResult,
-    ) -> Result<(), Error>
-    where
-        C: ServerCodec + Send + Sync,
-    {
-        match res {
-            Ok(b) => {
-                log::trace!("Message {} Success", id.clone());
-                let header = ResponseHeader {
-                    id,
-                    is_error: false,
-                };
-                _codec.write_response(header, &b).await?;
-                Ok(())
-            }
-            Err(err) => {
-                log::trace!("Message {} Error", id.clone());
-                let header = ResponseHeader { id, is_error: true };
-                let msg = match ErrorMessage::from_err(err) {
-                    Ok(m) => m,
-                    Err(e) => {
-                        log::error!("Cannot send back IoError or ParseError: {:?}", e);
-                        return Err(e);
-                    }
-                };
+    // /// Sends back the response with the specified codec
+    // async fn send_response<C>(
+    //     _codec: &mut C,
+    //     id: MessageId,
+    //     res: HandlerResult,
+    // ) -> Result<(), Error>
+    // where
+    //     C: ServerCodec + Send + Sync,
+    // {
+    //     match res {
+    //         Ok(b) => {
+    //             log::trace!("Message {} Success", id.clone());
+    //             let header = ResponseHeader {
+    //                 id,
+    //                 is_error: false,
+    //             };
+    //             _codec.write_response(header, &b).await?;
+    //             Ok(())
+    //         }
+    //         Err(err) => {
+    //             log::trace!("Message {} Error", id.clone());
+    //             let header = ResponseHeader { id, is_error: true };
+    //             let msg = match ErrorMessage::from_err(err) {
+    //                 Ok(m) => m,
+    //                 Err(e) => {
+    //                     log::error!("Cannot send back IoError or ParseError: {:?}", e);
+    //                     return Err(e);
+    //                 }
+    //             };
 
-                _codec.write_response(header, &msg).await?;
-                Ok(())
-            }
-        }
-    }
+    //             _codec.write_response(header, &msg).await?;
+    //             Ok(())
+    //         }
+    //     }
+    // }
 
     /// This is like serve_conn except that it uses a specified codec
     ///
@@ -437,11 +437,16 @@ impl Server {
     ///     handle.await;
     /// }
     /// ```
+    #[cfg(any(
+        feature = "async_std_runtime",
+        feature = "tokio_runtime"
+    ))]
     pub async fn serve_codec<C>(&self, codec: C) -> Result<(), Error>
     where
-        C: ServerCodec + Send + Sync,
+        C: ServerCodecSplit + Send + Sync + 'static,
     {
-        Self::serve_codec_loop(codec, self.services.clone()).await
+        // Self::serve_codec_loop(codec, self.services.clone()).await
+        Self::serve_codec_setup(codec, self.services.clone()).await
     }
 }
 
