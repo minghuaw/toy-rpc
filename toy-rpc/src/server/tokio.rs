@@ -144,7 +144,7 @@ cfg_if! {
                         .expect("Error during the websocket handshake occurred");
                     log::trace!("Established WebSocket connection.");
 
-                match Self::_serve_websocket(ws_stream, services).await {
+                match Self::serve_ws_connection(ws_stream, services).await {
                     Ok(_) => {},
                     Err(e) => log::error!("{}", e),
                 };
@@ -199,7 +199,7 @@ cfg_if! {
                 Self::serve_tcp_connection(stream, self.services.clone()).await
             }
 
-            async fn _serve_websocket(
+            async fn serve_ws_connection(
                 ws_stream: async_tungstenite::WebSocketStream<TokioAdapter<tokio::net::TcpStream>>,
                 services: Arc<AsyncServiceMap>,
             ) -> Result<(), Error> {
