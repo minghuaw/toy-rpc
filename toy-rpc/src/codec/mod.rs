@@ -256,7 +256,7 @@ pub trait ClientCodec: GracefulShutdown + Send + Sync {
 }
 
 #[async_trait]
-pub trait CodecRead: Unmarshal + EraseDeserializer {
+pub trait CodecRead: Unmarshal {
     async fn read_header<H>(&mut self) -> Option<Result<H, Error>>
     where
         H: serde::de::DeserializeOwned;
@@ -497,36 +497,36 @@ pub trait Unmarshal {
     fn unmarshal<'de, D: serde::Deserialize<'de>>(buf: &'de [u8]) -> Result<D, Error>;
 }
 
-#[async_trait]
-impl<T> ServerCodec for T
-where
-    T: CodecRead + CodecWrite + Send + Sync,
-{
-    async fn read_request_header(&mut self) -> Option<Result<RequestHeader, Error>> {
-        self.read_header().await
-    }
+// #[async_trait]
+// impl<T> ServerCodec for T
+// where
+//     T: CodecRead + CodecWrite + Send + Sync,
+// {
+//     async fn read_request_header(&mut self) -> Option<Result<RequestHeader, Error>> {
+//         self.read_header().await
+//     }
 
-    async fn read_request_body(
-        &mut self,
-    ) -> Option<Result<RequestDeserializer, Error>> {
-        self.read_body().await
-    }
+//     async fn read_request_body(
+//         &mut self,
+//     ) -> Option<Result<RequestDeserializer, Error>> {
+//         self.read_body().await
+//     }
 
-    async fn write_response(
-        &mut self,
-        header: ResponseHeader,
-        body: &(dyn erased::Serialize + Send + Sync),
-    ) -> Result<(), Error> {
-        let id = header.get_id();
+//     async fn write_response(
+//         &mut self,
+//         header: ResponseHeader,
+//         body: &(dyn erased::Serialize + Send + Sync),
+//     ) -> Result<(), Error> {
+//         let id = header.get_id();
 
-        log::trace!("Sending response id: {}", &id);
+//         log::trace!("Sending response id: {}", &id);
 
-        self.write_header(header).await?;
-        self.write_body(&id, body).await?;
+//         self.write_header(header).await?;
+//         self.write_body(&id, body).await?;
 
-        Ok(())
-    }
-}
+//         Ok(())
+//     }
+// }
 
 #[async_trait]
 impl<T> ClientCodec for T

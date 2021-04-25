@@ -11,15 +11,15 @@ pub trait ServerCodecSplit {
     fn split(self) -> (Self::Writer, Self::Reader);
 }
 
-pub struct CodecReadHalf<R, C, CT>{
+pub(crate) struct CodecReadHalf<R, C, CT>{
     pub reader: R,
-    marker: PhantomData<C>,
-    conn_type: PhantomData<CT>,
+    pub marker: PhantomData<C>,
+    pub conn_type: PhantomData<CT>,
 }
-pub struct CodecWriteHalf<W, C, CT> {
+pub(crate) struct CodecWriteHalf<W, C, CT> {
     pub writer: W,
-    marker: PhantomData<C>,
-    conn_type: PhantomData<CT>,
+    pub marker: PhantomData<C>,
+    pub conn_type: PhantomData<CT>,
 }
 
 impl<W, C, CT> Marshal for CodecWriteHalf<W, C, CT> 
@@ -121,7 +121,7 @@ cfg_if! {
         
             async fn read_body(
                 &mut self,
-            ) -> Option<Result<Box<dyn erased::Deserializer<'static> + Send + 'static>, Error>> {
+            ) -> Option<Result<RequestDeserializer, Error>> {
                 let reader = &mut self.reader;
         
                 match reader.read_frame().await? {
@@ -253,7 +253,7 @@ cfg_if!{
 
             async fn read_body(
                 &mut self,
-            ) -> Option<Result<Box<dyn erased::Deserializer<'static> + Send + 'static>, Error>> {
+            ) -> Option<Result<RequestDeserializer, Error>> {
                 let reader = &mut self.reader;
 
                 match reader.read_payload().await? {
@@ -294,13 +294,12 @@ cfg_if!{
     }
 }
 
-
 #[async_trait]
 pub trait ServerCodecRead: Send {
     async fn read_request_header(&mut self) -> Option<Result<RequestHeader, Error>>;
     async fn read_request_body(
         &mut self,
-    ) -> Option<Result<Box<dyn erased::Deserializer<'static> + Send + 'static>, Error>>;
+    ) -> Option<Result<RequestDeserializer, Error>>;
 }
 
 #[async_trait]
@@ -323,7 +322,7 @@ where
         self.read_header().await
     }
 
-    async fn read_request_body(&mut self) -> Option<Result<Box<dyn erased::Deserializer<'static> + Send + 'static>, Error>> {
+    async fn read_request_body(&mut self) -> Option<Result<RequestDeserializer, Error>> {
         self.read_body().await
     }
 }

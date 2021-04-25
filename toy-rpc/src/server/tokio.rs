@@ -206,11 +206,10 @@ cfg_if! {
                 let ws_stream = WebSocketConn::new(ws_stream);
                 let codec = DefaultCodec::with_websocket(ws_stream);
 
-                let fut = Self::serve_codec_loop(codec, services);
-
+                // let fut = Self::serve_codec_loop(codec, services);
+                let ret = Self::serve_codec_setup(codec, services).await;
                 log::trace!("Client disconnected");
-
-                fut.await
+                ret
             }
 
             pub(crate) async fn serve_codec_setup(
