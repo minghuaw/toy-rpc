@@ -91,19 +91,11 @@ impl Server {
         ServerBuilder::new()
     }
 
-    // Spawn tasks for the reader/broker/writer loops
-    fn serve_codec_setup<C>(mut codec: C, services: Arc<AsyncServiceMap>) -> Result<(), Error> 
-    where 
-        C: ServerCodecSplit
-    {
-        unimplemented!()
-    }
-
     async fn serve_codec_reader_loop(
         mut codec_reader: impl ServerCodecRead, 
         services: Arc<AsyncServiceMap>,
         executor: Sender<ExecutionMessage>,
-        writer: Sender<HandlerResult>,
+        writer: Sender<ResultMessage>,
     ) -> Result<(), Error> {
         // Keep reading until no header can be read
         while let Some(header) = codec_reader.read_request_header().await {
@@ -116,7 +108,12 @@ impl Server {
                 Ok(pair) => pair,
                 Err(err) => {
                     // should not stop the reader if the service is not found
-                    writer.send_async(Err(err)).await?;
+                    writer.send_async(
+                        ResultMessage {
+                            id,
+                            result: Err(err)
+                        }
+                    ).await?;
                     continue;
                 }
             };
@@ -126,7 +123,12 @@ impl Server {
                 Some(serv_call) => serv_call.clone(),
                 None => {
                     // should not stop the reader if the method is not found
-                    writer.send_async(Err(Error::ServiceNotFound)).await?;
+                    writer.send_async(
+                        ResultMessage {
+                            id,
+                            result: Err(Error::ServiceNotFound)
+                        }
+                    ).await?;
                     continue;
                 }
             };

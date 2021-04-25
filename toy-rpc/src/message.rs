@@ -72,7 +72,7 @@ impl ErrorMessage {
     }
 }
 
-pub(crate) struct ExecutionMessage {
+pub struct ExecutionMessage {
     pub call: ArcAsyncServiceCall,
     pub id: MessageId,
     // pub service: String,
@@ -80,7 +80,7 @@ pub(crate) struct ExecutionMessage {
     pub deserializer: RequestDeserializer,
 }
 
-pub(crate) struct ResultMessage {
+pub struct ResultMessage {
     pub id: MessageId,
     pub result: HandlerResult
 }

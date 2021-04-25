@@ -8,7 +8,7 @@ pub trait ServerCodecSplit {
     type Reader: ServerCodecRead;
     type Writer: ServerCodecWrite;
 
-    fn split(self) -> (Self::Reader, Self::Writer);
+    fn split(self) -> (Self::Writer, Self::Reader);
 }
 
 pub struct CodecReadHalf<R, C, CT>{
@@ -83,17 +83,17 @@ cfg_if! {
             type Reader = CodecReadHalf::<R, Self, ConnTypeReadWrite>;
             type Writer = CodecWriteHalf::<W, Self, ConnTypeReadWrite>;
 
-            fn split(self) -> (Self::Reader, Self::Writer) {
+            fn split(self) -> (Self::Writer, Self::Reader) {
                 (
-                    CodecReadHalf::<R, Self, ConnTypeReadWrite> {
-                        reader: self.reader,
-                        marker: PhantomData,
-                        conn_type: PhantomData
-                    },
                     CodecWriteHalf::<W, Self, ConnTypeReadWrite> {
                         writer: self.writer,
                         marker: PhantomData,
                         conn_type: PhantomData,
+                    },
+                    CodecReadHalf::<R, Self, ConnTypeReadWrite> {
+                        reader: self.reader,
+                        marker: PhantomData,
+                        conn_type: PhantomData
                     }
                 )
             }
@@ -215,17 +215,17 @@ cfg_if!{
             type Reader = CodecReadHalf::<R, Self, ConnTypePayload>;
             type Writer = CodecWriteHalf::<W, Self, ConnTypePayload>;
 
-            fn split(self) -> (Self::Reader, Self::Writer) {
+            fn split(self) -> (Self::Writer, Self::Reader) {
                 (
-                    CodecReadHalf::<R, Self, ConnTypePayload> {
-                        reader: self.reader,
-                        marker: PhantomData,
-                        conn_type: PhantomData
-                    },
                     CodecWriteHalf::<W, Self, ConnTypePayload> {
                         writer: self.writer,
                         marker: PhantomData,
                         conn_type: PhantomData,
+                    },
+                    CodecReadHalf::<R, Self, ConnTypePayload> {
+                        reader: self.reader,
+                        marker: PhantomData,
+                        conn_type: PhantomData
                     }
                 )
             }

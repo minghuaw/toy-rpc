@@ -34,10 +34,13 @@ cfg_if! {
         use ::async_std::task;
         use futures::StreamExt;
         use std::sync::Arc;
-        use crate::codec::DefaultCodec;
+        use flume::unbounded;
 
+        use crate::codec::DefaultCodec;
         use crate::error::Error;
         use crate::transport::ws::WebSocketConn;
+        use crate::codec::split::ServerCodecSplit;
+        use crate::message::{ResultMessage};
 
         use super::{AsyncServiceMap, Server};
 
@@ -157,7 +160,8 @@ cfg_if! {
                 let codec = DefaultCodec::new(stream);
 
                 // let fut = task::spawn_blocking(|| Self::_serve_codec(codec, services)).await;
-                let ret = Self::serve_codec_loop(codec, services).await;
+                // let ret = Self::serve_codec_loop(codec, services).await;
+                let ret = Self::serve_codec_setup(codec, services).await;
                 log::trace!("Client disconnected from {}", _peer_addr);
                 ret
             }
@@ -205,6 +209,33 @@ cfg_if! {
                 let ret = Self::serve_codec_loop(codec, services).await;
                 log::info!("Client disconnected from WebSocket connection");
                 ret
+            }
+
+            // Spawn tasks for the reader/broker/writer loops
+            async fn serve_codec_setup(
+                codec: impl ServerCodecSplit + 'static, 
+                services: Arc<AsyncServiceMap>
+            ) -> Result<(), Error> {
+                let (exec_sender, exec_recver) = unbounded();
+                let (resp_sender, resp_recver) = unbounded::<ResultMessage>();
+                let (codec_writer, codec_reader) = codec.split();
+
+                let reader_handle = task::spawn(
+                    Server::serve_codec_reader_loop(codec_reader, services, exec_sender, resp_sender.clone())
+                );
+
+                let writer_handle = task::spawn(
+                    Server::serve_codec_writer_loop(codec_writer, resp_recver)
+                );
+
+                let executor_handle = task::spawn(
+                    Server::serve_codec_executor_loop(exec_recver, resp_sender)
+                );
+
+                reader_handle.await?;
+                executor_handle.await?;
+                writer_handle.await?;
+                Ok(())
             }
         }
 
