@@ -7,9 +7,9 @@ use erased_serde as erased;
 use std::collections::HashMap;
 use std::io::ErrorKind;
 use std::sync::Arc;
-use flume::{unbounded, Receiver, Sender};
+use flume::{Receiver, Sender};
 
-use crate::{codec::{ServerCodec, RequestDeserializer, split::{ServerCodecRead, ServerCodecSplit, ServerCodecWrite}}, message::{ExecutionMessage, ResultMessage}};
+use crate::{codec::{ServerCodec, RequestDeserializer, split::{ServerCodecRead, ServerCodecWrite}}, message::{ExecutionMessage, ResultMessage}};
 use crate::error::Error;
 use crate::message::{ErrorMessage, MessageId, RequestHeader, ResponseHeader};
 use crate::service::{
