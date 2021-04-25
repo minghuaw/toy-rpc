@@ -108,6 +108,13 @@ impl From<rmp_serde::encode::Error> for Error {
     }
 }
 
+#[cfg(feature = "tokio_runtime")]
+impl From<tokio::task::JoinError> for Error {
+    fn from(err: tokio::task::JoinError) -> Self {
+        Self::Internal(Box::new(err))
+    }
+}
+
 #[cfg(feature = "http_actix_web")]
 impl From<Error> for actix_web::Error {
     fn from(err: crate::error::Error) -> Self {
@@ -116,6 +123,7 @@ impl From<Error> for actix_web::Error {
         actix_web::error::InternalError::new(err, actix_web::http::StatusCode::OK).into()
     }
 }
+
 
 impl From<tungstenite::Error> for crate::error::Error {
     fn from(err: tungstenite::Error) -> Self {

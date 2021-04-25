@@ -34,7 +34,6 @@ cfg_if! {
         use ::async_std::task;
         use futures::StreamExt;
         use std::sync::Arc;
-        use flume::unbounded;
 
         use crate::codec::DefaultCodec;
         use crate::error::Error;
@@ -216,8 +215,8 @@ cfg_if! {
                 codec: impl ServerCodecSplit + 'static, 
                 services: Arc<AsyncServiceMap>
             ) -> Result<(), Error> {
-                let (exec_sender, exec_recver) = unbounded();
-                let (resp_sender, resp_recver) = unbounded::<ResultMessage>();
+                let (exec_sender, exec_recver) = flume::unbounded();
+                let (resp_sender, resp_recver) = flume::unbounded::<ResultMessage>();
                 let (codec_writer, codec_reader) = codec.split();
 
                 let reader_handle = task::spawn(

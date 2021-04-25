@@ -39,6 +39,7 @@ cfg_if! {
         use crate::error::Error;
         use crate::transport::ws::WebSocketConn;
         use crate::codec::DefaultCodec;
+        use crate::codec::split::ServerCodecSplit;
 
         use super::{AsyncServiceMap, Server};
 
@@ -159,11 +160,10 @@ cfg_if! {
                 let codec = DefaultCodec::new(stream);
 
                 // let fut = task::spawn_blocking(|| Self::_serve_codec(codec, services)).await;
-                let fut = Self::serve_codec_loop(codec, services);
-
+                // let fut = Self::serve_codec_loop(codec, services);
+                let ret = Self::serve_codec_setup(codec, services).await;
                 log::trace!("Client disconnected from {}", _peer_addr);
-
-                fut.await
+                ret
             }
 
             /// Serves a single connection using the default codec
@@ -211,6 +211,33 @@ cfg_if! {
                 log::trace!("Client disconnected");
 
                 fut.await
+            }
+
+            async fn serve_codec_setup(
+                codec: impl ServerCodecSplit + 'static,
+                services: Arc<AsyncServiceMap>
+            ) -> Result<(), Error> {
+                let (exec_sender, exec_recver) = flume::unbounded();
+                let (resp_sender, resp_recver) = flume::unbounded();
+                let (codec_writer, codec_reader) = codec.split();
+
+                let reader_handle = task::spawn(
+                    Server::serve_codec_reader_loop(codec_reader, services, exec_sender, resp_sender.clone())
+                );
+
+                let writer_handle = task::spawn(
+                    Server::serve_codec_writer_loop(codec_writer, resp_recver)
+                );
+
+                let executor_handle = task::spawn(
+                    Server::serve_codec_executor_loop(exec_recver, resp_sender)
+                );
+
+                reader_handle.await??;
+                executor_handle.await??;
+                writer_handle.await??;
+
+                Ok(())
             }
         }
 
