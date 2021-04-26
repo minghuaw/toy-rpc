@@ -12,6 +12,7 @@ use crate::message::ErrorMessage;
 
 use super::*;
 
+// using a mutex because all the transports require mutable reference
 type Codec = Arc<Mutex<Box<dyn ClientCodec>>>;
 type ResponseMap = HashMap<u16, oneshot::Sender<Result<ResponseBody, ResponseBody>>>;
 
@@ -345,15 +346,17 @@ impl Client<Connected> {
         Req: serde::Serialize + Send + Sync,
         Res: serde::de::DeserializeOwned,
     {
-        let _codec = &mut *codec.lock().await;
         let header = RequestHeader {
             id,
             service_method: service_method.to_string(),
         };
         let req = &args as &(dyn erased::Serialize + Send + Sync);
-
-        // send request
-        _codec.write_request(header, req).await?;
+        
+        {
+            // send request
+            let _codec = &mut *codec.lock().await;
+            _codec.write_request(header, req).await?;
+        }    
 
         // creates channel for receiving response
         let (done_sender, done) = oneshot::channel::<Result<ResponseBody, ResponseBody>>();
@@ -364,7 +367,10 @@ impl Client<Connected> {
             _pending.insert(id, done_sender);
         }
 
-        Client::<Connected>::read_response(_codec.as_mut(), pending).await?;
+        {
+            let _codec = &mut *codec.lock().await;
+            Client::<Connected>::read_response(_codec.as_mut(), pending).await?;
+        }
 
         Client::<Connected>::handle_response(done, &id)
     }
