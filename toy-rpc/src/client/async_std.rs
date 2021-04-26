@@ -412,13 +412,15 @@ impl Client<Connected> {
             };
 
             // [3] send back response
-            let mut _pending = pending.lock().await;
-            if let Some(done_sender) = _pending.remove(&id) {
-                done_sender.send(res).map_err(|_| {
-                    Error::Internal(
-                        "InternalError: client failed to send response over channel".into(),
-                    )
-                })?;
+            {
+                let mut _pending = pending.lock().await;
+                if let Some(done_sender) = _pending.remove(&id) {
+                    done_sender.send(res).map_err(|_| {
+                        Error::Internal(
+                            "InternalError: client failed to send response over channel".into(),
+                        )
+                    })?;
+                }
             }
         }
 
