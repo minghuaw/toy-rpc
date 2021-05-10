@@ -880,3 +880,5 @@ pub use error::Error;
 pub use erased_serde;
 pub use lazy_static;
 pub use serde;
+
+pub mod client_new;

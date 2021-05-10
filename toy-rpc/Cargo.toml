@@ -86,6 +86,7 @@ cfg-if = "1.0.0"
 tungstenite = "0.13.0"
 thiserror = "1.0.24"
 flume = "0.10.4"
+pin-project = "1.0.7"
 
 [[test]]
 name = "async_std_tcp"
