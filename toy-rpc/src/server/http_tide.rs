@@ -107,7 +107,7 @@ cfg_if! {
                             let codec = DefaultCodec::with_tide_websocket(ws_stream);
                             let services = req.state().services.clone();
 
-                            let fut = Self::serve_codec_loop(codec, services);
+                            let fut = Self::serve_codec_setup(codec, services);
 
                             log::trace!("Client disconnected.");
 
