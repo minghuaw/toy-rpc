@@ -25,7 +25,6 @@ cfg_if! {
     } else if #[cfg(feature = "serde_rmp")] {
 
     } else {
-        use async_trait::async_trait;
         use erased_serde as erased;
         use serde::de::Visitor;
         use std::io::Cursor; // serde doesn't support AsyncRead
