@@ -346,14 +346,12 @@ impl Client<Connected> {
         Req: serde::Serialize + Send + Sync,
         Res: serde::de::DeserializeOwned,
     {
-        println!("Start execute_call");
         let header = RequestHeader {
             id,
             service_method: service_method.to_string(),
         };
         let req = &args as &(dyn erased::Serialize + Send + Sync);
         
-        println!("Sending request");
         {
             // send request
             let _codec = &mut *codec.lock().await;
@@ -392,7 +390,6 @@ impl Client<Connected> {
         codec: &mut dyn ClientCodec,
         pending: Arc<Mutex<ResponseMap>>,
     ) -> Result<(), Error> {
-        println!("Reading response");
         // wait for response
         if let Some(header) = codec.read_response_header().await {
             // [1] destructure response header
@@ -437,7 +434,6 @@ impl Client<Connected> {
     where
         Res: serde::de::DeserializeOwned,
     {
-        println!("Handling response");
         // wait for result from oneshot channel
         let res = match done.try_recv() {
             Ok(o) => match o {
