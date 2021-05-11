@@ -1,6 +1,5 @@
 use std::{marker::PhantomData, pin::Pin, task::{Context, Poll}};
 use pin_project::pin_project;
-// use erased_serde as erased;
 use futures::{Future, channel::oneshot};
 
 use crate::{Error};
