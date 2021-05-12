@@ -33,6 +33,9 @@ pub enum Error {
     /// Execution error returned by RPC method
     #[error("{0}")]
     ExecutionError(String),
+
+    #[error("Canceled")]
+    Canceled,
 }
 
 impl Error {

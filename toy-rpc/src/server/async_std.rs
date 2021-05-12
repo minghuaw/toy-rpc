@@ -39,7 +39,7 @@ cfg_if! {
         use crate::error::Error;
         use crate::transport::ws::WebSocketConn;
         use crate::codec::split::ServerCodecSplit;
-        use crate::message::{ResultMessage};
+        use crate::message::{ExecutionResult};
 
         use super::{AsyncServiceMap, Server};
 
@@ -216,7 +216,7 @@ cfg_if! {
                 services: Arc<AsyncServiceMap>
             ) -> Result<(), Error> {
                 let (exec_sender, exec_recver) = flume::unbounded();
-                let (resp_sender, resp_recver) = flume::unbounded::<ResultMessage>();
+                let (resp_sender, resp_recver) = flume::unbounded::<ExecutionResult>();
                 let (codec_writer, codec_reader) = codec.split();
 
                 let reader_handle = task::spawn(

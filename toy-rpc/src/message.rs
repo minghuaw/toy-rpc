@@ -29,6 +29,8 @@ impl Metadata for RequestHeader {
     }
 }
 
+pub(crate) type RequestBody = Box<dyn erased_serde::Serialize + Send + Sync>;
+
 /// Header of a response
 #[derive(Serialize, Deserialize, Debug, Default)]
 pub struct ResponseHeader {
@@ -41,6 +43,8 @@ impl Metadata for ResponseHeader {
         self.id
     }
 }
+
+pub(crate) type ResponseBody = Box<dyn erased_serde::Deserializer<'static> + Send>;
 
 /// Client should be able to gracefully shutdown the connection by
 /// sending some kind of closing message
@@ -68,11 +72,13 @@ impl ErrorMessage {
             e @ Error::IoError(_) => Err(e),
             e @ Error::ParseError(_) => Err(e),
             e @ Error::Internal(_) => Err(e),
+            e @ Error::Canceled => Err(e)
         }
     }
 }
 
-pub struct ExecutionMessage {
+/// The 
+pub(crate) struct ExecutionInfo {
     pub call: ArcAsyncServiceCall,
     pub id: MessageId,
     // pub service: String,
@@ -80,7 +86,9 @@ pub struct ExecutionMessage {
     pub deserializer: RequestDeserializer,
 }
 
-pub struct ResultMessage {
+pub(crate) struct ExecutionResult {
     pub id: MessageId,
     pub result: HandlerResult
 }
+
+pub(crate) struct RequestMessage(RequestHeader, RequestBody);

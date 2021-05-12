@@ -9,7 +9,7 @@ use std::io::ErrorKind;
 use std::sync::Arc;
 use flume::{Receiver, Sender};
 
-use crate::{codec::{RequestDeserializer, split::{ServerCodecRead, ServerCodecSplit, ServerCodecWrite}}, message::{ExecutionMessage, ResultMessage}};
+use crate::{codec::{RequestDeserializer, split::{ServerCodecRead, ServerCodecSplit, ServerCodecWrite}}, message::{ExecutionInfo, ExecutionResult}};
 use crate::error::Error;
 use crate::message::{ErrorMessage, RequestHeader, ResponseHeader};
 use crate::service::{
@@ -94,8 +94,8 @@ impl Server {
     async fn serve_codec_reader_loop(
         mut codec_reader: impl ServerCodecRead, 
         services: Arc<AsyncServiceMap>,
-        executor: Sender<ExecutionMessage>,
-        writer: Sender<ResultMessage>,
+        executor: Sender<ExecutionInfo>,
+        writer: Sender<ExecutionResult>,
     ) -> Result<(), Error> {
         // Keep reading until no header can be read
         while let Some(header) = codec_reader.read_request_header().await {
@@ -109,7 +109,7 @@ impl Server {
                 Err(err) => {
                     // should not stop the reader if the service is not found
                     writer.send_async(
-                        ResultMessage {
+                        ExecutionResult {
                             id,
                             result: Err(err)
                         }
@@ -124,7 +124,7 @@ impl Server {
                 None => {
                     // should not stop the reader if the method is not found
                     writer.send_async(
-                        ResultMessage {
+                        ExecutionResult {
                             id,
                             result: Err(Error::ServiceNotFound)
                         }
@@ -134,7 +134,7 @@ impl Server {
             };
             // [4] send to executor
             executor.send_async(
-                ExecutionMessage {
+                ExecutionInfo {
                     call,
                     id, 
                     // service: service.into(),
@@ -147,12 +147,12 @@ impl Server {
     }
 
     async fn serve_codec_executor_loop(
-        reader: Receiver<ExecutionMessage>,
-        writer: Sender<ResultMessage>
+        reader: Receiver<ExecutionInfo>,
+        writer: Sender<ExecutionResult>
     ) -> Result<(), Error> {
         // [5] receive execution
         while let Ok(execution) = reader.recv_async().await {
-            let ExecutionMessage{
+            let ExecutionInfo{
                 call, 
                 id, 
                 // service,
@@ -176,7 +176,7 @@ impl Server {
 
             // [6] send result to response writer
             writer.send_async(
-                ResultMessage {
+                ExecutionResult {
                     id,
                     result
                 }
@@ -187,11 +187,11 @@ impl Server {
 
     async fn serve_codec_writer_loop(
         mut codec_writer: impl ServerCodecWrite,
-        results: Receiver<ResultMessage>,
+        results: Receiver<ExecutionResult>,
     ) -> Result<(), Error> {
         // [7] send result back to client
         while let Ok(msg) = results.recv_async().await {
-            let ResultMessage { 
+            let ExecutionResult { 
                 id, 
                 result 
             } = msg;
