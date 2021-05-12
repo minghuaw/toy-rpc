@@ -44,7 +44,7 @@ cfg_if!{
     ))] {
         mod async_std;
     } else {
-        mode tokio;
+        mod tokio;
     }
 }
 
