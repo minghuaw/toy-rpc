@@ -193,5 +193,30 @@ cfg_if! {
                 )
             }
         }
+
+        #[async_trait]
+        impl<R, W> ClientCodecSplit for Codec<R, W, ConnTypeReadWrite>
+        where 
+            R: AsyncBufRead + Send + Sync + Unpin,
+            W: AsyncWrite + Send + Sync + Unpin,
+        {
+            type Reader = CodecReadHalf::<R, Self, ConnTypeReadWrite>;
+            type Writer = CodecWriteHalf::<W, Self, ConnTypeReadWrite>;
+
+            fn split(self) -> (Self::Writer, Self::Reader) {
+                (
+                    CodecWriteHalf::<W, Self, ConnTypeReadWrite> {
+                        writer: self.writer,
+                        marker: PhantomData,
+                        conn_type: PhantomData,
+                    },
+                    CodecReadHalf::<R, Self, ConnTypeReadWrite> {
+                        reader: self.reader,
+                        marker: PhantomData,
+                        conn_type: PhantomData
+                    }
+                )
+            }
+        }
     }
 }

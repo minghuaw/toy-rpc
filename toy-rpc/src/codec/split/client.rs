@@ -76,6 +76,70 @@ cfg_if!{
     }
 }
 
+cfg_if!{
+    if #[cfg(all(
+        any(
+            feature = "async_std_runtime",
+            feature = "tokio_runtime",
+            feature = "http_tide",
+            feature = "http_warp",
+            feature = "http_actix_web"
+        ),
+        any(
+            all(
+                feature = "serde_bincode",
+                not(feature = "serde_json"),
+                not(feature = "serde_cbor"),
+                not(feature = "serde_rmp"),
+            ),
+            all(
+                feature = "serde_cbor",
+                not(feature = "serde_json"),
+                not(feature = "serde_bincode"),
+                not(feature = "serde_rmp"),
+            ),
+            all(
+                feature = "serde_json",
+                not(feature = "serde_bincode"),
+                not(feature = "serde_cbor"),
+                not(feature = "serde_rmp"),
+            ),
+            all(
+                feature = "serde_rmp",
+                not(feature = "serde_cbor"),
+                not(feature = "serde_json"),
+                not(feature = "serde_bincode"),
+            )
+        )
+    ))] {
+        use crate::transport::{PayloadRead, PayloadWrite};
+
+        impl<R, W> ClientCodecSplit for Codec<R, W, ConnTypePayload> 
+        where 
+            R: PayloadRead + Send,
+            W: PayloadWrite + Send,
+        {
+            type Reader = CodecReadHalf::<R, Self, ConnTypePayload>;
+            type Writer = CodecWriteHalf::<W, Self, ConnTypePayload>;
+
+            fn split(self) -> (Self::Writer, Self::Reader) {
+                (
+                    CodecWriteHalf::<W, Self, ConnTypePayload> {
+                        writer: self.writer,
+                        marker: PhantomData,
+                        conn_type: PhantomData,
+                    },
+                    CodecReadHalf::<R, Self, ConnTypePayload> {
+                        reader: self.reader,
+                        marker: PhantomData,
+                        conn_type: PhantomData
+                    }
+                )
+            }
+        }
+    }
+}
+
 #[async_trait]
 impl<T> ClientCodecRead for T 
 where 
