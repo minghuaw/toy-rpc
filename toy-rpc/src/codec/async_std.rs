@@ -1,4 +1,4 @@
-use crate::message::GracefulShutdown;
+use crate::util::GracefulShutdown;
 use futures::io::{
     AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt, BufReader, BufWriter, ReadHalf, WriteHalf,
 };

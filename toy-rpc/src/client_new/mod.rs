@@ -1,10 +1,12 @@
 use std::{collections::HashMap, marker::PhantomData, pin::Pin, sync::Arc, task::{Context, Poll}};
-use flume::Receiver;
+use flume::{Receiver, Sender};
 use pin_project::pin_project;
 use futures::{Future, FutureExt, channel::oneshot, lock::Mutex};
 use cfg_if::cfg_if;
+use async_trait::async_trait;
 
-use crate::{Error, codec::ClientCodec, message::{AtomicMessageId, MessageId, RequestHeader, RequestMessage, ResponseHeader}};
+use crate::{Error, codec::{ClientCodec, split::{ClientCodecRead, ClientCodecWrite, CodecWriteHalf}}, message::{AtomicMessageId, MessageId, RequestBody, RequestHeader, ResponseBody, ResponseHeader, ResponseResult}, util::TerminateTask};
+use crate::util::GracefulShutdown;
 
 cfg_if! {
     if #[cfg(any(
@@ -53,12 +55,9 @@ pub struct NotConnected {}
 /// Type state for creating `Client`
 pub struct Connected {}
 
-/// The serialized representation of the response body
-type RequestBody = Box<dyn serde::Serialize + Send + Sync>;
-type ResponseBody = Box<dyn erased_serde::Deserializer<'static> + Send>;
-type ResponseResult = Result<ResponseBody, ResponseBody>;
-
-type Codec = Arc<Mutex<Box<dyn ClientCodec>>>;
+// There will be a dedicated task for reading and writing, so there should be no 
+// contention across tasks or threads
+type Codec = Box<dyn ClientCodec>;
 type ResponseMap = HashMap<MessageId, oneshot::Sender<ResponseResult>>;
 
 /// Call of a RPC request. The result can be obtained by `.await`ing the `Call`.
@@ -70,10 +69,7 @@ type ResponseMap = HashMap<MessageId, oneshot::Sender<ResponseResult>>;
 pub struct Call<Res> {
     cancel: oneshot::Sender<()>,
     #[pin]
-    done: oneshot::Receiver<Result<ResponseBody, ResponseBody>>,
-    
-    // return type
-    marker: PhantomData<Res>
+    done: oneshot::Receiver<Result<Res, Error>>,
 }
 
 impl<Res> Call<Res> 
@@ -85,96 +81,108 @@ where
     }
 }
 
-impl<Res> Future for Call<Res> 
-where 
-    Res: serde::de::DeserializeOwned
-{
-    type Output = Result<Res, Error>;
+// impl<Res> Future for Call<Res> 
+// where 
+//     Res: serde::de::DeserializeOwned
+// {
+//     type Output = Result<Res, Error>;
 
-    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        let this = self.project();
-        let done: Pin<&mut oneshot::Receiver<Result<ResponseBody, ResponseBody>>> = this.done;
-        // let done = Pin::new(&mut self.done);
+//     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+//         let this = self.project();
+//         let done: Pin<&mut oneshot::Receiver<Result<ResponseBody, ResponseBody>>> = this.done;
+//         // let done = Pin::new(&mut self.done);
 
-        match done.poll(cx) {
-            Poll::Ready(result) => {
-                match result {
-                    Ok(val) => {
-                        match val {
-                            Ok(mut resp_body) => {
-                                let resp = erased_serde::deserialize(&mut resp_body)
-                                    .map_err(|e| Error::ParseError(Box::new(e)));
-                                Poll::Ready(resp)
-                            },
-                            Err(mut err_body) => {
-                                let err = erased_serde::deserialize(&mut err_body)
-                                    .map_or_else(
-                                        |e| Err(Error::ParseError(Box::new(e))), 
-                                        |msg| Err(Error::from_err_msg(msg))
-                                    );
-                                Poll::Ready(err)
-                            }
-                        }
-                    },
-                    Err(canceled) => {
-                        let err = Err(Error::Internal(
-                            format!("Failed to read from done channel: {:?}", canceled).into()
-                        ));
-                        Poll::Ready(err)
-                    }
-                }
-            },
-            Poll::Pending => {
-                Poll::Pending
-            }
-        }
-    }
-}
+//         match done.poll(cx) {
+//             Poll::Ready(result) => {
+//                 match result {
+//                     Ok(val) => {
+//                         match val {
+//                             Ok(mut resp_body) => {
+//                                 let resp = erased_serde::deserialize(&mut resp_body)
+//                                     .map_err(|e| Error::ParseError(Box::new(e)));
+//                                 Poll::Ready(resp)
+//                             },
+//                             Err(mut err_body) => {
+//                                 let err = erased_serde::deserialize(&mut err_body)
+//                                     .map_or_else(
+//                                         |e| Err(Error::ParseError(Box::new(e))), 
+//                                         |msg| Err(Error::from_err_msg(msg))
+//                                     );
+//                                 Poll::Ready(err)
+//                             }
+//                         }
+//                     },
+//                     Err(canceled) => {
+//                         let err = Err(Error::Internal(
+//                             format!("Failed to read from done channel: {:?}", canceled).into()
+//                         ));
+//                         Poll::Ready(err)
+//                     }
+//                 }
+//             },
+//             Poll::Pending => {
+//                 Poll::Pending
+//             }
+//         }
+//     }
+// }
 
 /// RPC client
 ///
-pub struct Client<Mode> {
+pub struct Client<Mode, Handle: TerminateTask> {
     count: AtomicMessageId,
-    inner_codec: Codec,
+    // inner_codec: Codec,
     pending: Arc<Mutex<ResponseMap>>,
+
+    // new request will be sent over this channel
+    requests: Sender<(RequestHeader, RequestBody)>,
+
+    // both reader and writer tasks should return nothing
+    // The handles will be used to drop the tasks
+    // The Drop trait should be impled when tokio or async_std runtime is enabled
+    reader_handle: Option<Handle>,
+    writer_handle: Option<Handle>,
 
     marker: PhantomData<Mode>,
 }
 
-impl Client<Connected> {
-    async fn reader_loop(req: Receiver<RequestMessage>) {
-        unimplemented!()
+
+// #[async_trait]
+// pub trait RpcClient { 
+//     fn call_blocking<Req, Res>(&self, service_method: impl ToString, args: Req) -> Result<Res, Error>
+//     where
+//         Req: serde::Serialize + Send + Sync,
+//         Res: serde::de::DeserializeOwned + Send,
+//     ;
+
+//     async fn call<Req, Res>(&self, service_method: impl ToString + Send + 'static, args: Req) -> Call<Res>
+//     where
+//         Req: serde::Serialize + Send + Sync,
+//         Res: serde::de::DeserializeOwned + Send,
+//     ;
+// }
+
+pub(crate) async fn reader_loop(
+    mut reader: impl ClientCodecRead,
+    pending: Arc<Mutex<ResponseMap>>,
+) {
+    loop {
+        match read_once(&mut reader, &pending).await {
+            Ok(_) => { },
+            Err(err) => log::error!("{:?}", err),
+        }
     }
 }
 
-pub(crate) async fn serialize_and_send_request<Req>(
-    service_method: impl ToString,
-    args: &Req,
-    id: MessageId,
-    codec: &mut Box<dyn ClientCodec>,
-) -> Result<(), Error>
-where 
-    Req: serde::Serialize + Send + Sync
-{
-    let header = RequestHeader {
-        id, 
-        service_method: service_method.to_string()
-    };
-    let req = &args as &(dyn erased_serde::Serialize + Send + Sync);
-    codec.write_request(header, req).await
-}
-
-pub(crate) async fn read_response(
-    codec: Codec,
-    pending: Arc<Mutex<ResponseMap>>
+async fn read_once(
+    reader: &mut impl ClientCodecRead,
+    pending: &Arc<Mutex<ResponseMap>>,
 ) -> Result<(), Error> {
-    let mut codec = codec.lock().await;
-    // wait for response
-    if let Some(header) = codec.read_response_header().await {
+    if let Some(header) = reader.read_response_header().await {
         // [1] destructure header
         let ResponseHeader {id, is_error } = header?;
         // [2] get resposne body
-        let deserialzer = codec.read_response_body().await
+        let deserialzer = reader.read_response_body().await
             .ok_or(Error::IoError(
                 std::io::Error::new(
                     std::io::ErrorKind::UnexpectedEof,
@@ -203,36 +211,75 @@ pub(crate) async fn read_response(
     Ok(())
 }
 
-pub(crate) async fn execute_call<Req>(
-    codec: Codec,
-    service_method: impl ToString,
-    args: Req,
-    pending: Arc<Mutex<ResponseMap>>,
-    id: MessageId,
-    cancel: Receiver<()>,
+pub(crate) async fn writer_loop(
+    mut writer: impl ClientCodecWrite,
+    requests: Receiver<(RequestHeader, RequestBody)>
+) {
+    loop {
+        match write_once(&mut writer, &requests).await {
+            Ok(_) => { },
+            Err(err) => log::error!("{:?}", err),
+        }
+    }
+}
+
+async fn write_once(
+    writer: &mut impl ClientCodecWrite,
+    request: & Receiver<(RequestHeader, RequestBody)>
+) -> Result<(), Error> {
+    if let Ok(req) = request.recv_async().await {
+        let (header, body) = req;
+        writer.write_request(header, &body).await?;
+    }
+    Ok(())
+}
+
+async fn handle_response<Res>(
+    request: Sender<(RequestHeader, RequestBody)>,
+    cancel: oneshot::Receiver<()>,
+    response: oneshot::Receiver<ResponseResult>,
+    done: oneshot::Sender<Result<Res, Error>>
 ) -> Result<(), Error>
 where 
-    Req: serde::Serialize + Send + Sync,
+    Res: serde::de::DeserializeOwned + Send, 
 {
-    let (resp_body_tx, resp_body_rx) = oneshot::channel();
-    {
-        let mut _pending = pending.lock().await;
-        _pending.insert(id, resp_body_tx);
-    }
+    let val: Result<ResponseResult, Error> = futures::select! {
+        _ = cancel.fuse() => Err(Error::Canceled),
+        resp_res = response.fuse() => resp_res.map_err(|err| Error::Internal(
+            format!("InternalError: {:?}", err).into()
+        ))
+    };
 
-    {
-        let mut _codec = &mut *codec.lock().await;
-        serialize_and_send_request(service_method, &args, id, _codec).await?;
-        
-    }
-    // let read_response_fut = read_response(_codec, pending);
-    // let res = futures::select! {
-    //     _ = cancel.fuse() => Err(Error::Canceled),
-    //     read_res = read_response_fut.fuse() => read_res,
-    // };
+    let res = match val {
+        Ok(result) => {
+            match result {
+                Ok(mut resp_body) => {
+                    erased_serde::deserialize(&mut resp_body)
+                        .map_err(|e| Error::ParseError(Box::new(e)))
+                },
+                Err(mut err_body) => {
+                    erased_serde::deserialize(&mut err_body)
+                        .map_or_else(
+                            |e| Err(Error::ParseError(Box::new(e))), 
+                        |msg| Err(Error::from_err_msg(msg))
+                        )
+                    
+                }
+            }
+        },
+        Err(err) => { 
+            if let &Error::Canceled = &err {
+                // send a cancel request to server
+            }
+            
+            Err(err) 
+        }
+    };
 
-    // spawn reading task
-
+    done.send(res)
+        .map_err(|_| Error::Internal(
+            "InternalError: Failed to send over done channel".into()
+        ))?;
 
     Ok(())
 }

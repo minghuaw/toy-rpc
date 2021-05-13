@@ -2,6 +2,7 @@
 
 use serde::{Deserialize, Serialize};
 use std::sync::atomic::AtomicU16;
+use futures::channel::oneshot;
 
 use crate::{codec::RequestDeserializer, error::Error, service::{ArcAsyncServiceCall, HandlerResult}};
 
@@ -46,12 +47,8 @@ impl Metadata for ResponseHeader {
 
 pub(crate) type ResponseBody = Box<dyn erased_serde::Deserializer<'static> + Send>;
 
-/// Client should be able to gracefully shutdown the connection by
-/// sending some kind of closing message
-#[async_trait::async_trait]
-pub trait GracefulShutdown {
-    async fn close(&mut self);
-}
+/// The serialized representation of the response body
+pub(crate) type ResponseResult = Result<ResponseBody, ResponseBody>;
 
 /// The Error message that will be sent over for a error response
 #[derive(Serialize, Deserialize)]
@@ -91,4 +88,7 @@ pub(crate) struct ExecutionResult {
     pub result: HandlerResult
 }
 
-pub(crate) struct RequestMessage(RequestHeader, RequestBody);
+// pub(crate) enum ClientReaderControl {
+//     Stop,
+//     NewMessage(oneshot::Sender<ResponseResult>)
+// }
