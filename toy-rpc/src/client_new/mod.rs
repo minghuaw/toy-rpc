@@ -77,7 +77,36 @@ where
     Res: serde::de::DeserializeOwned
 {
     pub fn cancel(self) {
-        unimplemented!()
+        match self.cancel.send(()) {
+            Ok(_) => { 
+                log::info!("Call is canceled");
+            },
+            Err(_) => { 
+                log::error!("Failed to cancel")
+            },
+        }
+    }
+}
+
+impl<Res> Future for Call<Res>
+where 
+    Res: serde::de::DeserializeOwned
+{
+    type Output = Result<Res, Error>;
+
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        let this = self.project();
+        let done: Pin<&mut oneshot::Receiver<Result<Res, Error>>> = this.done;
+
+        match done.poll(cx) {
+            Poll::Pending => Poll::Pending,
+            Poll::Ready(res) => {
+                match res {
+                    Ok(r) => Poll::Ready(r),
+                    Err(_canceled) => Poll::Ready(Err(Error::Canceled))
+                }
+            }
+        }
     }
 }
 
