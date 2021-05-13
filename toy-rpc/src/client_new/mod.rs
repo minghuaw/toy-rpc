@@ -263,6 +263,35 @@ async fn write_once(
     Ok(())
 }
 
+async fn handle_call<Res>(
+    pending: Arc<Mutex<ResponseMap>>,
+    header: RequestHeader,
+    body: RequestBody,
+    request_tx: Sender<(RequestHeader, RequestBody)>,
+    cancel: oneshot::Receiver<()>,
+    done: oneshot::Sender<Result<Res, Error>>
+) -> Result<(), Error>
+where 
+    Res: serde::de::DeserializeOwned + Send, 
+{
+    let id = header.id.clone();
+    request_tx.send_async(
+        (header, body)
+    ).await?;
+
+    let (resp_tx, resp_rx) = oneshot::channel();
+
+    // insert done channel to ResponseMap
+    {
+        let mut _pending = pending.lock().await;
+        _pending.insert(id, resp_tx);
+    }
+
+    handle_response(request_tx, cancel, resp_rx, done).await?;
+
+    Ok(())
+}
+
 async fn handle_response<Res>(
     request: Sender<(RequestHeader, RequestBody)>,
     cancel: oneshot::Receiver<()>,

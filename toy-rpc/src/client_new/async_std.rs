@@ -1,12 +1,59 @@
-use std::sync::atomic::Ordering;
+use std::{sync::atomic::Ordering};
 
 use ::async_std::task;
 use futures::{AsyncRead, AsyncWrite};
-use async_trait::async_trait;
 
 use crate::codec::split::ClientCodecSplit;
 
 use super::*;
+
+cfg_if! {
+    if #[cfg(any(
+        any(feature = "docs", doc),
+        all(
+            feature = "serde_bincode",
+            not(feature = "serde_json"),
+            not(feature = "serde_cbor"),
+            not(feature = "serde_rmp"),
+        ),
+        all(
+            feature = "serde_cbor",
+            not(feature = "serde_json"),
+            not(feature = "serde_bincode"),
+            not(feature = "serde_rmp"),
+        ),
+        all(
+            feature = "serde_json",
+            not(feature = "serde_bincode"),
+            not(feature = "serde_cbor"),
+            not(feature = "serde_rmp"),
+        ),
+        all(
+            feature = "serde_rmp",
+            not(feature = "serde_cbor"),
+            not(feature = "serde_json"),
+            not(feature = "serde_bincode"),
+        )
+    ))] {
+        use ::async_std::net::{TcpStream, ToSocketAddrs};
+
+        impl Client<NotConnected, task::JoinHandle<()>> {
+            pub async fn dial(addr: impl ToSocketAddrs) -> Result<Client<Connected, task::JoinHandle<()>>, Error> {
+                let stream = TcpStream::connect(addr).await?;
+                Ok(Self::with_stream(stream))
+            }
+
+            pub fn with_stream<T>(stream: T) -> Client<Connected, task::JoinHandle<()>> 
+            where
+                T: AsyncRead + AsyncWrite + Send + Sync + Unpin + 'static,
+            {
+                let codec = DefaultCodec::new(stream);
+                Self::with_codec(codec)
+            }
+        }
+    }
+}
+
 
 impl Client<NotConnected, task::JoinHandle<()>> {
     pub fn with_codec<C>(codec: C) -> Client<Connected, task::JoinHandle<()>> 
@@ -46,14 +93,14 @@ impl<Mode, Handle: TerminateTask> Drop for Client<Mode, Handle> {
 }
 
 impl Client<Connected, task::JoinHandle<()>> {
-    fn call_blocking<Req, Res>(&self, service_method: impl ToString, args: Req) -> Result<Res, Error>
+    pub fn call_blocking<Req, Res>(&self, service_method: impl ToString, args: Req) -> Result<Res, Error>
     where
             Req: serde::Serialize + Send + Sync,
             Res: serde::de::DeserializeOwned + Send, {
         unimplemented!()
     }
 
-    async fn call<Req, Res>(&self, service_method: impl ToString, args: Req) -> Result<Call<Res>, Error>
+    pub fn call<Req, Res>(&self, service_method: impl ToString, args: Req) -> Call<Res>
     where
             Req: serde::Serialize + Send + Sync + 'static,
             Res: serde::de::DeserializeOwned + Send + 'static, 
@@ -63,31 +110,36 @@ impl Client<Connected, task::JoinHandle<()>> {
         let header = RequestHeader { id, service_method };
         let body = Box::new(args) as RequestBody;
 
-        // send request to writer
-        self.requests.send_async(
-            (header, body)
-        ).await?;
+        // // send request to writer
+        // self.requests.send_async(
+        //     (header, body)
+        // ).await?;
 
         // create oneshot channel
-        let (resp_tx, resp_rx) = oneshot::channel();
         let (done_tx, done_rx) = oneshot::channel();
         let (cancel_tx, cancel_rx) = oneshot::channel::<()>();
         
-        // insert done channel to ResponseMap
-        {
-            let mut _pending = self.pending.lock().await;
-            _pending.insert(id, resp_tx);
-        }
+        // // insert done channel to ResponseMap
+        // {
+        //     let mut _pending = self.pending.lock().await;
+        //     _pending.insert(id, resp_tx);
+        // }
 
-        // spawn a task to handle response
+        // // spawn a task to handle response
+        // let request_tx = self.requests.clone();
+        // task::spawn(async move {
+        //     match handle_response::<Res>(request_tx, cancel_rx, resp_rx, done_tx).await {
+        //         Ok(_) => { },
+        //         Err(err) => {
+        //             log::error!("{:?}", err);
+        //         }
+        //     }
+        // });
+        
+        let pending = self.pending.clone();
         let request_tx = self.requests.clone();
         task::spawn(async move {
-            match handle_response::<Res>(request_tx, cancel_rx, resp_rx, done_tx).await {
-                Ok(_) => { },
-                Err(err) => {
-                    log::error!("{:?}", err);
-                }
-            }
+            handle_call(pending, header, body, request_tx, cancel_rx, done_tx).await
         });
 
         // create Call
@@ -95,6 +147,6 @@ impl Client<Connected, task::JoinHandle<()>> {
             cancel: cancel_tx,
             done: done_rx
         };
-        Ok(call)
+        call
     }
 }
