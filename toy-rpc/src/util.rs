@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use async_std::future;
 use async_trait::async_trait;
 use cfg_if::cfg_if;
 

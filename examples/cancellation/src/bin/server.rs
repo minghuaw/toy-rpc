@@ -1,5 +1,5 @@
 use async_std::net::TcpListener;
-use async_std::sync::{Arc, Mutex};
+use async_std::sync::{Arc};
 use async_std::task;
 
 use toy_rpc::Server;

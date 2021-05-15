@@ -3,10 +3,8 @@ use flume::{Receiver, Sender};
 use pin_project::pin_project;
 use futures::{Future, FutureExt, channel::oneshot, lock::Mutex};
 use cfg_if::cfg_if;
-use async_trait::async_trait;
 
-use crate::{Error, codec::{ClientCodec, split::{ClientCodecRead, ClientCodecWrite, CodecWriteHalf}}, message::{AtomicMessageId, MessageId, RequestBody, RequestHeader, ResponseBody, ResponseHeader, ResponseResult}, util::TerminateTask};
-use crate::util::GracefulShutdown;
+use crate::{Error, codec::{split::{ClientCodecRead, ClientCodecWrite}}, message::{AtomicMessageId, MessageId, RequestBody, RequestHeader, ResponseHeader, ResponseResult}, util::TerminateTask};
 use crate::message::CANCELLATION_TOKEN;
 
 cfg_if! {
@@ -260,7 +258,7 @@ where
         cancel_res = cancel.fuse() => {
             match cancel_res {
                 Ok(id) => Err(Error::Canceled(Some(id))),
-                Err(canceled) => Err(Error::Canceled(None))
+                Err(_) => Err(Error::Canceled(None))
             }
         },
         resp_res = response.fuse() => resp_res.map_err(|err| Error::Internal(

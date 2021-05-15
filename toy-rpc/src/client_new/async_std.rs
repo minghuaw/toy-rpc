@@ -95,15 +95,16 @@ impl<Mode, Handle: TerminateTask> Drop for Client<Mode, Handle> {
 impl Client<Connected, task::JoinHandle<()>> {
     pub fn call_blocking<Req, Res>(&self, service_method: impl ToString, args: Req) -> Result<Res, Error>
     where
-            Req: serde::Serialize + Send + Sync,
-            Res: serde::de::DeserializeOwned + Send, {
-        unimplemented!()
+        Req: serde::Serialize + Send + Sync + 'static,
+        Res: serde::de::DeserializeOwned + Send + 'static, {
+        let call = self.call(service_method, args);
+        futures::executor::block_on(call)
     }
 
     pub fn call<Req, Res>(&self, service_method: impl ToString, args: Req) -> Call<Res>
     where
-            Req: serde::Serialize + Send + Sync + 'static,
-            Res: serde::de::DeserializeOwned + Send + 'static, 
+        Req: serde::Serialize + Send + Sync + 'static,
+        Res: serde::de::DeserializeOwned + Send + 'static, 
     {
         let id = self.count.fetch_add(1, Ordering::Relaxed);
         let service_method = service_method.to_string();

@@ -6,7 +6,6 @@ use async_std::task::JoinHandle;
 use flume::{Receiver, Sender};
 use cfg_if::cfg_if;
 use futures::lock::Mutex;
-use futures::channel::oneshot;
 
 use crate::{codec::split::ServerCodecWrite, message::{ExecutionMessage, MessageId}};
 
