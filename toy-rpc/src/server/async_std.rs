@@ -1,16 +1,7 @@
-use std::collections::HashMap;
+//! This modules implements `Server`'s methods that require `feature = "async_std_runtime"`
+//! or `feature = "http_tide"`.
 
-use async_std::task::JoinHandle;
 use cfg_if::cfg_if;
-/// This modules implements `Server`'s methods that require `feature = "async_std_runtime"`
-/// or `feature = "http_tide"`.
-use flume::{Receiver, Sender};
-use futures::lock::Mutex;
-
-use crate::{
-    codec::split::ServerCodecWrite,
-    message::{ExecutionMessage, MessageId},
-};
 
 cfg_if! {
     if #[cfg(any(
@@ -40,16 +31,21 @@ cfg_if! {
             not(feature = "serde_bincode"),
         ),
     ))] {
-        use ::async_std::net::{TcpListener, TcpStream};
-        use ::async_std::task;
-        use futures::StreamExt;
         use std::sync::Arc;
+        use std::collections::HashMap;
+        use ::async_std::net::{TcpListener, TcpStream};
+        use ::async_std::task::{self, JoinHandle};
+        use futures::{StreamExt, lock::Mutex};
+        use flume::{Receiver, Sender};
 
-        use crate::codec::DefaultCodec;
         use crate::error::Error;
         use crate::transport::ws::WebSocketConn;
         use crate::codec::split::ServerCodecSplit;
         use crate::message::{ExecutionResult};
+        use crate::{
+            codec::{DefaultCodec, split::ServerCodecWrite},
+            message::{ExecutionMessage, MessageId},
+        };
 
         use super::{AsyncServiceMap, Server};
 
