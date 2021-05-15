@@ -58,12 +58,14 @@ cfg_if! {
         use futures::select;
 
         mod async_std;
+        pub use crate::client_new::async_std::Call;
 
     } else if #[cfg(feature = "tokio_runtime")] {
         use ::tokio::sync::oneshot;
         use ::tokio::select;
 
         mod tokio;
+        pub use crate::client_new::tokio::Call;
     }
 }
 
@@ -76,55 +78,6 @@ pub struct Connected {}
 // contention across tasks or threads
 // type Codec = Box<dyn ClientCodec>;
 type ResponseMap = HashMap<MessageId, oneshot::Sender<ResponseResult>>;
-
-/// Call of a RPC request. The result can be obtained by `.await`ing the `Call`.
-/// The call can be cancelled with `cancel()` method.
-///
-/// # Example
-///
-#[pin_project]
-pub struct Call<Res> {
-    id: MessageId,
-    cancel: oneshot::Sender<MessageId>,
-    #[pin]
-    done: oneshot::Receiver<Result<Res, Error>>,
-}
-
-impl<Res> Call<Res>
-where
-    Res: serde::de::DeserializeOwned,
-{
-    pub fn cancel(self) {
-        match self.cancel.send(self.id) {
-            Ok(_) => {
-                log::info!("Call is canceled");
-            }
-            Err(_) => {
-                log::error!("Failed to cancel")
-            }
-        }
-    }
-}
-
-impl<Res> Future for Call<Res>
-where
-    Res: serde::de::DeserializeOwned,
-{
-    type Output = Result<Res, Error>;
-
-    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        let this = self.project();
-        let done: Pin<&mut oneshot::Receiver<Result<Res, Error>>> = this.done;
-
-        match done.poll(cx) {
-            Poll::Pending => Poll::Pending,
-            Poll::Ready(res) => match res {
-                Ok(r) => Poll::Ready(r),
-                Err(_canceled) => Poll::Ready(Err(Error::Canceled(Some(this.id.clone())))),
-            },
-        }
-    }
-}
 
 /// RPC client
 ///
