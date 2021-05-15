@@ -111,6 +111,26 @@ cfg_if! {
     }
 }
 
+#[cfg(feature = "async_std_runtime")]
+impl<Mode, Handle: Future> Drop for Client<Mode, Handle> {
+    fn drop(&mut self) {
+        log::debug!("Dropping client");
+
+        self.reader_stop.send(());
+        self.writer_stop.send(());
+
+        task::block_on(async {
+            if let Some(reader) =self.reader_handle.take() {
+                reader.await;
+            }
+            
+            if let Some(writer) = self.writer_handle.take() {
+                writer.await;
+            }
+        })
+    }
+}
+
 impl Client<NotConnected, task::JoinHandle<()>> {
     pub fn with_codec<C>(codec: C) -> Client<Connected, task::JoinHandle<()>>
     where
@@ -120,15 +140,21 @@ impl Client<NotConnected, task::JoinHandle<()>> {
         let (writer, reader) = codec.split();
         let (req_sender, req_recver) = flume::unbounded();
         let pending = Arc::new(Mutex::new(HashMap::new()));
-        let handle = task::spawn(reader_loop(reader, pending.clone()));
+        let (reader_stop, stop) = flume::bounded(1);
+        let handle = task::spawn(reader_loop(reader, pending.clone(), stop));
         let reader_handle = Some(handle);
-        let handle = task::spawn(writer_loop(writer, req_recver));
+
+        let (writer_stop, stop) = flume::bounded(1);
+        let handle = task::spawn(writer_loop(writer, req_recver, stop));
         let writer_handle = Some(handle);
+
 
         Client::<Connected, task::JoinHandle<()>> {
             count: AtomicMessageId::new(0),
             pending,
             requests: req_sender,
+            reader_stop,
+            writer_stop,
             reader_handle,
             writer_handle,
 

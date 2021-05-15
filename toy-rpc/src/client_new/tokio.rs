@@ -36,7 +36,9 @@ where
             }
         }
 
-        match Handle::current().block_on(handle) {
+        match task::block_in_place(|| {
+            Handle::current().block_on(handle)
+        }) {
             Ok(_) => { },
             Err(err) => log::error!("{:?}", err)
         };

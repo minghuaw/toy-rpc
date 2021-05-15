@@ -81,7 +81,7 @@ type ResponseMap = HashMap<MessageId, oneshot::Sender<ResponseResult>>;
 
 /// RPC client
 ///
-pub struct Client<Mode, Handle: TerminateTask> {
+pub struct Client<Mode, Handle: Future> {
     count: AtomicMessageId,
     pending: Arc<Mutex<ResponseMap>>,
 
@@ -91,33 +91,30 @@ pub struct Client<Mode, Handle: TerminateTask> {
     // both reader and writer tasks should return nothing
     // The handles will be used to drop the tasks
     // The Drop trait should be impled when tokio or async_std runtime is enabled
+    reader_stop: Sender<()>,
+    writer_stop: Sender<()>,
     reader_handle: Option<Handle>,
     writer_handle: Option<Handle>,
 
     marker: PhantomData<Mode>,
 }
 
-impl<Mode, Handle: TerminateTask> Drop for Client<Mode, Handle> {
-    fn drop(&mut self) {
-        log::debug!("Dropping client");
-
-        self.reader_handle.take().map(
-            |h| h.terminate()
-        );
-        self.writer_handle.take().map(
-            |h| h.terminate()
-        );
-    }
-}
-
 pub(crate) async fn reader_loop(
     mut reader: impl ClientCodecRead,
     pending: Arc<Mutex<ResponseMap>>,
+    stop: Receiver<()>,
 ) {
     loop {
-        match read_once(&mut reader, &pending).await {
-            Ok(_) => {}
-            Err(err) => log::error!("{:?}", err),
+        select! {
+            _ = stop.recv_async().fuse() => {
+                return ()
+            },
+            res = read_once(&mut reader, &pending).fuse() => {
+                match res {
+                    Ok(_) => {}
+                    Err(err) => log::error!("{:?}", err),
+                }
+            }
         }
     }
 }
@@ -163,11 +160,19 @@ async fn read_once(
 pub(crate) async fn writer_loop(
     mut writer: impl ClientCodecWrite,
     requests: Receiver<(RequestHeader, RequestBody)>,
+    stop: Receiver<()>,
 ) {
     loop {
-        match write_once(&mut writer, &requests).await {
-            Ok(_) => {}
-            Err(err) => log::error!("{:?}", err),
+        select! {
+            _ = stop.recv_async().fuse() => {
+                return ()
+            },
+            res = write_once(&mut writer, &requests).fuse() => {
+                match res {
+                    Ok(_) => {}
+                    Err(err) => log::error!("{:?}", err),
+                }
+            }
         }
     }
 }
