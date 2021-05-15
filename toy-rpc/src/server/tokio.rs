@@ -42,7 +42,7 @@ cfg_if! {
         use crate::transport::ws::WebSocketConn;
         use crate::codec::split::ServerCodecSplit;
         use crate::{
-            codec::{DefaultCodec, split::ServerCodecWrite},
+            codec::{DefaultCodec},
             message::{ExecutionMessage, ExecutionResult, MessageId},
         };
         use super::{AsyncServiceMap, Server};
@@ -230,11 +230,11 @@ cfg_if! {
                 );
 
                 let writer_handle = task::spawn(
-                    serve_codec_writer_loop(codec_writer, resp_recver)
+                    super::serve_codec_writer_loop(codec_writer, resp_recver, task_map.clone())
                 );
 
                 let executor_handle = task::spawn(
-                    serve_codec_executor_loop(exec_recver, resp_sender)
+                    serve_codec_executor_loop(exec_recver, resp_sender, task_map)
                 );
 
                 reader_handle.await??;
