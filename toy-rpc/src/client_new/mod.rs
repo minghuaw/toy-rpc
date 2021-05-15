@@ -92,8 +92,6 @@ pub struct Client<Mode> {
     // The Drop trait should be impled when tokio or async_std runtime is enabled
     reader_stop: Sender<()>,
     writer_stop: Sender<()>,
-    // reader_handle: Option<Handle>,
-    // writer_handle: Option<Handle>,
 
     marker: PhantomData<Mode>,
 }
@@ -176,24 +174,6 @@ pub(crate) async fn writer_loop(
     stop: Receiver<()>,
 ) {
     loop {
-        // // `select!` is not used here because it is 
-        // // prefered to have the cancel message sent out
-        // // before dropping the client
-        // match write_once(&mut writer, &requests).await {
-        //     Ok(_) => { },
-        //     Err(err) => log::error!("{:?}", err),
-        // }
-
-        // match stop.try_recv() {
-        //     Ok(_) => break,
-        //     Err(err) => {
-        //         match err {
-        //             flume::TryRecvError::Disconnected => break,
-        //             flume::TryRecvError::Empty => { }
-        //         }
-        //     }
-        // }
-
         select! {
             _ = stop.recv_async().fuse() => {
                 // finish sending all requests available before dropping

@@ -111,47 +111,19 @@ cfg_if! {
     }
 }
 
-// // seems like it still works even without this impl
-// impl<Mode, Handle: Future> Drop for Client<Mode, Handle> {
-//     fn drop(&mut self) {
-//         log::debug!("Dropping client");
-
-//         if self.reader_stop.send(()).is_err() {
-//             log::error!("Failed to send stop signal to reader loop")
-//         }
-//         if self.writer_stop.send(()).is_err() {
-//             log::error!("Failed to send stop signal to writer loop")
-//         }
-
-//         task::block_on(async {
-//             if let Some(reader) =self.reader_handle.take() {
-//                 reader.await;
-//             }
-            
-//             if let Some(writer) = self.writer_handle.take() {
-//                 writer.await;
-//             }
-//         })
-//     }
-// }
-
 impl Client<NotConnected> {
     pub fn with_codec<C>(codec: C) -> Client<Connected>
     where
         C: ClientCodecSplit + Send + Sync + 'static,
     {
-        // let codec: Box<dyn ClientCodec> = Box::new(codec);
         let (writer, reader) = codec.split();
         let (req_sender, req_recver) = flume::unbounded();
         let pending = Arc::new(Mutex::new(HashMap::new()));
         let (reader_stop, stop) = flume::bounded(1);
         task::spawn(reader_loop(reader, pending.clone(), stop));
-        // let reader_handle = Some(handle);
 
         let (writer_stop, stop) = flume::bounded(1);
         task::spawn(writer_loop(writer, req_recver, stop));
-        // let writer_handle = Some(handle);
-
 
         Client::<Connected> {
             count: AtomicMessageId::new(0),
@@ -159,8 +131,6 @@ impl Client<NotConnected> {
             requests: req_sender,
             reader_stop,
             writer_stop,
-            // reader_handle,
-            // writer_handle,
 
             marker: PhantomData,
         }
