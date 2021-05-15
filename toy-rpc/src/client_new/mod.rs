@@ -22,14 +22,6 @@ use crate::{
 };
 
 cfg_if! {
-    if #[cfg(feature = "async_std_runtime")] {
-        use futures::channel::oneshot;
-    } else if #[cfg(feature = "tokio_runtime")] {
-        use ::tokio::sync::oneshot;
-    }
-}
-
-cfg_if! {
     if #[cfg(any(
         all(
             feature = "serde_bincode",
@@ -61,12 +53,16 @@ cfg_if! {
 }
 
 cfg_if! {
-    if #[cfg(any(
-        feature = "async_std_runtime",
-        feature = "http_tide"
-    ))] {
+    if #[cfg(feature = "async_std_runtime")] {
+        use futures::channel::oneshot;
+        use futures::select;
+
         mod async_std;
-    } else {
+
+    } else if #[cfg(feature = "tokio_runtime")] {
+        use ::tokio::sync::oneshot;
+        use ::tokio::select;
+
         mod tokio;
     }
 }
@@ -271,7 +267,7 @@ async fn handle_response<Res>(
 where
     Res: serde::de::DeserializeOwned + Send,
 {
-    let val: Result<ResponseResult, Error> = futures::select! {
+    let val: Result<ResponseResult, Error> = select! {
         cancel_res = cancel.fuse() => {
             match cancel_res {
                 Ok(id) => Err(Error::Canceled(Some(id))),
