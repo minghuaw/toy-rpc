@@ -15,4 +15,10 @@ async fn main() {
 
     let reply: Result<i32, _> = client.call("Echo.echo_i32", 1313i32).await;
     println!("{:?}", reply);
+
+    println!("Calling infinite loop");
+    let call: Call<()> = client.call("Echo.infinite_loop", ());
+    println!("Cancelling infinite loop");
+    call.cancel();
+    println!("{:?}", reply);
 }

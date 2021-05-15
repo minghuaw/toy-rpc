@@ -1,7 +1,7 @@
 //! Custom errors
 use std::io::ErrorKind;
 
-use crate::message::ErrorMessage;
+use crate::message::{ErrorMessage, MessageId};
 
 /// Custom error type
 #[derive(Debug, thiserror::Error)]
@@ -34,8 +34,8 @@ pub enum Error {
     #[error("{0}")]
     ExecutionError(String),
 
-    #[error("Canceled")]
-    Canceled,
+    #[error("Request is canceled")]
+    Canceled(Option<MessageId>),
 }
 
 impl Error {

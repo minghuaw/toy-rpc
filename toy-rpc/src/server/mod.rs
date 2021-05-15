@@ -122,6 +122,8 @@ impl Server {
             let call: ArcAsyncServiceCall = match services.get(service) {
                 Some(serv_call) => serv_call.clone(),
                 None => {
+                    log::error!("Service not found: '{}'", service);
+
                     // should not stop the reader if the method is not found
                     writer.send_async(
                         ExecutionResult {

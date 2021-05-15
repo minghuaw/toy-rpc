@@ -117,7 +117,7 @@ impl Client<Connected, task::JoinHandle<()>> {
 
         // create oneshot channel
         let (done_tx, done_rx) = oneshot::channel();
-        let (cancel_tx, cancel_rx) = oneshot::channel::<()>();
+        let (cancel_tx, cancel_rx) = oneshot::channel();
         
         // // insert done channel to ResponseMap
         // {
@@ -144,6 +144,7 @@ impl Client<Connected, task::JoinHandle<()>> {
 
         // create Call
         let call = Call::<Res> {
+            id,
             cancel: cancel_tx,
             done: done_rx
         };

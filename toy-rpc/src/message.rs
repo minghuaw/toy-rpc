@@ -2,9 +2,10 @@
 
 use serde::{Deserialize, Serialize};
 use std::sync::atomic::AtomicU16;
-use futures::channel::oneshot;
 
 use crate::{codec::RequestDeserializer, error::Error, service::{ArcAsyncServiceCall, HandlerResult}};
+
+pub(crate) const CANCELLATION_TOKEN: &str = "RPC_TASK_CANCELLATION";
 
 /// Type of message id is u16
 pub type MessageId = u16;
@@ -69,7 +70,7 @@ impl ErrorMessage {
             e @ Error::IoError(_) => Err(e),
             e @ Error::ParseError(_) => Err(e),
             e @ Error::Internal(_) => Err(e),
-            e @ Error::Canceled => Err(e)
+            e @ Error::Canceled(_) => Err(e)
         }
     }
 }

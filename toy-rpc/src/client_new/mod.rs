@@ -7,6 +7,7 @@ use async_trait::async_trait;
 
 use crate::{Error, codec::{ClientCodec, split::{ClientCodecRead, ClientCodecWrite, CodecWriteHalf}}, message::{AtomicMessageId, MessageId, RequestBody, RequestHeader, ResponseBody, ResponseHeader, ResponseResult}, util::TerminateTask};
 use crate::util::GracefulShutdown;
+use crate::message::CANCELLATION_TOKEN;
 
 cfg_if! {
     if #[cfg(any(
@@ -57,7 +58,7 @@ pub struct Connected {}
 
 // There will be a dedicated task for reading and writing, so there should be no 
 // contention across tasks or threads
-type Codec = Box<dyn ClientCodec>;
+// type Codec = Box<dyn ClientCodec>;
 type ResponseMap = HashMap<MessageId, oneshot::Sender<ResponseResult>>;
 
 /// Call of a RPC request. The result can be obtained by `.await`ing the `Call`.
@@ -67,7 +68,8 @@ type ResponseMap = HashMap<MessageId, oneshot::Sender<ResponseResult>>;
 /// 
 #[pin_project]
 pub struct Call<Res> {
-    cancel: oneshot::Sender<()>,
+    id: MessageId,
+    cancel: oneshot::Sender<MessageId>,
     #[pin]
     done: oneshot::Receiver<Result<Res, Error>>,
 }
@@ -77,7 +79,7 @@ where
     Res: serde::de::DeserializeOwned
 {
     pub fn cancel(self) {
-        match self.cancel.send(()) {
+        match self.cancel.send(self.id) {
             Ok(_) => { 
                 log::info!("Call is canceled");
             },
@@ -103,64 +105,17 @@ where
             Poll::Ready(res) => {
                 match res {
                     Ok(r) => Poll::Ready(r),
-                    Err(_canceled) => Poll::Ready(Err(Error::Canceled))
+                    Err(_canceled) => Poll::Ready(Err(Error::Canceled(Some(this.id.clone()))))
                 }
             }
         }
     }
 }
 
-// impl<Res> Future for Call<Res> 
-// where 
-//     Res: serde::de::DeserializeOwned
-// {
-//     type Output = Result<Res, Error>;
-
-//     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-//         let this = self.project();
-//         let done: Pin<&mut oneshot::Receiver<Result<ResponseBody, ResponseBody>>> = this.done;
-//         // let done = Pin::new(&mut self.done);
-
-//         match done.poll(cx) {
-//             Poll::Ready(result) => {
-//                 match result {
-//                     Ok(val) => {
-//                         match val {
-//                             Ok(mut resp_body) => {
-//                                 let resp = erased_serde::deserialize(&mut resp_body)
-//                                     .map_err(|e| Error::ParseError(Box::new(e)));
-//                                 Poll::Ready(resp)
-//                             },
-//                             Err(mut err_body) => {
-//                                 let err = erased_serde::deserialize(&mut err_body)
-//                                     .map_or_else(
-//                                         |e| Err(Error::ParseError(Box::new(e))), 
-//                                         |msg| Err(Error::from_err_msg(msg))
-//                                     );
-//                                 Poll::Ready(err)
-//                             }
-//                         }
-//                     },
-//                     Err(canceled) => {
-//                         let err = Err(Error::Internal(
-//                             format!("Failed to read from done channel: {:?}", canceled).into()
-//                         ));
-//                         Poll::Ready(err)
-//                     }
-//                 }
-//             },
-//             Poll::Pending => {
-//                 Poll::Pending
-//             }
-//         }
-//     }
-// }
-
 /// RPC client
 ///
 pub struct Client<Mode, Handle: TerminateTask> {
     count: AtomicMessageId,
-    // inner_codec: Codec,
     pending: Arc<Mutex<ResponseMap>>,
 
     // new request will be sent over this channel
@@ -268,7 +223,7 @@ async fn handle_call<Res>(
     header: RequestHeader,
     body: RequestBody,
     request_tx: Sender<(RequestHeader, RequestBody)>,
-    cancel: oneshot::Receiver<()>,
+    cancel: oneshot::Receiver<MessageId>,
     done: oneshot::Sender<Result<Res, Error>>
 ) -> Result<(), Error>
 where 
@@ -294,7 +249,7 @@ where
 
 async fn handle_response<Res>(
     request: Sender<(RequestHeader, RequestBody)>,
-    cancel: oneshot::Receiver<()>,
+    cancel: oneshot::Receiver<MessageId>,
     response: oneshot::Receiver<ResponseResult>,
     done: oneshot::Sender<Result<Res, Error>>
 ) -> Result<(), Error>
@@ -302,7 +257,12 @@ where
     Res: serde::de::DeserializeOwned + Send, 
 {
     let val: Result<ResponseResult, Error> = futures::select! {
-        _ = cancel.fuse() => Err(Error::Canceled),
+        cancel_res = cancel.fuse() => {
+            match cancel_res {
+                Ok(id) => Err(Error::Canceled(Some(id))),
+                Err(canceled) => Err(Error::Canceled(None))
+            }
+        },
         resp_res = response.fuse() => resp_res.map_err(|err| Error::Internal(
             format!("InternalError: {:?}", err).into()
         ))
@@ -326,8 +286,20 @@ where
             }
         },
         Err(err) => { 
-            if let &Error::Canceled = &err {
-                // send a cancel request to server
+            if let &Error::Canceled(opt) = &err {
+                // send a cancel request to server only if the 
+                // the request id is successully received
+                if let Some(id) = opt {
+                    let header = RequestHeader {
+                        id,
+                        service_method: CANCELLATION_TOKEN.into()
+                    };
+                    let body: String = format!("{}.{}", CANCELLATION_TOKEN, id);
+                    let body = Box::new(body) as RequestBody;
+                    request.send_async(
+                        (header, body)
+                    ).await?;
+                }
             }
             
             Err(err) 
