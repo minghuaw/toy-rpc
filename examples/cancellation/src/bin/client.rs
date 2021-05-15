@@ -10,6 +10,8 @@ cfg_if! {
         #[async_std::main]
         async fn main() {
             run().await;
+            println!("After run");
+
         }
 
         async fn run() {
@@ -32,6 +34,8 @@ cfg_if! {
             call.cancel();
             // println!(".awaiting on call");
             // let reply = call.await;
+            // task::sleep(Duration::from_secs(2)).await;
+
         }
     } else if #[cfg(feature = "tokio_runtime")] {
         use tokio::time;
@@ -63,6 +67,7 @@ cfg_if! {
             // println!(".awaiting on call");
             // let reply = call.await;
             // println!("After cancel");
+            // time::sleep(Duration::from_secs(2)).await;
         }
     }
 }

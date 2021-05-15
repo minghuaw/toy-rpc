@@ -95,15 +95,15 @@ cfg_if! {
     ))] { 
         use ::tokio::net::{TcpStream, ToSocketAddrs};
 
-        impl Client<NotConnected, task::JoinHandle<()>> {
+        impl Client<NotConnected> {
             pub async fn dial(addr: impl ToSocketAddrs) 
-                -> Result<Client<Connected, task::JoinHandle<()>>, Error> 
+                -> Result<Client<Connected>, Error> 
             {
                 let stream = TcpStream::connect(addr).await?;
                 Ok(Self::with_stream(stream))
             }
 
-            pub fn with_stream<T>(stream: T) -> Client<Connected, task::JoinHandle<()>> 
+            pub fn with_stream<T>(stream: T) -> Client<Connected> 
             where
                 T: AsyncRead + AsyncWrite + Send + Sync + Unpin + 'static
             {
@@ -114,34 +114,34 @@ cfg_if! {
     }
 }
 
-// seems like it still works even without this impl
-impl<Mode, H: Future> Drop for Client<Mode, H> {
-    fn drop(&mut self) {
-        log::debug!("Dropping client");
+// // seems like it still works even without this impl
+// impl<Mode, H: Future> Drop for Client<Mode, H> {
+//     fn drop(&mut self) {
+//         log::debug!("Dropping client");
 
-        if self.reader_stop.send(()).is_err() {
-            log::error!("Failed to send stop signal to reader loop")
-        }
-        if self.writer_stop.send(()).is_err() {
-            log::error!("Failed to send stop signal to writer loop")
-        }
+//         if self.reader_stop.send(()).is_err() {
+//             log::error!("Failed to send stop signal to reader loop")
+//         }
+//         if self.writer_stop.send(()).is_err() {
+//             log::error!("Failed to send stop signal to writer loop")
+//         }
 
-        task::block_in_place(|| {
-            Handle::current().block_on(async {
-                if let Some(reader) =self.reader_handle.take() {
-                    reader.await;
-                }
+//         task::block_in_place(|| {
+//             Handle::current().block_on(async {
+//                 if let Some(reader) =self.reader_handle.take() {
+//                     reader.await;
+//                 }
                 
-                if let Some(writer) = self.writer_handle.take() {
-                    writer.await;
-                }
-            })
-        })
-    }
-}
+//                 if let Some(writer) = self.writer_handle.take() {
+//                     writer.await;
+//                 }
+//             })
+//         })
+//     }
+// }
 
-impl Client<NotConnected, task::JoinHandle<()>> {
-    pub fn with_codec<C>(codec: C) -> Client<Connected, task::JoinHandle<()>>
+impl Client<NotConnected> {
+    pub fn with_codec<C>(codec: C) -> Client<Connected>
     where
         C: ClientCodecSplit + Send + Sync + 'static,
     {
@@ -150,29 +150,28 @@ impl Client<NotConnected, task::JoinHandle<()>> {
          let (req_sender, req_recver) = flume::unbounded();
          let pending = Arc::new(Mutex::new(HashMap::new()));
          let (reader_stop, stop) = flume::bounded(1);
-         let handle = task::spawn(reader_loop(reader, pending.clone(), stop));
-         let reader_handle = Some(handle);
+         task::spawn(reader_loop(reader, pending.clone(), stop));
+        //  let reader_handle = Some(handle);
  
          let (writer_stop, stop) = flume::bounded(1);
-         let handle = task::spawn(writer_loop(writer, req_recver, stop));
-         let writer_handle = Some(handle);
+         task::spawn(writer_loop(writer, req_recver, stop));
+        //  let writer_handle = Some(handle);
  
- 
-         Client::<Connected, task::JoinHandle<()>> {
+         Client::<Connected> {
              count: AtomicMessageId::new(0),
              pending,
              requests: req_sender,
              reader_stop,
              writer_stop,
-             reader_handle,
-             writer_handle,
+            //  reader_handle,
+            //  writer_handle,
  
              marker: PhantomData,
          }
     }
 }
 
-impl Client<Connected, task::JoinHandle<()>> {
+impl Client<Connected> {
     pub fn call_blocking<Req, Res>(
         &self,
         service_method: impl ToString,

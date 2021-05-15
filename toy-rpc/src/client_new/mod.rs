@@ -80,7 +80,7 @@ type ResponseMap = HashMap<MessageId, oneshot::Sender<ResponseResult>>;
 
 /// RPC client
 ///
-pub struct Client<Mode, Handle: Future> {
+pub struct Client<Mode> {
     count: AtomicMessageId,
     pending: Arc<Mutex<ResponseMap>>,
 
@@ -92,10 +92,24 @@ pub struct Client<Mode, Handle: Future> {
     // The Drop trait should be impled when tokio or async_std runtime is enabled
     reader_stop: Sender<()>,
     writer_stop: Sender<()>,
-    reader_handle: Option<Handle>,
-    writer_handle: Option<Handle>,
+    // reader_handle: Option<Handle>,
+    // writer_handle: Option<Handle>,
 
     marker: PhantomData<Mode>,
+}
+
+// seems like it still works even without this impl
+impl<Mode> Drop for Client<Mode> {
+    fn drop(&mut self) {
+        log::debug!("Dropping client");
+
+        if self.reader_stop.send(()).is_err() {
+            log::error!("Failed to send stop signal to reader loop")
+        }
+        if self.writer_stop.send(()).is_err() {
+            log::error!("Failed to send stop signal to writer loop")
+        }
+    }
 }
 
 pub(crate) async fn reader_loop(
@@ -162,20 +176,39 @@ pub(crate) async fn writer_loop(
     stop: Receiver<()>,
 ) {
     loop {
-        // `select!` is not used here because it is 
-        // prefered to have the cancel message sent out
-        // before dropping the client
-        match write_once(&mut writer, &requests).await {
-            Ok(_) => { },
-            Err(err) => log::error!("{:?}", err),
-        }
+        // // `select!` is not used here because it is 
+        // // prefered to have the cancel message sent out
+        // // before dropping the client
+        // match write_once(&mut writer, &requests).await {
+        //     Ok(_) => { },
+        //     Err(err) => log::error!("{:?}", err),
+        // }
 
-        match stop.try_recv() {
-            Ok(_) => break,
-            Err(err) => {
-                match err {
-                    flume::TryRecvError::Disconnected => break,
-                    flume::TryRecvError::Empty => { }
+        // match stop.try_recv() {
+        //     Ok(_) => break,
+        //     Err(err) => {
+        //         match err {
+        //             flume::TryRecvError::Disconnected => break,
+        //             flume::TryRecvError::Empty => { }
+        //         }
+        //     }
+        // }
+
+        select! {
+            _ = stop.recv_async().fuse() => {
+                // finish sending all requests available before dropping
+                for (header, body) in requests.drain().into_iter() {
+                    match writer.write_request(header, &body).await {
+                        Ok(_) => { },
+                        Err(err) => log::error!("{:?}", err)
+                    }
+                }
+                return ()
+            },
+            res = write_once(&mut writer, &requests).fuse() => {
+                match res {
+                    Ok(_) => {}
+                    Err(err) => log::error!("{:?}", err),
                 }
             }
         }
