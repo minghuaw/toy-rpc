@@ -133,3 +133,9 @@ impl From<tungstenite::Error> for crate::error::Error {
         Self::IoError(std::io::Error::new(ErrorKind::InvalidData, err.to_string()))
     }
 }
+
+impl From<erased_serde::Error> for crate::error::Error {
+    fn from(err: erased_serde::Error) -> Self {
+        Self::ParseError(Box::new(err))
+    }
+}

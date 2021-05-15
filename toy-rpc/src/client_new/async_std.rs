@@ -111,37 +111,15 @@ impl Client<Connected, task::JoinHandle<()>> {
         let header = RequestHeader { id, service_method };
         let body = Box::new(args) as RequestBody;
 
-        // // send request to writer
-        // self.requests.send_async(
-        //     (header, body)
-        // ).await?;
-
         // create oneshot channel
         let (done_tx, done_rx) = oneshot::channel();
         let (cancel_tx, cancel_rx) = oneshot::channel();
         
-        // // insert done channel to ResponseMap
-        // {
-        //     let mut _pending = self.pending.lock().await;
-        //     _pending.insert(id, resp_tx);
-        // }
-
-        // // spawn a task to handle response
-        // let request_tx = self.requests.clone();
-        // task::spawn(async move {
-        //     match handle_response::<Res>(request_tx, cancel_rx, resp_rx, done_tx).await {
-        //         Ok(_) => { },
-        //         Err(err) => {
-        //             log::error!("{:?}", err);
-        //         }
-        //     }
-        // });
-        
         let pending = self.pending.clone();
         let request_tx = self.requests.clone();
-        task::spawn(async move {
-            handle_call(pending, header, body, request_tx, cancel_rx, done_tx).await
-        });
+        task::spawn(
+            handle_call(pending, header, body, request_tx, cancel_rx, done_tx)
+        );
 
         // create Call
         let call = Call::<Res> {

@@ -450,13 +450,13 @@ impl Client<Connected> {
         // deserialize Ok message and Err message
         match res {
             Ok(mut resp_body) => {
-                let resp = erased::deserialize(&mut resp_body)
-                    .map_err(|e| Error::ParseError(Box::new(e)))?;
+                let resp = erased::deserialize(&mut resp_body)?;
+                    // .map_err(|e| Error::ParseError(Box::new(e)))?;
                 Ok(resp)
             }
             Err(mut err_body) => {
-                let msg: ErrorMessage = erased::deserialize(&mut err_body)
-                    .map_err(|e| Error::ParseError(Box::new(e)))?;
+                let msg: ErrorMessage = erased::deserialize(&mut err_body)?;
+                    // .map_err(|e| Error::ParseError(Box::new(e)))?;
                 let err = Error::from_err_msg(msg);
                 Err(err)
             }

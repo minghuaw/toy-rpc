@@ -6,6 +6,7 @@ use std::sync::atomic::AtomicU16;
 use crate::{codec::RequestDeserializer, error::Error, service::{ArcAsyncServiceCall, HandlerResult}};
 
 pub(crate) const CANCELLATION_TOKEN: &str = "RPC_TASK_CANCELLATION";
+pub(crate) const CANCELLATION_TOKEN_DELIM: &str = ".";
 
 /// Type of message id is u16
 pub type MessageId = u16;
@@ -85,20 +86,7 @@ pub(crate) enum ExecutionMessage {
     Cancel(MessageId)
 }
 
-/// The 
-// pub(crate) struct ExecutionInfo {
-//     pub call: ArcAsyncServiceCall,
-//     pub id: MessageId,
-//     pub method: String,
-//     pub deserializer: RequestDeserializer,
-// }
-
 pub(crate) struct ExecutionResult {
     pub id: MessageId,
     pub result: HandlerResult
 }
-
-// pub(crate) enum ClientReaderControl {
-//     Stop,
-//     NewMessage(oneshot::Sender<ResponseResult>)
-// }

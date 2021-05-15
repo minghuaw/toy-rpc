@@ -4,7 +4,7 @@ use pin_project::pin_project;
 use futures::{Future, FutureExt, channel::oneshot, lock::Mutex};
 use cfg_if::cfg_if;
 
-use crate::{Error, codec::{split::{ClientCodecRead, ClientCodecWrite}}, message::{AtomicMessageId, MessageId, RequestBody, RequestHeader, ResponseHeader, ResponseResult}, util::TerminateTask};
+use crate::{Error, codec::{split::{ClientCodecRead, ClientCodecWrite}}, message::{AtomicMessageId, CANCELLATION_TOKEN_DELIM, MessageId, RequestBody, RequestHeader, ResponseHeader, ResponseResult}, util::TerminateTask};
 use crate::message::CANCELLATION_TOKEN;
 
 cfg_if! {
@@ -127,22 +127,6 @@ pub struct Client<Mode, Handle: TerminateTask> {
 
     marker: PhantomData<Mode>,
 }
-
-
-// #[async_trait]
-// pub trait RpcClient { 
-//     fn call_blocking<Req, Res>(&self, service_method: impl ToString, args: Req) -> Result<Res, Error>
-//     where
-//         Req: serde::Serialize + Send + Sync,
-//         Res: serde::de::DeserializeOwned + Send,
-//     ;
-
-//     async fn call<Req, Res>(&self, service_method: impl ToString + Send + 'static, args: Req) -> Call<Res>
-//     where
-//         Req: serde::Serialize + Send + Sync,
-//         Res: serde::de::DeserializeOwned + Send,
-//     ;
-// }
 
 pub(crate) async fn reader_loop(
     mut reader: impl ClientCodecRead,
@@ -292,7 +276,7 @@ where
                         id,
                         service_method: CANCELLATION_TOKEN.into()
                     };
-                    let body: String = format!("{}.{}", CANCELLATION_TOKEN, id);
+                    let body: String = format!("{}{}{}", CANCELLATION_TOKEN, CANCELLATION_TOKEN_DELIM, id);
                     let body = Box::new(body) as RequestBody;
                     request.send_async(
                         (header, body)

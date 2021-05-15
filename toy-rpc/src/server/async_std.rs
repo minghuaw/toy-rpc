@@ -267,11 +267,9 @@ cfg_if! {
                         }
                     },
                     ExecutionMessage::Cancel(id) => {
-                        println!("Received Executionmessage::Cancel");
                         let mut map = task_map.lock().await;
                         match map.remove(&id) {
                             Some(handle) => {
-                                log::debug!("Cancelling task id: {}", id);
                                 handle.cancel().await;
                             },
                             None => { }
@@ -304,7 +302,6 @@ cfg_if! {
             }
             Ok(())
         }
-        
     }
 }
 
