@@ -27,7 +27,7 @@ cfg_if! {
         
             println!("Calling finite loop");
             let call: Call<()> = client.call("Echo.finite_loop", ());
-            // task::sleep(Duration::from_secs(2)).await;
+            task::sleep(Duration::from_secs(2)).await;
             println!("Calling cancellation");
             call.cancel();
             // println!(".awaiting on call");
@@ -39,6 +39,7 @@ cfg_if! {
         #[tokio::main]
         async fn main() {
             run().await;
+            println!("After run");
         }
 
         async fn run() {
@@ -56,7 +57,7 @@ cfg_if! {
         
             println!("Calling finite loop");
             let call: Call<()> = client.call("Echo.finite_loop", ());
-            // time::sleep(Duration::from_secs(2)).await;
+            time::sleep(Duration::from_secs(2)).await;
             println!("Calling cancellation");
             call.cancel();
             // println!(".awaiting on call");

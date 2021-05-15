@@ -92,7 +92,7 @@ impl Client<Connected, task::JoinHandle<()>> {
         Res: serde::de::DeserializeOwned + Send + 'static,
     {
         let call = self.call(service_method, args);
-        futures::executor::block_on(call)
+        task::block_on(call)
     }
 
     pub fn call<Req, Res>(&self, service_method: impl ToString, args: Req) -> Call<Res>

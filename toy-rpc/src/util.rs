@@ -33,7 +33,7 @@ cfg_if! {
         impl<T: Send> TerminateTask for async_std::task::JoinHandle<T> {
             fn terminate(self) {
                 log::debug!("Cancelling joinhandle");
-                futures::executor::block_on(self.cancel());
+                async_std::task::block_on(self.cancel());
             }
         }
     } else if #[cfg(feature = "tokio_runtime")] {

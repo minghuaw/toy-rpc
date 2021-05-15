@@ -1,6 +1,6 @@
 use cfg_if::cfg_if;
 use flume::{Receiver, Sender};
-use futures::{channel::oneshot, lock::Mutex, Future, FutureExt};
+use futures::{lock::Mutex, Future, FutureExt};
 use pin_project::pin_project;
 use std::{
     collections::HashMap,
@@ -20,6 +20,14 @@ use crate::{
     util::TerminateTask,
     Error,
 };
+
+cfg_if! {
+    if #[cfg(feature = "async_std_runtime")] {
+        use futures::channel::oneshot;
+    } else if #[cfg(feature = "tokio_runtime")] {
+        use ::tokio::sync::oneshot;
+    }
+}
 
 cfg_if! {
     if #[cfg(any(
