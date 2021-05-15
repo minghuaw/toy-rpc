@@ -84,8 +84,12 @@ impl<Mode, Handle: TerminateTask> Drop for Client<Mode, Handle> {
     fn drop(&mut self) {
         log::debug!("Dropping client");
 
-        self.reader_handle.take().map(|h| h.terminate());
-        self.writer_handle.take().map(|h| h.terminate());
+        self.reader_handle.take().map(
+            |h| futures::executor::block_on(h.terminate())
+        );
+        self.writer_handle.take().map(
+            |h| futures::executor::block_on(h.terminate())
+        );
     }
 }
 

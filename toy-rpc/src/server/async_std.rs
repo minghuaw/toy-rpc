@@ -41,10 +41,9 @@ cfg_if! {
         use crate::error::Error;
         use crate::transport::ws::WebSocketConn;
         use crate::codec::split::ServerCodecSplit;
-        use crate::message::{ExecutionResult};
         use crate::{
-            codec::{DefaultCodec, split::ServerCodecWrite},
-            message::{ExecutionMessage, MessageId},
+            codec::{DefaultCodec},
+            message::{ExecutionMessage, ExecutionResult, MessageId},
         };
 
         use super::{AsyncServiceMap, Server};
@@ -231,7 +230,7 @@ cfg_if! {
                 );
 
                 let writer_handle = task::spawn(
-                    serve_codec_writer_loop(codec_writer, resp_recver, task_map.clone())
+                    super::serve_codec_writer_loop(codec_writer, resp_recver, task_map.clone())
                 );
 
                 let executor_handle = task::spawn(
@@ -277,27 +276,6 @@ cfg_if! {
                 }
             }
 
-            Ok(())
-        }
-
-        async fn serve_codec_writer_loop(
-            mut codec_writer: impl ServerCodecWrite,
-            results: Receiver<ExecutionResult>,
-            task_map: Arc<Mutex<HashMap<MessageId, JoinHandle<()>>>>
-        ) -> Result<(), Error> {
-            while let Ok(msg) = results.recv_async().await {
-                {
-                    let mut map = task_map.lock().await;
-                    map.remove(&msg.id);
-                }
-
-                match super::serve_codec_write_once(&mut codec_writer, msg).await {
-                    Ok(_) => { },
-                    Err(err) => {
-                        log::error!("{}", err);
-                    }
-                }
-            }
             Ok(())
         }
     }

@@ -22,25 +22,26 @@ pub trait GracefulShutdown {
     async fn close(&mut self);
 }
 
+#[async_trait]
 pub trait TerminateTask {
-    fn terminate(self);
+    async fn terminate(self);
 }
 
 cfg_if! {
     if #[cfg(feature = "async_std_runtime")] {
         #[async_trait]
         impl<T: Send> TerminateTask for async_std::task::JoinHandle<T> {
-            fn terminate(self) {
+            async fn terminate(self) {
                 log::debug!("Cancelling joinhandle");
-                futures::executor::block_on(self.cancel());
+                self.cancel().await;
             }
         }
     } else if #[cfg(feature = "tokio_runtime")] {
         #[async_trait]
         impl<T: Send> TerminateTask for tokio::task::JoinHandle<T> {
-            fn terminate(self) {
+            async fn terminate(self) {
                 log::debug!("Aborting joinhandle");
-                futures::executor::block_on(self.abort());
+                self.abort();
             }
         }
     } else {
