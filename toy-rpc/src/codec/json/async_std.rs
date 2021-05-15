@@ -14,7 +14,7 @@ cfg_if! {
         use std::marker::PhantomData;
 
         use super::*;
-        use crate::codec::split::{ServerCodecSplit};
+        use crate::codec::split::{ServerCodecSplit, ClientCodecSplit};
         use crate::codec::RequestDeserializer;
         use crate::codec::split::{CodecReadHalf, CodecWriteHalf};
 
