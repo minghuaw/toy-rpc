@@ -1,5 +1,6 @@
 // use serde::{Deserialize, Serialize};
-
+use async_std::task;
+use std::time::Duration;
 use toy_rpc::macros::export_impl;
 
 pub struct Echo { }
@@ -18,8 +19,11 @@ impl Echo {
 
     #[export_method]
     pub async fn infinite_loop(&self, req: ()) -> Result<(), String> {
+        let mut counter = 0;
         loop {
-
+            task::sleep(Duration::from_millis(500)).await;
+            println!("infinite loop counter {}", &counter);
+            counter += 1;
         }
 
         Ok(())

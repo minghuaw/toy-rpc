@@ -1,5 +1,6 @@
 // use anyhow::Result;
-
+use async_std::task;
+use std::time::Duration;
 use toy_rpc::client_new::{Client, Call};
 
 #[async_std::main]
@@ -18,7 +19,9 @@ async fn main() {
 
     println!("Calling infinite loop");
     let call: Call<()> = client.call("Echo.infinite_loop", ());
-    println!("Cancelling infinite loop");
+    task::sleep(Duration::from_secs(2)).await;
+    println!("Calling cancellation");
     call.cancel();
-    println!("{:?}", reply);
+    // println!(".awaiting on call");
+    // let reply = call.await;
 }

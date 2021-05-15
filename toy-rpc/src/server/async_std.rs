@@ -1,6 +1,14 @@
+use std::collections::HashMap;
+
+use async_std::task::JoinHandle;
 /// This modules implements `Server`'s methods that require `feature = "async_std_runtime"`
 /// or `feature = "http_tide"`.
+use flume::{Receiver, Sender};
 use cfg_if::cfg_if;
+use futures::lock::Mutex;
+use futures::channel::oneshot;
+
+use crate::{codec::split::ServerCodecWrite, message::{ExecutionMessage, MessageId}};
 
 cfg_if! {
     if #[cfg(any(
@@ -218,17 +226,18 @@ cfg_if! {
                 let (exec_sender, exec_recver) = flume::unbounded();
                 let (resp_sender, resp_recver) = flume::unbounded::<ExecutionResult>();
                 let (codec_writer, codec_reader) = codec.split();
+                let task_map = Arc::new(Mutex::new(HashMap::new()));
 
                 let reader_handle = task::spawn(
                     Server::serve_codec_reader_loop(codec_reader, services, exec_sender, resp_sender.clone())
                 );
 
                 let writer_handle = task::spawn(
-                    Server::serve_codec_writer_loop(codec_writer, resp_recver)
+                    serve_codec_writer_loop(codec_writer, resp_recver, task_map.clone())
                 );
 
                 let executor_handle = task::spawn(
-                    Server::serve_codec_executor_loop(exec_recver, resp_sender)
+                    serve_codec_executor_loop(exec_recver, resp_sender, task_map)
                 );
 
                 reader_handle.await?;
@@ -238,6 +247,65 @@ cfg_if! {
             }
         }
 
+        async fn serve_codec_executor_loop(
+            reader: Receiver<ExecutionMessage>,
+            writer: Sender<ExecutionResult>,
+            task_map: Arc<Mutex<HashMap<MessageId, JoinHandle<()>>>>
+        ) -> Result<(), Error> {
+            while let Ok(msg) = reader.recv_async().await {
+                match msg {
+                    ExecutionMessage::Request{
+                        call,
+                        id,
+                        method,
+                        deserializer
+                    } => {
+                        let fut = call(method, deserializer);
+                        let handle = task::spawn(Server::serve_codec_execute_call(id, fut, writer.clone()));
+                        {
+                            let mut map = task_map.lock().await;
+                            map.insert(id, handle);
+                        }
+                    },
+                    ExecutionMessage::Cancel(id) => {
+                        println!("Received Executionmessage::Cancel");
+                        let mut map = task_map.lock().await;
+                        match map.remove(&id) {
+                            Some(handle) => {
+                                log::debug!("Cancelling task id: {}", id);
+                                handle.cancel().await;
+                            },
+                            None => { }
+                        }
+                    }
+                }
+            }
+        
+            Ok(())
+        }
 
+        async fn serve_codec_writer_loop(
+            mut codec_writer: impl ServerCodecWrite,
+            results: Receiver<ExecutionResult>,
+            task_map: Arc<Mutex<HashMap<MessageId, JoinHandle<()>>>>
+        ) -> Result<(), Error> {
+            while let Ok(msg) = results.recv_async().await {
+                {
+                    let mut map = task_map.lock().await;
+                    map.remove(&msg.id);
+                    // println!("{}", map.len());
+                }
+
+                match Server::serve_codec_write_once(&mut codec_writer, msg).await {
+                    Ok(_) => { },
+                    Err(err) => {
+                        log::error!("{}", err);
+                    }
+                }
+            }
+            Ok(())
+        }
+        
     }
 }
+

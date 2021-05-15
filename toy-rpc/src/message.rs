@@ -75,14 +75,23 @@ impl ErrorMessage {
     }
 }
 
-/// The 
-pub(crate) struct ExecutionInfo {
-    pub call: ArcAsyncServiceCall,
-    pub id: MessageId,
-    // pub service: String,
-    pub method: String,
-    pub deserializer: RequestDeserializer,
+pub(crate) enum ExecutionMessage {
+    Request {
+        call: ArcAsyncServiceCall,
+        id: MessageId,
+        method: String,
+        deserializer: RequestDeserializer
+    },
+    Cancel(MessageId)
 }
+
+/// The 
+// pub(crate) struct ExecutionInfo {
+//     pub call: ArcAsyncServiceCall,
+//     pub id: MessageId,
+//     pub method: String,
+//     pub deserializer: RequestDeserializer,
+// }
 
 pub(crate) struct ExecutionResult {
     pub id: MessageId,
