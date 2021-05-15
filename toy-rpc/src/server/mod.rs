@@ -147,6 +147,7 @@ async fn serve_codec_reader_loop(
         let mut deserializer = get_request_deserializer(&mut codec_reader).await?;
         // [1] destructure header
         let RequestHeader { id, service_method } = header?;
+        println!("RequestHeader id: {}, service_method: {}", &id, &service_method);
         // [2] split service name and method name
         let (service, method) = match preprocess_service_method(id, &service_method) {
             Ok(pair) => pair,

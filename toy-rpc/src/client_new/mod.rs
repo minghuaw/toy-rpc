@@ -140,6 +140,19 @@ pub struct Client<Mode, Handle: TerminateTask> {
     marker: PhantomData<Mode>,
 }
 
+impl<Mode, Handle: TerminateTask> Drop for Client<Mode, Handle> {
+    fn drop(&mut self) {
+        log::debug!("Dropping client");
+
+        self.reader_handle.take().map(
+            |h| h.terminate()
+        );
+        self.writer_handle.take().map(
+            |h| h.terminate()
+        );
+    }
+}
+
 pub(crate) async fn reader_loop(
     mut reader: impl ClientCodecRead,
     pending: Arc<Mutex<ResponseMap>>,
@@ -208,6 +221,7 @@ async fn write_once(
 ) -> Result<(), Error> {
     if let Ok(req) = request.recv_async().await {
         let (header, body) = req;
+        println!("{:?}", &header);
         writer.write_request(header, &body).await?;
     }
     Ok(())

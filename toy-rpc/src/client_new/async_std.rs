@@ -1,5 +1,4 @@
 use std::sync::atomic::Ordering;
-
 use ::async_std::task;
 use futures::{AsyncRead, AsyncWrite};
 
@@ -38,7 +37,9 @@ cfg_if! {
         use ::async_std::net::{TcpStream, ToSocketAddrs};
 
         impl Client<NotConnected, task::JoinHandle<()>> {
-            pub async fn dial(addr: impl ToSocketAddrs) -> Result<Client<Connected, task::JoinHandle<()>>, Error> {
+            pub async fn dial(addr: impl ToSocketAddrs) 
+                -> Result<Client<Connected, task::JoinHandle<()>>, Error> 
+            {
                 let stream = TcpStream::connect(addr).await?;
                 Ok(Self::with_stream(stream))
             }
@@ -77,19 +78,6 @@ impl Client<NotConnected, task::JoinHandle<()>> {
 
             marker: PhantomData,
         }
-    }
-}
-
-impl<Mode, Handle: TerminateTask> Drop for Client<Mode, Handle> {
-    fn drop(&mut self) {
-        log::debug!("Dropping client");
-
-        self.reader_handle.take().map(
-            |h| futures::executor::block_on(h.terminate())
-        );
-        self.writer_handle.take().map(
-            |h| futures::executor::block_on(h.terminate())
-        );
     }
 }
 
