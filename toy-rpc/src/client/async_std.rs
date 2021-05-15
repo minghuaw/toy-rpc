@@ -351,12 +351,12 @@ impl Client<Connected> {
             service_method: service_method.to_string(),
         };
         let req = &args as &(dyn erased::Serialize + Send + Sync);
-        
+
         {
             // send request
             let _codec = &mut *codec.lock().await;
             _codec.write_request(header, req).await?;
-        }    
+        }
 
         // creates channel for receiving response
         let (done_sender, done) = oneshot::channel::<Result<ResponseBody, ResponseBody>>();
@@ -451,12 +451,10 @@ impl Client<Connected> {
         match res {
             Ok(mut resp_body) => {
                 let resp = erased::deserialize(&mut resp_body)?;
-                    // .map_err(|e| Error::ParseError(Box::new(e)))?;
                 Ok(resp)
             }
             Err(mut err_body) => {
                 let msg: ErrorMessage = erased::deserialize(&mut err_body)?;
-                    // .map_err(|e| Error::ParseError(Box::new(e)))?;
                 let err = Error::from_err_msg(msg);
                 Err(err)
             }

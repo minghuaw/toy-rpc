@@ -1,6 +1,6 @@
-use std::collections::HashMap;
 use async_trait::async_trait;
 use cfg_if::cfg_if;
+use std::collections::HashMap;
 
 use crate::service::AsyncHandler;
 
@@ -26,7 +26,7 @@ pub trait TerminateTask {
     fn terminate(self);
 }
 
-cfg_if!{
+cfg_if! {
     if #[cfg(feature = "async_std_runtime")] {
         #[async_trait]
         impl<T: Send> TerminateTask for async_std::task::JoinHandle<T> {

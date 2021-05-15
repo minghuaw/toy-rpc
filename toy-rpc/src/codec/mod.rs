@@ -227,9 +227,7 @@ where
 #[async_trait]
 pub trait ServerCodec: Send + Sync {
     async fn read_request_header(&mut self) -> Option<Result<RequestHeader, Error>>;
-    async fn read_request_body(
-        &mut self,
-    ) -> Option<Result<RequestDeserializer, Error>>;
+    async fn read_request_body(&mut self) -> Option<Result<RequestDeserializer, Error>>;
 
     // (Probably) don't need to worry about header/body interleaving
     // because rust guarantees only one mutable reference at a time
@@ -243,10 +241,8 @@ pub trait ServerCodec: Send + Sync {
 #[async_trait]
 pub trait ClientCodec: GracefulShutdown + Send + Sync {
     async fn read_response_header(&mut self) -> Option<Result<ResponseHeader, Error>>;
-    async fn read_response_body(
-        &mut self,
-    ) -> Option<Result<RequestDeserializer, Error>>;
-    
+    async fn read_response_body(&mut self) -> Option<Result<RequestDeserializer, Error>>;
+
     // (Probably) don't need to worry about header/body interleaving
     // because rust guarantees only one mutable reference at a time
     async fn write_request(
@@ -262,9 +258,7 @@ pub trait CodecRead: Unmarshal {
     where
         H: serde::de::DeserializeOwned;
 
-    async fn read_body(
-        &mut self,
-    ) -> Option<Result<RequestDeserializer, Error>>;
+    async fn read_body(&mut self) -> Option<Result<RequestDeserializer, Error>>;
 }
 
 #[async_trait]
@@ -538,9 +532,7 @@ where
         self.read_header().await
     }
 
-    async fn read_response_body(
-        &mut self,
-    ) -> Option<Result<RequestDeserializer, Error>> {
+    async fn read_response_body(&mut self) -> Option<Result<RequestDeserializer, Error>> {
         self.read_body().await
     }
 

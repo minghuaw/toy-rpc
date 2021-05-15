@@ -10,9 +10,7 @@ pub trait ClientCodecSplit {
 #[async_trait]
 pub trait ClientCodecRead: Send {
     async fn read_response_header(&mut self) -> Option<Result<ResponseHeader, Error>>;
-    async fn read_response_body(
-        &mut self,
-    ) -> Option<Result<RequestDeserializer, Error>>;
+    async fn read_response_body(&mut self) -> Option<Result<RequestDeserializer, Error>>;
 }
 
 #[async_trait]
@@ -26,7 +24,7 @@ pub trait ClientCodecWrite: Send {
     ) -> Result<(), Error>;
 }
 
-cfg_if!{
+cfg_if! {
     if #[cfg(all(
         any(feature = "async_std_runtime", feature = "tokio_runtime"),
         any(
@@ -51,7 +49,7 @@ cfg_if!{
         )
     ))] {
         impl<R, W> ClientCodecSplit for Codec<R, W, ConnTypeReadWrite>
-        where 
+        where
             R: FrameRead + Send + Sync + Unpin,
             W: FrameWrite + Send + Sync + Unpin,
         {
@@ -72,11 +70,11 @@ cfg_if!{
                     }
                 )
             }
-        } 
+        }
     }
 }
 
-cfg_if!{
+cfg_if! {
     if #[cfg(all(
         any(
             feature = "async_std_runtime",
@@ -114,8 +112,8 @@ cfg_if!{
     ))] {
         use crate::transport::{PayloadRead, PayloadWrite};
 
-        impl<R, W> ClientCodecSplit for Codec<R, W, ConnTypePayload> 
-        where 
+        impl<R, W> ClientCodecSplit for Codec<R, W, ConnTypePayload>
+        where
             R: PayloadRead + Send,
             W: PayloadWrite + Send,
         {
@@ -141,8 +139,8 @@ cfg_if!{
 }
 
 #[async_trait]
-impl<T> ClientCodecRead for T 
-where 
+impl<T> ClientCodecRead for T
+where
     T: CodecRead + Send,
 {
     async fn read_response_header(&mut self) -> Option<Result<ResponseHeader, Error>> {
@@ -155,11 +153,15 @@ where
 }
 
 #[async_trait]
-impl<T> ClientCodecWrite for T 
-where 
+impl<T> ClientCodecWrite for T
+where
     T: CodecWrite + Send,
 {
-    async fn write_request(&mut self, header: RequestHeader, body: &(dyn erased::Serialize + Send + Sync)) -> Result<(), Error> {
+    async fn write_request(
+        &mut self,
+        header: RequestHeader,
+        body: &(dyn erased::Serialize + Send + Sync),
+    ) -> Result<(), Error> {
         let id = header.get_id();
 
         log::trace!("Sending request id: {}", &id);

@@ -1,11 +1,25 @@
-use std::{collections::HashMap, marker::PhantomData, pin::Pin, sync::Arc, task::{Context, Poll}};
-use flume::{Receiver, Sender};
-use pin_project::pin_project;
-use futures::{Future, FutureExt, channel::oneshot, lock::Mutex};
 use cfg_if::cfg_if;
+use flume::{Receiver, Sender};
+use futures::{channel::oneshot, lock::Mutex, Future, FutureExt};
+use pin_project::pin_project;
+use std::{
+    collections::HashMap,
+    marker::PhantomData,
+    pin::Pin,
+    sync::Arc,
+    task::{Context, Poll},
+};
 
-use crate::{Error, codec::{split::{ClientCodecRead, ClientCodecWrite}}, message::{AtomicMessageId, CANCELLATION_TOKEN_DELIM, MessageId, RequestBody, RequestHeader, ResponseHeader, ResponseResult}, util::TerminateTask};
 use crate::message::CANCELLATION_TOKEN;
+use crate::{
+    codec::split::{ClientCodecRead, ClientCodecWrite},
+    message::{
+        AtomicMessageId, MessageId, RequestBody, RequestHeader, ResponseHeader, ResponseResult,
+        CANCELLATION_TOKEN_DELIM,
+    },
+    util::TerminateTask,
+    Error,
+};
 
 cfg_if! {
     if #[cfg(any(
@@ -38,7 +52,7 @@ cfg_if! {
     }
 }
 
-cfg_if!{
+cfg_if! {
     if #[cfg(any(
         feature = "async_std_runtime",
         feature = "http_tide"
@@ -54,16 +68,16 @@ pub struct NotConnected {}
 /// Type state for creating `Client`
 pub struct Connected {}
 
-// There will be a dedicated task for reading and writing, so there should be no 
+// There will be a dedicated task for reading and writing, so there should be no
 // contention across tasks or threads
 // type Codec = Box<dyn ClientCodec>;
 type ResponseMap = HashMap<MessageId, oneshot::Sender<ResponseResult>>;
 
 /// Call of a RPC request. The result can be obtained by `.await`ing the `Call`.
 /// The call can be cancelled with `cancel()` method.
-/// 
+///
 /// # Example
-/// 
+///
 #[pin_project]
 pub struct Call<Res> {
     id: MessageId,
@@ -72,25 +86,25 @@ pub struct Call<Res> {
     done: oneshot::Receiver<Result<Res, Error>>,
 }
 
-impl<Res> Call<Res> 
-where 
-    Res: serde::de::DeserializeOwned
+impl<Res> Call<Res>
+where
+    Res: serde::de::DeserializeOwned,
 {
     pub fn cancel(self) {
         match self.cancel.send(self.id) {
-            Ok(_) => { 
+            Ok(_) => {
                 log::info!("Call is canceled");
-            },
-            Err(_) => { 
+            }
+            Err(_) => {
                 log::error!("Failed to cancel")
-            },
+            }
         }
     }
 }
 
 impl<Res> Future for Call<Res>
-where 
-    Res: serde::de::DeserializeOwned
+where
+    Res: serde::de::DeserializeOwned,
 {
     type Output = Result<Res, Error>;
 
@@ -100,12 +114,10 @@ where
 
         match done.poll(cx) {
             Poll::Pending => Poll::Pending,
-            Poll::Ready(res) => {
-                match res {
-                    Ok(r) => Poll::Ready(r),
-                    Err(_canceled) => Poll::Ready(Err(Error::Canceled(Some(this.id.clone()))))
-                }
-            }
+            Poll::Ready(res) => match res {
+                Ok(r) => Poll::Ready(r),
+                Err(_canceled) => Poll::Ready(Err(Error::Canceled(Some(this.id.clone())))),
+            },
         }
     }
 }
@@ -134,7 +146,7 @@ pub(crate) async fn reader_loop(
 ) {
     loop {
         match read_once(&mut reader, &pending).await {
-            Ok(_) => { },
+            Ok(_) => {}
             Err(err) => log::error!("{:?}", err),
         }
     }
@@ -146,15 +158,16 @@ async fn read_once(
 ) -> Result<(), Error> {
     if let Some(header) = reader.read_response_header().await {
         // [1] destructure header
-        let ResponseHeader {id, is_error } = header?;
+        let ResponseHeader { id, is_error } = header?;
         // [2] get resposne body
-        let deserialzer = reader.read_response_body().await
-            .ok_or(Error::IoError(
-                std::io::Error::new(
+        let deserialzer =
+            reader
+                .read_response_body()
+                .await
+                .ok_or(Error::IoError(std::io::Error::new(
                     std::io::ErrorKind::UnexpectedEof,
                     "Unexpected EOF reading response body",
-                )
-            ))?;
+                )))?;
         let deserializer = deserialzer?;
 
         let res = match is_error {
@@ -173,17 +186,17 @@ async fn read_once(
                 })?;
             }
         }
-    } 
+    }
     Ok(())
 }
 
 pub(crate) async fn writer_loop(
     mut writer: impl ClientCodecWrite,
-    requests: Receiver<(RequestHeader, RequestBody)>
+    requests: Receiver<(RequestHeader, RequestBody)>,
 ) {
     loop {
         match write_once(&mut writer, &requests).await {
-            Ok(_) => { },
+            Ok(_) => {}
             Err(err) => log::error!("{:?}", err),
         }
     }
@@ -191,7 +204,7 @@ pub(crate) async fn writer_loop(
 
 async fn write_once(
     writer: &mut impl ClientCodecWrite,
-    request: & Receiver<(RequestHeader, RequestBody)>
+    request: &Receiver<(RequestHeader, RequestBody)>,
 ) -> Result<(), Error> {
     if let Ok(req) = request.recv_async().await {
         let (header, body) = req;
@@ -206,15 +219,13 @@ async fn handle_call<Res>(
     body: RequestBody,
     request_tx: Sender<(RequestHeader, RequestBody)>,
     cancel: oneshot::Receiver<MessageId>,
-    done: oneshot::Sender<Result<Res, Error>>
+    done: oneshot::Sender<Result<Res, Error>>,
 ) -> Result<(), Error>
-where 
-    Res: serde::de::DeserializeOwned + Send, 
+where
+    Res: serde::de::DeserializeOwned + Send,
 {
     let id = header.id.clone();
-    request_tx.send_async(
-        (header, body)
-    ).await?;
+    request_tx.send_async((header, body)).await?;
 
     let (resp_tx, resp_rx) = oneshot::channel();
 
@@ -233,10 +244,10 @@ async fn handle_response<Res>(
     request: Sender<(RequestHeader, RequestBody)>,
     cancel: oneshot::Receiver<MessageId>,
     response: oneshot::Receiver<ResponseResult>,
-    done: oneshot::Sender<Result<Res, Error>>
+    done: oneshot::Sender<Result<Res, Error>>,
 ) -> Result<(), Error>
-where 
-    Res: serde::de::DeserializeOwned + Send, 
+where
+    Res: serde::de::DeserializeOwned + Send,
 {
     let val: Result<ResponseResult, Error> = futures::select! {
         cancel_res = cancel.fuse() => {
@@ -251,47 +262,36 @@ where
     };
 
     let res = match val {
-        Ok(result) => {
-            match result {
-                Ok(mut resp_body) => {
-                    erased_serde::deserialize(&mut resp_body)
-                        .map_err(|e| Error::ParseError(Box::new(e)))
-                },
-                Err(mut err_body) => {
-                    erased_serde::deserialize(&mut err_body)
-                        .map_or_else(
-                            |e| Err(Error::ParseError(Box::new(e))), 
-                        |msg| Err(Error::from_err_msg(msg))
-                        )
-                    
-                }
-            }
+        Ok(result) => match result {
+            Ok(mut resp_body) => erased_serde::deserialize(&mut resp_body)
+                .map_err(|e| Error::ParseError(Box::new(e))),
+            Err(mut err_body) => erased_serde::deserialize(&mut err_body).map_or_else(
+                |e| Err(Error::ParseError(Box::new(e))),
+                |msg| Err(Error::from_err_msg(msg)),
+            ),
         },
-        Err(err) => { 
+        Err(err) => {
             if let &Error::Canceled(opt) = &err {
-                // send a cancel request to server only if the 
+                // send a cancel request to server only if the
                 // the request id is successully received
                 if let Some(id) = opt {
                     let header = RequestHeader {
                         id,
-                        service_method: CANCELLATION_TOKEN.into()
+                        service_method: CANCELLATION_TOKEN.into(),
                     };
-                    let body: String = format!("{}{}{}", CANCELLATION_TOKEN, CANCELLATION_TOKEN_DELIM, id);
+                    let body: String =
+                        format!("{}{}{}", CANCELLATION_TOKEN, CANCELLATION_TOKEN_DELIM, id);
                     let body = Box::new(body) as RequestBody;
-                    request.send_async(
-                        (header, body)
-                    ).await?;
+                    request.send_async((header, body)).await?;
                 }
             }
-            
-            Err(err) 
+
+            Err(err)
         }
     };
 
     done.send(res)
-        .map_err(|_| Error::Internal(
-            "InternalError: Failed to send over done channel".into()
-        ))?;
+        .map_err(|_| Error::Internal("InternalError: Failed to send over done channel".into()))?;
 
     Ok(())
 }

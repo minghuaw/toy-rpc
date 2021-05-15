@@ -32,8 +32,8 @@ pub type AsyncServiceCall = dyn Fn(String, Box<dyn erased::Deserializer<'static>
 /// Arc wrapper of `AsyncServiceCall`
 pub type ArcAsyncServiceCall = Arc<AsyncServiceCall>;
 
-/// Hashmap of services. 
-/// 
+/// Hashmap of services.
+///
 /// The keys are service names and the values are function trait objects `ArcAsyncServiceCall`
 pub type AsyncServiceMap = HashMap<&'static str, ArcAsyncServiceCall>;
 
@@ -56,7 +56,7 @@ where
     }
 }
 
-/// The `HandleService` trait provides the method `call` which will execute the 
+/// The `HandleService` trait provides the method `call` which will execute the
 /// RPC method
 #[async_trait]
 pub trait HandleService<State>
@@ -69,7 +69,7 @@ where
     /// Returns a function pointer to the requested method
     fn get_method(&self, name: &str) -> Option<AsyncHandler<State>>;
 
-    /// Returns a future that will execute the RPC method when `.await`ed. 
+    /// Returns a future that will execute the RPC method when `.await`ed.
     /// Returns `Error::MethodNotFound` if the requested method is not registered.
     fn call(
         &self,
@@ -104,9 +104,9 @@ pub struct BuilderUninitialized;
 pub struct BuilderReady;
 
 /// Service builder. The builder uses type state to control whether the builder is ready
-/// to build a `Service`. 
-/// 
-/// A `Service` can be built without any handler but cannot be built without internal state. 
+/// to build a `Service`.
+///
+/// A `Service` can be built without any handler but cannot be built without internal state.
 pub struct ServiceBuilder<State, BuilderMode>
 where
     State: Send + Sync + 'static,
@@ -183,11 +183,7 @@ where
     }
 
     /// Register a handler for a service
-    pub fn register_handler(
-        self,
-        method: &'static str,
-        handler: AsyncHandler<State>
-    ) -> Self {
+    pub fn register_handler(self, method: &'static str, handler: AsyncHandler<State>) -> Self {
         let mut builder = self;
         builder.handlers.insert(method, handler);
         builder

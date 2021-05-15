@@ -1,13 +1,16 @@
 use std::collections::HashMap;
 
 use async_std::task::JoinHandle;
+use cfg_if::cfg_if;
 /// This modules implements `Server`'s methods that require `feature = "async_std_runtime"`
 /// or `feature = "http_tide"`.
 use flume::{Receiver, Sender};
-use cfg_if::cfg_if;
 use futures::lock::Mutex;
 
-use crate::{codec::split::ServerCodecWrite, message::{ExecutionMessage, MessageId}};
+use crate::{
+    codec::split::ServerCodecWrite,
+    message::{ExecutionMessage, MessageId},
+};
 
 cfg_if! {
     if #[cfg(any(
@@ -219,7 +222,7 @@ cfg_if! {
 
             // Spawn tasks for the reader/broker/writer loops
             pub(crate) async fn serve_codec_setup(
-                codec: impl ServerCodecSplit + 'static, 
+                codec: impl ServerCodecSplit + 'static,
                 services: Arc<AsyncServiceMap>
             ) -> Result<(), Error> {
                 let (exec_sender, exec_recver) = flume::unbounded();
@@ -277,7 +280,7 @@ cfg_if! {
                     }
                 }
             }
-        
+
             Ok(())
         }
 
@@ -304,4 +307,3 @@ cfg_if! {
         }
     }
 }
-

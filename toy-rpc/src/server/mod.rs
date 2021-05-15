@@ -4,19 +4,27 @@
 
 use cfg_if::cfg_if;
 use erased_serde as erased;
+use flume::Sender;
 use std::collections::HashMap;
 use std::io::ErrorKind;
 use std::sync::Arc;
-use flume::{Sender};
 
-use crate::{codec::{RequestDeserializer, split::{ServerCodecRead, ServerCodecSplit, ServerCodecWrite}}, message::{CANCELLATION_TOKEN, CANCELLATION_TOKEN_DELIM, ExecutionMessage, ExecutionResult, MessageId}};
 use crate::error::Error;
 use crate::message::{ErrorMessage, RequestHeader, ResponseHeader};
 use crate::service::{
     build_service, ArcAsyncServiceCall, AsyncServiceMap, HandleService, HandlerResult,
-    HandlerResultFut, Service
+    HandlerResultFut, Service,
 };
 use crate::util::RegisterService;
+use crate::{
+    codec::{
+        split::{ServerCodecRead, ServerCodecSplit, ServerCodecWrite},
+        RequestDeserializer,
+    },
+    message::{
+        ExecutionMessage, ExecutionResult, MessageId, CANCELLATION_TOKEN, CANCELLATION_TOKEN_DELIM,
+    },
+};
 
 #[cfg(all(feature = "http_actix_web"))]
 #[cfg_attr(doc, doc(cfg(feature = "http_actix_web")))]
@@ -92,7 +100,7 @@ impl Server {
     }
 
     async fn serve_codec_reader_loop(
-        mut codec_reader: impl ServerCodecRead, 
+        mut codec_reader: impl ServerCodecRead,
         services: Arc<AsyncServiceMap>,
         executor: Sender<ExecutionMessage>,
         writer: Sender<ExecutionResult>,
@@ -112,32 +120,36 @@ impl Server {
                             // double check the message body
                             let token: String = erased_serde::deserialize(&mut deserializer)?;
                             if is_correct_cancellation_token(id, &token) {
-                                executor.send_async(
-                                    ExecutionMessage::Cancel(id)   
-                                ).await?;
+                                executor.send_async(ExecutionMessage::Cancel(id)).await?;
                             }
-                        },
+                        }
                         Error::MethodNotFound => {
                             // should not stop the reader if the service is not found
-                            writer.send_async(
-                                ExecutionResult {
+                            writer
+                                .send_async(ExecutionResult {
                                     id,
-                                    result: Err(err)
-                                }
-                            ).await?;
-                        },
-                        // Note: not using `_` in case of new additions of Error types
-                        Error::IoError(_) => { },
-                        Error::ParseError(_) => { },
-                        Error::Internal(_) => { },
-                        Error::InvalidArgument => { },
-                        Error::ServiceNotFound => { },
-                        Error::ExecutionError(_) => { },
+                                    result: Err(err),
+                                })
+                                .await?;
+                        }
+
+                        // Note: not using `_` in case of mishanlding of new additions of Error types
+                        Error::IoError(_) => {}
+                        Error::ParseError(_) => {}
+                        Error::Internal(_) => {}
+                        Error::InvalidArgument => {}
+                        Error::ServiceNotFound => {}
+                        Error::ExecutionError(_) => {}
                     }
                     continue;
                 }
             };
-            log::trace!("Message id: {}, service: {}, method: {}", id, service, method);
+            log::trace!(
+                "Message id: {}, service: {}, method: {}",
+                id,
+                service,
+                method
+            );
             // [3] look up the service
             let call: ArcAsyncServiceCall = match services.get(service) {
                 Some(serv_call) => serv_call.clone(),
@@ -145,53 +157,51 @@ impl Server {
                     log::error!("Service not found: '{}'", service);
 
                     // should not stop the reader if the method is not found
-                    writer.send_async(
-                        ExecutionResult {
+                    writer
+                        .send_async(ExecutionResult {
                             id,
-                            result: Err(Error::ServiceNotFound)
-                        }
-                    ).await?;
+                            result: Err(Error::ServiceNotFound),
+                        })
+                        .await?;
                     continue;
                 }
             };
             // [4] send to executor
-            executor.send_async(
-                ExecutionMessage::Request {
+            executor
+                .send_async(ExecutionMessage::Request {
                     call,
-                    id, 
+                    id,
                     method: method.into(),
                     deserializer,
-                }
-            ).await?;
+                })
+                .await?;
         }
         Ok(())
     }
 
     async fn serve_codec_execute_call(
         id: MessageId,
-        fut: impl std::future::Future<Output=HandlerResult>,
-        writer: Sender<ExecutionResult>
+        fut: impl std::future::Future<Output = HandlerResult>,
+        writer: Sender<ExecutionResult>,
     ) {
-        let result: HandlerResult = fut.await 
-            .map_err(|err| {
-                log::error!("Error found executing request id: {}, error msg: {}", &id, &err);
-                match err {
-                    // if serde cannot parse request, the argument is likely mistaken
-                    Error::ParseError(e) => {
-                        log::error!("ParseError {:?}", e);
-                        Error::InvalidArgument
-                    }
-                    e @ _ => e,
+        let result: HandlerResult = fut.await.map_err(|err| {
+            log::error!(
+                "Error found executing request id: {}, error msg: {}",
+                &id,
+                &err
+            );
+            match err {
+                // if serde cannot parse request, the argument is likely mistaken
+                Error::ParseError(e) => {
+                    log::error!("ParseError {:?}", e);
+                    Error::InvalidArgument
                 }
-            });
-        // [6] send result to response writer
-        match writer.send_async(
-            ExecutionResult {
-                id,
-                result
+                e @ _ => e,
             }
-        ).await {
-            Ok(_) => { },
+        });
+        // [6] send result to response writer
+        match writer.send_async(ExecutionResult { id, result }).await {
+            Ok(_) => {}
             Err(err) => log::error!("Failed to send to response writer ({})", err),
         };
     }
@@ -200,24 +210,21 @@ impl Server {
         writer: &mut impl ServerCodecWrite,
         result: ExecutionResult,
     ) -> Result<(), Error> {
-        let ExecutionResult { 
-            id, 
-            result 
-        } = result;
+        let ExecutionResult { id, result } = result;
 
         match result {
             Ok(b) => {
                 log::trace!("Message {} Success", &id);
                 let header = ResponseHeader {
-                    id, 
+                    id,
                     is_error: false,
                 };
                 writer.write_response(header, &b).await?;
-            },
+            }
             Err(err) => {
                 log::trace!("Message {} Error", &id);
                 let header = ResponseHeader { id, is_error: true };
-                let msg = ErrorMessage::from_err(err)?; 
+                let msg = ErrorMessage::from_err(err)?;
                 writer.write_response(header, &msg).await?;
             }
         };
@@ -225,7 +232,7 @@ impl Server {
     }
 
     async fn get_request_deserializer(
-        codec_reader: &mut impl ServerCodecRead
+        codec_reader: &mut impl ServerCodecRead,
     ) -> Result<RequestDeserializer, Error> {
         match codec_reader.read_request_body().await {
             Some(r) => r,
@@ -240,17 +247,20 @@ impl Server {
         }
     }
 
-    fn preprocess_service_method(id: MessageId, service_method: &str) -> Result<(&str, &str), Error> {
+    fn preprocess_service_method(
+        id: MessageId,
+        service_method: &str,
+    ) -> Result<(&str, &str), Error> {
         let pos = match service_method.rfind('.') {
             Some(p) => p,
             None => {
                 // test whether a cancellation request is received
                 if service_method == CANCELLATION_TOKEN {
                     log::error!("Received cancellation request with id: {}", id);
-                    return Err(Error::Canceled(Some(id)))
+                    return Err(Error::Canceled(Some(id)));
                 } else {
                     log::error!("Method not supplied from request: '{}'", service_method);
-                    return Err(Error::MethodNotFound)
+                    return Err(Error::MethodNotFound);
                 }
             }
         };
@@ -258,8 +268,6 @@ impl Server {
         let method = &service_method[pos + 1..];
         Ok((service, method))
     }
-
-
 
     /// This is like serve_conn except that it uses a specified codec
     ///
@@ -286,10 +294,7 @@ impl Server {
     ///     handle.await;
     /// }
     /// ```
-    #[cfg(any(
-        feature = "async_std_runtime",
-        feature = "tokio_runtime"
-    ))]
+    #[cfg(any(feature = "async_std_runtime", feature = "tokio_runtime"))]
     pub async fn serve_codec<C>(&self, codec: C) -> Result<(), Error>
     where
         C: ServerCodecSplit + Send + Sync + 'static,
@@ -303,7 +308,7 @@ fn is_correct_cancellation_token(id: MessageId, token: &str) -> bool {
     match token.find(CANCELLATION_TOKEN_DELIM) {
         Some(ind) => {
             let base = &token[..ind];
-            let id_str = &token[ind+1..];
+            let id_str = &token[ind + 1..];
             let _id: MessageId = match id_str.parse() {
                 Ok(num) => num,
                 Err(_) => return false,
@@ -313,8 +318,8 @@ fn is_correct_cancellation_token(id: MessageId, token: &str) -> bool {
             } else {
                 false
             }
-        },
-        None => false
+        }
+        None => false,
     }
 }
 
@@ -332,7 +337,7 @@ impl ServerBuilder {
     }
 
     /// Registers a new service to the `Server` with the default name.
-    /// 
+    ///
     /// Internally the `Service` object will be built using the supplied `service`
     /// , which is the state of the `Service` object
     ///
@@ -380,18 +385,18 @@ impl ServerBuilder {
     }
 
     /// Register a a service with a name. This allows registering multiple instances
-    /// of the same type on the server. 
-    /// 
+    /// of the same type on the server.
+    ///
     /// Example
-    /// 
-    /// ```rust 
+    ///
+    /// ```rust
     /// use std::sync::Arc;
     /// use async_std::net::TcpListener;
     /// use toy_rpc::macros::export_impl;
     /// use toy_rpc::service::Service;
     /// use toy_rpc::Server;
     /// pub struct Foo { }
-    /// 
+    ///
     /// #[export_impl]
     /// impl Foo {
     ///     #[export_method]
@@ -399,18 +404,18 @@ impl ServerBuilder {
     ///         Ok(arg + 1)
     ///     }
     /// }
-    /// 
+    ///
     /// #[async_std::main]
     /// async fn main() {
     ///     let foo1 = Arc::new(Foo { });
     ///     let foo2 = Arc::new(Foo { });
-    /// 
+    ///
     ///     // construct server
     ///     let server = Server::builder()
     ///         .register(foo1) // this will register `foo1` with the default name `Foo`
     ///         .register_with_name("Foo2", foo2) // this will register `foo2` with the name `Foo2`
     ///         .build();
-    /// 
+    ///
     ///     let addr = "127.0.0.1:8080";
     ///     let listener = TcpListener::bind(addr).await.unwrap();
     ///
@@ -421,24 +426,24 @@ impl ServerBuilder {
     ///     handle.await;
     /// }
     /// ```
-    pub fn register_with_name<S>(self, name: &'static str, service: Arc<S>) -> Self 
-    where 
-        S: RegisterService + Send + Sync + 'static
+    pub fn register_with_name<S>(self, name: &'static str, service: Arc<S>) -> Self
+    where
+        S: RegisterService + Send + Sync + 'static,
     {
         let service = build_service(service, S::handlers());
         self.register_service(name, service)
     }
-    
+
     /// Register a `Service` instance. This allows registering multiple instances
-    /// of the same type on the server. 
-    pub fn register_service<S>(self, name: &'static str, service: Service<S>) -> Self 
-    where 
-        S: Send + Sync + 'static
+    /// of the same type on the server.
+    pub fn register_service<S>(self, name: &'static str, service: Service<S>) -> Self
+    where
+        S: Send + Sync + 'static,
     {
         let call = move |method_name: String,
                          _deserializer: Box<(dyn erased::Deserializer<'static> + Send)>|
               -> HandlerResultFut { service.call(&method_name, _deserializer) };
-    
+
         log::debug!("Registering service: {}", name);
         let mut builder = self;
         builder.services.insert(name, Arc::new(call));

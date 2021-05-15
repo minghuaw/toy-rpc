@@ -359,7 +359,7 @@ impl Client<Connected> {
             service_method: service_method.to_string(),
         };
         let req = &args as &(dyn erased::Serialize + Send + Sync);
-        
+
         {
             // send request
             let _codec = &mut *codec.lock().await;
@@ -458,13 +458,11 @@ impl Client<Connected> {
 
         match res {
             Ok(mut resp_body) => {
-                let resp = erased::deserialize(&mut resp_body)
-                    .map_err(|e| Error::ParseError(Box::new(e)))?;
+                let resp = erased::deserialize(&mut resp_body)?;
                 Ok(resp)
             }
             Err(mut err_body) => {
-                let msg: ErrorMessage = erased::deserialize(&mut err_body)
-                    .map_err(|e| Error::ParseError(Box::new(e)))?;
+                let msg: ErrorMessage = erased::deserialize(&mut err_body)?;
                 let err = Error::from_err_msg(msg);
                 Err(err)
             }

@@ -9,9 +9,7 @@ pub trait ServerCodecSplit {
 #[async_trait]
 pub trait ServerCodecRead: Send {
     async fn read_request_header(&mut self) -> Option<Result<RequestHeader, Error>>;
-    async fn read_request_body(
-        &mut self,
-    ) -> Option<Result<RequestDeserializer, Error>>;
+    async fn read_request_body(&mut self) -> Option<Result<RequestDeserializer, Error>>;
 }
 
 #[async_trait]
@@ -22,10 +20,10 @@ pub trait ServerCodecWrite: Send {
         &mut self,
         header: ResponseHeader,
         body: &(dyn erased::Serialize + Send + Sync),
-    ) -> Result<(), Error>;  
+    ) -> Result<(), Error>;
 }
 
-cfg_if!{
+cfg_if! {
     if #[cfg(all(
         any(feature = "async_std_runtime", feature = "tokio_runtime"),
         any(
@@ -49,8 +47,8 @@ cfg_if!{
             )
         )
     ))] {
-        impl<R, W> ServerCodecSplit for Codec<R, W, ConnTypeReadWrite> 
-        where 
+        impl<R, W> ServerCodecSplit for Codec<R, W, ConnTypeReadWrite>
+        where
             R: FrameRead + Send + Sync + Unpin,
             W: FrameWrite + Send + Sync + Unpin,
         {
@@ -75,7 +73,7 @@ cfg_if!{
     }
 }
 
-cfg_if!{
+cfg_if! {
     if #[cfg(all(
         any(
             feature = "async_std_runtime",
@@ -113,8 +111,8 @@ cfg_if!{
     ))] {
         use crate::transport::{PayloadRead, PayloadWrite};
 
-        impl<R, W> ServerCodecSplit for Codec<R, W, ConnTypePayload> 
-        where 
+        impl<R, W> ServerCodecSplit for Codec<R, W, ConnTypePayload>
+        where
             R: PayloadRead + Send,
             W: PayloadWrite + Send,
         {
@@ -140,9 +138,9 @@ cfg_if!{
 }
 
 #[async_trait]
-impl<T> ServerCodecRead for T 
-where 
-    T: CodecRead + Send
+impl<T> ServerCodecRead for T
+where
+    T: CodecRead + Send,
 {
     async fn read_request_header(&mut self) -> Option<Result<RequestHeader, Error>> {
         self.read_header().await
@@ -154,11 +152,15 @@ where
 }
 
 #[async_trait]
-impl<T> ServerCodecWrite for T 
-where 
+impl<T> ServerCodecWrite for T
+where
     T: CodecWrite + Send,
 {
-    async fn write_response(&mut self, header: ResponseHeader, body: &(dyn erased::Serialize + Send + Sync)) -> Result<(), Error> {
+    async fn write_response(
+        &mut self,
+        header: ResponseHeader,
+        body: &(dyn erased::Serialize + Send + Sync),
+    ) -> Result<(), Error> {
         let id = header.get_id();
 
         log::trace!("Sending response id: {}", &id);

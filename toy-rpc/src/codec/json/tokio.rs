@@ -93,12 +93,12 @@ cfg_if! {
 
         #[async_trait]
         impl<R, C> CodecRead for CodecReadHalf<R, C, ConnTypeReadWrite>
-        where 
+        where
             R: AsyncBufRead + Send + Sync + Unpin,
             C: Unmarshal + EraseDeserializer + Send,
         {
             async fn read_header<H>(&mut self) -> Option<Result<H, Error>>
-            where 
+            where
                 H: serde::de::DeserializeOwned,
             {
                 let mut buf = String::new();
@@ -138,12 +138,12 @@ cfg_if! {
 
         #[async_trait]
         impl<W, C> CodecWrite for CodecWriteHalf<W, C, ConnTypeReadWrite>
-        where 
+        where
             W: AsyncWrite + Send + Sync + Unpin,
             C: Marshal + Send,
         {
             async fn write_header<H>(&mut self, header: H) -> Result<(), Error>
-            where 
+            where
                 H: serde::Serialize + Metadata + Send,
             {
                 let _ = header.get_id();
@@ -171,7 +171,7 @@ cfg_if! {
 
         #[async_trait]
         impl<R, W> ServerCodecSplit for Codec<R, W, ConnTypeReadWrite>
-        where 
+        where
             R: AsyncBufRead + Send + Sync + Unpin,
             W: AsyncWrite + Send + Sync + Unpin,
         {
@@ -196,7 +196,7 @@ cfg_if! {
 
         #[async_trait]
         impl<R, W> ClientCodecSplit for Codec<R, W, ConnTypeReadWrite>
-        where 
+        where
             R: AsyncBufRead + Send + Sync + Unpin,
             W: AsyncWrite + Send + Sync + Unpin,
         {

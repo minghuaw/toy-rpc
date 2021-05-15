@@ -25,7 +25,7 @@
 //! alt="Unsafe Rust forbidden" />
 //! </a>
 //! </div>
-//! 
+//!
 //! This crate aims at providing an easy-to-use RPC that is similar to `golang`'s
 //! `net/rpc`.
 //!
@@ -58,14 +58,14 @@
 //!
 //! The most recent breaking changes will be reflected here. Change logs can be found in [Change Log](#change-log).
 //!
-//! ### 0.6.1 
-//! 
+//! ### 0.6.1
+//!
 //! Non-breaking change
-//! 
+//!
 //! - Multiple objects of the same types can be registered on the same server again, but you will need to
-//! use the `ServerBuilder::register_with_name` method as opposed to the regular `ServerBuilder::register`. 
+//! use the `ServerBuilder::register_with_name` method as opposed to the regular `ServerBuilder::register`.
 //! More details can be found in `ServerBuilder::register_with_name`'s documentation.
-//! 
+//!
 //! ### 0.6.0
 //!
 //! **Breaking Changes**
@@ -79,7 +79,7 @@
 //!         to call a RPC method on `struct Foo { }` service, the client simply uses
 //!         `.async_call("Foo.<method>").await` where `<method>` should be replaced with the RPC method
 //!     - you can still register multiple services on the same server. However, only one object of the same type
-//!         can be registered on the same server. Multiple servers are needed to have multiple objects of the same type. 
+//!         can be registered on the same server. Multiple servers are needed to have multiple objects of the same type.
 //! - Re-defined the custom `Error` type
 //!
 //! Non-breaking changes
@@ -134,10 +134,10 @@
 //! and `#[export_method]` of an object across a network connection. A server
 //! registers an object, making it visible as a service with the name of the type of the object.
 //! After the registration, the "exported" methods will be accessible remotely.
-//! A server may register multiple objects (services) of **different** types If multiple 
+//! A server may register multiple objects (services) of **different** types If multiple
 //! objects (services) of the same type need to be registered, you will need to use the
-//! `ServerBuilder::register_with_name` method instead of the regular 
-//! `ServerBuilder::register` method. More details can be found in 
+//! `ServerBuilder::register_with_name` method instead of the regular
+//! `ServerBuilder::register` method. More details can be found in
 //! `ServerBuilder::register_with_name`'s documentation.
 //!
 //! To export a method, use `#[export_method]` attribute in an impl block marked with
@@ -254,8 +254,8 @@
 //!
 //! ## Client Stub
 //!
-//! The `#[export_impl]` macro now also generates client stubs that internally uses `async_call`. Please 
-//! note that the client stub will only use the default service name. If the client is trying to access RPC 
+//! The `#[export_impl]` macro now also generates client stubs that internally uses `async_call`. Please
+//! note that the client stub will only use the default service name. If the client is trying to access RPC
 //! method on a service that is registered under a non-default name, the generated client stub will NOT work.
 //! For example, if the `Example {}` service is registered on the server with the `echo(&self, arg: u32)` method.
 //! If you want to call the `echo()` RPC method on the `Example {}` service, you
@@ -724,12 +724,12 @@
 //!
 //! ## Change Log
 //!
-//! ### 0.6.1 
-//! 
+//! ### 0.6.1
+//!
 //! - Multiple objects of the same types can be registered on the same server again, but you will need to
-//! use the `ServerBuilder::register_with_name` method as opposed to the regular `ServerBuilder::register`. 
+//! use the `ServerBuilder::register_with_name` method as opposed to the regular `ServerBuilder::register`.
 //! More details can be found in `ServerBuilder::register_with_name`'s documentation.
-//! 
+//!
 //! ### 0.6.0
 //!
 //! **Breaking Changes**

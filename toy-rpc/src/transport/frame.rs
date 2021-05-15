@@ -150,7 +150,6 @@ impl Frame {
     }
 }
 
-
 #[async_trait]
 impl<R: AsyncRead + Unpin + Send + Sync> FrameRead for R {
     async fn read_frame(&mut self) -> Option<Result<Frame, Error>> {

@@ -3,7 +3,11 @@
 use serde::{Deserialize, Serialize};
 use std::sync::atomic::AtomicU16;
 
-use crate::{codec::RequestDeserializer, error::Error, service::{ArcAsyncServiceCall, HandlerResult}};
+use crate::{
+    codec::RequestDeserializer,
+    error::Error,
+    service::{ArcAsyncServiceCall, HandlerResult},
+};
 
 pub(crate) const CANCELLATION_TOKEN: &str = "RPC_TASK_CANCELLATION";
 pub(crate) const CANCELLATION_TOKEN_DELIM: &str = ".";
@@ -71,7 +75,7 @@ impl ErrorMessage {
             e @ Error::IoError(_) => Err(e),
             e @ Error::ParseError(_) => Err(e),
             e @ Error::Internal(_) => Err(e),
-            e @ Error::Canceled(_) => Err(e)
+            e @ Error::Canceled(_) => Err(e),
         }
     }
 }
@@ -81,12 +85,12 @@ pub(crate) enum ExecutionMessage {
         call: ArcAsyncServiceCall,
         id: MessageId,
         method: String,
-        deserializer: RequestDeserializer
+        deserializer: RequestDeserializer,
     },
-    Cancel(MessageId)
+    Cancel(MessageId),
 }
 
 pub(crate) struct ExecutionResult {
     pub id: MessageId,
-    pub result: HandlerResult
+    pub result: HandlerResult,
 }

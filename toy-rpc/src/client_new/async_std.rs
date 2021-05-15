@@ -1,4 +1,4 @@
-use std::{sync::atomic::Ordering};
+use std::sync::atomic::Ordering;
 
 use ::async_std::task;
 use futures::{AsyncRead, AsyncWrite};
@@ -43,7 +43,7 @@ cfg_if! {
                 Ok(Self::with_stream(stream))
             }
 
-            pub fn with_stream<T>(stream: T) -> Client<Connected, task::JoinHandle<()>> 
+            pub fn with_stream<T>(stream: T) -> Client<Connected, task::JoinHandle<()>>
             where
                 T: AsyncRead + AsyncWrite + Send + Sync + Unpin + 'static,
             {
@@ -54,11 +54,10 @@ cfg_if! {
     }
 }
 
-
 impl Client<NotConnected, task::JoinHandle<()>> {
-    pub fn with_codec<C>(codec: C) -> Client<Connected, task::JoinHandle<()>> 
-    where 
-        C: ClientCodecSplit + Send + Sync + 'static
+    pub fn with_codec<C>(codec: C) -> Client<Connected, task::JoinHandle<()>>
+    where
+        C: ClientCodecSplit + Send + Sync + 'static,
     {
         // let codec: Box<dyn ClientCodec> = Box::new(codec);
         let (writer, reader) = codec.split();
@@ -76,7 +75,7 @@ impl Client<NotConnected, task::JoinHandle<()>> {
             reader_handle,
             writer_handle,
 
-            marker: PhantomData
+            marker: PhantomData,
         }
     }
 }
@@ -85,18 +84,21 @@ impl<Mode, Handle: TerminateTask> Drop for Client<Mode, Handle> {
     fn drop(&mut self) {
         log::debug!("Dropping client");
 
-        self.reader_handle.take()
-            .map(|h| h.terminate());
-        self.writer_handle.take()
-            .map(|h| h.terminate());
+        self.reader_handle.take().map(|h| h.terminate());
+        self.writer_handle.take().map(|h| h.terminate());
     }
 }
 
 impl Client<Connected, task::JoinHandle<()>> {
-    pub fn call_blocking<Req, Res>(&self, service_method: impl ToString, args: Req) -> Result<Res, Error>
+    pub fn call_blocking<Req, Res>(
+        &self,
+        service_method: impl ToString,
+        args: Req,
+    ) -> Result<Res, Error>
     where
         Req: serde::Serialize + Send + Sync + 'static,
-        Res: serde::de::DeserializeOwned + Send + 'static, {
+        Res: serde::de::DeserializeOwned + Send + 'static,
+    {
         let call = self.call(service_method, args);
         futures::executor::block_on(call)
     }
@@ -104,7 +106,7 @@ impl Client<Connected, task::JoinHandle<()>> {
     pub fn call<Req, Res>(&self, service_method: impl ToString, args: Req) -> Call<Res>
     where
         Req: serde::Serialize + Send + Sync + 'static,
-        Res: serde::de::DeserializeOwned + Send + 'static, 
+        Res: serde::de::DeserializeOwned + Send + 'static,
     {
         let id = self.count.fetch_add(1, Ordering::Relaxed);
         let service_method = service_method.to_string();
@@ -114,18 +116,18 @@ impl Client<Connected, task::JoinHandle<()>> {
         // create oneshot channel
         let (done_tx, done_rx) = oneshot::channel();
         let (cancel_tx, cancel_rx) = oneshot::channel();
-        
+
         let pending = self.pending.clone();
         let request_tx = self.requests.clone();
-        task::spawn(
-            handle_call(pending, header, body, request_tx, cancel_rx, done_tx)
-        );
+        task::spawn(handle_call(
+            pending, header, body, request_tx, cancel_rx, done_tx,
+        ));
 
         // create Call
         let call = Call::<Res> {
             id,
             cancel: cancel_tx,
-            done: done_rx
+            done: done_rx,
         };
         call
     }
