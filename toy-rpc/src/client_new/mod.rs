@@ -17,7 +17,6 @@ use crate::{
         AtomicMessageId, MessageId, RequestBody, RequestHeader, ResponseHeader, ResponseResult,
         CANCELLATION_TOKEN_DELIM,
     },
-    util::TerminateTask,
     Error,
 };
 
@@ -163,14 +162,20 @@ pub(crate) async fn writer_loop(
     stop: Receiver<()>,
 ) {
     loop {
-        select! {
-            _ = stop.recv_async().fuse() => {
-                return ()
-            },
-            res = write_once(&mut writer, &requests).fuse() => {
-                match res {
-                    Ok(_) => {}
-                    Err(err) => log::error!("{:?}", err),
+        // `select!` is not used here because it is 
+        // prefered to have the cancel message sent out
+        // before dropping the client
+        match write_once(&mut writer, &requests).await {
+            Ok(_) => { },
+            Err(err) => log::error!("{:?}", err),
+        }
+
+        match stop.try_recv() {
+            Ok(_) => break,
+            Err(err) => {
+                match err {
+                    flume::TryRecvError::Disconnected => break,
+                    flume::TryRecvError::Empty => { }
                 }
             }
         }

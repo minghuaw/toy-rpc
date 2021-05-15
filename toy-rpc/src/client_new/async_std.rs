@@ -111,13 +111,17 @@ cfg_if! {
     }
 }
 
-#[cfg(feature = "async_std_runtime")]
+// seems like it still works even without this impl
 impl<Mode, Handle: Future> Drop for Client<Mode, Handle> {
     fn drop(&mut self) {
         log::debug!("Dropping client");
 
-        self.reader_stop.send(());
-        self.writer_stop.send(());
+        if self.reader_stop.send(()).is_err() {
+            log::error!("Failed to send stop signal to reader loop")
+        }
+        if self.writer_stop.send(()).is_err() {
+            log::error!("Failed to send stop signal to writer loop")
+        }
 
         task::block_on(async {
             if let Some(reader) =self.reader_handle.take() {
