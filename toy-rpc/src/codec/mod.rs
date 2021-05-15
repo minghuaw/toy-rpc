@@ -224,19 +224,19 @@ where
     }
 }
 
-#[async_trait]
-pub trait ServerCodec: Send + Sync {
-    async fn read_request_header(&mut self) -> Option<Result<RequestHeader, Error>>;
-    async fn read_request_body(&mut self) -> Option<Result<RequestDeserializer, Error>>;
+// #[async_trait]
+// pub trait ServerCodec: Send + Sync {
+//     async fn read_request_header(&mut self) -> Option<Result<RequestHeader, Error>>;
+//     async fn read_request_body(&mut self) -> Option<Result<RequestDeserializer, Error>>;
 
-    // (Probably) don't need to worry about header/body interleaving
-    // because rust guarantees only one mutable reference at a time
-    async fn write_response(
-        &mut self,
-        header: ResponseHeader,
-        body: &(dyn erased::Serialize + Send + Sync),
-    ) -> Result<(), Error>;
-}
+//     // (Probably) don't need to worry about header/body interleaving
+//     // because rust guarantees only one mutable reference at a time
+//     async fn write_response(
+//         &mut self,
+//         header: ResponseHeader,
+//         body: &(dyn erased::Serialize + Send + Sync),
+//     ) -> Result<(), Error>;
+// }
 
 #[async_trait]
 pub trait ClientCodec: GracefulShutdown + Send + Sync {

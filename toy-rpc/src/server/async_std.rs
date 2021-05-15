@@ -231,7 +231,7 @@ cfg_if! {
                 let task_map = Arc::new(Mutex::new(HashMap::new()));
 
                 let reader_handle = task::spawn(
-                    Server::serve_codec_reader_loop(codec_reader, services, exec_sender, resp_sender.clone())
+                    super::serve_codec_reader_loop(codec_reader, services, exec_sender, resp_sender.clone())
                 );
 
                 let writer_handle = task::spawn(
@@ -263,7 +263,7 @@ cfg_if! {
                         deserializer
                     } => {
                         let fut = call(method, deserializer);
-                        let handle = task::spawn(Server::serve_codec_execute_call(id, fut, writer.clone()));
+                        let handle = task::spawn(super::serve_codec_execute_call(id, fut, writer.clone()));
                         {
                             let mut map = task_map.lock().await;
                             map.insert(id, handle);
@@ -293,10 +293,9 @@ cfg_if! {
                 {
                     let mut map = task_map.lock().await;
                     map.remove(&msg.id);
-                    // println!("{}", map.len());
                 }
 
-                match Server::serve_codec_write_once(&mut codec_writer, msg).await {
+                match super::serve_codec_write_once(&mut codec_writer, msg).await {
                     Ok(_) => { },
                     Err(err) => {
                         log::error!("{}", err);
