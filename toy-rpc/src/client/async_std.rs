@@ -180,7 +180,7 @@ impl Client<Connected> {
         let id = self.count.fetch_add(1, Ordering::Relaxed);
         let service_method = service_method.to_string();
         let header = RequestHeader { id, service_method };
-        let body = Box::new(args) as RequestBody;
+        let body = Box::new(args) as ClientRequestBody;
 
         // create oneshot channel
         let (done_tx, done_rx) = oneshot::channel();

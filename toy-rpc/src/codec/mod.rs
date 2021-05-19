@@ -250,6 +250,12 @@ pub trait ClientCodec: GracefulShutdown + Send + Sync {
         header: RequestHeader,
         body: &(dyn erased::Serialize + Send + Sync),
     ) -> Result<(), Error>;
+
+    async fn write_request_raw(
+        &mut self,
+        header: RequestHeader,
+        buf: Vec<u8>,
+    ) -> Result<(), Error>;
 }
 
 #[async_trait]
@@ -271,6 +277,15 @@ pub trait CodecWrite: Marshal {
         &mut self,
         id: &MessageId,
         body: &(dyn erased::Serialize + Send + Sync),
+    ) -> Result<(), Error> {
+        let buf = Self::marshal(&body)?;
+        self.write_body_raw(id, buf).await
+    }
+
+    async fn write_body_raw(
+        &mut self,
+        id: &MessageId,
+        buf: Vec<u8>,
     ) -> Result<(), Error>;
 }
 
@@ -356,16 +371,23 @@ cfg_if! {
                 writer.write_frame(frame).await
             }
 
-            async fn write_body(
+            // async fn write_body(
+            //     &mut self,
+            //     id: &MessageId,
+            //     body: &(dyn erased::Serialize + Send + Sync),
+            // ) -> Result<(), Error> {
+            //     let buf = Self::marshal(&body)?;
+            //     self.write_body_raw(id, buf).await
+            // }
+
+            async fn write_body_raw(
                 &mut self,
                 id: &MessageId,
-                body: &(dyn erased::Serialize + Send + Sync),
-            ) -> Result<(), Error> {
+                buf: Vec<u8>
+            ) -> Result<(), Error>
+            {
                 let writer = &mut self.writer;
-
-                let buf = Self::marshal(&body)?;
-                let frame = Frame::new(id.to_owned(), 1, PayloadType::Data, buf);
-
+                let frame = Frame::new(id.to_owned(), 1, PayloadType::Data, buf.to_owned());
                 writer.write_frame(frame).await
             }
         }
@@ -460,13 +482,24 @@ cfg_if! {
                 writer.write_payload(buf).await
             }
 
-            async fn write_body(
+            // async fn write_body(
+            //     &mut self,
+            //     id: &MessageId,
+            //     body: &(dyn erased::Serialize + Send + Sync),
+            // ) -> Result<(), Error> {
+            //     // let writer = &mut self.writer;
+            //     let buf = Self::marshal(&body)?;
+            //     // writer.write_payload(buf).await
+            //     self.write_body_raw(id, buf).await
+            // }
+
+            async fn write_body_raw(
                 &mut self,
                 _: &MessageId,
-                body: &(dyn erased::Serialize + Send + Sync),
-            ) -> Result<(), Error> {
+                buf: Vec<u8>,
+            ) -> Result<(), Error>
+            {
                 let writer = &mut self.writer;
-                let buf = Self::marshal(&body)?;
                 writer.write_payload(buf).await
             }
         }
@@ -548,6 +581,14 @@ where
         self.write_header(header).await?;
         self.write_body(&id, body).await?;
 
+        Ok(())
+    }
+
+    async fn write_request_raw(&mut self, header: RequestHeader, buf: Vec<u8>) -> Result<(), Error> {
+        let id = header.get_id();
+        log::trace!("Sending request id: {}", &id);
+        self.write_header(header).await?;
+        self.write_body_raw(&id, buf).await?;
         Ok(())
     }
 }

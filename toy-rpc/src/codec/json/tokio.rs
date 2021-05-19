@@ -77,16 +77,26 @@ cfg_if! {
                 Ok(())
             }
 
-            async fn write_body(
-                &mut self,
-                _id: &MessageId,
-                body: &(dyn erased::Serialize + Send + Sync),
-            ) -> Result<(), Error> {
-                let buf = Self::marshal(&body)?;
+            // async fn write_body(
+            //     &mut self,
+            //     _id: &MessageId,
+            //     body: &(dyn erased::Serialize + Send + Sync),
+            // ) -> Result<(), Error> {
+            //     let buf = Self::marshal(&body)?;
 
+            //     let _ = self.writer.write(&buf).await?;
+            //     self.writer.flush().await?;
+
+            //     Ok(())
+            // }
+
+            async fn write_body_raw(
+                &mut self,
+                _: &MessageId,
+                buf: Vec<u8>,
+            ) -> Result<(), Error> {
                 let _ = self.writer.write(&buf).await?;
                 self.writer.flush().await?;
-
                 Ok(())
             }
         }
@@ -155,16 +165,26 @@ cfg_if! {
                 Ok(())
             }
 
-            async fn write_body(
-                &mut self,
-                _id: &MessageId,
-                body: &(dyn erased::Serialize + Send + Sync),
-            ) -> Result<(), Error> {
-                let buf = Self::marshal(&body)?;
+            // async fn write_body(
+            //     &mut self,
+            //     _id: &MessageId,
+            //     body: &(dyn erased::Serialize + Send + Sync),
+            // ) -> Result<(), Error> {
+            //     let buf = Self::marshal(&body)?;
 
+            //     let _ = self.writer.write(&buf).await?;
+            //     self.writer.flush().await?;
+
+            //     Ok(())
+            // }
+            
+            async fn write_body_raw(
+                &mut self,
+                _: &MessageId,
+                buf: Vec<u8>,
+            ) -> Result<(), Error> {
                 let _ = self.writer.write(&buf).await?;
                 self.writer.flush().await?;
-
                 Ok(())
             }
         }

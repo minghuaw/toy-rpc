@@ -36,7 +36,8 @@ impl Metadata for RequestHeader {
     }
 }
 
-pub(crate) type RequestBody = Box<dyn erased_serde::Serialize + Send + Sync>;
+pub(crate) type ClientRequestBody = Box<dyn erased_serde::Serialize + Send + Sync>;
+pub(crate) type ClientRequestBodyRaw = Vec<u8>;
 
 /// Header of a response
 #[derive(Serialize, Deserialize, Debug, Default)]
@@ -51,10 +52,10 @@ impl Metadata for ResponseHeader {
     }
 }
 
-pub(crate) type ResponseBody = Box<dyn erased_serde::Deserializer<'static> + Send>;
+pub(crate) type ClientResponseBody = Box<dyn erased_serde::Deserializer<'static> + Send>;
 
 /// The serialized representation of the response body
-pub(crate) type ResponseResult = Result<ResponseBody, ResponseBody>;
+pub(crate) type ClientResponseResult = Result<ClientResponseBody, ClientResponseBody>;
 
 /// The Error message that will be sent over for a error response
 #[derive(Serialize, Deserialize)]

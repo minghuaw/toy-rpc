@@ -14,7 +14,7 @@ use crate::message::CANCELLATION_TOKEN;
 use crate::{
     codec::split::{ClientCodecRead, ClientCodecWrite},
     message::{
-        AtomicMessageId, MessageId, RequestBody, RequestHeader, ResponseHeader, ResponseResult,
+        AtomicMessageId, MessageId, ClientRequestBody, RequestHeader, ResponseHeader, ClientResponseResult,
         CANCELLATION_TOKEN_DELIM,
     },
     Error,
@@ -76,7 +76,7 @@ pub struct Connected {}
 // There will be a dedicated task for reading and writing, so there should be no
 // contention across tasks or threads
 // type Codec = Box<dyn ClientCodec>;
-type ResponseMap = HashMap<MessageId, oneshot::Sender<ResponseResult>>;
+type ResponseMap = HashMap<MessageId, oneshot::Sender<ClientResponseResult>>;
 
 /// RPC client
 ///
@@ -85,7 +85,7 @@ pub struct Client<Mode> {
     pending: Arc<Mutex<ResponseMap>>,
 
     // new request will be sent over this channel
-    requests: Sender<(RequestHeader, RequestBody)>,
+    requests: Sender<(RequestHeader, ClientRequestBody)>,
 
     // both reader and writer tasks should return nothingcliente handles will be used to drop the tasks
     // The Drop trait should be impled when tokio or async_std runtime is enabled
@@ -169,7 +169,7 @@ async fn read_once(
 
 pub(crate) async fn writer_loop(
     mut writer: impl ClientCodecWrite,
-    requests: Receiver<(RequestHeader, RequestBody)>,
+    requests: Receiver<(RequestHeader, ClientRequestBody)>,
     stop: Receiver<()>,
 ) {
     loop {
@@ -196,7 +196,7 @@ pub(crate) async fn writer_loop(
 
 async fn write_once(
     writer: &mut impl ClientCodecWrite,
-    request: &Receiver<(RequestHeader, RequestBody)>,
+    request: &Receiver<(RequestHeader, ClientRequestBody)>,
 ) -> Result<(), Error> {
     if let Ok(req) = request.recv_async().await {
         let (header, body) = req;
@@ -209,8 +209,8 @@ async fn write_once(
 async fn handle_call<Res>(
     pending: Arc<Mutex<ResponseMap>>,
     header: RequestHeader,
-    body: RequestBody,
-    request_tx: Sender<(RequestHeader, RequestBody)>,
+    body: ClientRequestBody,
+    request_tx: Sender<(RequestHeader, ClientRequestBody)>,
     cancel: oneshot::Receiver<MessageId>,
     done: oneshot::Sender<Result<Res, Error>>,
 ) -> Result<(), Error>
@@ -237,7 +237,7 @@ where
                 };
                 let body: String = 
                     format!("{}{}{}", CANCELLATION_TOKEN, CANCELLATION_TOKEN_DELIM, id);
-                let body = Box::new(body) as RequestBody;
+                let body = Box::new(body) as ClientRequestBody;
                 request_tx.send_async((header, body)).await?;
             }
         },
@@ -253,7 +253,7 @@ where
 }
 
 async fn handle_response<Res>(
-    response: oneshot::Receiver<ResponseResult>,
+    response: oneshot::Receiver<ClientResponseResult>,
     done: oneshot::Sender<Result<Res, Error>>
 ) -> Result<(), Error> 
 where 
