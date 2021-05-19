@@ -2,7 +2,7 @@ use std::sync::atomic::Ordering;
 use ::async_std::task;
 use futures::{AsyncRead, AsyncWrite};
 
-use crate::codec::split::ClientCodecSplit;
+use crate::{codec::split::ClientCodecSplit, transport::ws::WebSocketConn};
 
 use super::*;
 
@@ -91,6 +91,7 @@ cfg_if! {
         )
     ))] {
         use ::async_std::net::{TcpStream, ToSocketAddrs};
+        use async_tungstenite::async_std::connect_async;
 
         impl Client<NotConnected> {
             pub async fn dial(addr: impl ToSocketAddrs) 
@@ -98,6 +99,13 @@ cfg_if! {
             {
                 let stream = TcpStream::connect(addr).await?;
                 Ok(Self::with_stream(stream))
+            }
+
+            pub async fn dial_websocket_url(url: url::Url) -> Result<Client<Connected>, Error> {
+                let (ws_stream, _) = connect_async(&url).await?;
+                let ws_stream = WebSocketConn::new(ws_stream);
+                let codec = DefaultCodec::with_websocket(ws_stream);
+                Ok(Self::with_codec(codec))
             }
 
             pub fn with_stream<T>(stream: T) -> Client<Connected>
