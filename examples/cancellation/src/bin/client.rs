@@ -1,7 +1,7 @@
 // use anyhow::Result;
 use cfg_if::cfg_if;
 use std::time::Duration;
-use toy_rpc::client_new::{Client, Call};
+use toy_rpc::client::{Client, Call};
 
 cfg_if! {
     if #[cfg(feature = "async_std_runtime")] {

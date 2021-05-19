@@ -864,7 +864,7 @@ cfg_if! {
         feature = "async_std_runtime",
         feature = "http_tide"
     ))] {
-        pub use crate::client::async_std::Client;
+        pub use crate::client::Client;
     } else if #[cfg(any(
         feature = "tokio_runtime",
         feature = "http_warp",
@@ -880,5 +880,3 @@ pub use error::Error;
 pub use erased_serde;
 pub use lazy_static;
 pub use serde;
-
-pub mod client_new;
