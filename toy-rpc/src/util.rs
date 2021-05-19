@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use cfg_if::cfg_if;
+// use cfg_if::cfg_if;
 use std::collections::HashMap;
 
 use crate::service::AsyncHandler;
@@ -20,32 +20,4 @@ pub trait RegisterService {
 #[async_trait]
 pub trait GracefulShutdown {
     async fn close(&mut self);
-}
-
-#[async_trait]
-pub trait TerminateTask {
-    fn terminate(self);
-}
-
-cfg_if! {
-    if #[cfg(feature = "async_std_runtime")] {
-        #[async_trait]
-        impl<T: Send> TerminateTask for async_std::task::JoinHandle<T> {
-            fn terminate(self) {
-                log::debug!("Cancelling joinhandle");
-                async_std::task::block_on(self.cancel());
-            }
-        }
-    } else if #[cfg(feature = "tokio_runtime")] {
-        #[async_trait]
-        impl<T: Send> TerminateTask for tokio::task::JoinHandle<T> {
-            fn terminate(self) {
-                log::debug!("Aborting joinhandle");
-                self.abort();
-                log::debug!("After abort");
-            }
-        }
-    } else {
-
-    }
 }

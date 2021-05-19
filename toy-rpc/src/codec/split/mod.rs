@@ -232,7 +232,7 @@ cfg_if! {
 
             async fn write_body(
                 &mut self,
-                id: &MessageId,
+                _: &MessageId,
                 body: &(dyn erased::Serialize + Send + Sync),
             ) -> Result<(), Error> {
                 let buf = Self::marshal(&body)?;
