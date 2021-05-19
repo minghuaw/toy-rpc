@@ -83,20 +83,12 @@ cfg_if! {
                 Ok(())
             }
 
-            // async fn write_body(
-            //     &mut self,
-            //     id: &MessageId,
-            //     body: &(dyn erased::Serialize + Send + Sync),
-            // ) -> Result<(), Error> {
-            //     let buf = Self::marshal(&body)?;
-            //     self.write_body_raw(id, buf).await
-            // }
-
-            async fn write_body_raw(
+            async fn write_body(
                 &mut self,
-                _: &MessageId,
-                buf: Vec<u8>,
+                id: &MessageId,
+                body: &(dyn erased::Serialize + Send + Sync),
             ) -> Result<(), Error> {
+                let buf = Self::marshal(&body)?;
                 let _ = self.writer.write(&buf).await?;
                 self.writer.flush().await?;
                 Ok(())
@@ -167,26 +159,16 @@ cfg_if! {
                 Ok(())
             }
 
-            // async fn write_body(
-            //     &mut self,
-            //     _id: &MessageId,
-            //     body: &(dyn erased::Serialize + Send + Sync),
-            // ) -> Result<(), Error> {
-            //     let buf = Self::marshal(&body)?;
-
-            //     let _ = self.writer.write(&buf).await?;
-            //     self.writer.flush().await?;
-
-            //     Ok(())
-            // }
-
-            async fn write_body_raw(
+            async fn write_body(
                 &mut self,
-                _: &MessageId,
-                buf: Vec<u8>,
+                _id: &MessageId,
+                body: &(dyn erased::Serialize + Send + Sync),
             ) -> Result<(), Error> {
+                let buf = Self::marshal(&body)?;
+
                 let _ = self.writer.write(&buf).await?;
                 self.writer.flush().await?;
+
                 Ok(())
             }
         }

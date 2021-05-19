@@ -128,22 +128,13 @@ cfg_if! {
                 writer.write_frame(frame).await
             }
 
-            // async fn write_body(
-            //     &mut self,
-            //     id: &MessageId,
-            //     body: &(dyn erased::Serialize + Send + Sync),
-            // ) -> Result<(), Error> {
-            //     let buf = Self::marshal(&body)?;
-            //     self.write_body_raw(id, buf).await
-            // }
-
-            async fn write_body_raw(
+            async fn write_body(
                 &mut self,
                 id: &MessageId,
-                buf: Vec<u8>
-            ) -> Result<(), Error>
-            {
+                body: &(dyn erased::Serialize + Send + Sync),
+            ) -> Result<(), Error> {
                 let writer = &mut self.writer;
+                let buf = Self::marshal(&body)?;
                 let frame = Frame::new(id.to_owned(), 1, PayloadType::Data, buf.to_owned());
                 writer.write_frame(frame).await
             }
@@ -239,21 +230,12 @@ cfg_if! {
                 writer.write_payload(buf).await
             }
 
-            // async fn write_body(
-            //     &mut self,
-            //     id: &MessageId,
-            //     body: &(dyn erased::Serialize + Send + Sync),
-            // ) -> Result<(), Error> {
-            //     let buf = Self::marshal(&body)?;
-            //     self.write_body_raw(id, buf).await
-            // }
-
-            async fn write_body_raw(
+            async fn write_body(
                 &mut self,
-                _: &MessageId,
-                buf: Vec<u8>,
-            ) -> Result<(), Error>
-            {
+                id: &MessageId,
+                body: &(dyn erased::Serialize + Send + Sync),
+            ) -> Result<(), Error> {
+                let buf = Self::marshal(&body)?;
                 let writer = &mut self.writer;
                 writer.write_payload(buf).await
             }
