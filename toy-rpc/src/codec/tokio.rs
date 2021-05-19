@@ -1,5 +1,5 @@
 use ::tokio::io::split;
-use ::tokio::io::AsyncWriteExt;
+// use ::tokio::io::AsyncWriteExt;
 use ::tokio::io::{AsyncRead, AsyncWrite, BufReader, BufWriter, ReadHalf, WriteHalf};
 
 use super::*;
@@ -31,32 +31,32 @@ where
     }
 }
 
-#[async_trait]
-impl<R, W> GracefulShutdown for Codec<R, W, ConnTypeReadWrite>
-where
-    R: AsyncRead + Send + Sync + Unpin,
-    W: AsyncWrite + Send + Sync + Unpin,
-{
-    async fn close(&mut self) {
-        match self.writer.flush().await {
-            Ok(()) => (),
-            Err(e) => log::error!("Error closing connection: {}", e),
-        };
+// #[async_trait]
+// impl<R, W> GracefulShutdown for Codec<R, W, ConnTypeReadWrite>
+// where
+//     R: AsyncRead + Send + Sync + Unpin,
+//     W: AsyncWrite + Send + Sync + Unpin,
+// {
+//     async fn close(&mut self) {
+//         match self.writer.flush().await {
+//             Ok(()) => (),
+//             Err(e) => log::error!("Error closing connection: {}", e),
+//         };
 
-        match self.writer.shutdown().await {
-            Ok(()) => (),
-            Err(e) => log::error!("Error closing connection: {}", e),
-        };
-    }
-}
+//         match self.writer.shutdown().await {
+//             Ok(()) => (),
+//             Err(e) => log::error!("Error closing connection: {}", e),
+//         };
+//     }
+// }
 
-#[async_trait::async_trait]
-impl<R, W> GracefulShutdown for Codec<R, W, ConnTypePayload>
-where
-    R: Send,
-    W: GracefulShutdown + Send,
-{
-    async fn close(&mut self) {
-        self.writer.close().await;
-    }
-}
+// #[async_trait::async_trait]
+// impl<R, W> GracefulShutdown for Codec<R, W, ConnTypePayload>
+// where
+//     R: Send,
+//     W: GracefulShutdown + Send,
+// {
+//     async fn close(&mut self) {
+//         self.writer.close().await;
+//     }
+// }

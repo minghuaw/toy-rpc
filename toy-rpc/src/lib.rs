@@ -843,7 +843,7 @@ pub mod service;
 pub mod transport;
 pub mod util;
 
-cfg_if::cfg_if! {
+cfg_if! {
     if #[cfg(any(
         feature = "async_std_runtime",
         feature = "tokio_runtime",
@@ -859,20 +859,7 @@ cfg_if::cfg_if! {
     }
 }
 
-cfg_if! {
-    if #[cfg(any(
-        feature = "async_std_runtime",
-        feature = "http_tide"
-    ))] {
-        pub use crate::client::Client;
-    } else if #[cfg(any(
-        feature = "tokio_runtime",
-        feature = "http_warp",
-        feature = "http_actix_web",
-    ))] {
-        pub use crate::client::tokio::Client;
-    }
-}
+pub use crate::client::Client;
 
 pub use error::Error;
 

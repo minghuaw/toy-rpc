@@ -64,7 +64,7 @@ cfg_if! {
         use ::tokio::select;
 
         mod tokio;
-        pub use crate::client_new::tokio::Call;
+        pub use crate::client::tokio::Call;
     }
 }
 
