@@ -229,63 +229,51 @@ where
         _pending.insert(id, resp_tx);
     }
 
-    handle_response(request_tx, cancel, resp_rx, done).await?;
+    select! {
+        res = cancel.fuse() => {
+            if let Ok(id) = res {
+                let header = RequestHeader {
+                    id,
+                    service_method: CANCELLATION_TOKEN.into(),
+                };
+                let body: String = 
+                    format!("{}{}{}", CANCELLATION_TOKEN, CANCELLATION_TOKEN_DELIM, id);
+                let body = Box::new(body) as RequestBody;
+                request_tx.send_async((header, body)).await?;
+            }
+        },
+        res = handle_response(resp_rx, done).fuse() => { 
+            match res {
+                Ok(_) => { },
+                Err(err) => log::error!("{:?}", err)
+            }
+        }
+    };
 
     Ok(())
 }
 
 async fn handle_response<Res>(
-    request: Sender<(RequestHeader, RequestBody)>,
-    cancel: oneshot::Receiver<MessageId>,
     response: oneshot::Receiver<ResponseResult>,
-    done: oneshot::Sender<Result<Res, Error>>,
-) -> Result<(), Error>
-where
-    Res: serde::de::DeserializeOwned + Send,
+    done: oneshot::Sender<Result<Res, Error>>
+) -> Result<(), Error> 
+where 
+    Res: serde::de::DeserializeOwned +Send
 {
-    let val: Result<ResponseResult, Error> = select! {
-        cancel_res = cancel.fuse() => {
-            match cancel_res {
-                Ok(id) => Err(Error::Canceled(Some(id))),
-                Err(_) => Err(Error::Canceled(None))
-            }
-        },
-        resp_res = response.fuse() => resp_res.map_err(|err| Error::Internal(
-            format!("InternalError: {:?}", err).into()
-        ))
-    };
-
+    let val = response.await
+        // cancellation of the oneshot channel is not intended 
+        // and thus should be considered as an InternalError
+        .map_err(|err| Error::Internal(Box::new(err)))?;
     let res = match val {
-        Ok(result) => match result {
-            Ok(mut resp_body) => erased_serde::deserialize(&mut resp_body)
-                .map_err(|e| Error::ParseError(Box::new(e))),
-            Err(mut err_body) => erased_serde::deserialize(&mut err_body).map_or_else(
-                |e| Err(Error::ParseError(Box::new(e))),
-                |msg| Err(Error::from_err_msg(msg)),
-            ),
-        },
-        Err(err) => {
-            if let &Error::Canceled(opt) = &err {
-                // send a cancel request to server only if the
-                // the request id is successully received
-                if let Some(id) = opt {
-                    let header = RequestHeader {
-                        id,
-                        service_method: CANCELLATION_TOKEN.into(),
-                    };
-                    let body: String =
-                        format!("{}{}{}", CANCELLATION_TOKEN, CANCELLATION_TOKEN_DELIM, id);
-                    let body = Box::new(body) as RequestBody;
-                    request.send_async((header, body)).await?;
-                }
-            }
-
-            Err(err)
-        }
+        Ok(mut resp_body) => erased_serde::deserialize(&mut resp_body)
+            .map_err(|err| Error::ParseError(Box::new(err))),
+        Err(mut err_body) => erased_serde::deserialize(&mut err_body)
+            .map_or_else(
+                |err| Err(Error::ParseError(Box::new(err))), 
+                |msg| Err(Error::from_err_msg(msg))), // handles error msg sent from server
     };
 
     done.send(res)
-        .map_err(|_| Error::Internal("InternalError: Failed to send over done channel".into()))?;
-
+        .map_err(|_| Error::Internal("Failed to send over done channel".into()))?;
     Ok(())
 }

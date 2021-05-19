@@ -15,7 +15,7 @@ pub enum Error {
     ParseError(Box<dyn std::error::Error + Send + Sync>),
 
     /// Errors with server or client
-    #[error("{0}")]
+    #[error("InternalError: {0}")]
     Internal(Box<dyn std::error::Error + Send + Sync>),
 
     /// The supplied argument for the function is invalid
