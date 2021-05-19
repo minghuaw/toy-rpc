@@ -590,7 +590,7 @@ fn generate_client_stub_method_impl(
     let method = fn_ident.to_string();
     let service_method = format!("{}.{}", service, method);
     parse_quote!(
-        pub async fn #fn_ident<A>(&'c self, args: A) -> toy_rpc::client::Call<#ok_ty>
+        pub fn #fn_ident<A>(&'c self, args: A) -> toy_rpc::client::Call<#ok_ty>
         where
             A: std::borrow::Borrow<#req_ty> + Send + Sync + toy_rpc::serde::Serialize + 'static,
         {

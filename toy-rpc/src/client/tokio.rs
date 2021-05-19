@@ -1,30 +1,68 @@
-use ::tokio::io::{AsyncRead, AsyncWrite};
-pub(crate) use ::tokio::sync::{oneshot, Mutex};
+use std::sync::atomic::Ordering;
 use ::tokio::task;
-/// This module implements the traits/methods that require `async-std`
-/// runtime for the RPC client. The module is enabled if one
-/// `feature = "tokio_runtime"`, `featue = "http_warp"` or
-/// `feature = "http_actix_web`" is true.
-use std::sync::Arc;
+use ::tokio::io::{AsyncRead, AsyncWrite};
+use ::tokio::runtime::Handle;
 
-use crate::message::ErrorMessage;
+use crate::codec::split::ClientCodecSplit;
 
 use super::*;
 
-// using a mutex because all the transports require mutable reference
-type Codec = Arc<Mutex<Box<dyn ClientCodec>>>;
-type ResponseMap = HashMap<u16, oneshot::Sender<Result<ResponseBody, ResponseBody>>>;
+/// Call of a RPC request. The result can be obtained by `.await`ing the `Call`.
+/// The call can be cancelled with `cancel()` method.
+///
+/// # Example
+///
+#[pin_project]
+pub struct Call<Res> {
+    id: MessageId,
+    cancel: oneshot::Sender<MessageId>,
+    #[pin]
+    done: oneshot::Receiver<Result<Res, Error>>,
+    handle: task::JoinHandle<Result<(), Error>>,
+}
 
-/// RPC Client. Unlike [`Server`](../../server/struct.Server.html), the `Client`
-/// struct contains field that uses runtime dependent synchronization primitives,
-/// thus there is a separate 'Client' struct defined for each of the `async-std`
-/// and `tokio` runtime.
-pub struct Client<Mode> {
-    count: AtomicMessageId,
-    inner_codec: Codec,
-    pending: Arc<Mutex<ResponseMap>>,
+impl<Res> Call<Res>
+where
+    Res: serde::de::DeserializeOwned,
+{
+    pub fn cancel(self) {
+        let handle = self.handle;
+        match self.cancel.send(self.id) {
+            Ok(_) => {
+                log::info!("Call is canceled");
+            }
+            Err(_) => {
+                log::error!("Failed to cancel")
+            }
+        }
 
-    mode: PhantomData<Mode>,
+        match task::block_in_place(|| {
+            Handle::current().block_on(handle)
+        }) {
+            Ok(_) => { },
+            Err(err) => log::error!("{:?}", err)
+        };
+    }
+}
+
+impl<Res> Future for Call<Res>
+where
+    Res: serde::de::DeserializeOwned,
+{
+    type Output = Result<Res, Error>;
+
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        let this = self.project();
+        let done: Pin<&mut oneshot::Receiver<Result<Res, Error>>> = this.done;
+
+        match done.poll(cx) {
+            Poll::Pending => Poll::Pending,
+            Poll::Ready(res) => match res {
+                Ok(r) => Poll::Ready(r),
+                Err(_canceled) => Poll::Ready(Err(Error::Canceled(Some(this.id.clone())))),
+            },
+        }
+    }
 }
 
 cfg_if! {
@@ -54,150 +92,22 @@ cfg_if! {
             not(feature = "serde_json"),
             not(feature = "serde_bincode"),
         )
-    ))] {
+    ))] { 
         use ::tokio::net::{TcpStream, ToSocketAddrs};
-        use async_tungstenite::tokio::connect_async;
 
-        use crate::transport::ws::WebSocketConn;
-        use crate::server::DEFAULT_RPC_PATH;
-
-
-        /// The following impl block is controlled by feature flag. It is enabled
-        /// if and only if **exactly one** of the the following feature flag is turned on
-        /// - `serde_bincode`
-        /// - `serde_json`
-        /// - `serde_cbor`
-        /// - `serde_rmp`
         impl Client<NotConnected> {
-            /// Connects the an RPC server over socket at the specified network address
-            ///
-            /// This is enabled
-            /// if and only if **exactly one** of the the following feature flag is turned on
-            /// - `serde_bincode`
-            /// - `serde_json`
-            /// - `serde_cbor`
-            /// - `serde_rmp`
-            ///
-            /// Example
-            ///
-            /// ```rust
-            /// use toy_rpc::Client;
-            ///
-            /// #[tokio::main]
-            /// async fn main() {
-            ///     let addr = "127.0.0.1:8080";
-            ///     let client = Client::dial(addr).await;
-            /// }
-            ///
-            /// ```
-            pub async fn dial(addr: impl ToSocketAddrs) -> Result<Client<Connected>, Error> {
+            pub async fn dial(addr: impl ToSocketAddrs) 
+                -> Result<Client<Connected>, Error> 
+            {
                 let stream = TcpStream::connect(addr).await?;
-
                 Ok(Self::with_stream(stream))
             }
 
-            /// Similar to `dial`, this connects to an WebSocket RPC server at the specified network address using the defatul codec
-            ///
-            /// This is enabled
-            /// if and only if **exactly one** of the the following feature flag is turned on
-            /// - `serde_bincode`
-            /// - `serde_json`
-            /// - `serde_cbor`
-            /// - `serde_rmp`
-            ///
-            /// # Example
-            ///
-            /// ```rust
-            /// use toy_rpc::client::Client;
-            /// use toy_rpc::error::Error;
-            ///
-            /// #[tokio::main]
-            /// async fn main() {
-            ///     let addr = "ws://127.0.0.1:8080";
-            ///     let client = Client::dial_http(addr).await.unwrap();
-            /// }
-            /// ```
-            ///
-            pub async fn dial_websocket(addr: &str) -> Result<Client<Connected>, Error> {
-                let url = url::Url::parse(addr)?;
-                Self::dial_websocket_url(url).await
-            }
-
-            async fn dial_websocket_url(url: url::Url) -> Result<Client<Connected>, Error> {
-                let (ws_stream, _) = connect_async(&url).await?;
-
-                let ws_stream = WebSocketConn::new(ws_stream);
-                let codec = DefaultCodec::with_websocket(ws_stream);
-
-                Ok(Self::with_codec(codec))
-            }
-
-            /// Connects to an HTTP RPC server at the specified network address using WebSocket and the defatul codec.
-            ///
-            /// It is recommended to use "ws://" as the url scheme as opposed to "http://"; however, internally the url scheme
-            /// is changed to "ws://". Internally, `DEFAULT_RPC_PATH="_rpc"` is appended to the end of `addr`,
-            /// and the rest is the same is calling `dial_websocket`.
-            /// If a network path were to be supplpied, the network path must end with a slash "/".
-            /// For example, a valid path could be "ws://127.0.0.1/rpc/".
-            ///
-            /// *Warning*: WebSocket is used as the underlying transport protocol starting from version "0.5.0-beta.0",
-            /// and this will make client of versions later than "0.5.0-beta.0" incompatible with servers of versions
-            /// earlier than "0.5.0-beta.0".
-            ///
-            /// This is enabled
-            /// if and only if **only one** of the the following feature flag is turned on
-            /// - `serde_bincode`
-            /// - `serde_json`
-            /// - `serde_cbor`
-            /// - `serde_rmp`
-            ///
-            /// # Example
-            ///
-            /// ```rust
-            /// use toy_rpc::Client;
-            ///
-            /// #[tokio::main]
-            /// async fn main() {
-            ///     let addr = "ws://127.0.0.1:8080/rpc/";
-            ///     let client = Client::dial_http(addr).await.unwrap();
-            /// }
-            /// ```
-            ///
-            /// TODO: check if the path ends with a slash
-            /// TODO: try send and recv trait object
-            pub async fn dial_http(addr: &str) -> Result<Client<Connected>, Error> {
-                let mut url = url::Url::parse(addr)?.join(DEFAULT_RPC_PATH)?;
-                url.set_scheme("ws").expect("Failed to change scheme to ws");
-
-                Self::dial_websocket_url(url).await
-            }
-
-            /// Creates an RPC `Client` over socket with a specified `async_std::net::TcpStream` and the default codec
-            ///
-            /// This is enabled
-            /// if and only if **exactly one** of the the following feature flag is turned on
-            /// - `serde_bincode`
-            /// - `serde_json`
-            /// - `serde_cbor`
-            /// - `serde_rmp`
-            ///
-            /// # Example
-            /// ```
-            /// use tokio::net::TcpStream;
-            /// use toy_rpc::Client;
-            ///
-            /// #[tokio::main]
-            /// async fn main() {
-            ///     let stream = TcpStream::connect("127.0.0.1:8080").await.unwrap();
-            ///     let client = Client::with_stream(stream);
-            /// }
-            /// ```
-            pub fn with_stream<T>(stream: T) -> Client<Connected>
+            pub fn with_stream<T>(stream: T) -> Client<Connected> 
             where
                 T: AsyncRead + AsyncWrite + Send + Sync + Unpin + 'static
             {
                 let codec = DefaultCodec::new(stream);
-
                 Self::with_codec(codec)
             }
         }
@@ -205,267 +115,75 @@ cfg_if! {
 }
 
 impl Client<NotConnected> {
-    /// Creates an RPC 'Client` over socket with a specified codec
-    ///
-    /// Example
-    ///
-    /// ```rust
-    /// use async_std::net::TcpStream;
-    /// use toy_rpc::codec::bincode::Codec;
-    /// use toy_rpc::Client;
-    ///
-    /// #[tokio::main]
-    /// async fn main() {
-    ///     let addr = "127.0.0.1:8080";
-    ///     let stream = TcpStream::connect(addr).await.unwrap();
-    ///     let codec = Codec::new(stream);
-    ///     let client = Client::with_codec(codec);
-    /// }
-    /// ```
     pub fn with_codec<C>(codec: C) -> Client<Connected>
     where
-        C: ClientCodec + Send + Sync + 'static,
+        C: ClientCodecSplit + Send + Sync + 'static,
     {
-        let box_codec: Box<dyn ClientCodec> = Box::new(codec);
-
-        Client::<Connected> {
-            count: AtomicMessageId::new(0u16),
-            inner_codec: Arc::new(Mutex::new(box_codec)),
-            pending: Arc::new(Mutex::new(HashMap::new())),
-
-            mode: PhantomData,
-        }
+         let (writer, reader) = codec.split();
+         let (req_sender, req_recver) = flume::unbounded();
+         let pending = Arc::new(Mutex::new(HashMap::new()));
+         let (reader_stop, stop) = flume::bounded(1);
+         task::spawn(reader_loop(reader, pending.clone(), stop));
+ 
+         let (writer_stop, stop) = flume::bounded(1);
+         task::spawn(writer_loop(writer, req_recver, stop));
+ 
+         Client::<Connected> {
+             count: AtomicMessageId::new(0),
+             pending,
+             requests: req_sender,
+             reader_stop,
+             writer_stop,
+ 
+             marker: PhantomData,
+         }
     }
 }
 
 impl Client<Connected> {
-    /// Invokes the named function and wait synchronously in a blocking manner.
-    ///
-    /// This function internally calls `task::block_on` to wait for the response.
-    /// Do NOT use this function inside another `task::block_on`.async_std
-    ///
-    /// Example
-    ///
-    /// ```rust
-    /// use toy_rpc::Client;
-    /// use toy_rpc::error::Error;
-    ///
-    /// #[tokio::main]
-    /// async fn main() {
-    ///     let addr = "127.0.0.1:8080";
-    ///     let client = Client::dial(addr).await.unwrap();
-    ///
-    ///     let args = "arguments";
-    ///     let reply: Result<String, Error> = client.call("EchoService.echo", &args);
-    ///     println!("{:?}", reply);
-    /// }
-    /// ```
-    pub fn call<Req, Res>(&self, service_method: impl ToString, args: Req) -> Result<Res, Error>
-    where
-        Req: serde::Serialize + Send + Sync,
-        Res: serde::de::DeserializeOwned,
-    {
-        task::block_in_place(|| {
-            let res = futures::executor::block_on(self.async_call(service_method, args));
-            res
-        })
-    }
-
-    /// Invokes the named function asynchronously by spawning a new task and returns the `JoinHandle`
-    ///
-    /// ```rust
-    /// use tokio::task;
-    /// use toy_rpc::Client;
-    /// use toy_rpc::error::Error;
-    ///
-    /// #[tokio::main]
-    /// async fn main() {
-    ///     let addr = "127.0.0.1:8080";
-    ///     let client = Client::dial(addr).await.unwrap();
-    ///
-    ///     let args = "arguments";
-    ///     let handle: task::JoinHandle<Result<Res, Error>> = client.spawn_task("EchoService.echo", args);
-    ///     let reply: Result<String, Error> = handle.await;
-    ///     println!("{:?}", reply);
-    /// }
-    /// ```
-    pub fn spawn_task<Req, Res>(
+    pub fn call_blocking<Req, Res>(
         &self,
-        service_method: impl ToString + Send + 'static,
+        service_method: impl ToString,
         args: Req,
-    ) -> task::JoinHandle<Result<Res, Error>>
+    ) -> Result<Res, Error>
     where
         Req: serde::Serialize + Send + Sync + 'static,
         Res: serde::de::DeserializeOwned + Send + 'static,
     {
-        let codec = self.inner_codec.clone();
-        let pending = self.pending.clone();
-        let id = self.count.fetch_add(1u16, Ordering::Relaxed);
-
-        task::spawn(
-            async move { Self::execute_call(service_method, &args, id, codec, pending).await },
-        )
+        let call = self.call(service_method, args);
+        task::block_in_place(|| {
+            let res = futures::executor::block_on(call);
+            res
+        })
     }
 
-    /// Invokes the named function asynchronously
-    ///
-    /// Example
-    ///
-    /// ```rust
-    /// use tokio::task;
-    ///
-    /// use toy_rpc::Client;
-    /// use toy_rpc::error::Error;
-    ///
-    /// #[tokio::main]
-    /// async fn main() {
-    ///     let addr = "127.0.0.1:8080";
-    ///     let client = Client::dial(addr).await.unwrap();
-    ///
-    ///     let args = "arguments";
-    ///     let reply: Result<String, Error> = client.async_call("EchoService.echo", &args).await;
-    ///     println!("{:?}", reply);
-    /// }
-    /// ```
-    pub async fn async_call<Req, Res>(
-        &self,
-        service_method: impl ToString,
-        args: Req,
-    ) -> Result<Res, Error>
+    pub fn call<Req, Res>(&self, service_method: impl ToString, args: Req) -> Call<Res>
     where
-        Req: serde::Serialize + Send + Sync,
-        Res: serde::de::DeserializeOwned,
+        Req: serde::Serialize + Send + Sync + 'static,
+        Res: serde::de::DeserializeOwned + Send + 'static,
     {
-        let codec = self.inner_codec.clone();
+        let id = self.count.fetch_add(1, Ordering::Relaxed);
+        let service_method = service_method.to_string();
+        let header = RequestHeader { id, service_method };
+        let body = Box::new(args) as RequestBody;
+
+        // create oneshot channel
+        let (done_tx, done_rx) = oneshot::channel();
+        let (cancel_tx, cancel_rx) = oneshot::channel();
+
         let pending = self.pending.clone();
-        let id = self.count.fetch_add(1u16, Ordering::Relaxed);
+        let request_tx = self.requests.clone();
+        let handle = task::spawn(
+            handle_call(pending, header, body, request_tx, cancel_rx, done_tx)
+        );
 
-        Self::execute_call(service_method, &args, id, codec, pending).await
-    }
-
-    async fn execute_call<Req, Res>(
-        service_method: impl ToString,
-        args: &Req,
-        id: MessageId,
-        codec: Arc<Mutex<Box<dyn ClientCodec>>>,
-        pending: Arc<Mutex<ResponseMap>>,
-    ) -> Result<Res, Error>
-    where
-        Req: serde::Serialize + Send + Sync,
-        Res: serde::de::DeserializeOwned,
-    {
-        let header = RequestHeader {
+        // create Call
+        let call = Call::<Res> {
             id,
-            service_method: service_method.to_string(),
+            cancel: cancel_tx,
+            done: done_rx,
+            handle,
         };
-        let req = &args as &(dyn erased::Serialize + Send + Sync);
-
-        {
-            // send request
-            let _codec = &mut *codec.lock().await;
-            _codec.write_request(header, req).await?;
-        }
-
-        // creates channel for receiving response
-        let (done_sender, done) = oneshot::channel::<Result<ResponseBody, ResponseBody>>();
-
-        // insert sender to pending map
-        {
-            let mut _pending = pending.lock().await;
-            _pending.insert(id, done_sender);
-        }
-
-        {
-            let _codec = &mut *codec.lock().await;
-            Client::<Connected>::read_response(_codec.as_mut(), pending).await?;
-        }
-
-        Client::<Connected>::handle_response(done, &id)
-    }
-
-    /// Gracefully shutdown the connection.
-    ///
-    /// For a WebSocket connection, a Close message will be sent.
-    /// For a raw TCP connection, the client will simply drop the connection
-    pub async fn close(self) {
-        let _codec = &mut self.inner_codec.lock().await;
-        _codec.close().await;
-    }
-}
-
-impl Client<Connected> {
-    async fn read_response(
-        codec: &mut dyn ClientCodec,
-        pending: Arc<Mutex<ResponseMap>>,
-    ) -> Result<(), Error> {
-        // wait for response
-        if let Some(header) = codec.read_response_header().await {
-            // [1] destructure response header
-            let ResponseHeader { id, is_error } = header?;
-
-            // [2] get response body and deserialize
-            let deserializer =
-                codec
-                    .read_response_body()
-                    .await
-                    .ok_or(Error::IoError(std::io::Error::new(
-                        std::io::ErrorKind::UnexpectedEof,
-                        "Unexpected EOF reading response body",
-                    )))?;
-            let deserializer = deserializer?;
-
-            let res = match is_error {
-                false => Ok(deserializer),
-                true => Err(deserializer),
-            };
-
-            // [3] send back response
-            {
-                let mut _pending = pending.lock().await;
-                if let Some(done_sender) = _pending.remove(&id) {
-                    done_sender.send(res).map_err(|_| {
-                        Error::Internal(
-                            "InternalError: client failed to send response over channel".into(),
-                        )
-                    })?;
-                }
-            }
-        }
-
-        Ok(())
-    }
-
-    fn handle_response<Res>(
-        mut done: oneshot::Receiver<Result<ResponseBody, ResponseBody>>,
-        id: &MessageId,
-    ) -> Result<Res, Error>
-    where
-        Res: serde::de::DeserializeOwned,
-    {
-        // wait for result from oneshot channel
-        let res = match done.try_recv() {
-            Ok(r) => r,
-            Err(e) => {
-                return Err(Error::Internal(
-                    format!(
-                        "Failed to read from done channel for id; {} with error: {}",
-                        id, e
-                    )
-                    .into(),
-                ))
-            }
-        };
-
-        match res {
-            Ok(mut resp_body) => {
-                let resp = erased::deserialize(&mut resp_body)?;
-                Ok(resp)
-            }
-            Err(mut err_body) => {
-                let msg: ErrorMessage = erased::deserialize(&mut err_body)?;
-                let err = Error::from_err_msg(msg);
-                Err(err)
-            }
-        }
+        call
     }
 }
