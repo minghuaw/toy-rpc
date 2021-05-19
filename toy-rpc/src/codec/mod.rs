@@ -14,7 +14,7 @@ use tungstenite::Message as WsMessage;
 use crate::error::Error;
 use crate::message::{MessageId, Metadata, RequestHeader, ResponseHeader};
 use crate::transport::ws::{CanSink, SinkHalf, StreamHalf, WebSocketConn};
-use crate::util::GracefulShutdown;
+// use crate::util::GracefulShutdown;
 
 pub mod split;
 
@@ -238,19 +238,19 @@ where
 //     ) -> Result<(), Error>;
 // }
 
-#[async_trait]
-pub trait ClientCodec: GracefulShutdown + Send + Sync {
-    async fn read_response_header(&mut self) -> Option<Result<ResponseHeader, Error>>;
-    async fn read_response_body(&mut self) -> Option<Result<RequestDeserializer, Error>>;
+// #[async_trait]
+// pub trait ClientCodec: GracefulShutdown + Send + Sync {
+//     async fn read_response_header(&mut self) -> Option<Result<ResponseHeader, Error>>;
+//     async fn read_response_body(&mut self) -> Option<Result<RequestDeserializer, Error>>;
 
-    // (Probably) don't need to worry about header/body interleaving
-    // because rust guarantees only one mutable reference at a time
-    async fn write_request(
-        &mut self,
-        header: RequestHeader,
-        body: &(dyn erased::Serialize + Send + Sync),
-    ) -> Result<(), Error>;
-}
+//     // (Probably) don't need to worry about header/body interleaving
+//     // because rust guarantees only one mutable reference at a time
+//     async fn write_request(
+//         &mut self,
+//         header: RequestHeader,
+//         body: &(dyn erased::Serialize + Send + Sync),
+//     ) -> Result<(), Error>;
+// }
 
 #[async_trait]
 pub trait CodecRead: Unmarshal {
@@ -521,34 +521,34 @@ pub trait Unmarshal {
 //     }
 // }
 
-#[async_trait]
-impl<T> ClientCodec for T
-where
-    T: CodecRead + CodecWrite + GracefulShutdown + Send + Sync,
-{
-    async fn read_response_header(&mut self) -> Option<Result<ResponseHeader, Error>> {
-        self.read_header().await
-    }
+// #[async_trait]
+// impl<T> ClientCodec for T
+// where
+//     T: CodecRead + CodecWrite + GracefulShutdown + Send + Sync,
+// {
+//     async fn read_response_header(&mut self) -> Option<Result<ResponseHeader, Error>> {
+//         self.read_header().await
+//     }
 
-    async fn read_response_body(&mut self) -> Option<Result<RequestDeserializer, Error>> {
-        self.read_body().await
-    }
+//     async fn read_response_body(&mut self) -> Option<Result<RequestDeserializer, Error>> {
+//         self.read_body().await
+//     }
 
-    async fn write_request(
-        &mut self,
-        header: RequestHeader,
-        body: &(dyn erased::Serialize + Send + Sync),
-    ) -> Result<(), Error> {
-        let id = header.get_id();
+//     async fn write_request(
+//         &mut self,
+//         header: RequestHeader,
+//         body: &(dyn erased::Serialize + Send + Sync),
+//     ) -> Result<(), Error> {
+//         let id = header.get_id();
 
-        log::trace!("Sending request id: {}", &id);
+//         log::trace!("Sending request id: {}", &id);
 
-        self.write_header(header).await?;
-        self.write_body(&id, body).await?;
+//         self.write_header(header).await?;
+//         self.write_body(&id, body).await?;
 
-        Ok(())
-    }
-}
+//         Ok(())
+//     }
+// }
 
 pub trait EraseDeserializer {
     fn from_bytes(buf: Vec<u8>) -> Box<dyn erased::Deserializer<'static> + Send>;

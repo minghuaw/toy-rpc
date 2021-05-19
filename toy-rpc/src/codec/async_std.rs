@@ -1,6 +1,6 @@
-use crate::util::GracefulShutdown;
+// use crate::util::GracefulShutdown;
 use futures::io::{
-    AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt, BufReader, BufWriter, ReadHalf, WriteHalf,
+    AsyncRead, AsyncReadExt, AsyncWrite, BufReader, BufWriter, ReadHalf, WriteHalf,
 };
 
 use super::*;
@@ -32,32 +32,32 @@ where
     }
 }
 
-#[async_trait]
-impl<R, W> GracefulShutdown for Codec<R, W, ConnTypeReadWrite>
-where
-    R: AsyncRead + Send + Sync + Unpin,
-    W: AsyncWrite + Send + Sync + Unpin,
-{
-    async fn close(&mut self) {
-        match self.writer.flush().await {
-            Ok(()) => (),
-            Err(e) => log::error!("Error closing connection: {}", e),
-        };
+// #[async_trait]
+// impl<R, W> GracefulShutdown for Codec<R, W, ConnTypeReadWrite>
+// where
+//     R: AsyncRead + Send + Sync + Unpin,
+//     W: AsyncWrite + Send + Sync + Unpin,
+// {
+//     async fn close(&mut self) {
+//         match self.writer.flush().await {
+//             Ok(()) => (),
+//             Err(e) => log::error!("Error closing connection: {}", e),
+//         };
 
-        match self.writer.close().await {
-            Ok(()) => (),
-            Err(e) => log::error!("Error closing connection: {}", e),
-        };
-    }
-}
+//         match AsyncWriteExt::close(&mut self.writer).await {
+//             Ok(()) => (),
+//             Err(e) => log::error!("Error closing connection: {}", e),
+//         };
+//     }
+// }
 
-#[async_trait::async_trait]
-impl<R, W> GracefulShutdown for Codec<R, W, ConnTypePayload>
-where
-    R: Send,
-    W: GracefulShutdown + Send,
-{
-    async fn close(&mut self) {
-        self.writer.close().await;
-    }
-}
+// #[async_trait::async_trait]
+// impl<R, W> GracefulShutdown for Codec<R, W, ConnTypePayload>
+// where
+//     R: Send,
+//     W: GracefulShutdown + Send,
+// {
+//     async fn close(&mut self) {
+//         self.writer.close().await;
+//     }
+// }
