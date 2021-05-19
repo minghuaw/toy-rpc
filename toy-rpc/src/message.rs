@@ -37,7 +37,7 @@ impl Metadata for RequestHeader {
 }
 
 pub(crate) type ClientRequestBody = Box<dyn erased_serde::Serialize + Send + Sync>;
-pub(crate) type ClientRequestBodyRaw = Vec<u8>;
+// pub(crate) type ClientRequestBodyRaw = Vec<u8>;
 
 /// Header of a response
 #[derive(Serialize, Deserialize, Debug, Default)]
