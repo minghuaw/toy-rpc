@@ -43,7 +43,7 @@ where
     }
 
     fn stopping(&mut self, _: &mut Self::Context) -> Running {
-        log::debug!("WsMessager is stopping");
+        log::debug!("WsMessageActor is stopping");
         if let Some(ref manager) = self.manager {
             match manager.do_send(ExecutionMessage::Stop) {
                 Ok(_) => { },
@@ -277,7 +277,7 @@ impl Actor for ExecutionManager {
     }
 
     fn stopping(&mut self, _: &mut Self::Context) -> Running {
-        log::debug!("ExecutionManager is stopper");
+        log::debug!("ExecutionManager is stopping");
         for (id, exec) in self.executions.drain() {
             match exec.do_send(Cancel(id)) {
                 Ok(_) => { },
