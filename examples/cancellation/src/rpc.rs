@@ -39,7 +39,7 @@ impl Echo {
     pub async fn finite_loop(&self, _: ()) -> Result<(), String> {
         for counter in 0..500 {
             sleep(Duration::from_millis(500)).await;
-            println!("infinite_loop counter: {}", &counter);
+            println!("finite_loop counter: {}", &counter);
         }
 
         Ok(())

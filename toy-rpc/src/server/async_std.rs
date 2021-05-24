@@ -258,7 +258,15 @@ cfg_if! {
                         deserializer
                     } => {
                         let fut = call(method, deserializer);
-                        let handle = task::spawn(super::serve_codec_execute_call(id, fut, broker.clone()));
+                        let _broker = broker.clone();
+                        let handle = task::spawn(async move {
+                            let result = super::serve_codec_execute_call(id, fut).await;
+                            let result = ExecutionResult { id, result };
+                            match _broker.send_async(ExecutionMessage::Result(result)).await {
+                                Ok(_) => {}
+                                Err(err) => log::error!("Failed to send to response writer ({})", err),
+                            };
+                        });
                         task_map.insert(id, handle);
                     },
                     ExecutionMessage::Result(msg) => {

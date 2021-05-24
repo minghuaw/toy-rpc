@@ -33,6 +33,11 @@ async fn main() {
     let reply: BarResponse = client.call("BarService.exclaim", args.clone()).await.unwrap();
     println!("{:?}", reply);
 
+    let call: Call<()> = client.call("BarService.finite_loop", ());
+    tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+    println!("Calling cancellation");
+    call.cancel();
+
     // third request, get_counter
     let args = ();
     let call: Call<u32> = client.call("FooService.get_counter", args);

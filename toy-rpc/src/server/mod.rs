@@ -225,8 +225,8 @@ async fn serve_codec_reader_loop(
 async fn serve_codec_execute_call(
     id: MessageId,
     fut: impl std::future::Future<Output = HandlerResult>,
-    executor: Sender<ExecutionMessage>,
-) {
+    // executor: Sender<ExecutionMessage>,
+) -> HandlerResult {
     let result: HandlerResult = fut.await.map_err(|err| {
         log::error!(
             "Error found executing request id: {}, error msg: {}",
@@ -242,12 +242,13 @@ async fn serve_codec_execute_call(
             e @ _ => e,
         }
     });
-    // [6] send result to response writer
-    let result = ExecutionResult { id, result };
-    match executor.send_async(ExecutionMessage::Result(result)).await {
-        Ok(_) => {}
-        Err(err) => log::error!("Failed to send to response writer ({})", err),
-    };
+    // // [6] send result to response writer
+    // let result = ExecutionResult { id, result };
+    // match executor.send_async(ExecutionMessage::Result(result)).await {
+    //     Ok(_) => {}
+    //     Err(err) => log::error!("Failed to send to response writer ({})", err),
+    // };
+    result
 }
 
 async fn serve_codec_writer_loop(

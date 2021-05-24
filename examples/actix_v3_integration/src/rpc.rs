@@ -57,4 +57,14 @@ impl BarService {
 
         Ok(res)
     }
+
+    #[export_method]
+    pub async fn finite_loop(&self, _: ()) -> Result<(), String> {
+        for counter in 0..7 {
+            actix::clock::delay_for(actix::clock::Duration::from_millis(500)).await;
+            println!("finite loop counter: {}", &counter);
+        }
+
+        Ok(())
+    }
 }

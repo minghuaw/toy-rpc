@@ -317,6 +317,7 @@ dependencies = [
 name = "actix_v3_integration"
 version = "0.1.0"
 dependencies = [
+ "actix",
  "actix-web",
  "async-trait",
  "env_logger",

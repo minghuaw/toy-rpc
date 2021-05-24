@@ -1,12 +1,17 @@
 use cfg_if::cfg_if;
-use actix::{Actor, ActorContext, AsyncContext, Context, ContextFutureSpawner, Recipient, Running, StreamHandler, WrapFuture};
+use actix::{Actor, ActorContext, AsyncContext, Context, Recipient, Running, StreamHandler};
 use actix_web::{web, HttpRequest, HttpResponse};
 use actix_web_actors::ws;
-use std::{collections::HashMap, future::Future, marker::PhantomData, sync::Arc};
+use futures::{FutureExt};
+use std::{collections::HashMap, marker::PhantomData, sync::Arc};
 
-use crate::{codec::{EraseDeserializer, Marshal, Unmarshal}, error::Error, message::{ErrorMessage, ExecutionMessage, ExecutionResult, MessageId, RequestHeader, ResponseHeader}, service::{ArcAsyncServiceCall, AsyncServiceMap, HandlerResult}};
+use crate::{codec::{EraseDeserializer, Marshal, Unmarshal}, error::Error, message::{ErrorMessage, ExecutionMessage, ExecutionResult, MessageId, RequestHeader, ResponseHeader}, service::{ArcAsyncServiceCall, AsyncServiceMap}};
 
 use super::preprocess_service_method;
+
+async fn hello() {
+    println!("|||||| Hello ||||||");
+}
 
 // =============================================================================
 // `WsMessageActor`
@@ -31,6 +36,10 @@ where
 
     /// Start a new `ExecutionManager`
     fn started(&mut self, ctx: &mut Self::Context) {
+        actix::spawn(async move {
+            hello().await;
+        });
+
         log::debug!("WsMessageActor is started");
         let responder: Recipient<ExecutionResult> = ctx.address().recipient();
         let manager = ExecutionManager{ 
@@ -258,15 +267,15 @@ where
 // `ExecutionManager`
 // =============================================================================
 
-#[derive(Debug, actix::Message)]
-#[rtype(result = "()")]
+// #[derive(Debug, actix::Message)]
+// #[rtype(result = "()")]
 struct Cancel(MessageId);
 
 /// The `ExecutionManager` will manage spawning and stopping of new 
 /// `ExecutionActor` 
 struct ExecutionManager {
     responder: Recipient<ExecutionResult>,
-    executions: HashMap<MessageId, Recipient<Cancel>>
+    executions: HashMap<MessageId, flume::Sender<Cancel>>
 }
 
 impl Actor for ExecutionManager {
@@ -279,7 +288,7 @@ impl Actor for ExecutionManager {
     fn stopping(&mut self, _: &mut Self::Context) -> Running {
         log::debug!("ExecutionManager is stopping");
         for (id, exec) in self.executions.drain() {
-            match exec.do_send(Cancel(id)) {
+            match exec.send(Cancel(id)) {
                 Ok(_) => { },
                 Err(err) => {
                     log::error!("{:?}", err);
@@ -302,15 +311,43 @@ impl actix::Handler<ExecutionMessage> for ExecutionManager {
                 method,
                 deserializer
             } => {
-                let exec = ExecutionActor {
-                    id,
-                    manager: ctx.address().recipient(),
+                // let fut = call(method, deserializer);
+                // let broker = ctx.address().recipient();
+                // let handle = actix::spawn(async move {
+                //     let result = super::serve_codec_execute_call(id, fut).await;
+                //     let result = ExecutionResult { id, result };
+                //     match broker.do_send(ExecutionMessage::Result(result)) {
+                //         Ok(_) => { },
+                //         Err(err) => {
+                //             log::error!("{:?}", err)
+                //         }
+                //     }
+                // });
+                let call_fut = call(method, deserializer);
+                let broker = ctx.address().recipient();
+                let fut = async move {
+                    let result = super::serve_codec_execute_call(id, call_fut).await;
+                    let result = ExecutionResult { id, result };
+                    match broker.do_send(ExecutionMessage::Result(result)) {
+                        Ok(_) => { },
+                        Err(err) => {
+                            log::error!("{:?}", err)
+                        }
+                    }
                 };
-                let recp = exec.start();
+                let (tx, rx) = flume::bounded(1);
+                self.executions.insert(id, tx);
                 
-                let fut = call(method, deserializer);
-                recp.do_send(ExecFut(fut));
-                self.executions.insert(id, recp.recipient());
+                actix::spawn(async move {
+                    futures::select! {
+                        _ = rx.recv_async().fuse() => { 
+                            log::debug!("Future is canceled")
+                        },
+                        _ = fut.fuse() => {
+                            log::debug!("Future is complete")
+                        }
+                    }
+                });
             },
             ExecutionMessage::Result(msg) => {
                 self.executions.remove(&msg.id);
@@ -322,8 +359,9 @@ impl actix::Handler<ExecutionMessage> for ExecutionManager {
                 }
             },
             ExecutionMessage::Cancel(id) => {
+                log::debug!("Sending Cancel({})", &id);
                 if let Some(exec) = self.executions.remove(&id) {
-                    match exec.do_send(Cancel(id)) {
+                    match exec.send(Cancel(id)) {
                         Ok(_) => { },
                         Err(err) => log::error!("{:?}", err)
                     }
@@ -336,74 +374,85 @@ impl actix::Handler<ExecutionMessage> for ExecutionManager {
     }
 }
 
-// =============================================================================
-// `ExecutionActor`
-// =============================================================================
+// // =============================================================================
+// // `ExecutionActor`
+// // =============================================================================
 
-#[derive(actix::Message)]
-#[rtype(result = "()")]
-struct ExecFut<F: Future<Output=HandlerResult> + Send + 'static>(F);
+// #[derive(actix::Message)]
+// #[rtype(result = "()")]
+// struct ExecFut<F: Future<Output=HandlerResult> + Send + 'static>(F);
 
-/// 
-struct ExecutionActor { 
-    id: MessageId,
-    manager: Recipient<ExecutionMessage>,
-}
+// /// 
+// struct ExecutionActor { 
+//     id: MessageId,
+//     manager: Recipient<ExecutionMessage>,
+// }
 
-impl Actor for ExecutionActor {
-    type Context = Context<Self>;
-}
+// impl Actor for ExecutionActor {
+//     type Context = Context<Self>;
 
-impl<F: Future<Output=HandlerResult> + Send + 'static> actix::Handler<ExecFut<F>> for ExecutionActor {
-    type Result = ();
+//     fn started(&mut self, _: &mut Self::Context) {
+//         log::debug!("ExecutionActor {} is started", self.id);
+//     }
 
-    fn handle(&mut self, msg: ExecFut<F>, ctx: &mut Self::Context) -> Self::Result {
-        log::debug!("Handling ExecFut");
-        let id = self.id;
-        let manager = self.manager.clone();
-        let fut = async move {
-            let res: HandlerResult = msg.0.await
-                .map_err(|err| {
-                    log::error!(
-                        "Error found executing request id: {}, error msg: {}",
-                        &id,
-                        &err
-                    );
-                    match err {
-                        // if serde cannot parse request, the argument is likely mistaken
-                        Error::ParseError(e) => {
-                            log::error!("ParseError {:?}", e);
-                            Error::InvalidArgument
-                        }
-                        e @ _ => e,
-                    }
-                });
+//     fn stopping(&mut self, _: &mut Self::Context) -> Running {
+//         log::debug!("ExecutionActor {} is stopping", self.id);
+//         Running::Stop
+//     }
+// }
+
+// impl<F: Future<Output=HandlerResult> + Send + 'static> actix::Handler<ExecFut<F>> for ExecutionActor {
+//     type Result = ();
+
+//     fn handle(&mut self, msg: ExecFut<F>, ctx: &mut Self::Context) -> Self::Result {
+//         log::debug!("Handling ExecFut");
+//         let id = self.id;
+//         let manager = self.manager.clone();
+//         let fut = async move {
+//             let res: HandlerResult = msg.0.await
+//                 .map_err(|err| {
+//                     log::error!(
+//                         "Error found executing request id: {}, error msg: {}",
+//                         &id,
+//                         &err
+//                     );
+//                     match err {
+//                         // if serde cannot parse request, the argument is likely mistaken
+//                         Error::ParseError(e) => {
+//                             log::error!("ParseError {:?}", e);
+//                             Error::InvalidArgument
+//                         }
+//                         e @ _ => e,
+//                     }
+//                 });
             
-            let exec_result = ExecutionResult{
-                id: id,
-                result: res
-            };
-            match manager.do_send(ExecutionMessage::Result(exec_result)) {
-                Ok(_) => { },
-                Err(err) => {
-                    log::error!("Error encountered while sending message to actor. Error: {:?}", err);
-                }
-            }
-        };
+//             let exec_result = ExecutionResult{
+//                 id: id,
+//                 result: res
+//             };
+//             match manager.do_send(ExecutionMessage::Result(exec_result)) {
+//                 Ok(_) => { },
+//                 Err(err) => {
+//                     log::error!("Error encountered while sending message to actor. Error: {:?}", err);
+//                 }
+//             }
+//         };
 
-        fut.into_actor(self).wait(ctx);
-    }
-}
+//         fut.into_actor(self).wait(ctx);
+//     }
+// }
 
-impl actix::Handler<Cancel> for ExecutionActor {
-    type Result = ();
+// impl actix::Handler<Cancel> for ExecutionActor {
+//     type Result = ();
 
-    fn handle(&mut self, msg: Cancel, ctx: &mut Self::Context) -> Self::Result {
-        if msg.0 == self.id {
-            ctx.stop();
-        }
-    }
-}
+//     fn handle(&mut self, msg: Cancel, ctx: &mut Self::Context) -> Self::Result {
+//         log::debug!("Cancelling ExecutionActor {}", self.id);
+
+//         if msg.0 == self.id {
+//             ctx.stop();
+//         }
+//     }
+// }
 
 // =============================================================================
 // Integration
