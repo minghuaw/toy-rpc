@@ -33,7 +33,7 @@ tokio = { version = "1.6.0", features = ["rt-multi-thread", "macros", "net", "sy
 
 [dependencies.toy-rpc]
 path = "../../toy-rpc/"
-version = "0.7.0-alpha"
+version = "0.7.0-alpha.0"
 default-features = false
 features = [ "serde_bincode" ]
 optional = true

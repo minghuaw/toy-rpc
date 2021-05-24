@@ -5,7 +5,6 @@
 use cfg_if::cfg_if;
 use erased_serde as erased;
 use flume::{Receiver, Sender};
-// use futures::lock::Mutex;
 use std::collections::HashMap;
 use std::io::ErrorKind;
 use std::sync::Arc;
@@ -29,7 +28,7 @@ use crate::{
 
 #[cfg(all(feature = "http_actix_web"))]
 #[cfg_attr(doc, doc(cfg(feature = "http_actix_web")))]
-pub mod http_actix_web_new;
+pub mod http_actix_web;
 
 #[cfg(feature = "http_tide")]
 #[cfg_attr(doc, doc(cfg(feature = "http_tide")))]

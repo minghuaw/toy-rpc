@@ -3,13 +3,13 @@ use serde::{Deserialize, Serialize};
 
 use toy_rpc::macros::export_impl;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct FooRequest {
     pub a: u32,
     pub b: u32,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct FooResponse {
     pub a: u32,
     pub b: u32,
@@ -23,12 +23,12 @@ pub trait Rpc {
     async fn get_counter(&self, _: ()) -> Result<u32, String>;
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct BarRequest {
     pub content: String,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct BarResponse {
     pub content: String,
     pub is_modified: bool,
