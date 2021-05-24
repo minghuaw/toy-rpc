@@ -5,7 +5,7 @@
 use cfg_if::cfg_if;
 use erased_serde as erased;
 use flume::{Receiver, Sender};
-use futures::lock::Mutex;
+// use futures::lock::Mutex;
 use std::collections::HashMap;
 use std::io::ErrorKind;
 use std::sync::Arc;
@@ -162,7 +162,7 @@ async fn serve_codec_reader_loop(
                         if is_correct_cancellation_token(id, &token) {
                             executor.send_async(ExecutionMessage::Cancel(id)).await?;
                         }
-                    }
+                    },
                     Error::MethodNotFound => {
                         // should not stop the reader if the service is not found
                         writer
@@ -171,15 +171,15 @@ async fn serve_codec_reader_loop(
                                 result: Err(err),
                             })
                             .await?;
-                    }
+                    },
 
                     // Note: not using `_` in case of mishanlding of new additions of Error types
-                    Error::IoError(_) => {}
-                    Error::ParseError(_) => {}
-                    Error::Internal(_) => {}
-                    Error::InvalidArgument => {}
-                    Error::ServiceNotFound => {}
-                    Error::ExecutionError(_) => {}
+                    Error::IoError(_) => {},
+                    Error::ParseError(_) => {},
+                    Error::Internal(_) => {},
+                    Error::InvalidArgument => {},
+                    Error::ServiceNotFound => {},
+                    Error::ExecutionError(_) => {},
                 }
                 continue;
             }
@@ -226,7 +226,7 @@ async fn serve_codec_reader_loop(
 async fn serve_codec_execute_call(
     id: MessageId,
     fut: impl std::future::Future<Output = HandlerResult>,
-    writer: Sender<ExecutionResult>,
+    executor: Sender<ExecutionMessage>,
 ) {
     let result: HandlerResult = fut.await.map_err(|err| {
         log::error!(
@@ -244,23 +244,18 @@ async fn serve_codec_execute_call(
         }
     });
     // [6] send result to response writer
-    match writer.send_async(ExecutionResult { id, result }).await {
+    let result = ExecutionResult { id, result };
+    match executor.send_async(ExecutionMessage::Result(result)).await {
         Ok(_) => {}
         Err(err) => log::error!("Failed to send to response writer ({})", err),
     };
 }
 
-async fn serve_codec_writer_loop<H>(
+async fn serve_codec_writer_loop(
     mut codec_writer: impl ServerCodecWrite,
     results: Receiver<ExecutionResult>,
-    task_map: Arc<Mutex<HashMap<MessageId, H>>>,
 ) -> Result<(), Error> {
     while let Ok(msg) = results.recv_async().await {
-        {
-            let mut map = task_map.lock().await;
-            map.remove(&msg.id);
-        }
-
         match serve_codec_write_once(&mut codec_writer, msg).await {
             Ok(_) => {}
             Err(err) => {

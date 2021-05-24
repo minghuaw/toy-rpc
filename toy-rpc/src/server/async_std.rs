@@ -34,8 +34,8 @@ cfg_if! {
         use std::sync::Arc;
         use std::collections::HashMap;
         use ::async_std::net::{TcpListener, TcpStream};
-        use ::async_std::task::{self, JoinHandle};
-        use futures::{StreamExt, lock::Mutex};
+        use ::async_std::task::{self};
+        use futures::{StreamExt};
         use flume::{Receiver, Sender};
 
         use crate::error::Error;
@@ -43,7 +43,7 @@ cfg_if! {
         use crate::codec::split::ServerCodecSplit;
         use crate::{
             codec::{DefaultCodec},
-            message::{ExecutionMessage, ExecutionResult, MessageId},
+            message::{ExecutionMessage, ExecutionResult},
         };
 
         use super::{AsyncServiceMap, Server};
@@ -223,18 +223,17 @@ cfg_if! {
                 let (exec_sender, exec_recver) = flume::unbounded();
                 let (resp_sender, resp_recver) = flume::unbounded::<ExecutionResult>();
                 let (codec_writer, codec_reader) = codec.split();
-                let task_map = Arc::new(Mutex::new(HashMap::new()));
 
                 let reader_handle = task::spawn(
-                    super::serve_codec_reader_loop(codec_reader, services, exec_sender, resp_sender.clone())
+                    super::serve_codec_reader_loop(codec_reader, services, exec_sender.clone(), resp_sender.clone())
                 );
 
                 let writer_handle = task::spawn(
-                    super::serve_codec_writer_loop(codec_writer, resp_recver, task_map.clone())
+                    super::serve_codec_writer_loop(codec_writer, resp_recver)
                 );
 
                 let executor_handle = task::spawn(
-                    serve_codec_executor_loop(exec_recver, resp_sender, task_map)
+                    serve_codec_broker_loop(exec_sender, exec_recver, resp_sender)
                 );
 
                 reader_handle.await?;
@@ -244,11 +243,12 @@ cfg_if! {
             }
         }
 
-        async fn serve_codec_executor_loop(
+        async fn serve_codec_broker_loop(
+            broker: Sender<ExecutionMessage>,
             reader: Receiver<ExecutionMessage>,
             writer: Sender<ExecutionResult>,
-            task_map: Arc<Mutex<HashMap<MessageId, JoinHandle<()>>>>
         ) -> Result<(), Error> {
+            let mut task_map = HashMap::new();
             while let Ok(msg) = reader.recv_async().await {
                 match msg {
                     ExecutionMessage::Request{
@@ -258,15 +258,15 @@ cfg_if! {
                         deserializer
                     } => {
                         let fut = call(method, deserializer);
-                        let handle = task::spawn(super::serve_codec_execute_call(id, fut, writer.clone()));
-                        {
-                            let mut map = task_map.lock().await;
-                            map.insert(id, handle);
-                        }
+                        let handle = task::spawn(super::serve_codec_execute_call(id, fut, broker.clone()));
+                        task_map.insert(id, handle);
+                    },
+                    ExecutionMessage::Result(msg) => {
+                        task_map.remove(&msg.id);
+                        writer.send_async(msg).await?;
                     },
                     ExecutionMessage::Cancel(id) => {
-                        let mut map = task_map.lock().await;
-                        match map.remove(&id) {
+                        match task_map.remove(&id) {
                             Some(handle) => {
                                 handle.cancel().await;
                             },
@@ -274,8 +274,7 @@ cfg_if! {
                         }
                     },
                     ExecutionMessage::Stop => {
-                        let mut map = task_map.lock().await;
-                        for (_, handle) in map.drain() {
+                        for (_, handle) in task_map.drain() {
                             log::debug!("Stopping execution as client is disconnected");
                             handle.cancel().await;
                         }

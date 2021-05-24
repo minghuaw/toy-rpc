@@ -90,6 +90,7 @@ pub(crate) enum ExecutionMessage {
         method: String,
         deserializer: RequestDeserializer,
     },
+    Result(ExecutionResult),
     Cancel(MessageId),
     Stop,
 }
