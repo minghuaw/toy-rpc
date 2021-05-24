@@ -81,6 +81,8 @@ impl ErrorMessage {
     }
 }
 
+#[cfg_attr(feature = "http_actix_web", derive(actix::Message))]
+#[cfg_attr(feature = "http_actix_web", rtype(result = "()"))]
 pub(crate) enum ExecutionMessage {
     Request {
         call: ArcAsyncServiceCall,
@@ -89,8 +91,11 @@ pub(crate) enum ExecutionMessage {
         deserializer: RequestDeserializer,
     },
     Cancel(MessageId),
+    Stop,
 }
 
+#[cfg_attr(feature = "http_actix_web", derive(actix::Message))]
+#[cfg_attr(feature = "http_actix_web", rtype(result = "()"))]
 pub(crate) struct ExecutionResult {
     pub id: MessageId,
     pub result: HandlerResult,

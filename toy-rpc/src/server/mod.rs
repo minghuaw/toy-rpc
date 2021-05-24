@@ -4,13 +4,13 @@
 
 use cfg_if::cfg_if;
 use erased_serde as erased;
-use flume::{Sender, Receiver};
+use flume::{Receiver, Sender};
 use futures::lock::Mutex;
 use std::collections::HashMap;
 use std::io::ErrorKind;
 use std::sync::Arc;
 
-use crate::{error::Error};
+use crate::error::Error;
 use crate::message::{ErrorMessage, RequestHeader, ResponseHeader};
 use crate::service::{
     build_service, ArcAsyncServiceCall, AsyncServiceMap, HandleService, HandlerResult,
@@ -29,7 +29,7 @@ use crate::{
 
 #[cfg(all(feature = "http_actix_web"))]
 #[cfg_attr(doc, doc(cfg(feature = "http_actix_web")))]
-pub mod http_actix_web;
+pub mod http_actix_web_new;
 
 #[cfg(feature = "http_tide")]
 #[cfg_attr(doc, doc(cfg(feature = "http_tide")))]
@@ -147,7 +147,10 @@ async fn serve_codec_reader_loop(
         let mut deserializer = get_request_deserializer(&mut codec_reader).await?;
         // [1] destructure header
         let RequestHeader { id, service_method } = header?;
-        println!("RequestHeader id: {}, service_method: {}", &id, &service_method);
+        println!(
+            "RequestHeader id: {}, service_method: {}",
+            &id, &service_method
+        );
         // [2] split service name and method name
         let (service, method) = match preprocess_service_method(id, &service_method) {
             Ok(pair) => pair,
@@ -213,6 +216,10 @@ async fn serve_codec_reader_loop(
             })
             .await?;
     }
+
+    // Stop the executor loop when client connection is gone
+    executor.send_async(ExecutionMessage::Stop).await?;
+
     Ok(())
 }
 
@@ -246,7 +253,7 @@ async fn serve_codec_execute_call(
 async fn serve_codec_writer_loop<H>(
     mut codec_writer: impl ServerCodecWrite,
     results: Receiver<ExecutionResult>,
-    task_map: Arc<Mutex<HashMap<MessageId, H>>>
+    task_map: Arc<Mutex<HashMap<MessageId, H>>>,
 ) -> Result<(), Error> {
     while let Ok(msg) = results.recv_async().await {
         {
@@ -255,7 +262,7 @@ async fn serve_codec_writer_loop<H>(
         }
 
         match serve_codec_write_once(&mut codec_writer, msg).await {
-            Ok(_) => { },
+            Ok(_) => {}
             Err(err) => {
                 log::error!("{}", err);
             }
@@ -305,11 +312,7 @@ async fn get_request_deserializer(
     }
 }
 
-
-fn preprocess_service_method(
-    id: MessageId,
-    service_method: &str,
-) -> Result<(&str, &str), Error> {
+fn preprocess_service_method(id: MessageId, service_method: &str) -> Result<(&str, &str), Error> {
     let pos = match service_method.rfind('.') {
         Some(p) => p,
         None => {

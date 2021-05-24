@@ -1,7 +1,5 @@
 // use crate::util::GracefulShutdown;
-use futures::io::{
-    AsyncRead, AsyncReadExt, AsyncWrite, BufReader, BufWriter, ReadHalf, WriteHalf,
-};
+use futures::io::{AsyncRead, AsyncReadExt, AsyncWrite, BufReader, BufWriter, ReadHalf, WriteHalf};
 
 use super::*;
 

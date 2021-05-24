@@ -202,12 +202,6 @@ where
                 // compose error response header
                 let buf = C::marshal(&header)?;
                 ctx.binary(buf);
-
-                // compose error response body
-                // let body = match e {
-                //     Error::RpcError(rpc_err) => Box::new(rpc_err),
-                //     _ => Box::new(RpcError::ServerError(e.to_string())),
-                // };
                 let buf = C::marshal(&msg)?;
                 ctx.binary(buf);
             }

@@ -1,6 +1,6 @@
-use std::sync::atomic::Ordering;
 use ::async_std::task;
 use futures::{AsyncRead, AsyncWrite};
+use std::sync::atomic::Ordering;
 
 use crate::{codec::split::ClientCodecSplit, transport::ws::WebSocketConn};
 
@@ -36,8 +36,8 @@ where
         }
 
         match task::block_on(handle) {
-            Ok(_) => { },
-            Err(err) => log::error!("{:?}", err)
+            Ok(_) => {}
+            Err(err) => log::error!("{:?}", err),
         };
     }
 }
@@ -122,8 +122,8 @@ cfg_if! {
             /// }
             ///
             /// ```
-            pub async fn dial(addr: impl ToSocketAddrs) 
-                -> Result<Client<Connected>, Error> 
+            pub async fn dial(addr: impl ToSocketAddrs)
+                -> Result<Client<Connected>, Error>
             {
                 let stream = TcpStream::connect(addr).await?;
                 Ok(Self::with_stream(stream))
@@ -199,7 +199,7 @@ cfg_if! {
                 let codec = DefaultCodec::with_websocket(ws_stream);
                 Ok(Self::with_codec(codec))
             }
-    
+
             /// Creates an RPC `Client` over socket with a specified `async_std::net::TcpStream` and the default codec
             ///
             /// This is enabled

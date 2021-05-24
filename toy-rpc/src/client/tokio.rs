@@ -1,7 +1,7 @@
-use std::sync::atomic::Ordering;
-use ::tokio::task;
 use ::tokio::io::{AsyncRead, AsyncWrite};
 use ::tokio::runtime::Handle;
+use ::tokio::task;
+use std::sync::atomic::Ordering;
 
 use crate::codec::split::ClientCodecSplit;
 
@@ -36,11 +36,9 @@ where
             }
         }
 
-        match task::block_in_place(|| {
-            Handle::current().block_on(handle)
-        }) {
-            Ok(_) => { },
-            Err(err) => log::error!("{:?}", err)
+        match task::block_in_place(|| Handle::current().block_on(handle)) {
+            Ok(_) => {}
+            Err(err) => log::error!("{:?}", err),
         };
     }
 }
@@ -92,15 +90,15 @@ cfg_if! {
             not(feature = "serde_json"),
             not(feature = "serde_bincode"),
         )
-    ))] { 
+    ))] {
         use ::tokio::net::{TcpStream, ToSocketAddrs};
         use async_tungstenite::tokio::connect_async;
         use crate::transport::ws::WebSocketConn;
         use crate::server::DEFAULT_RPC_PATH;
 
         impl Client<NotConnected> {
-            pub async fn dial(addr: impl ToSocketAddrs) 
-                -> Result<Client<Connected>, Error> 
+            pub async fn dial(addr: impl ToSocketAddrs)
+                -> Result<Client<Connected>, Error>
             {
                 let stream = TcpStream::connect(addr).await?;
                 Ok(Self::with_stream(stream))
@@ -176,7 +174,7 @@ cfg_if! {
                 let codec = DefaultCodec::with_websocket(ws_stream);
                 Ok(Self::with_codec(codec))
             }
-    
+
             /// Creates an RPC `Client` over socket with a specified `async_std::net::TcpStream` and the default codec
             ///
             /// This is enabled
@@ -213,24 +211,24 @@ impl Client<NotConnected> {
     where
         C: ClientCodecSplit + Send + Sync + 'static,
     {
-         let (writer, reader) = codec.split();
-         let (req_sender, req_recver) = flume::unbounded();
-         let pending = Arc::new(Mutex::new(HashMap::new()));
-         let (reader_stop, stop) = flume::bounded(1);
-         task::spawn(reader_loop(reader, pending.clone(), stop));
- 
-         let (writer_stop, stop) = flume::bounded(1);
-         task::spawn(writer_loop(writer, req_recver, stop));
- 
-         Client::<Connected> {
-             count: AtomicMessageId::new(0),
-             pending,
-             requests: req_sender,
-             reader_stop,
-             writer_stop,
- 
-             marker: PhantomData,
-         }
+        let (writer, reader) = codec.split();
+        let (req_sender, req_recver) = flume::unbounded();
+        let pending = Arc::new(Mutex::new(HashMap::new()));
+        let (reader_stop, stop) = flume::bounded(1);
+        task::spawn(reader_loop(reader, pending.clone(), stop));
+
+        let (writer_stop, stop) = flume::bounded(1);
+        task::spawn(writer_loop(writer, req_recver, stop));
+
+        Client::<Connected> {
+            count: AtomicMessageId::new(0),
+            pending,
+            requests: req_sender,
+            reader_stop,
+            writer_stop,
+
+            marker: PhantomData,
+        }
     }
 }
 
@@ -267,9 +265,9 @@ impl Client<Connected> {
 
         let pending = self.pending.clone();
         let request_tx = self.requests.clone();
-        let handle = task::spawn(
-            handle_call(pending, header, body, request_tx, cancel_rx, done_tx)
-        );
+        let handle = task::spawn(handle_call(
+            pending, header, body, request_tx, cancel_rx, done_tx,
+        ));
 
         // create Call
         let call = Call::<Res> {

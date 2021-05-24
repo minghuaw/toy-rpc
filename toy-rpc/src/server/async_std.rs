@@ -272,6 +272,15 @@ cfg_if! {
                             },
                             None => { }
                         }
+                    },
+                    ExecutionMessage::Stop => {
+                        let mut map = task_map.lock().await;
+                        for (_, handle) in map.drain() {
+                            log::debug!("Stopping execution as client is disconnected");
+                            handle.cancel().await;
+                        }
+                        log::debug!("Execution loop is stopped");
+                        return Ok(())
                     }
                 }
             }

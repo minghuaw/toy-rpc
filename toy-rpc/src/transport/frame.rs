@@ -5,8 +5,8 @@ use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
 use std::io::ErrorKind;
 
-use crate::{error::Error, util::GracefulShutdown};
 use crate::message::MessageId;
+use crate::{error::Error, util::GracefulShutdown};
 
 const INVALID_PROTOCOL: &str = "Magic byte mismatch.\rClient may be using a different protocol or version.\rClient of version <0.5.0 is not compatible with Server of version >0.5.0";
 const END_FRAME_ID: FrameId = 131;
@@ -176,14 +176,14 @@ impl<R: AsyncRead + Unpin + Send + Sync> FrameRead for R {
         // determine if end frame is received
         match header.payload_type.into() {
             PayloadType::Trailer => {
-                if header.frame_id == END_FRAME_ID && 
-                    header.message_id == 0 && 
-                    header.payload_len == 0
+                if header.frame_id == END_FRAME_ID
+                    && header.message_id == 0
+                    && header.payload_len == 0
                 {
-                    return None
+                    return None;
                 }
-            },
-            _ => { }
+            }
+            _ => {}
         }
 
         // read frame payload
@@ -271,16 +271,16 @@ mod tests {
 }
 
 #[async_trait]
-impl<T> GracefulShutdown for T 
+impl<T> GracefulShutdown for T
 where
-    T: FrameWrite + Send
+    T: FrameWrite + Send,
 {
     async fn close(&mut self) {
         // send a trailer frame with message id 0 and END_FRAME_ID and empty payload
         let end_frame = Frame::new(0, END_FRAME_ID, PayloadType::Trailer, Vec::with_capacity(0));
         match self.write_frame(end_frame).await {
-            Ok(_) => {},
-            Err(err) => log::error!("{:?}", err)
+            Ok(_) => {}
+            Err(err) => log::error!("{:?}", err),
         }
     }
 }

@@ -266,7 +266,7 @@ cfg_if! {
                         }
                     },
                     ExecutionMessage::Cancel(id) => {
-                        println!("Received ExecutionMessage:Cancel");
+                        log::debug!("Received ExecutionMessage:Cancel");
                         let mut map = task_map.lock().await;
                         match map.remove(&id) {
                             Some(handle) => {
@@ -275,6 +275,15 @@ cfg_if! {
                             },
                             None => { }
                         }
+                    },
+                    ExecutionMessage::Stop => {
+                        let mut map = task_map.lock().await;
+                        for (_, handle) in map.drain() {
+                            log::debug!("Stopping execution as client is disconnected");
+                            handle.abort();
+                        }
+                        log::debug!("Execution loop is stopped");
+                        return Ok(())
                     }
                 }
             }

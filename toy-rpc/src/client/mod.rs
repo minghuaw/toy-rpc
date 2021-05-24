@@ -14,8 +14,8 @@ use crate::message::CANCELLATION_TOKEN;
 use crate::{
     codec::split::{ClientCodecRead, ClientCodecWrite},
     message::{
-        AtomicMessageId, MessageId, ClientRequestBody, RequestHeader, ResponseHeader, ClientResponseResult,
-        CANCELLATION_TOKEN_DELIM,
+        AtomicMessageId, ClientRequestBody, ClientResponseResult, MessageId, RequestHeader,
+        ResponseHeader, CANCELLATION_TOKEN_DELIM,
     },
     Error,
 };
@@ -235,13 +235,13 @@ where
                     id,
                     service_method: CANCELLATION_TOKEN.into(),
                 };
-                let body: String = 
+                let body: String =
                     format!("{}{}{}", CANCELLATION_TOKEN, CANCELLATION_TOKEN_DELIM, id);
                 let body = Box::new(body) as ClientRequestBody;
                 request_tx.send_async((header, body)).await?;
             }
         },
-        res = handle_response(resp_rx, done).fuse() => { 
+        res = handle_response(resp_rx, done).fuse() => {
             match res {
                 Ok(_) => { },
                 Err(err) => log::error!("{:?}", err)
@@ -254,22 +254,23 @@ where
 
 async fn handle_response<Res>(
     response: oneshot::Receiver<ClientResponseResult>,
-    done: oneshot::Sender<Result<Res, Error>>
-) -> Result<(), Error> 
-where 
-    Res: serde::de::DeserializeOwned +Send
+    done: oneshot::Sender<Result<Res, Error>>,
+) -> Result<(), Error>
+where
+    Res: serde::de::DeserializeOwned + Send,
 {
-    let val = response.await
-        // cancellation of the oneshot channel is not intended 
+    let val = response
+        .await
+        // cancellation of the oneshot channel is not intended
         // and thus should be considered as an InternalError
         .map_err(|err| Error::Internal(Box::new(err)))?;
     let res = match val {
         Ok(mut resp_body) => erased_serde::deserialize(&mut resp_body)
             .map_err(|err| Error::ParseError(Box::new(err))),
-        Err(mut err_body) => erased_serde::deserialize(&mut err_body)
-            .map_or_else(
-                |err| Err(Error::ParseError(Box::new(err))), 
-                |msg| Err(Error::from_err_msg(msg))), // handles error msg sent from server
+        Err(mut err_body) => erased_serde::deserialize(&mut err_body).map_or_else(
+            |err| Err(Error::ParseError(Box::new(err))),
+            |msg| Err(Error::from_err_msg(msg)),
+        ), // handles error msg sent from server
     };
 
     done.send(res)
