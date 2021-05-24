@@ -267,8 +267,6 @@ where
 // `ExecutionManager`
 // =============================================================================
 
-// #[derive(Debug, actix::Message)]
-// #[rtype(result = "()")]
 struct Cancel(MessageId);
 
 /// The `ExecutionManager` will manage spawning and stopping of new 
@@ -311,18 +309,6 @@ impl actix::Handler<ExecutionMessage> for ExecutionManager {
                 method,
                 deserializer
             } => {
-                // let fut = call(method, deserializer);
-                // let broker = ctx.address().recipient();
-                // let handle = actix::spawn(async move {
-                //     let result = super::serve_codec_execute_call(id, fut).await;
-                //     let result = ExecutionResult { id, result };
-                //     match broker.do_send(ExecutionMessage::Result(result)) {
-                //         Ok(_) => { },
-                //         Err(err) => {
-                //             log::error!("{:?}", err)
-                //         }
-                //     }
-                // });
                 let call_fut = call(method, deserializer);
                 let broker = ctx.address().recipient();
                 let fut = async move {
@@ -373,86 +359,6 @@ impl actix::Handler<ExecutionMessage> for ExecutionManager {
         }
     }
 }
-
-// // =============================================================================
-// // `ExecutionActor`
-// // =============================================================================
-
-// #[derive(actix::Message)]
-// #[rtype(result = "()")]
-// struct ExecFut<F: Future<Output=HandlerResult> + Send + 'static>(F);
-
-// /// 
-// struct ExecutionActor { 
-//     id: MessageId,
-//     manager: Recipient<ExecutionMessage>,
-// }
-
-// impl Actor for ExecutionActor {
-//     type Context = Context<Self>;
-
-//     fn started(&mut self, _: &mut Self::Context) {
-//         log::debug!("ExecutionActor {} is started", self.id);
-//     }
-
-//     fn stopping(&mut self, _: &mut Self::Context) -> Running {
-//         log::debug!("ExecutionActor {} is stopping", self.id);
-//         Running::Stop
-//     }
-// }
-
-// impl<F: Future<Output=HandlerResult> + Send + 'static> actix::Handler<ExecFut<F>> for ExecutionActor {
-//     type Result = ();
-
-//     fn handle(&mut self, msg: ExecFut<F>, ctx: &mut Self::Context) -> Self::Result {
-//         log::debug!("Handling ExecFut");
-//         let id = self.id;
-//         let manager = self.manager.clone();
-//         let fut = async move {
-//             let res: HandlerResult = msg.0.await
-//                 .map_err(|err| {
-//                     log::error!(
-//                         "Error found executing request id: {}, error msg: {}",
-//                         &id,
-//                         &err
-//                     );
-//                     match err {
-//                         // if serde cannot parse request, the argument is likely mistaken
-//                         Error::ParseError(e) => {
-//                             log::error!("ParseError {:?}", e);
-//                             Error::InvalidArgument
-//                         }
-//                         e @ _ => e,
-//                     }
-//                 });
-            
-//             let exec_result = ExecutionResult{
-//                 id: id,
-//                 result: res
-//             };
-//             match manager.do_send(ExecutionMessage::Result(exec_result)) {
-//                 Ok(_) => { },
-//                 Err(err) => {
-//                     log::error!("Error encountered while sending message to actor. Error: {:?}", err);
-//                 }
-//             }
-//         };
-
-//         fut.into_actor(self).wait(ctx);
-//     }
-// }
-
-// impl actix::Handler<Cancel> for ExecutionActor {
-//     type Result = ();
-
-//     fn handle(&mut self, msg: Cancel, ctx: &mut Self::Context) -> Self::Result {
-//         log::debug!("Cancelling ExecutionActor {}", self.id);
-
-//         if msg.0 == self.id {
-//             ctx.stop();
-//         }
-//     }
-// }
 
 // =============================================================================
 // Integration
