@@ -278,7 +278,6 @@ cfg_if! {
                         log::debug!("Received ExecutionMessage:Cancel");
                         match task_map.remove(&id) {
                             Some(handle) => {
-                                println!("Cancelling execution");
                                 handle.abort();
                             },
                             None => { }
