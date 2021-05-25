@@ -56,7 +56,7 @@ where
             Poll::Pending => Poll::Pending,
             Poll::Ready(res) => match res {
                 Ok(r) => Poll::Ready(r),
-                Err(_canceled) => Poll::Ready(Err(Error::Canceled(Some(this.id.clone())))),
+                Err(_canceled) => Poll::Ready(Err(Error::Canceled(Some(*this.id)))),
             },
         }
     }
@@ -349,12 +349,11 @@ impl Client<Connected> {
         ));
 
         // create Call
-        let call = Call::<Res> {
+        Call::<Res> {
             id,
             cancel: cancel_tx,
             done: done_rx,
             handle,
-        };
-        call
+        }
     }
 }

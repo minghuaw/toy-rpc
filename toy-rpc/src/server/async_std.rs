@@ -274,11 +274,8 @@ cfg_if! {
                         writer.send_async(msg).await?;
                     },
                     ExecutionMessage::Cancel(id) => {
-                        match task_map.remove(&id) {
-                            Some(handle) => {
-                                handle.cancel().await;
-                            },
-                            None => { }
+                        if let Some(handle) = task_map.remove(&id) {
+                            handle.cancel().await;
                         }
                     },
                     ExecutionMessage::Stop => {

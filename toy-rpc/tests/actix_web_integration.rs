@@ -43,7 +43,7 @@ async fn start_server(base: &'static str) -> Result<()> {
                 .service(
                     web::scope("/rpc/")
                     .app_data(app_data.clone())
-                    .configure(Server::handle_http())
+                    .configure(Server::scope_config)
                 )
         }
     )

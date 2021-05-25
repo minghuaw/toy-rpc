@@ -105,7 +105,6 @@ args = ["test",
     "--", "--nocapture"
 ]
 
-# Not sure how to run tests with actix runtime
 [tasks.test_actix_web_integration]
 command = "cargo"
 args = ["test",

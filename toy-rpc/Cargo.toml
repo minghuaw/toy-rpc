@@ -29,7 +29,7 @@ rustdoc-args = ["--cfg", "feature=\"docs\""]
 [features]
 default = [
     "serde_bincode",
-    "http_actix_web"
+    "http_warp"
 ]
 
 docs = []
@@ -119,7 +119,7 @@ name = "warp_integration"
 path = "tests/warp_integration.rs"
 required-features = ["http_warp"]
 
-# [[test]]
-# name = "actix_web_integration"
-# path = "tests/actix_web_integration.rs"
-# required-features = ["http_actix_web"]
+[[test]]
+name = "actix_web_integration"
+path = "tests/actix_web_integration.rs"
+required-features = ["http_actix_web"]

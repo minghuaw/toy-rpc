@@ -58,7 +58,7 @@ impl PayloadRead for StreamHalf<tide_websockets::WebSocketConnection, CannotSink
 impl PayloadWrite for SinkHalf<tide_websockets::WebSocketConnection, CannotSink> {
     async fn write_payload(&mut self, payload: Vec<u8>) -> Result<(), Error> {
         self.inner
-            .send_bytes(payload.into())
+            .send_bytes(payload)
             .await
             .map_err(|e| Error::Internal(Box::new(e)))
     }
