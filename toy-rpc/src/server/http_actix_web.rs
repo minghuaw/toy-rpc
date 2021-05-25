@@ -409,7 +409,7 @@ cfg_if! {
                 cfg.service(
                     web::scope("/")
                         .service(
-                            web::resource(super::DEFAULT_RPC_PATH)
+                            web::resource(crate::DEFAULT_RPC_PATH)
                                 .route(web::get().to(index))
                         )
                 );

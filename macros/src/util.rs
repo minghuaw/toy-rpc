@@ -1,5 +1,5 @@
 #[cfg(feature = "server")]
-use super::{SERVICE_PREFIX, HANDLER_SUFFIX};
+use super::{HANDLER_SUFFIX};
 #[cfg(feature = "client")]
 use super::{CLIENT_SUFFIX, CLIENT_STUB_SUFFIX};
 #[cfg(any(feature = "server", feature = "client"))]
@@ -115,7 +115,7 @@ pub(crate) fn transform_method(f: &mut syn::ImplItemMethod) {
 }
 
 /// remove #[export_method] attribute
-#[cfg(feature = "server")]
+#[cfg(any(feature = "server", feature = "client"))]
 pub(crate) fn remove_export_method_attr(mut input: syn::ItemImpl) -> syn::ItemImpl {
     input
         .items
@@ -312,14 +312,18 @@ pub(crate) fn recusively_get_result_from_type(ty: &syn::Type) -> Option<syn::Gen
 /// The service struct name will be returned by `default_name()` method.
 ///
 #[cfg(feature = "server")]
-pub(crate) fn generate_register_service_impl(ident: &syn::Ident) -> impl quote::ToTokens {
-    let name = ident.to_string();
-    let static_name = format!("{}_{}", SERVICE_PREFIX, &name.to_uppercase());
-    let static_ident = syn::Ident::new(&static_name, ident.span());
+pub(crate) fn generate_register_service_impl(
+    self_ident: &syn::Ident, 
+    names: Vec<String>, 
+    fn_idents: Vec<syn::Ident>
+) -> impl quote::ToTokens {
+    let name = self_ident.to_string();
     let ret = quote::quote! {
-        impl toy_rpc::util::RegisterService for #ident {
-            fn handlers() -> &'static std::collections::HashMap<&'static str, toy_rpc::service::AsyncHandler<Self>> {
-                &*#static_ident
+        impl toy_rpc::util::RegisterService for #self_ident {
+            fn handlers() -> std::collections::HashMap<&'static str, toy_rpc::service::AsyncHandler<Self>> {
+                let mut map = std::collections::HashMap::<&'static str, toy_rpc::service::AsyncHandler<#self_ident>>::new();
+                #(map.insert(#names, #self_ident::#fn_idents);)*;
+                map
             }
 
             fn default_name() -> &'static str {

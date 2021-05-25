@@ -58,7 +58,7 @@ cfg_if! {
 
             /// Returns the `DEFAULT_RPC_PATH`
             fn handler_path() -> &'static str {
-                super::DEFAULT_RPC_PATH
+                crate::DEFAULT_RPC_PATH
             }
 
             /// Consumes `Server` and returns a `warp::filters::BoxedFilter`

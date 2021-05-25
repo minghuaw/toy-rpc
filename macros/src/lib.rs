@@ -7,8 +7,6 @@ mod util;
 #[cfg(any(feature = "server", feature = "client"))]
 pub(crate) const ATTR_EXPORT_METHOD: &str = "export_method";
 #[cfg(feature = "server")]
-pub(crate) const SERVICE_PREFIX: &str = "STATIC_TOY_RPC_SERVICE";
-#[cfg(feature = "server")]
 pub(crate) const HANDLER_SUFFIX: &str = "handler";
 #[cfg(feature = "client")]
 pub(crate) const CLIENT_SUFFIX: &str = "Client";
@@ -319,28 +317,12 @@ pub fn export_impl(_attr: proc_macro::TokenStream, item: proc_macro::TokenStream
         Ok(i) => i,
         Err(err) => return err.to_compile_error().into(),
     };
-    let static_name = format!("{}_{}", SERVICE_PREFIX, ident.to_string().to_uppercase());
-    let static_ident = syn::Ident::new(&static_name, ident.span());
 
     // generate client stub
     let (client_ty, client_impl, stub_trait, stub_impl) =
         util::generate_client_stub(&ident, input.clone());
 
-    let lazy = quote::quote! {
-        // store the handler functions in a gloabl lazy hashmap
-        toy_rpc::lazy_static::lazy_static! {
-            pub static ref #static_ident:
-                std::collections::HashMap<&'static str, toy_rpc::service::AsyncHandler<#self_ty>>
-                = {
-                    let mut map: std::collections::HashMap<&'static str, toy_rpc::service::AsyncHandler<#self_ty>>
-                        = std::collections::HashMap::new();
-                    #(map.insert(#names, #self_ty::#fn_idents);)*;
-                    map
-                };
-        }
-    };
-
-    let register_service_impl = util::generate_register_service_impl(ident);
+    let register_service_impl = util::generate_register_service_impl(ident, names, fn_idents);
 
     let input = util::remove_export_method_attr(input);
     let client_impl = util::remove_export_method_attr(client_impl);
@@ -353,7 +335,6 @@ pub fn export_impl(_attr: proc_macro::TokenStream, item: proc_macro::TokenStream
         #client_impl
         #stub_trait
         #stub_impl
-        #lazy
         #register_service_impl
     };
     output.into()
@@ -372,33 +353,15 @@ pub fn export_impl(_attr: proc_macro::TokenStream, item: proc_macro::TokenStream
         Ok(i) => i,
         Err(err) => return err.to_compile_error().into(),
     };
-    let static_name = format!("{}_{}", SERVICE_PREFIX, ident.to_string().to_uppercase());
-    let static_ident = syn::Ident::new(&static_name, ident.span());
 
-    let lazy = quote::quote! {
-        // store the handler functions in a gloabl lazy hashmap
-        toy_rpc::lazy_static::lazy_static! {
-            pub static ref #static_ident:
-                std::collections::HashMap<&'static str, toy_rpc::service::AsyncHandler<#self_ty>>
-                = {
-                    let mut map: std::collections::HashMap<&'static str, toy_rpc::service::AsyncHandler<#self_ty>>
-                        = std::collections::HashMap::new();
-                    #(map.insert(#names, #self_ty::#fn_idents);)*;
-                    map
-                };
-        }
-    };
-
-    let register_service_impl = util::generate_register_service_impl(ident);
+    let register_service_impl = util::generate_register_service_impl(ident, names, fn_idents);
 
     let input = util::remove_export_method_attr(input);
-    let client_impl = util::remove_export_method_attr(client_impl);
     let handler_impl = util::remove_export_method_attr(handler_impl);
 
     let output = quote::quote! {
         #input
         #handler_impl
-        #lazy
         #register_service_impl
     };
     output.into()
@@ -409,7 +372,7 @@ pub fn export_impl(_attr: proc_macro::TokenStream, item: proc_macro::TokenStream
 pub fn export_impl(_attr: proc_macro::TokenStream, item: proc_macro::TokenStream) -> proc_macro::TokenStream {
     // parse item
     let input = syn::parse_macro_input!(item as syn::ItemImpl);
-    let (handler_impl, names, fn_idents) = util::transform_impl(input.clone());
+    // let (handler_impl, names, fn_idents) = util::transform_impl(input.clone());
 
     // extract Self type and use it for construct Ident for handler HashMap
     let self_ty = &input.self_ty;
@@ -417,32 +380,16 @@ pub fn export_impl(_attr: proc_macro::TokenStream, item: proc_macro::TokenStream
         Ok(i) => i,
         Err(err) => return err.to_compile_error().into(),
     };
-    let static_name = format!("{}_{}", SERVICE_PREFIX, ident.to_string().to_uppercase());
-    let static_ident = syn::Ident::new(&static_name, ident.span());
 
     // generate client stub
     let (client_ty, client_impl, stub_trait, stub_impl) =
         util::generate_client_stub(&ident, input.clone());
 
-    let lazy = quote::quote! {
-        // store the handler functions in a gloabl lazy hashmap
-        toy_rpc::lazy_static::lazy_static! {
-            pub static ref #static_ident:
-                std::collections::HashMap<&'static str, toy_rpc::service::AsyncHandler<#self_ty>>
-                = {
-                    let mut map: std::collections::HashMap<&'static str, toy_rpc::service::AsyncHandler<#self_ty>>
-                        = std::collections::HashMap::new();
-                    #(map.insert(#names, #self_ty::#fn_idents);)*;
-                    map
-                };
-        }
-    };
-
-    let register_service_impl = util::generate_register_service_impl(ident);
+    // let register_service_impl = util::generate_register_service_impl(ident, names, fn_idents);
 
     let input = util::remove_export_method_attr(input);
     let client_impl = util::remove_export_method_attr(client_impl);
-    let handler_impl = util::remove_export_method_attr(handler_impl);
+    // let handler_impl = util::remove_export_method_attr(handler_impl);
 
     let output = quote::quote! {
         #input

@@ -66,9 +66,6 @@ cfg_if! {
     }
 }
 
-/// Default RPC path for http handler
-pub const DEFAULT_RPC_PATH: &str = "_rpc_";
-
 #[derive(Debug)]
 pub enum ConnectionStatus {
     KeepReading,

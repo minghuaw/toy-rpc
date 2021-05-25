@@ -92,7 +92,7 @@ cfg_if! {
     ))] {
         use ::async_std::net::{TcpStream, ToSocketAddrs};
         use async_tungstenite::async_std::connect_async;
-        use crate::server::DEFAULT_RPC_PATH;
+        use crate::DEFAULT_RPC_PATH;
 
         /// The following impl block is controlled by feature flag. It is enabled
         /// if and only if **exactly one** of the the following feature flag is turned on

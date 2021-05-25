@@ -172,7 +172,7 @@ where
     /// Register a hashmap of RPC handlers
     pub fn register_handlers(
         self,
-        map: &'static HashMap<&'static str, AsyncHandler<State>>,
+        map: HashMap<&'static str, AsyncHandler<State>>,
     ) -> Self {
         let mut builder = self;
         for (key, val) in map.iter() {
@@ -206,7 +206,7 @@ where
 /// Convenience function to build a `Service` with the internal state and the handlers
 pub fn build_service<State>(
     state: Arc<State>,
-    handlers: &'static HashMap<&'static str, AsyncHandler<State>>,
+    handlers: HashMap<&'static str, AsyncHandler<State>>,
 ) -> Service<State>
 where
     State: Send + Sync + 'static,

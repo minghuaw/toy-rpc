@@ -34,7 +34,7 @@ cfg_if! {
         ),
     ))] {
         use crate::codec::DefaultCodec;
-        use super::DEFAULT_RPC_PATH;
+        use crate::DEFAULT_RPC_PATH;
 
         /// The following impl block is controlled by feature flag. It is enabled
         /// if and only if **exactly one** of the the following feature flag is turned on

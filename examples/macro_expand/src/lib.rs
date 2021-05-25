@@ -1,7 +1,6 @@
 #![allow(dead_code)]
 
 use toy_rpc::macros::export_impl;
-use toy_rpc::Server;
 use async_trait::async_trait;
 use std::sync::Arc;
 
@@ -31,9 +30,6 @@ impl ExampleService for FooBarService {
 fn expand_service() {
     let example = Arc::new(FooBarService{});
 
-    let _server = Server::builder()
-        .register(example)
-        .build();
 }
 
 #[cfg(test)]

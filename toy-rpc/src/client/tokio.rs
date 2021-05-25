@@ -94,7 +94,7 @@ cfg_if! {
         use ::tokio::net::{TcpStream, ToSocketAddrs};
         use async_tungstenite::tokio::connect_async;
         use crate::transport::ws::WebSocketConn;
-        use crate::server::DEFAULT_RPC_PATH;
+        use crate::DEFAULT_RPC_PATH;
 
         impl Client<NotConnected> {
             pub async fn dial(addr: impl ToSocketAddrs)

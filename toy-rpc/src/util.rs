@@ -7,7 +7,7 @@ use crate::service::AsyncHandler;
 /// Helper trait for service registration
 pub trait RegisterService {
     /// Helper function that returns a hashmap of the RPC service method handlers
-    fn handlers() -> &'static HashMap<&'static str, AsyncHandler<Self>>;
+    fn handlers() -> HashMap<&'static str, AsyncHandler<Self>>;
 
     /// Helper function that returns the name of the service struct
     ///

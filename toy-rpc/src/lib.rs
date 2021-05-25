@@ -849,6 +849,14 @@ cfg_if! {
         feature = "tokio_runtime",
         feature = "docs",
     ))] {
+        /// Default RPC path for http handler
+        // #[cfg(any(
+        //     feature = "http_tide",
+        //     feature = "http_warp",
+        //     feature = "http_actix_web",
+        // ))]
+        pub const DEFAULT_RPC_PATH: &str = "_rpc_";
+
         #[cfg(feature = "client")]
         pub mod client;
         #[cfg(feature = "client")]
