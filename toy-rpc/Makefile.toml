@@ -10,6 +10,7 @@ run_task = [
         "test_tokio_ws",
         "test_tide_integration",
         "test_warp_integration",
+        "test_actix_web_integration",
     ] },
 ]
 
@@ -104,15 +105,15 @@ args = ["test",
     "--", "--nocapture"
 ]
 
-# # Not sure how to run tests with actix runtime
-# [tasks.test_actix_web_integration]
-# command = "cargo"
-# args = ["test",
-#     "--features", "serde_bincode http_actix_web",
-#     "--no-default-features",
-#     "--test", "actix_web_integration",
-#     "--", "--nocapture"
-# ]
+# Not sure how to run tests with actix runtime
+[tasks.test_actix_web_integration]
+command = "cargo"
+args = ["test",
+    "--features", "serde_bincode http_actix_web",
+    "--no-default-features",
+    "--test", "actix_web_integration",
+    "--", "--nocapture"
+]
 
 [tasks.doctest]
 toolchain = "nightly"

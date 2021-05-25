@@ -98,7 +98,7 @@ pub struct Client<Mode> {
 // seems like it still works even without this impl
 impl<Mode> Drop for Client<Mode> {
     fn drop(&mut self) {
-        log::debug!("Dropping client");
+        // log::debug!("Dropping client");
 
         if self.reader_stop.send(()).is_err() {
             log::error!("Failed to send stop signal to reader loop")
@@ -200,7 +200,6 @@ async fn write_once(
 ) -> Result<(), Error> {
     if let Ok(req) = request.recv_async().await {
         let (header, body) = req;
-        println!("{:?}", &header);
         writer.write_request(header, &body).await?;
     }
     Ok(())
