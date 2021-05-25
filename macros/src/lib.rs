@@ -2,29 +2,23 @@
 //!
 //! This is exported in `toy_rpc` as the `toy_rpc::macros` module.
 
-use proc_macro::TokenStream;
-// use quote::{quote};
+mod util;
 
-// #[cfg(any(feature = "server", feature = "client"))]
-// use quote::ToTokens;
-// #[cfg(any(feature = "server", feature = "client"))]
-// use syn::{parse_macro_input, parse_quote, GenericArgument, Ident};
-
-#[cfg(feature = "server")]
-const SERVICE_PREFIX: &str = "STATIC_TOY_RPC_SERVICE";
 #[cfg(any(feature = "server", feature = "client"))]
-const ATTR_EXPORT_METHOD: &str = "export_method";
+pub(crate) const ATTR_EXPORT_METHOD: &str = "export_method";
 #[cfg(feature = "server")]
-const HANDLER_SUFFIX: &str = "handler";
+pub(crate) const SERVICE_PREFIX: &str = "STATIC_TOY_RPC_SERVICE";
+#[cfg(feature = "server")]
+pub(crate) const HANDLER_SUFFIX: &str = "handler";
 #[cfg(feature = "client")]
-const CLIENT_SUFFIX: &str = "Client";
+pub(crate) const CLIENT_SUFFIX: &str = "Client";
 #[cfg(feature = "client")]
-const CLIENT_STUB_SUFFIX: &str = "ClientStub";
+pub(crate) const CLIENT_STUB_SUFFIX: &str = "ClientStub";
 
 /// A macro that impls serde::Deserializer by simply calling the
 /// corresponding functions of the inner deserializer
 #[proc_macro]
-pub fn impl_inner_deserializer(_: TokenStream) -> TokenStream {
+pub fn impl_inner_deserializer(_: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let output = quote::quote! {
         fn deserialize_any<V>(mut self, visitor: V) -> Result<V::Value, Self::Error>
         where
@@ -314,14 +308,14 @@ pub fn impl_inner_deserializer(_: TokenStream) -> TokenStream {
 /// ```
 #[cfg(all(feature="server", feature="client"))]
 #[proc_macro_attribute]
-pub fn export_impl(_attr: TokenStream, item: TokenStream) -> TokenStream {
+pub fn export_impl(_attr: proc_macro::TokenStream, item: proc_macro::TokenStream) -> proc_macro::TokenStream {
     // parse item
     let input = syn::parse_macro_input!(item as syn::ItemImpl);
-    let (handler_impl, names, fn_idents) = transform_impl(input.clone());
+    let (handler_impl, names, fn_idents) = util::transform_impl(input.clone());
 
     // extract Self type and use it for construct Ident for handler HashMap
     let self_ty = &input.self_ty;
-    let ident = match parse_impl_self_ty(self_ty) {
+    let ident = match util::parse_impl_self_ty(self_ty) {
         Ok(i) => i,
         Err(err) => return err.to_compile_error().into(),
     };
@@ -330,7 +324,7 @@ pub fn export_impl(_attr: TokenStream, item: TokenStream) -> TokenStream {
 
     // generate client stub
     let (client_ty, client_impl, stub_trait, stub_impl) =
-        generate_client_stub(&ident, input.clone());
+        util::generate_client_stub(&ident, input.clone());
 
     let lazy = quote::quote! {
         // store the handler functions in a gloabl lazy hashmap
@@ -346,11 +340,11 @@ pub fn export_impl(_attr: TokenStream, item: TokenStream) -> TokenStream {
         }
     };
 
-    let register_service_impl = generate_register_service_impl(ident);
+    let register_service_impl = util::generate_register_service_impl(ident);
 
-    let input = remove_export_method_attr(input);
-    let client_impl = remove_export_method_attr(client_impl);
-    let handler_impl = remove_export_method_attr(handler_impl);
+    let input = util::remove_export_method_attr(input);
+    let client_impl = util::remove_export_method_attr(client_impl);
+    let handler_impl = util::remove_export_method_attr(handler_impl);
 
     let output = quote::quote! {
         #input
@@ -367,14 +361,14 @@ pub fn export_impl(_attr: TokenStream, item: TokenStream) -> TokenStream {
 
 #[cfg(all(feature="server", not(feature="client")))]
 #[proc_macro_attribute]
-pub fn export_impl(_attr: TokenStream, item: TokenStream) -> TokenStream {
+pub fn export_impl(_attr: proc_macro::TokenStream, item: proc_macro::TokenStream) -> proc_macro::TokenStream {
     // parse item
     let input = syn::parse_macro_input!(item as syn::ItemImpl);
-    let (handler_impl, names, fn_idents) = transform_impl(input.clone());
+    let (handler_impl, names, fn_idents) = util::transform_impl(input.clone());
 
     // extract Self type and use it for construct Ident for handler HashMap
     let self_ty = &input.self_ty;
-    let ident = match parse_impl_self_ty(self_ty) {
+    let ident = match util::parse_impl_self_ty(self_ty) {
         Ok(i) => i,
         Err(err) => return err.to_compile_error().into(),
     };
@@ -395,11 +389,11 @@ pub fn export_impl(_attr: TokenStream, item: TokenStream) -> TokenStream {
         }
     };
 
-    let register_service_impl = generate_register_service_impl(ident);
+    let register_service_impl = util::generate_register_service_impl(ident);
 
-    let input = remove_export_method_attr(input);
-    let client_impl = remove_export_method_attr(client_impl);
-    let handler_impl = remove_export_method_attr(handler_impl);
+    let input = util::remove_export_method_attr(input);
+    let client_impl = util::remove_export_method_attr(client_impl);
+    let handler_impl = util::remove_export_method_attr(handler_impl);
 
     let output = quote::quote! {
         #input
@@ -412,14 +406,14 @@ pub fn export_impl(_attr: TokenStream, item: TokenStream) -> TokenStream {
 
 #[cfg(all(not(feature="server"), feature="client"))]
 #[proc_macro_attribute]
-pub fn export_impl(_attr: TokenStream, item: TokenStream) -> TokenStream {
+pub fn export_impl(_attr: proc_macro::TokenStream, item: proc_macro::TokenStream) -> proc_macro::TokenStream {
     // parse item
     let input = syn::parse_macro_input!(item as syn::ItemImpl);
-    let (handler_impl, names, fn_idents) = transform_impl(input.clone());
+    let (handler_impl, names, fn_idents) = util::transform_impl(input.clone());
 
     // extract Self type and use it for construct Ident for handler HashMap
     let self_ty = &input.self_ty;
-    let ident = match parse_impl_self_ty(self_ty) {
+    let ident = match util::parse_impl_self_ty(self_ty) {
         Ok(i) => i,
         Err(err) => return err.to_compile_error().into(),
     };
@@ -428,7 +422,7 @@ pub fn export_impl(_attr: TokenStream, item: TokenStream) -> TokenStream {
 
     // generate client stub
     let (client_ty, client_impl, stub_trait, stub_impl) =
-        generate_client_stub(&ident, input.clone());
+        util::generate_client_stub(&ident, input.clone());
 
     let lazy = quote::quote! {
         // store the handler functions in a gloabl lazy hashmap
@@ -444,11 +438,11 @@ pub fn export_impl(_attr: TokenStream, item: TokenStream) -> TokenStream {
         }
     };
 
-    let register_service_impl = generate_register_service_impl(ident);
+    let register_service_impl = util::generate_register_service_impl(ident);
 
-    let input = remove_export_method_attr(input);
-    let client_impl = remove_export_method_attr(client_impl);
-    let handler_impl = remove_export_method_attr(handler_impl);
+    let input = util::remove_export_method_attr(input);
+    let client_impl = util::remove_export_method_attr(client_impl);
+    let handler_impl = util::remove_export_method_attr(handler_impl);
 
     let output = quote::quote! {
         #input
@@ -458,377 +452,4 @@ pub fn export_impl(_attr: TokenStream, item: TokenStream) -> TokenStream {
         #stub_impl
     };
     output.into()
-}
-
-/// transform impl block to meet the signature of service function
-///
-/// Example
-///
-/// ```rust
-/// pub struct Foo { }
-///
-/// #[export_impl]
-/// impl Foo {
-///     #[export_method]
-///     async fn increment(&self, arg: i32) -> Result<i32, String> {
-///         Ok(arg + 1)
-///     }
-/// }
-/// ```
-///
-/// will generate the following impl
-///
-/// ```rust
-/// pub struct Foo { }
-///
-/// impl Foo {
-///     async fn increment(&self, arg: i32) -> Result<i32, String> {
-///         Ok(arg + 1)
-///     }
-/// }
-/// pub fn increment_handler(
-///     self: std::sync::Arc<Self>,
-///     mut deserializer: Box<dyn toy_rpc::erased_serde::Deserializer<'static> + Send>,
-/// ) -> toy_rpc::service::HandlerResultFut {
-///     Box::pin(async move {
-///     let req: i32 = toy_rpc::erased_serde::deserialize(&mut deserializer)
-///         .map_err(|e| toy_rpc::error::Error::ParseError(Box::new(e)))?;
-///     let res = self
-///         .increment(req) // executes the RPC method
-///         .await
-///         .map(|r| {
-///             Box::new(r)
-///                 as Box<dyn toy_rpc::erased_serde::Serialize + Send + Sync + 'static>
-///         })
-///         .map_err(|e| toy_rpc::error::Error::ExecutionError(e.to_string()));
-///     res
-///     })
-/// }
-/// ```
-#[cfg(feature = "server")]
-fn transform_impl(input: syn::ItemImpl) -> (syn::ItemImpl, Vec<String>, Vec<syn::Ident>) {
-    let mut names = Vec::new();
-    let mut idents = Vec::new();
-    let mut output = filter_exported_methods(input);
-
-    output.trait_ = None;
-    output
-        .items
-        .iter_mut()
-        // first filter out method
-        .filter_map(|item| match item {
-            syn::ImplItem::Method(f) => Some(f),
-            _ => None,
-        })
-        .for_each(|f| {
-            names.push(f.sig.ident.to_string());
-            transform_method(f);
-            idents.push(f.sig.ident.clone());
-        });
-
-    (output, names, idents)
-}
-
-/// transform method to meet the signature of service function
-#[cfg(feature = "server")]
-fn transform_method(f: &mut syn::ImplItemMethod) {
-    // change function ident
-    let ident = f.sig.ident.clone();
-    let concat_name = format!("{}_{}", &ident.to_string(), HANDLER_SUFFIX);
-    let handler_ident = syn::Ident::new(&concat_name, ident.span());
-
-    // change asyncness
-    f.sig.asyncness = None;
-
-    // transform function request type
-    if let syn::FnArg::Typed(pt) = f.sig.inputs.last().unwrap() {
-        let req_ty = &pt.ty;
-
-        f.block = syn::parse_quote!({
-            Box::pin(
-                async move {
-                    let req: #req_ty = toy_rpc::erased_serde::deserialize(&mut deserializer)
-                        .map_err(|e| toy_rpc::error::Error::ParseError(Box::new(e)))?;
-                    let res = self.#ident(req).await
-                        .map(|r| Box::new(r) as Box<dyn toy_rpc::erased_serde::Serialize + Send + Sync + 'static>)
-                        .map_err(|e| toy_rpc::error::Error::ExecutionError(e.to_string()));
-                    res
-                }
-            )
-        });
-
-        f.sig.inputs = syn::parse_quote!(
-            self: std::sync::Arc<Self>, mut deserializer: Box<dyn toy_rpc::erased_serde::Deserializer<'static> + Send>
-        );
-
-        f.sig.output = syn::parse_quote!(
-            -> toy_rpc::service::HandlerResultFut
-        );
-    };
-
-    f.sig.ident = handler_ident;
-}
-
-/// remove #[export_method] attribute
-#[cfg(feature = "server")]
-fn remove_export_method_attr(mut input: syn::ItemImpl) -> syn::ItemImpl {
-    input
-        .items
-        .iter_mut()
-        // first filter out method
-        .filter_map(|item| match item {
-            syn::ImplItem::Method(f) => Some(f),
-            _ => None,
-        })
-        .for_each(|f| {
-            // clear the attributes for now
-            f.attrs.retain(|attr| {
-                let ident = attr.path.get_ident().unwrap();
-                ident != ATTR_EXPORT_METHOD
-            })
-        });
-
-    input
-}
-
-/// Generate client stub for the service impl block
-#[cfg(feature = "client")]
-fn generate_client_stub(
-    ident: &syn::Ident,
-    input: syn::ItemImpl,
-) -> (syn::Item, syn::ItemImpl, syn::Item, syn::ItemImpl) {
-    let concat_name = format!("{}{}", &ident.to_string(), CLIENT_SUFFIX);
-    let client_ident = syn::Ident::new(&concat_name, ident.span());
-
-    let client_struct = syn::parse_quote!(
-        pub struct #client_ident<'c> {
-            client: &'c toy_rpc::client::Client<toy_rpc::client::Connected>,
-            service_name: &'c str,
-        }
-    );
-
-    let client_impl = client_stub_impl(ident, &client_ident, input);
-
-    let concat_name = format!("{}{}", &ident.to_string(), CLIENT_STUB_SUFFIX);
-    let stub_ident = syn::Ident::new(&concat_name, ident.span());
-    let stub_fn = parse_stub_fn_name(ident);
-
-    let stub_trait = syn::parse_quote!(
-        pub trait #stub_ident {
-            fn #stub_fn<'c>(&'c self) -> #client_ident;
-        }
-    );
-
-    let service_name = ident.to_string();
-    let stub_impl: syn::ItemImpl = syn::parse_quote!(
-        impl #stub_ident for toy_rpc::client::Client<toy_rpc::client::Connected> {
-            fn #stub_fn<'c>(&'c self) -> #client_ident {
-                #client_ident {
-                    client: self,
-                    service_name: #service_name,
-                }
-            }
-        }
-    );
-
-    (client_struct, client_impl, stub_trait, stub_impl)
-}
-
-/// Generate client stub implementation that allows, conveniently, type checking with the RPC argument
-#[cfg(feature = "client")]
-fn client_stub_impl(
-    service_ident: &syn::Ident,
-    client_ident: &syn::Ident,
-    input: syn::ItemImpl,
-) -> syn::ItemImpl {
-    let mut input = filter_exported_methods(input);
-    let mut generated_items: Vec<syn::ImplItem> = Vec::new();
-    input.trait_ = None;
-    input
-        .items
-        .iter_mut()
-        // first filter out method
-        .filter_map(|item| match item {
-            syn::ImplItem::Method(f) => Some(f),
-            _ => None,
-        })
-        .for_each(|f| {
-            if let Some(gen) = generate_client_stub_method(service_ident, f) {
-                generated_items.push(syn::ImplItem::Method(gen));
-            }
-        });
-
-    let mut output: syn::ItemImpl = syn::parse_quote!(
-        impl<'c> #client_ident<'c> {
-
-        }
-    );
-
-    output.items = generated_items;
-    output
-}
-
-#[cfg(feature = "client")]
-fn generate_client_stub_method(
-    service_ident: &syn::Ident,
-    f: &mut syn::ImplItemMethod,
-) -> Option<syn::ImplItemMethod> {
-    if let syn::FnArg::Typed(pt) = f.sig.inputs.last().unwrap() {
-        let fn_ident = &f.sig.ident;
-        let req_ty = &pt.ty;
-
-        if let syn::ReturnType::Type(_, ret_ty) = f.sig.output.clone() {
-            let ok_ty = get_ok_ident_from_type(ret_ty)?;
-            return Some(generate_client_stub_method_impl(
-                service_ident,
-                fn_ident,
-                &req_ty,
-                &ok_ty,
-            ));
-        }
-    }
-
-    None
-}
-
-#[cfg(feature = "client")]
-fn generate_client_stub_method_impl(
-    service_ident: &syn::Ident,
-    fn_ident: &syn::Ident,
-    req_ty: &syn::Type,
-    ok_ty: &syn::GenericArgument,
-) -> syn::ImplItemMethod {
-    let service = service_ident.to_string();
-    let method = fn_ident.to_string();
-    let service_method = format!("{}.{}", service, method);
-    syn::parse_quote!(
-        pub fn #fn_ident<A>(&'c self, args: A) -> toy_rpc::client::Call<#ok_ty>
-        where
-            A: std::borrow::Borrow<#req_ty> + Send + Sync + toy_rpc::serde::Serialize + 'static,
-        {
-            self.client.call(#service_method, args)
-        }
-    )
-}
-
-#[cfg(feature = "client")]
-fn get_ok_ident_from_type(ty: Box<syn::Type>) -> Option<syn::GenericArgument> {
-    let ty = Box::leak(ty);
-    let arg = syn::GenericArgument::Type(ty.to_owned());
-    recursively_get_result_from_generic_arg(&arg)
-}
-
-#[cfg(feature = "client")]
-fn recursively_get_result_from_generic_arg(arg: &syn::GenericArgument) -> Option<syn::GenericArgument> {
-    match &arg {
-        syn::GenericArgument::Type(ty) => {
-            recusively_get_result_from_type(&ty)
-        }
-        syn::GenericArgument::Binding(binding) => {
-            recusively_get_result_from_type(&binding.ty)
-        }
-        _ => None,
-    }
-}
-
-#[cfg(feature = "client")]
-fn recusively_get_result_from_type(ty: &syn::Type) -> Option<syn::GenericArgument> {
-    match ty {
-        syn::Type::Path(ref path) => {
-            let ident = &path.path.segments.last()?.ident.to_string()[..];
-            match &path.path.segments.last()?.arguments {
-                syn::PathArguments::AngleBracketed(angle_bracket) => {
-                    if ident == "Result" {
-                        return angle_bracket.args.first().map(|g| g.to_owned());
-                    }
-                    recursively_get_result_from_generic_arg(angle_bracket.args.first()?)
-                }
-                _ => None,
-            }
-        }
-        syn::Type::TraitObject(ref tobj) => {
-            if let syn::TypeParamBound::Trait(bound) = tobj.bounds.first()? {
-                match &bound.path.segments.last()?.arguments {
-                    syn::PathArguments::AngleBracketed(angle_bracket) => {
-                        return recursively_get_result_from_generic_arg(angle_bracket.args.first()?)
-                    }
-                    _ => return None,
-                }
-            }
-            None
-        }
-        _ => None,
-    }
-}
-
-/// Generate implementation of the `toy_rpc::util::RegisterService` trait.
-///
-/// The static hashmap of handlers will be returned by `handlers()` method.
-/// The service struct name will be returned by `default_name()` method.
-///
-#[cfg(feature = "server")]
-fn generate_register_service_impl(ident: &syn::Ident) -> impl quote::ToTokens {
-    let name = ident.to_string();
-    let static_name = format!("{}_{}", SERVICE_PREFIX, &name.to_uppercase());
-    let static_ident = syn::Ident::new(&static_name, ident.span());
-    let ret = quote::quote! {
-        impl toy_rpc::util::RegisterService for #ident {
-            fn handlers() -> &'static std::collections::HashMap<&'static str, toy_rpc::service::AsyncHandler<Self>> {
-                &*#static_ident
-            }
-
-            fn default_name() -> &'static str {
-                #name
-            }
-        }
-    };
-
-    ret
-}
-
-#[cfg(any(feature = "server", feature = "client"))]
-fn parse_impl_self_ty(self_ty: &syn::Type) -> Result<&syn::Ident, syn::Error> {
-    match self_ty {
-        syn::Type::Path(tp) => Ok(&tp.path.segments[0].ident),
-        _ => Err(syn::Error::new_spanned(
-            quote::quote! {},
-            "Compile Error: Self type",
-        )),
-    }
-}
-
-#[cfg(feature = "client")]
-fn parse_stub_fn_name(ident: &syn::Ident) -> syn::Ident {
-    let mut output_fn = String::new();
-    for c in ident.to_string().chars() {
-        if c.is_uppercase() {
-            output_fn.push('_');
-            output_fn.push_str(&c.to_lowercase().to_string());
-        } else {
-            output_fn.push(c);
-        }
-    }
-    output_fn = output_fn
-        .trim_start_matches('_')
-        .trim_end_matches('_')
-        .into();
-
-    syn::Ident::new(&output_fn, ident.span())
-}
-
-#[cfg(any(feature = "server", feature = "client"))]
-fn filter_exported_methods(input: syn::ItemImpl) -> syn::ItemImpl {
-    let mut output = input;
-    output.items.retain(|item| match item {
-        syn::ImplItem::Method(f) => {
-            let is_exported = f.attrs.iter().any(|attr| {
-                let ident = attr.path.get_ident().unwrap();
-                ident == ATTR_EXPORT_METHOD
-            });
-
-            is_exported
-        }
-        _ => false,
-    });
-    output
 }
