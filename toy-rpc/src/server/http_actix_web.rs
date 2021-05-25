@@ -9,10 +9,6 @@ use crate::{codec::{EraseDeserializer, Marshal, Unmarshal}, error::Error, messag
 
 use super::preprocess_service_method;
 
-async fn hello() {
-    println!("|||||| Hello ||||||");
-}
-
 // =============================================================================
 // `WsMessageActor`
 // =============================================================================
@@ -36,10 +32,6 @@ where
 
     /// Start a new `ExecutionManager`
     fn started(&mut self, ctx: &mut Self::Context) {
-        actix::spawn(async move {
-            hello().await;
-        });
-
         log::debug!("WsMessageActor is started");
         let responder: Recipient<ExecutionResult> = ctx.address().recipient();
         let manager = ExecutionManager{ 
