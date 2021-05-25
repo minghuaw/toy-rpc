@@ -855,11 +855,11 @@ cfg_if! {
         pub mod client;
         pub mod server;
 
+        pub use crate::client::Client;
         pub use server::{Server, ServerBuilder};
     }
 }
 
-pub use crate::client::Client;
 
 pub use error::Error;
 
