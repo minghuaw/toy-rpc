@@ -27,7 +27,7 @@ run_task = [
 [tasks.test_async_std_tcp_bincode]
 command = "cargo"
 args = ["test", 
-    "--features", "serde_bincode async_std_runtime", 
+    "--features", "serde_bincode async_std_runtime server client", 
     "--no-default-features", 
     "--test", "async_std_tcp", 
     "--", "--nocapture"
@@ -36,7 +36,7 @@ args = ["test",
 [tasks.test_async_std_tcp_json]
 command = "cargo"
 args = ["test", 
-    "--features", "serde_json async_std_runtime", 
+    "--features", "serde_json async_std_runtime server client", 
     "--no-default-features", 
     "--test", "async_std_tcp", 
     "--", "--nocapture"
@@ -45,7 +45,7 @@ args = ["test",
 [tasks.test_async_std_tcp_cbor]
 command = "cargo"
 args = ["test", 
-    "--features", "serde_cbor async_std_runtime", 
+    "--features", "serde_cbor async_std_runtime server client", 
     "--no-default-features", 
     "--test", "async_std_tcp", 
     "--", "--nocapture"
@@ -54,7 +54,7 @@ args = ["test",
 [tasks.test_async_std_tcp_rmp]
 command = "cargo"
 args = ["test", 
-    "--features", "serde_rmp async_std_runtime", 
+    "--features", "serde_rmp async_std_runtime server client", 
     "--no-default-features", 
     "--test", "async_std_tcp", 
     "--", "--nocapture"
@@ -63,7 +63,7 @@ args = ["test",
 [tasks.test_tokio_tcp]
 command = "cargo"
 args = ["test", 
-    "--features", "serde_bincode tokio_runtime", 
+    "--features", "serde_bincode tokio_runtime server client", 
     "--no-default-features", 
     "--test", "tokio_tcp", 
     "--", "--nocapture"
@@ -72,7 +72,7 @@ args = ["test",
 [tasks.test_async_std_ws]
 command = "cargo"
 args = ["test",
-    "--features", "serde_bincode async_std_runtime",
+    "--features", "serde_bincode async_std_runtime server client",
     "--no-default-features",
     "--test", "async_std_ws",
     "--", "--nocapture"
@@ -81,7 +81,7 @@ args = ["test",
 [tasks.test_tokio_ws]
 command = "cargo"
 args = ["test",
-    "--features", "serde_bincode tokio_runtime",
+    "--features", "serde_bincode tokio_runtime server client",
     "--no-default-features",
     "--test", "tokio_ws",
     "--", "--nocapture"
@@ -90,7 +90,7 @@ args = ["test",
 [tasks.test_tide_integration]
 command = "cargo"
 args = ["test",
-    "--features", "serde_bincode http_tide",
+    "--features", "serde_bincode http_tide server client",
     "--no-default-features",
     "--test", "tide_integration",
     "--", "--nocapture"
@@ -99,7 +99,7 @@ args = ["test",
 [tasks.test_warp_integration]
 command = "cargo"
 args = ["test",
-    "--features", "serde_bincode http_warp",
+    "--features", "serde_bincode http_warp server client",
     "--no-default-features",
     "--test", "warp_integration",
     "--", "--nocapture"
@@ -108,7 +108,7 @@ args = ["test",
 [tasks.test_actix_web_integration]
 command = "cargo"
 args = ["test",
-    "--features", "serde_bincode http_actix_web",
+    "--features", "serde_bincode http_actix_web server client",
     "--no-default-features",
     "--test", "actix_web_integration",
     "--", "--nocapture"

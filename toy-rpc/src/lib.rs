@@ -847,15 +847,16 @@ cfg_if! {
     if #[cfg(any(
         feature = "async_std_runtime",
         feature = "tokio_runtime",
-        feature = "http_tide",
-        feature = "http_warp",
-        feature = "http_actix_web",
         feature = "docs",
     ))] {
+        #[cfg(feature = "client")]
         pub mod client;
+        #[cfg(feature = "client")]
+        pub use client::Client;
+        
+        #[cfg(feature = "server")]
         pub mod server;
-
-        pub use crate::client::Client;
+        #[cfg(feature = "server")]
         pub use server::{Server, ServerBuilder};
     }
 }

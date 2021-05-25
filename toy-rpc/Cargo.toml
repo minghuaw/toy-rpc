@@ -35,6 +35,9 @@ docs = []
 
 std = ["serde/std"]
 
+server = ["toy-rpc-macros/server"]
+client = ["toy-rpc-macros/client"]
+
 # feature flags for codec
 serde_bincode = []
 serde_rmp = ["rmp-serde"]
@@ -92,34 +95,34 @@ pin-project = "1.0.7"
 [[test]]
 name = "async_std_tcp"
 path = "tests/async_std_tcp.rs"
-required-features = ["async_std_runtime"]
+required-features = ["async_std_runtime", "server", "client"]
 
 [[test]]
 name = "tokio_tcp"
 path = "tests/tokio_tcp.rs"
-required-features = ["tokio_runtime"]
+required-features = ["tokio_runtime", "server", "client"]
 
 [[test]]
 name = "async_std_ws"
 path = "tests/async_std_ws.rs"
-required-features = ["async_std_runtime"]
+required-features = ["async_std_runtime", "server", "client"]
 
 [[test]]
 name = "tokio_ws"
 path = "tests/tokio_ws.rs"
-required-features = ["tokio_runtime"]
+required-features = ["tokio_runtime", "server", "client"]
 
 [[test]]
 name = "tide_integration"
 path = "tests/tide_integration.rs"
-required-features = ["http_tide"]
+required-features = ["http_tide", "server", "client"]
 
 [[test]]
 name = "warp_integration"
 path = "tests/warp_integration.rs"
-required-features = ["http_warp"]
+required-features = ["http_warp", "server", "client"]
 
 [[test]]
 name = "actix_web_integration"
 path = "tests/actix_web_integration.rs"
-required-features = ["http_actix_web"]
+required-features = ["http_actix_web", "server", "client"]
