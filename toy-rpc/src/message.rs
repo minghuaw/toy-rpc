@@ -72,7 +72,7 @@ impl ErrorMessage {
             Error::InvalidArgument => Ok(Self::InvalidArgument),
             Error::ServiceNotFound => Ok(Self::ServiceNotFound),
             Error::MethodNotFound => Ok(Self::MethodNotFound),
-            Error::ExecutionError(s) => Ok(Self::ExecutionError(s.into())),
+            Error::ExecutionError(s) => Ok(Self::ExecutionError(s)),
             e @ Error::IoError(_) => Err(e),
             e @ Error::ParseError(_) => Err(e),
             e @ Error::Internal(_) => Err(e),

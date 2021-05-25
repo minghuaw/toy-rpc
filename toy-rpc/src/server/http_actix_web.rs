@@ -212,7 +212,7 @@ where
         Ok(())
     }
 
-    fn handle_preprocess_error<'de>(
+    fn handle_preprocess_error(
         &mut self, 
         err: Error, 
         id: MessageId, 
@@ -399,8 +399,7 @@ cfg_if! {
                     req_header: None,
                     marker: PhantomData,
                 };
-            let resp = ws::start(ws_actor, &req, stream);
-            resp
+            ws::start(ws_actor, &req, stream)
         }
 
         impl Server {

@@ -174,16 +174,13 @@ impl<R: AsyncRead + Unpin + Send + Sync> FrameRead for R {
         };
 
         // determine if end frame is received
-        match header.payload_type.into() {
-            PayloadType::Trailer => {
-                if header.frame_id == END_FRAME_ID
+        if let PayloadType::Trailer = header.payload_type.into() {
+            if header.frame_id == END_FRAME_ID
                     && header.message_id == 0
                     && header.payload_len == 0
                 {
-                    return None;
+                    return None
                 }
-            }
-            _ => {}
         }
 
         // read frame payload

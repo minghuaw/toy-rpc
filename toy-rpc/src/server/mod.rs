@@ -235,7 +235,7 @@ async fn serve_codec_execute_call(
                 log::error!("ParseError {:?}", e);
                 Error::InvalidArgument
             }
-            e @ _ => e,
+            e => e,
         }
     });
     // // [6] send result to response writer
@@ -331,11 +331,7 @@ fn is_correct_cancellation_token(id: MessageId, token: &str) -> bool {
                 Ok(num) => num,
                 Err(_) => return false,
             };
-            if base == CANCELLATION_TOKEN && _id == id {
-                true
-            } else {
-                false
-            }
+            base == CANCELLATION_TOKEN && _id == id 
         }
         None => false,
     }

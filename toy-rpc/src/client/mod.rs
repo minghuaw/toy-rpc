@@ -117,7 +117,7 @@ pub(crate) async fn reader_loop(
     loop {
         select! {
             _ = stop.recv_async().fuse() => {
-                return ()
+                return 
             },
             res = read_once(&mut reader, &pending).fuse() => {
                 match res {
@@ -141,10 +141,14 @@ async fn read_once(
             reader
                 .read_response_body()
                 .await
-                .ok_or(Error::IoError(std::io::Error::new(
+                .ok_or_else(|| Error::IoError(std::io::Error::new(
                     std::io::ErrorKind::UnexpectedEof,
                     "Unexpected EOF reading response body",
                 )))?;
+                // .ok_or(Error::IoError(std::io::Error::new(
+                //     std::io::ErrorKind::UnexpectedEof,
+                //     "Unexpected EOF reading response body",
+                // )))?;
         let deserializer = deserialzer?;
 
         let res = match is_error {
@@ -182,7 +186,7 @@ pub(crate) async fn writer_loop(
                         Err(err) => log::error!("{:?}", err)
                     }
                 }
-                return ()
+                return 
             },
             res = write_once(&mut writer, &requests).fuse() => {
                 match res {
@@ -216,7 +220,7 @@ async fn handle_call<Res>(
 where
     Res: serde::de::DeserializeOwned + Send,
 {
-    let id = header.id.clone();
+    let id = header.id;
     request_tx.send_async((header, body)).await?;
 
     let (resp_tx, resp_rx) = oneshot::channel();

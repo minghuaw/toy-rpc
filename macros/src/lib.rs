@@ -522,7 +522,7 @@ fn generate_client_stub(
         }
     );
 
-    return (client_struct, client_impl, stub_trait, stub_impl);
+    (client_struct, client_impl, stub_trait, stub_impl)
 }
 
 /// Generate client stub implementation that allows, conveniently, type checking with the RPC argument
@@ -577,13 +577,13 @@ fn generate_client_stub_method(
         }
     }
 
-    return None;
+    None
 }
 
 fn generate_client_stub_method_impl(
     service_ident: &Ident,
     fn_ident: &Ident,
-    req_ty: &Box<syn::Type>,
+    req_ty: &syn::Type,
     ok_ty: &GenericArgument,
 ) -> syn::ImplItemMethod {
     let service = service_ident.to_string();
@@ -602,16 +602,16 @@ fn generate_client_stub_method_impl(
 fn get_ok_ident_from_type(ty: Box<syn::Type>) -> Option<GenericArgument> {
     let ty = Box::leak(ty);
     let arg = syn::GenericArgument::Type(ty.to_owned());
-    return recursively_get_result_from_generic_arg(&arg);
+    recursively_get_result_from_generic_arg(&arg)
 }
 
 fn recursively_get_result_from_generic_arg(arg: &GenericArgument) -> Option<GenericArgument> {
     match &arg {
-        &syn::GenericArgument::Type(ty) => {
-            return recusively_get_result_from_type(&ty);
+        syn::GenericArgument::Type(ty) => {
+            recusively_get_result_from_type(&ty)
         }
-        &syn::GenericArgument::Binding(binding) => {
-            return recusively_get_result_from_type(&binding.ty);
+        syn::GenericArgument::Binding(binding) => {
+            recusively_get_result_from_type(&binding.ty)
         }
         _ => None,
     }
@@ -619,19 +619,19 @@ fn recursively_get_result_from_generic_arg(arg: &GenericArgument) -> Option<Gene
 
 fn recusively_get_result_from_type(ty: &syn::Type) -> Option<GenericArgument> {
     match ty {
-        &syn::Type::Path(ref path) => {
+        syn::Type::Path(ref path) => {
             let ident = &path.path.segments.last()?.ident.to_string()[..];
             match &path.path.segments.last()?.arguments {
                 syn::PathArguments::AngleBracketed(angle_bracket) => {
                     if ident == "Result" {
                         return angle_bracket.args.first().map(|g| g.to_owned());
                     }
-                    return recursively_get_result_from_generic_arg(angle_bracket.args.first()?);
+                    recursively_get_result_from_generic_arg(angle_bracket.args.first()?)
                 }
-                _ => return None,
+                _ => None,
             }
         }
-        &syn::Type::TraitObject(ref tobj) => {
+        syn::Type::TraitObject(ref tobj) => {
             if let syn::TypeParamBound::Trait(bound) = tobj.bounds.first()? {
                 match &bound.path.segments.last()?.arguments {
                     syn::PathArguments::AngleBracketed(angle_bracket) => {
@@ -693,34 +693,13 @@ impl syn::parse::Parse for ServiceExport {
 /// Example
 ///
 /// ```rust
-/// struct Foo { }
-///
-/// #[export_impl]
-/// impl Foo {
-///     //rpc service impl here
-/// }
-///
-/// mod rpc {
-///     pub struct Bar { }
-///
-///     #[export_impl]
-///     impl Bar {
-///         //rpc service impl here
-///     }
-/// }
-///
-/// use toy_rpc::Server;
-///
-/// fn main() {
-///     let foo = Arc::new(Foo {});
-///     let bar = Arc::new(rpc::Bar {});
+/// let foo = Arc::new(Foo {});
+/// let bar = Arc::new(rpc::Bar {});
 ///     
-///     let server = Server::builder()
-///         .register(foo)
-///         .register(bar)
-///         .build();
-/// }
-///
+/// let server = Server::builder()
+///     .register(foo)
+///     .register(bar)
+///     .build();
 /// ```
 #[deprecated(
     since = "0.3.0",

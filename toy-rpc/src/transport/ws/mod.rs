@@ -9,6 +9,9 @@ use std::{io::ErrorKind, marker::PhantomData};
 use super::{PayloadRead, PayloadWrite};
 use crate::{error::Error, util::GracefulShutdown};
 
+type WsSinkHalf<S> = SinkHalf<SplitSink<S, WsMessage>, CanSink>;
+type WsStreamHalf<S> = StreamHalf<SplitStream<S>, CanSink>;
+
 cfg_if! {
     if #[cfg(feature = "http_tide")] {
         pub(crate) struct CannotSink {}
@@ -46,12 +49,7 @@ where
         }
     }
 
-    pub fn split(
-        self,
-    ) -> (
-        SinkHalf<SplitSink<S, WsMessage>, CanSink>,
-        StreamHalf<SplitStream<S>, CanSink>,
-    ) {
+    pub fn split(self) -> (WsSinkHalf<S>, WsStreamHalf<S>) {
         let (writer, reader) = self.inner.split();
 
         let readhalf = StreamHalf {
@@ -103,7 +101,7 @@ where
     E: std::error::Error + 'static,
 {
     async fn write_payload(&mut self, payload: Vec<u8>) -> Result<(), Error> {
-        let msg = WsMessage::Binary(payload.into());
+        let msg = WsMessage::Binary(payload);
 
         self.inner
             .send(msg)
