@@ -1,16 +1,7 @@
 //! Custom definition of rpc request and response headers
-
+use cfg_if::cfg_if;
 use serde::{Deserialize, Serialize};
 use std::sync::atomic::AtomicU16;
-
-use crate::{
-    codec::RequestDeserializer,
-    error::Error,
-    service::{ArcAsyncServiceCall, HandlerResult},
-};
-
-pub(crate) const CANCELLATION_TOKEN: &str = "RPC_TASK_CANCELLATION";
-pub(crate) const CANCELLATION_TOKEN_DELIM: &str = ".";
 
 /// Type of message id is u16
 pub type MessageId = u16;
@@ -36,9 +27,6 @@ impl Metadata for RequestHeader {
     }
 }
 
-pub(crate) type ClientRequestBody = Box<dyn erased_serde::Serialize + Send + Sync>;
-// pub(crate) type ClientRequestBodyRaw = Vec<u8>;
-
 /// Header of a response
 #[derive(Serialize, Deserialize, Debug, Default)]
 pub struct ResponseHeader {
@@ -52,10 +40,6 @@ impl Metadata for ResponseHeader {
     }
 }
 
-pub(crate) type ClientResponseBody = Box<dyn erased_serde::Deserializer<'static> + Send>;
-
-/// The serialized representation of the response body
-pub(crate) type ClientResponseResult = Result<ClientResponseBody, ClientResponseBody>;
 
 /// The Error message that will be sent over for a error response
 #[derive(Serialize, Deserialize)]
@@ -66,38 +50,61 @@ pub(crate) enum ErrorMessage {
     ExecutionError(String),
 }
 
-impl ErrorMessage {
-    pub(crate) fn from_err(err: Error) -> Result<Self, Error> {
-        match err {
-            Error::InvalidArgument => Ok(Self::InvalidArgument),
-            Error::ServiceNotFound => Ok(Self::ServiceNotFound),
-            Error::MethodNotFound => Ok(Self::MethodNotFound),
-            Error::ExecutionError(s) => Ok(Self::ExecutionError(s)),
-            e @ Error::IoError(_) => Err(e),
-            e @ Error::ParseError(_) => Err(e),
-            e @ Error::Internal(_) => Err(e),
-            e @ Error::Canceled(_) => Err(e),
+cfg_if! {
+    if #[cfg(any(
+        feature = "async_std_runtime",
+        feature = "tokio_runtime"
+    ))] {
+        use crate::{
+            codec::RequestDeserializer,
+            error::Error,
+            service::{ArcAsyncServiceCall, HandlerResult},
+        };
+
+        pub(crate) const CANCELLATION_TOKEN: &str = "RPC_TASK_CANCELLATION";
+        pub(crate) const CANCELLATION_TOKEN_DELIM: &str = ".";
+
+        pub(crate) type ClientRequestBody = Box<dyn erased_serde::Serialize + Send + Sync>;
+        pub(crate) type ClientResponseBody = Box<dyn erased_serde::Deserializer<'static> + Send>;
+        /// The serialized representation of the response body
+        pub(crate) type ClientResponseResult = Result<ClientResponseBody, ClientResponseBody>;
+        
+        impl ErrorMessage {
+            pub(crate) fn from_err(err: Error) -> Result<Self, Error> {
+                match err {
+                    Error::InvalidArgument => Ok(Self::InvalidArgument),
+                    Error::ServiceNotFound => Ok(Self::ServiceNotFound),
+                    Error::MethodNotFound => Ok(Self::MethodNotFound),
+                    Error::ExecutionError(s) => Ok(Self::ExecutionError(s)),
+                    e @ Error::IoError(_) => Err(e),
+                    e @ Error::ParseError(_) => Err(e),
+                    e @ Error::Internal(_) => Err(e),
+                    e @ Error::Canceled(_) => Err(e),
+                }
+            }
+        }
+        
+        #[cfg_attr(feature = "http_actix_web", derive(actix::Message))]
+        #[cfg_attr(feature = "http_actix_web", rtype(result = "()"))]
+        pub(crate) enum ExecutionMessage {
+            Request {
+                call: ArcAsyncServiceCall,
+                id: MessageId,
+                method: String,
+                deserializer: RequestDeserializer,
+            },
+            Result(ExecutionResult),
+            Cancel(MessageId),
+            Stop,
+        }
+        
+        #[cfg_attr(feature = "http_actix_web", derive(actix::Message))]
+        #[cfg_attr(feature = "http_actix_web", rtype(result = "()"))]
+        pub(crate) struct ExecutionResult {
+            pub id: MessageId,
+            pub result: HandlerResult,
         }
     }
 }
 
-#[cfg_attr(feature = "http_actix_web", derive(actix::Message))]
-#[cfg_attr(feature = "http_actix_web", rtype(result = "()"))]
-pub(crate) enum ExecutionMessage {
-    Request {
-        call: ArcAsyncServiceCall,
-        id: MessageId,
-        method: String,
-        deserializer: RequestDeserializer,
-    },
-    Result(ExecutionResult),
-    Cancel(MessageId),
-    Stop,
-}
 
-#[cfg_attr(feature = "http_actix_web", derive(actix::Message))]
-#[cfg_attr(feature = "http_actix_web", rtype(result = "()"))]
-pub(crate) struct ExecutionResult {
-    pub id: MessageId,
-    pub result: HandlerResult,
-}
