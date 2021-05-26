@@ -21,3 +21,7 @@ pub trait RegisterService {
 pub trait GracefulShutdown {
     async fn close(&mut self);
 }
+
+pub(crate) trait Terminate {
+    fn terminate(self);
+}
