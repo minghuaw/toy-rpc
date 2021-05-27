@@ -1,6 +1,6 @@
 use cfg_if::cfg_if;
-use flume::{Receiver, Sender};
-use futures::{lock::Mutex, Future, FutureExt};
+use flume::{Sender};
+use futures::{lock::Mutex, Future, channel::oneshot};
 use pin_project::pin_project;
 use std::{
     collections::HashMap,
@@ -10,16 +10,23 @@ use std::{
     task::{Context, Poll},
 };
 
-use crate::message::CANCELLATION_TOKEN;
 use crate::{
-    codec::split::{ClientCodecRead, ClientCodecWrite},
     message::{
         AtomicMessageId, ClientRequestBody, ClientResponseResult, MessageId, RequestHeader,
-        ResponseHeader, CANCELLATION_TOKEN_DELIM,
     },
     Error,
 };
 use crate::util::Terminate;
+
+cfg_if! {
+    if #[cfg(any(feature = "async_std_runtime", feature = "tokio_runtime"))] {
+        use flume::Receiver;
+        use futures::{FutureExt, select};
+        
+        use crate::codec::split::{ClientCodecRead, ClientCodecWrite};
+        use crate::message::{ResponseHeader, CANCELLATION_TOKEN, CANCELLATION_TOKEN_DELIM};
+    }
+}
 
 cfg_if! {
     if #[cfg(any(
@@ -48,24 +55,16 @@ cfg_if! {
             not(feature = "serde_bincode"),
         )
     ))] {
+        #[cfg(any(feature = "async_std_runtime", feature = "tokio_runtime"))]
         use crate::codec::DefaultCodec;
     }
 }
 
 cfg_if! {
     if #[cfg(feature = "async_std_runtime")] {
-        use futures::channel::oneshot;
-        use futures::select;
-
         mod async_std;
-        // pub use crate::client::async_std::Call;
-
     } else if #[cfg(feature = "tokio_runtime")] {
-        use ::tokio::sync::oneshot;
-        use ::tokio::select;
-
         mod tokio;
-        // pub use crate::client::tokio::Call;
     }
 }
 
@@ -134,6 +133,7 @@ type ResponseMap = HashMap<MessageId, oneshot::Sender<ClientResponseResult>>;
 
 /// RPC client
 ///
+#[cfg_attr(not(any(feature = "async_std_runtime", feature = "tokio_runtime")), allow(dead_code))]
 pub struct Client<Mode> {
     count: AtomicMessageId,
     pending: Arc<Mutex<ResponseMap>>,
@@ -163,6 +163,7 @@ impl<Mode> Drop for Client<Mode> {
     }
 }
 
+#[cfg(any(feature = "async_std_runtime", feature = "tokio_runtime"))]
 pub(crate) async fn reader_loop(
     mut reader: impl ClientCodecRead,
     pending: Arc<Mutex<ResponseMap>>,
@@ -183,6 +184,7 @@ pub(crate) async fn reader_loop(
     }
 }
 
+#[cfg(any(feature = "async_std_runtime", feature = "tokio_runtime"))]
 async fn read_once(
     reader: &mut impl ClientCodecRead,
     pending: &Arc<Mutex<ResponseMap>>,
@@ -225,6 +227,7 @@ async fn read_once(
     Ok(())
 }
 
+#[cfg(any(feature = "async_std_runtime", feature = "tokio_runtime"))]
 pub(crate) async fn writer_loop(
     mut writer: impl ClientCodecWrite,
     requests: Receiver<(RequestHeader, ClientRequestBody)>,
@@ -252,6 +255,7 @@ pub(crate) async fn writer_loop(
     }
 }
 
+#[cfg(any(feature = "async_std_runtime", feature = "tokio_runtime"))]
 async fn write_once(
     writer: &mut impl ClientCodecWrite,
     request: &Receiver<(RequestHeader, ClientRequestBody)>,
@@ -263,6 +267,7 @@ async fn write_once(
     Ok(())
 }
 
+#[cfg(any(feature = "async_std_runtime", feature = "tokio_runtime"))]
 async fn handle_call<Res>(
     pending: Arc<Mutex<ResponseMap>>,
     header: RequestHeader,
@@ -309,6 +314,7 @@ where
     Ok(())
 }
 
+#[cfg(any(feature = "async_std_runtime", feature = "tokio_runtime"))]
 async fn handle_response<Res>(
     response: oneshot::Receiver<ClientResponseResult>,
     done: oneshot::Sender<Result<Res, Error>>,

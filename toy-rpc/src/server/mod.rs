@@ -4,27 +4,14 @@
 
 use cfg_if::cfg_if;
 use erased_serde as erased;
-use flume::{Receiver, Sender};
 use std::collections::HashMap;
-use std::io::ErrorKind;
 use std::sync::Arc;
 
-use crate::error::Error;
-use crate::message::{ErrorMessage, RequestHeader, ResponseHeader};
 use crate::service::{
-    build_service, ArcAsyncServiceCall, AsyncServiceMap, HandleService, HandlerResult,
+    build_service, AsyncServiceMap, HandleService,
     HandlerResultFut, Service,
 };
 use crate::util::RegisterService;
-use crate::{
-    codec::{
-        split::{ServerCodecRead, ServerCodecSplit, ServerCodecWrite},
-        RequestDeserializer,
-    },
-    message::{
-        ExecutionMessage, ExecutionResult, MessageId, CANCELLATION_TOKEN, CANCELLATION_TOKEN_DELIM,
-    },
-};
 
 #[cfg(all(feature = "http_actix_web"))]
 #[cfg_attr(doc, doc(cfg(feature = "http_actix_web")))]
@@ -95,244 +82,266 @@ impl Server {
     pub fn builder() -> ServerBuilder {
         ServerBuilder::new()
     }
-
-    /// This is like serve_conn except that it uses a specified codec
-    ///
-    /// Example
-    ///
-    /// ```rust
-    /// use async_std::net::TcpStream;
-    /// // the default `Codec` will be used as an example
-    /// use toy_rpc::codec::Codec;
-    ///
-    /// #[async_std::main]
-    /// async fn main() {
-    ///     // assume the following connection can be established
-    ///     let stream = TcpStream::connect("127.0.0.1:8080").await.unwrap();
-    ///     let codec = Codec::new(stream);
-    ///     
-    ///     let server = Server::builder()
-    ///         .register(example_service)
-    ///         .build();
-    ///     // assume `ExampleService` exist
-    ///     let handle = task::spawn(async move {
-    ///         server.serve_codec(codec).await.unwrap();
-    ///     })    
-    ///     handle.await;
-    /// }
-    /// ```
-    #[cfg(any(feature = "async_std_runtime", feature = "tokio_runtime"))]
-    pub async fn serve_codec<C>(&self, codec: C) -> Result<(), Error>
-    where
-        C: ServerCodecSplit + Send + Sync + 'static,
-    {
-        // Self::serve_codec_loop(codec, self.services.clone()).await
-        Self::serve_codec_setup(codec, self.services.clone()).await
-    }
 }
 
-async fn serve_codec_reader_loop(
-    mut codec_reader: impl ServerCodecRead,
-    services: Arc<AsyncServiceMap>,
-    executor: Sender<ExecutionMessage>,
-    writer: Sender<ExecutionResult>,
-) -> Result<(), Error> {
-    // Keep reading until no header can be read
-    while let Some(header) = codec_reader.read_request_header().await {
-        // [0] read request body
-        let mut deserializer = get_request_deserializer(&mut codec_reader).await?;
-        // [1] destructure header
-        let RequestHeader { id, service_method } = header?;
-        // [2] split service name and method name
-        let (service, method) = match preprocess_service_method(id, &service_method) {
-            Ok(pair) => pair,
-            Err(err) => {
-                match err {
-                    Error::Canceled(_) => {
-                        // double check the message body
-                        let token: String = erased_serde::deserialize(&mut deserializer)?;
-                        if is_correct_cancellation_token(id, &token) {
-                            executor.send_async(ExecutionMessage::Cancel(id)).await?;
+cfg_if! {
+    if #[cfg(any(feature = "async_std_runtime", feature = "tokio_runtime"))] {
+        use flume::{Receiver, Sender};
+        use std::io::ErrorKind;
+        
+        use crate::message::{ErrorMessage, RequestHeader, ResponseHeader};
+        use crate::service::{ArcAsyncServiceCall, HandlerResult};
+        use crate::{
+            codec::{
+                split::{ServerCodecRead, ServerCodecSplit, ServerCodecWrite},
+                RequestDeserializer,
+            },
+            message::{
+                ExecutionMessage, ExecutionResult, MessageId, CANCELLATION_TOKEN, CANCELLATION_TOKEN_DELIM
+            },
+        };
+        use crate::error::Error;
+
+        impl Server {
+            /// This is like serve_conn except that it uses a specified codec
+            ///
+            /// Example
+            ///
+            /// ```rust
+            /// use async_std::net::TcpStream;
+            /// // the default `Codec` will be used as an example
+            /// use toy_rpc::codec::Codec;
+            ///
+            /// #[async_std::main]
+            /// async fn main() {
+            ///     // assume the following connection can be established
+            ///     let stream = TcpStream::connect("127.0.0.1:8080").await.unwrap();
+            ///     let codec = Codec::new(stream);
+            ///     
+            ///     let server = Server::builder()
+            ///         .register(example_service)
+            ///         .build();
+            ///     // assume `ExampleService` exist
+            ///     let handle = task::spawn(async move {
+            ///         server.serve_codec(codec).await.unwrap();
+            ///     })    
+            ///     handle.await;
+            /// }
+            /// ```
+            pub async fn serve_codec<C>(&self, codec: C) -> Result<(), Error>
+            where
+                C: ServerCodecSplit + Send + Sync + 'static,
+            {
+                // Self::serve_codec_loop(codec, self.services.clone()).await
+                Self::serve_codec_setup(codec, self.services.clone()).await
+            }
+        }
+        
+        async fn serve_codec_reader_loop(
+            mut codec_reader: impl ServerCodecRead,
+            services: Arc<AsyncServiceMap>,
+            executor: Sender<ExecutionMessage>,
+            writer: Sender<ExecutionResult>,
+        ) -> Result<(), Error> {
+            // Keep reading until no header can be read
+            while let Some(header) = codec_reader.read_request_header().await {
+                // [0] read request body
+                let mut deserializer = get_request_deserializer(&mut codec_reader).await?;
+                // [1] destructure header
+                let RequestHeader { id, service_method } = header?;
+                // [2] split service name and method name
+                let (service, method) = match preprocess_service_method(id, &service_method) {
+                    Ok(pair) => pair,
+                    Err(err) => {
+                        match err {
+                            Error::Canceled(_) => {
+                                // double check the message body
+                                let token: String = erased_serde::deserialize(&mut deserializer)?;
+                                if is_correct_cancellation_token(id, &token) {
+                                    executor.send_async(ExecutionMessage::Cancel(id)).await?;
+                                }
+                            },
+                            Error::MethodNotFound => {
+                                // should not stop the reader if the service is not found
+                                writer
+                                    .send_async(ExecutionResult {
+                                        id,
+                                        result: Err(err),
+                                    })
+                                    .await?;
+                            },
+        
+                            // Note: not using `_` in case of mishanlding of new additions of Error types
+                            Error::IoError(_) => {},
+                            Error::ParseError(_) => {},
+                            Error::Internal(_) => {},
+                            Error::InvalidArgument => {},
+                            Error::ServiceNotFound => {},
+                            Error::ExecutionError(_) => {},
                         }
-                    },
-                    Error::MethodNotFound => {
-                        // should not stop the reader if the service is not found
+                        continue;
+                    }
+                };
+                log::trace!(
+                    "Message id: {}, service: {}, method: {}",
+                    id,
+                    service,
+                    method
+                );
+                // [3] look up the service
+                let call: ArcAsyncServiceCall = match services.get(service) {
+                    Some(serv_call) => serv_call.clone(),
+                    None => {
+                        log::error!("Service not found: '{}'", service);
+        
+                        // should not stop the reader if the method is not found
                         writer
                             .send_async(ExecutionResult {
                                 id,
-                                result: Err(err),
+                                result: Err(Error::ServiceNotFound),
                             })
                             .await?;
-                    },
-
-                    // Note: not using `_` in case of mishanlding of new additions of Error types
-                    Error::IoError(_) => {},
-                    Error::ParseError(_) => {},
-                    Error::Internal(_) => {},
-                    Error::InvalidArgument => {},
-                    Error::ServiceNotFound => {},
-                    Error::ExecutionError(_) => {},
-                }
-                continue;
-            }
-        };
-        log::trace!(
-            "Message id: {}, service: {}, method: {}",
-            id,
-            service,
-            method
-        );
-        // [3] look up the service
-        let call: ArcAsyncServiceCall = match services.get(service) {
-            Some(serv_call) => serv_call.clone(),
-            None => {
-                log::error!("Service not found: '{}'", service);
-
-                // should not stop the reader if the method is not found
-                writer
-                    .send_async(ExecutionResult {
+                        continue;
+                    }
+                };
+                // [4] send to executor
+                executor
+                    .send_async(ExecutionMessage::Request {
+                        call,
                         id,
-                        result: Err(Error::ServiceNotFound),
+                        method: method.into(),
+                        deserializer,
                     })
                     .await?;
-                continue;
             }
-        };
-        // [4] send to executor
-        executor
-            .send_async(ExecutionMessage::Request {
-                call,
-                id,
-                method: method.into(),
-                deserializer,
-            })
-            .await?;
-    }
-
-    // Stop the executor loop when client connection is gone
-    executor.send_async(ExecutionMessage::Stop).await?;
-
-    Ok(())
-}
-
-async fn serve_codec_execute_call(
-    id: MessageId,
-    fut: impl std::future::Future<Output = HandlerResult>,
-    // executor: Sender<ExecutionMessage>,
-) -> HandlerResult {
-    let result: HandlerResult = fut.await.map_err(|err| {
-        log::error!(
-            "Error found executing request id: {}, error msg: {}",
-            &id,
-            &err
-        );
-        match err {
-            // if serde cannot parse request, the argument is likely mistaken
-            Error::ParseError(e) => {
-                log::error!("ParseError {:?}", e);
-                Error::InvalidArgument
-            }
-            e => e,
+        
+            // Stop the executor loop when client connection is gone
+            executor.send_async(ExecutionMessage::Stop).await?;
+        
+            Ok(())
         }
-    });
-    // // [6] send result to response writer
-    // let result = ExecutionResult { id, result };
-    // match executor.send_async(ExecutionMessage::Result(result)).await {
-    //     Ok(_) => {}
-    //     Err(err) => log::error!("Failed to send to response writer ({})", err),
-    // };
-    result
-}
-
-async fn serve_codec_writer_loop(
-    mut codec_writer: impl ServerCodecWrite,
-    results: Receiver<ExecutionResult>,
-) -> Result<(), Error> {
-    while let Ok(msg) = results.recv_async().await {
-        match serve_codec_write_once(&mut codec_writer, msg).await {
-            Ok(_) => {}
-            Err(err) => {
-                log::error!("{}", err);
-            }
+        
+        async fn serve_codec_execute_call(
+            id: MessageId,
+            fut: impl std::future::Future<Output = HandlerResult>,
+            // executor: Sender<ExecutionMessage>,
+        ) -> HandlerResult {
+            let result: HandlerResult = fut.await.map_err(|err| {
+                log::error!(
+                    "Error found executing request id: {}, error msg: {}",
+                    &id,
+                    &err
+                );
+                match err {
+                    // if serde cannot parse request, the argument is likely mistaken
+                    Error::ParseError(e) => {
+                        log::error!("ParseError {:?}", e);
+                        Error::InvalidArgument
+                    }
+                    e => e,
+                }
+            });
+            // // [6] send result to response writer
+            // let result = ExecutionResult { id, result };
+            // match executor.send_async(ExecutionMessage::Result(result)).await {
+            //     Ok(_) => {}
+            //     Err(err) => log::error!("Failed to send to response writer ({})", err),
+            // };
+            result
         }
-    }
-    Ok(())
-}
-
-async fn serve_codec_write_once(
-    writer: &mut impl ServerCodecWrite,
-    result: ExecutionResult,
-) -> Result<(), Error> {
-    let ExecutionResult { id, result } = result;
-
-    match result {
-        Ok(b) => {
-            log::trace!("Message {} Success", &id);
-            let header = ResponseHeader {
-                id,
-                is_error: false,
+        
+        async fn serve_codec_writer_loop(
+            mut codec_writer: impl ServerCodecWrite,
+            results: Receiver<ExecutionResult>,
+        ) -> Result<(), Error> {
+            while let Ok(msg) = results.recv_async().await {
+                match serve_codec_write_once(&mut codec_writer, msg).await {
+                    Ok(_) => {}
+                    Err(err) => {
+                        log::error!("{}", err);
+                    }
+                }
+            }
+            Ok(())
+        }
+        
+        async fn serve_codec_write_once(
+            writer: &mut impl ServerCodecWrite,
+            result: ExecutionResult,
+        ) -> Result<(), Error> {
+            let ExecutionResult { id, result } = result;
+        
+            match result {
+                Ok(b) => {
+                    log::trace!("Message {} Success", &id);
+                    let header = ResponseHeader {
+                        id,
+                        is_error: false,
+                    };
+                    writer.write_response(header, &b).await?;
+                }
+                Err(err) => {
+                    log::trace!("Message {} Error", &id);
+                    let header = ResponseHeader { id, is_error: true };
+                    let msg = ErrorMessage::from_err(err)?;
+                    writer.write_response(header, &msg).await?;
+                }
             };
-            writer.write_response(header, &b).await?;
+            Ok(())
         }
-        Err(err) => {
-            log::trace!("Message {} Error", &id);
-            let header = ResponseHeader { id, is_error: true };
-            let msg = ErrorMessage::from_err(err)?;
-            writer.write_response(header, &msg).await?;
-        }
-    };
-    Ok(())
-}
-
-async fn get_request_deserializer(
-    codec_reader: &mut impl ServerCodecRead,
-) -> Result<RequestDeserializer, Error> {
-    match codec_reader.read_request_body().await {
-        Some(r) => r,
-        None => {
-            let err = Error::IoError(std::io::Error::new(
-                ErrorKind::UnexpectedEof,
-                "Failed to read message body",
-            ));
-            log::error!("{}", &err);
-            return Err(err);
-        }
-    }
-}
-
-fn preprocess_service_method(id: MessageId, service_method: &str) -> Result<(&str, &str), Error> {
-    let pos = match service_method.rfind('.') {
-        Some(p) => p,
-        None => {
-            // test whether a cancellation request is received
-            if service_method == CANCELLATION_TOKEN {
-                log::error!("Received cancellation request with id: {}", id);
-                return Err(Error::Canceled(Some(id)));
-            } else {
-                log::error!("Method not supplied from request: '{}'", service_method);
-                return Err(Error::MethodNotFound);
+        
+        async fn get_request_deserializer(
+            codec_reader: &mut impl ServerCodecRead,
+        ) -> Result<RequestDeserializer, Error> {
+            match codec_reader.read_request_body().await {
+                Some(r) => r,
+                None => {
+                    let err = Error::IoError(std::io::Error::new(
+                        ErrorKind::UnexpectedEof,
+                        "Failed to read message body",
+                    ));
+                    log::error!("{}", &err);
+                    return Err(err);
+                }
             }
         }
-    };
-    let service = &service_method[..pos];
-    let method = &service_method[pos + 1..];
-    Ok((service, method))
-}
-
-fn is_correct_cancellation_token(id: MessageId, token: &str) -> bool {
-    match token.find(CANCELLATION_TOKEN_DELIM) {
-        Some(ind) => {
-            let base = &token[..ind];
-            let id_str = &token[ind + 1..];
-            let _id: MessageId = match id_str.parse() {
-                Ok(num) => num,
-                Err(_) => return false,
+        
+        fn preprocess_service_method(id: MessageId, service_method: &str) -> Result<(&str, &str), Error> {
+            let pos = match service_method.rfind('.') {
+                Some(p) => p,
+                None => {
+                    // test whether a cancellation request is received
+                    if service_method == CANCELLATION_TOKEN {
+                        log::error!("Received cancellation request with id: {}", id);
+                        return Err(Error::Canceled(Some(id)));
+                    } else {
+                        log::error!("Method not supplied from request: '{}'", service_method);
+                        return Err(Error::MethodNotFound);
+                    }
+                }
             };
-            base == CANCELLATION_TOKEN && _id == id 
+            let service = &service_method[..pos];
+            let method = &service_method[pos + 1..];
+            Ok((service, method))
         }
-        None => false,
+        
+        fn is_correct_cancellation_token(id: MessageId, token: &str) -> bool {
+            match token.find(CANCELLATION_TOKEN_DELIM) {
+                Some(ind) => {
+                    let base = &token[..ind];
+                    let id_str = &token[ind + 1..];
+                    let _id: MessageId = match id_str.parse() {
+                        Ok(num) => num,
+                        Err(_) => return false,
+                    };
+                    base == CANCELLATION_TOKEN && _id == id 
+                }
+                None => false,
+            }
+        }
     }
 }
+
 
 /// Server builder
 pub struct ServerBuilder {

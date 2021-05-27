@@ -50,21 +50,21 @@ pub(crate) enum ErrorMessage {
     ExecutionError(String),
 }
 
+#[cfg(feature = "client")]
+pub(crate) type ClientRequestBody = Box<dyn erased_serde::Serialize + Send + Sync>;
+#[cfg(feature = "client")]
+pub(crate) type ClientResponseBody = Box<dyn erased_serde::Deserializer<'static> + Send>;
+/// The serialized representation of the response body
+#[cfg(feature = "client")]
+pub(crate) type ClientResponseResult = Result<ClientResponseBody, ClientResponseBody>;
+
 cfg_if! {
     if #[cfg(any(
         feature = "async_std_runtime",
         feature = "tokio_runtime"
-    ))] {        
+    ))] {       
         pub(crate) const CANCELLATION_TOKEN: &str = "RPC_TASK_CANCELLATION";
         pub(crate) const CANCELLATION_TOKEN_DELIM: &str = ".";
-
-        #[cfg(feature = "client")]
-        pub(crate) type ClientRequestBody = Box<dyn erased_serde::Serialize + Send + Sync>;
-        #[cfg(feature = "client")]
-        pub(crate) type ClientResponseBody = Box<dyn erased_serde::Deserializer<'static> + Send>;
-        /// The serialized representation of the response body
-        #[cfg(feature = "client")]
-        pub(crate) type ClientResponseResult = Result<ClientResponseBody, ClientResponseBody>;
         
         #[cfg(feature = "server")]
         use crate::{
@@ -72,7 +72,7 @@ cfg_if! {
             codec::RequestDeserializer,
             service::{ArcAsyncServiceCall, HandlerResult},
         };
-
+        
         #[cfg(feature = "server")]
         impl ErrorMessage {
             pub(crate) fn from_err(err: Error) -> Result<Self, Error> {

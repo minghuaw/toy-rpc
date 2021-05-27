@@ -833,7 +833,7 @@
 //! - more tests
 //!
 
-use cfg_if::cfg_if;
+// use cfg_if::cfg_if;
 
 pub mod codec;
 pub mod error;
@@ -843,31 +843,32 @@ pub mod service;
 pub mod transport;
 pub mod util;
 
-cfg_if! {
-    if #[cfg(any(
-        feature = "async_std_runtime",
-        feature = "tokio_runtime",
-        feature = "docs",
-    ))] {
-        /// Default RPC path for http handler
-        // #[cfg(any(
-        //     feature = "http_tide",
-        //     feature = "http_warp",
-        //     feature = "http_actix_web",
-        // ))]
-        pub const DEFAULT_RPC_PATH: &str = "_rpc_";
+// cfg_if! {
+//     if #[cfg(any(
+//         feature = "async_std_runtime",
+//         feature = "tokio_runtime",
+//         feature = "docs",
+//     ))] {
+//         /// Default RPC path for http handler
+//         // #[cfg(any(
+//         //     feature = "http_tide",
+//         //     feature = "http_warp",
+//         //     feature = "http_actix_web",
+//         // ))]
+//     }
+// }
 
-        #[cfg(feature = "client")]
-        pub mod client;
-        #[cfg(feature = "client")]
-        pub use client::Client;
-        
-        #[cfg(feature = "server")]
-        pub mod server;
-        #[cfg(feature = "server")]
-        pub use server::{Server, ServerBuilder};
-    }
-}
+pub const DEFAULT_RPC_PATH: &str = "_rpc_";
+
+#[cfg(feature = "client")]
+pub mod client;
+#[cfg(feature = "client")]
+pub use client::Client;
+
+#[cfg(feature = "server")]
+pub mod server;
+#[cfg(feature = "server")]
+pub use server::{Server, ServerBuilder};
 
 
 pub use error::Error;
