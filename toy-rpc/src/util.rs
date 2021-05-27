@@ -4,6 +4,9 @@ use std::collections::HashMap;
 
 use crate::service::AsyncHandler;
 
+#[cfg(any(feature = "async_std_runtime", feature = "tokio_runtime"))]
+use crate::error::Error;
+
 /// Helper trait for service registration
 pub trait RegisterService {
     /// Helper function that returns a hashmap of the RPC service method handlers
@@ -23,5 +26,27 @@ pub trait GracefulShutdown {
 }
 
 pub(crate) trait Terminate {
-    fn terminate(self);
+    fn terminate(&mut self);
+}
+
+#[cfg(feature = "async_std_runtime")]
+impl Terminate for async_std::task::JoinHandle<Result<(), Error>> {
+    fn terminate(&mut self) {
+        match async_std::task::block_on(self) {
+            Ok(_) => { },
+            Err(err) => {
+                log::error!("{:?}", err);
+            }
+        }
+    }
+}
+
+#[cfg(feature = "tokio_runtime")]
+impl Terminate for tokio::task::JoinHandle<Result<(), Error>> {
+    fn terminate(&mut self) {
+        match tokio::task::block_in_place(|| tokio::runtime::Handle::current().block_on(self)) {
+            Ok(_) => { },
+            Err(err) => log::error!("{:?}", err)
+        }
+    }
 }
