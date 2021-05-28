@@ -1,3 +1,5 @@
+//! WebSocket support for `tide-websockets`
+
 use tide_websockets as tide_ws;
 
 use super::*;

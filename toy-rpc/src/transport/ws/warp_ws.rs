@@ -1,3 +1,5 @@
+//! WebSocket support for `warp`
+
 use super::*;
 
 #[async_trait]

@@ -1,3 +1,5 @@
+//! Client implementation with `async_std` runtime
+
 use ::async_std::task;
 use futures::{AsyncRead, AsyncWrite};
 use std::sync::atomic::Ordering;

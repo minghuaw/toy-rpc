@@ -1,4 +1,5 @@
 //! Custom errors
+
 use std::io::ErrorKind;
 
 use crate::message::{ErrorMessage, MessageId};

@@ -1,3 +1,5 @@
+//! WebSocket transport support
+
 use async_trait::async_trait;
 use cfg_if::cfg_if;
 use futures::stream::{SplitSink, SplitStream};
