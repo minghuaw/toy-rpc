@@ -78,7 +78,9 @@ cfg_if! {
         feature = "async_std_runtime",
         feature = "tokio_runtime"
     ))] {       
+        #[cfg(any(feature = "server", feature = "client"))]
         pub(crate) const CANCELLATION_TOKEN: &str = "RPC_TASK_CANCELLATION";
+        #[cfg(any(feature = "server", feature = "client"))]
         pub(crate) const CANCELLATION_TOKEN_DELIM: &str = ".";
         
         #[cfg(feature = "server")]

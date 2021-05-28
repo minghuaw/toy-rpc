@@ -1,3 +1,5 @@
+//! RPC Client impementation
+
 use cfg_if::cfg_if;
 use flume::{Sender};
 use futures::{lock::Mutex, Future, channel::oneshot};
@@ -76,6 +78,8 @@ impl<Res> Call<Res>
 where
     Res: serde::de::DeserializeOwned,
 {
+    /// Cancel the RPC call
+
     pub fn cancel(self) {
         let mut handle = self.handle;
         match self.cancel.send(self.id) {

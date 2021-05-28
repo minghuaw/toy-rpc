@@ -1,9 +1,12 @@
 #![allow(dead_code)]
 
 cfg_if::cfg_if! {
-    if #[cfg(any(
-        feature = "async_std_runtime",
-        feature = "tokio_runtime"
+    if #[cfg(all(
+        feature = "client",
+        any(
+            feature = "async_std_runtime",
+            feature = "tokio_runtime"
+        )
     ))] {
 
         use serde::{Deserialize, Serialize};
@@ -135,11 +138,6 @@ cfg_if::cfg_if! {
                 Err(args)
             }
         }
-    }
-}
-
-cfg_if::cfg_if! {
-    if #[cfg(feature = "client")] {
 
         use toy_rpc::client::{Client, Connected};
         

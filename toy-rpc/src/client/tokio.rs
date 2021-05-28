@@ -1,3 +1,5 @@
+//! Client implementation with `tokio` runtime
+
 use ::tokio::io::{AsyncRead, AsyncWrite};
 use ::tokio::task;
 use std::sync::atomic::Ordering;
@@ -38,8 +40,29 @@ cfg_if! {
         use async_tungstenite::tokio::connect_async;
         use crate::transport::ws::WebSocketConn;
         use crate::DEFAULT_RPC_PATH;
-
+        
+        /// The following impl block is controlled by feature flag. It is enabled
+        /// if and only if **exactly one** of the the following feature flag is turned on
+        /// - `serde_bincode`
+        /// - `serde_json`
+        /// - `serde_cbor`
+        /// - `serde_rmp`
         impl Client<NotConnected> {
+            /// Connects the an RPC server over socket at the specified network address
+            ///
+            /// This is enabled
+            /// if and only if **exactly one** of the the following feature flag is turned on
+            /// - `serde_bincode`
+            /// - `serde_json`
+            /// - `serde_cbor`
+            /// - `serde_rmp`
+            /// 
+            /// # Example
+            ///
+            /// ```rust
+            /// let addr = "127.0.0.1:8080";
+            /// let client = Client::dial(addr).await.unwrap();
+            /// ```
             pub async fn dial(addr: impl ToSocketAddrs)
                 -> Result<Client<Connected>, Error>
             {
@@ -69,13 +92,8 @@ cfg_if! {
             /// # Example
             ///
             /// ```rust
-            /// use toy_rpc::Client;
-            ///
-            /// #[async_std::main]
-            /// async fn main() {
-            ///     let addr = "ws://127.0.0.1:8080/rpc/";
-            ///     let client = Client::dial_http(addr).await.unwrap();
-            /// }
+            /// let addr = "ws://127.0.0.1:8080/rpc/";
+            /// let client = Client::dial_http(addr).await.unwrap();
             /// ```
             ///
             pub async fn dial_http(addr: &str) -> Result<Client<Connected>, Error> {
@@ -97,13 +115,8 @@ cfg_if! {
             /// # Example
             ///
             /// ```rust
-            /// use toy_rpc::client::Client;
-            ///
-            /// #[async_std::main]
-            /// async fn main() {
-            ///     let addr = "ws://127.0.0.1:8080";
-            ///     let client = Client::dial_http(addr).await.unwrap();
-            /// }
+            /// let addr = "ws://127.0.0.1:8080";
+            /// let client = Client::dial_http(addr).await.unwrap();
             /// ```
             ///
             pub async fn dial_websocket(addr: &str) -> Result<Client<Connected>, Error> {
@@ -129,14 +142,8 @@ cfg_if! {
             ///
             /// # Example
             /// ```
-            /// use async_std::net::TcpStream;
-            /// use toy_rpc::Client;
-            ///
-            /// #[async_std::main]
-            /// async fn main() {
-            ///     let stream = TcpStream::connect("127.0.0.1:8080").await.unwrap();
-            ///     let client = Client::with_stream(stream);
-            /// }
+            /// let stream = TcpStream::connect("127.0.0.1:8080").await.unwrap();
+            /// let client = Client::with_stream(stream);
             /// ```
             pub fn with_stream<T>(stream: T) -> Client<Connected>
             where
@@ -150,6 +157,16 @@ cfg_if! {
 }
 
 impl Client<NotConnected> {
+    /// Creates an RPC 'Client` over socket with a specified codec
+    ///
+    /// Example
+    ///
+    /// ```rust
+    /// let addr = "127.0.0.1:8080";
+    /// let stream = TcpStream::connect(addr).await.unwrap();
+    /// let codec = Codec::new(stream);
+    /// let client = Client::with_codec(codec);
+    /// ```
     pub fn with_codec<C>(codec: C) -> Client<Connected>
     where
         C: SplittableClientCodec + Send + Sync + 'static,
@@ -176,6 +193,18 @@ impl Client<NotConnected> {
 }
 
 impl Client<Connected> {
+    /// Invokes the named function and wait synchronously in a blocking manner.
+    ///
+    /// This function internally calls `task::block_on` to wait for the response.
+    /// Do NOT use this function inside another `task::block_on`.async_std
+    ///
+    /// Example
+    ///
+    /// ```rust
+    /// let args = "arguments";
+    /// let reply: Result<String, Error> = client.call("EchoService.echo", &args);
+    /// println!("{:?}", reply);
+    /// ```
     pub fn call_blocking<Req, Res>(
         &self,
         service_method: impl ToString,
@@ -191,6 +220,24 @@ impl Client<Connected> {
         })
     }
 
+    /// Invokes the named RPC function call asynchronously and returns a cancellation `Call`
+    /// 
+    /// The `Call<Res>` type takes one type argument `Res` which is the type of successful RPC execution.
+    /// The result can be obtained by `.await`ing on the `Call`, which returns type `Result<Res, toy_rpc::Error>`
+    /// `Call` can be cancelled by calling the `cancel()` function. 
+    /// The request will be sent in a background task. 
+    /// 
+    /// Example 
+    /// 
+    /// ```rust
+    /// // Get the result by `.await`ing on the `Call`
+    /// let call: Call<i32> = client.call("SomeService.echo_i32", 7i32);
+    /// let reply: Result<i32, toy_rpc::Error> = call.await;
+    /// 
+    /// // Cancel the call
+    /// let call: Call<()> = client.call("SomeService.infinite_loop", ());
+    /// call.cancel();
+    /// ```
     pub fn call<Req, Res>(&self, service_method: impl ToString, args: Req) -> Call<Res>
     where
         Req: serde::Serialize + Send + Sync + 'static,
