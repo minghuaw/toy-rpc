@@ -1,6 +1,6 @@
 #![cfg_attr(feature = "docs", feature(doc_cfg))]
 #![forbid(unsafe_code)]
-// #![warn(missing_docs)]
+#![warn(missing_docs)]
 
 //! # An async RPC crate that mimics the `golang`'s `net/rpc` package and supports both `async-std` and `tokio`.
 //!

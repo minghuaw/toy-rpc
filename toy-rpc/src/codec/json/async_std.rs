@@ -14,7 +14,7 @@ cfg_if! {
         use std::marker::PhantomData;
 
         use super::*;
-        use crate::codec::split::{ServerCodecSplit, ClientCodecSplit};
+        use crate::codec::split::{SplittableServerCodec, SplittableClientCodec};
         use crate::codec::RequestDeserializer;
         use crate::codec::split::{CodecReadHalf, CodecWriteHalf};
 
@@ -174,7 +174,7 @@ cfg_if! {
         }
 
         #[async_trait]
-        impl<R, W> ServerCodecSplit for Codec<R, W, ConnTypeReadWrite>
+        impl<R, W> SplittableServerCodec for Codec<R, W, ConnTypeReadWrite>
         where
             R: AsyncBufRead + Send + Sync + Unpin,
             W: AsyncWrite + Send + Sync + Unpin,
@@ -199,7 +199,7 @@ cfg_if! {
         }
 
         #[async_trait]
-        impl<R, W> ClientCodecSplit for Codec<R, W, ConnTypeReadWrite>
+        impl<R, W> SplittableClientCodec for Codec<R, W, ConnTypeReadWrite>
         where
             R: AsyncBufRead + Send + Sync + Unpin,
             W: AsyncWrite + Send + Sync + Unpin,

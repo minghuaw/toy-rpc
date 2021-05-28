@@ -93,7 +93,7 @@ cfg_if! {
         use crate::service::{ArcAsyncServiceCall, HandlerResult};
         use crate::{
             codec::{
-                split::{ServerCodecRead, ServerCodecSplit, ServerCodecWrite},
+                split::{ServerCodecRead, SplittableServerCodec, ServerCodecWrite},
                 RequestDeserializer,
             },
             message::{
@@ -130,7 +130,7 @@ cfg_if! {
             /// ```
             pub async fn serve_codec<C>(&self, codec: C) -> Result<(), Error>
             where
-                C: ServerCodecSplit + Send + Sync + 'static,
+                C: SplittableServerCodec + Send + Sync + 'static,
             {
                 // Self::serve_codec_loop(codec, self.services.clone()).await
                 Self::serve_codec_setup(codec, self.services.clone()).await

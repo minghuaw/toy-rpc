@@ -2,7 +2,7 @@ use ::tokio::io::{AsyncRead, AsyncWrite};
 use ::tokio::task;
 use std::sync::atomic::Ordering;
 
-use crate::codec::split::ClientCodecSplit;
+use crate::codec::split::SplittableClientCodec;
 
 use super::*;
 
@@ -152,7 +152,7 @@ cfg_if! {
 impl Client<NotConnected> {
     pub fn with_codec<C>(codec: C) -> Client<Connected>
     where
-        C: ClientCodecSplit + Send + Sync + 'static,
+        C: SplittableClientCodec + Send + Sync + 'static,
     {
         let (writer, reader) = codec.split();
         let (req_sender, req_recver) = flume::unbounded();

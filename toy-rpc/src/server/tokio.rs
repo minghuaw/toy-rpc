@@ -40,7 +40,7 @@ cfg_if! {
 
         use crate::error::Error;
         use crate::transport::ws::WebSocketConn;
-        use crate::codec::split::ServerCodecSplit;
+        use crate::codec::split::SplittableServerCodec;
         use crate::{
             codec::{DefaultCodec},
             message::{ExecutionMessage, ExecutionResult},
@@ -216,7 +216,7 @@ cfg_if! {
             }
 
             pub(crate) async fn serve_codec_setup(
-                codec: impl ServerCodecSplit + 'static,
+                codec: impl SplittableServerCodec + 'static,
                 services: Arc<AsyncServiceMap>
             ) -> Result<(), Error> {
                 let (exec_sender, exec_recver) = flume::unbounded();

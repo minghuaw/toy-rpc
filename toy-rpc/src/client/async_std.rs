@@ -2,7 +2,7 @@ use ::async_std::task;
 use futures::{AsyncRead, AsyncWrite};
 use std::sync::atomic::Ordering;
 
-use crate::{codec::split::ClientCodecSplit, transport::ws::WebSocketConn};
+use crate::{codec::split::SplittableClientCodec, transport::ws::WebSocketConn};
 
 use super::*;
 
@@ -196,7 +196,7 @@ impl Client<NotConnected> {
     /// ```
     pub fn with_codec<C>(codec: C) -> Client<Connected>
     where
-        C: ClientCodecSplit + Send + Sync + 'static,
+        C: SplittableClientCodec + Send + Sync + 'static,
     {
         let (writer, reader) = codec.split();
         let (req_sender, req_recver) = flume::unbounded();

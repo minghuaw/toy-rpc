@@ -1,23 +1,35 @@
 use super::*;
-
-pub trait ClientCodecSplit {
+/// Split the ClientCodec into a reader half and writer half
+///
+/// This is trait replaces `ClientCodec`.
+pub trait SplittableClientCodec {
+    /// Type of the reader half
     type Reader: ClientCodecRead;
+
+    /// Type of the write half
     type Writer: ClientCodecWrite;
 
+    /// Splits a client codec into a reader half and a writer half
     fn split(self) -> (Self::Writer, Self::Reader);
 }
 
+/// A client side codec that can read response header and response body
 #[async_trait]
 pub trait ClientCodecRead: Send {
+    /// Reads the response header. Returns `None` if the underlying connection is closed
     async fn read_response_header(&mut self) -> Option<Result<ResponseHeader, Error>>;
+
+    /// Reads the response body. Returns `None` if the underlying connection is closed
     async fn read_response_body(&mut self) -> Option<Result<RequestDeserializer, Error>>;
 }
 
+/// A client side codec that can write requests
 #[async_trait]
 pub trait ClientCodecWrite: Send {
-    // (Probably) don't need to worry about header/body interleaving
-    // because rust guarantees only one mutable reference at a time
+    /// Writes a request to the server
     async fn write_request(
+        // (Probably) don't need to worry about header/body interleaving
+        // because rust guarantees only one mutable reference at a time
         &mut self,
         header: RequestHeader,
         body: &(dyn erased::Serialize + Send + Sync),
@@ -48,7 +60,7 @@ cfg_if! {
             )
         )
     ))] {
-        impl<R, W> ClientCodecSplit for Codec<R, W, ConnTypeReadWrite>
+        impl<R, W> SplittableClientCodec for Codec<R, W, ConnTypeReadWrite>
         where
             R: FrameRead + Send + Sync + Unpin,
             W: FrameWrite + Send + Sync + Unpin,
@@ -112,7 +124,7 @@ cfg_if! {
     ))] {
         use crate::transport::{PayloadRead, PayloadWrite};
 
-        impl<R, W> ClientCodecSplit for Codec<R, W, ConnTypePayload>
+        impl<R, W> SplittableClientCodec for Codec<R, W, ConnTypePayload>
         where
             R: PayloadRead + Send,
             W: PayloadWrite + Send,

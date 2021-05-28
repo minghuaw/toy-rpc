@@ -1,4 +1,4 @@
-//! `ServerCodec` and `ClientCodec` are defined in this module, and they are implemented
+//! `SplittibleServerCodec` and `SplittableClientCodec` are defined in this module, and they are implemented
 //! for the `DefaultCodec`
 //! Default codec implementations are feature gated behind the following features
 //! `serde_bincode`, `serde_json`, `serde_cbor`, `serde_rmp`.
@@ -155,13 +155,14 @@ pub(crate) struct ConnTypePayload {}
 
 /// Default codec. `Codec` is re-exported as `DefaultCodec` when one of these feature
 /// flags is toggled (`serde_bincode`, `serde_json`, `serde_cbor`, `serde_rmp`")
+#[cfg_attr(not(any(feature = "async_std_runtime", feature = "tokio_runtime")), allow(dead_code))]
 pub struct Codec<R, W, C> {
-    pub reader: R,
-    pub writer: W,
+    reader: R,
+    writer: W,
     conn_type: PhantomData<C>,
 }
 
-// websocket integration for async_tungstenite, tokio_tungstenite
+/// WebSocket integration for async_tungstenite, tokio_tungstenite
 impl<S, E>
     Codec<
         StreamHalf<SplitStream<S>, CanSink>,
@@ -172,6 +173,9 @@ where
     S: Stream<Item = Result<WsMessage, E>> + Sink<WsMessage> + Send + Sync + Unpin,
     E: std::error::Error + 'static,
 {
+    /// Creates a `Codec` with a WebSocket connection. 
+    /// 
+    /// This works with the `WebSocketConn` types implemented in `async_tungstenite` and `tokio_tungstenite`
     pub fn with_websocket(ws: WebSocketConn<S, CanSink>) -> Self {
         let (writer, reader) = WebSocketConn::<S, CanSink>::split(ws);
 
@@ -184,7 +188,7 @@ where
 }
 
 #[cfg(all(feature = "http_tide"))]
-// websocket integration with `tide`
+/// WebSocket integration with `tide`
 impl
     Codec<
         StreamHalf<tide_ws::WebSocketConnection, CannotSink>,
@@ -192,6 +196,8 @@ impl
         ConnTypePayload,
     >
 {
+    /// Creates a `Codec` with a WebSocket connection implemented in the `tide` HTTP server. 
+    #[cfg_attr(feature = "docs", doc(cfg(feature="http_tide")))]
     pub fn with_tide_websocket(
         ws: WebSocketConn<tide_ws::WebSocketConnection, CannotSink>,
     ) -> Self {
@@ -212,6 +218,8 @@ where
     S: Stream<Item = Result<warp::ws::Message, E>> + Sink<warp::ws::Message>,
     E: std::error::Error,
 {
+    /// Creates a `Codec` with a WebSocket connection implemented in the `warp` HTTP server.
+    #[cfg_attr(feature = "docs", doc(cfg(feature="http_warp")))]
     pub fn with_warp_websocket(ws: S) -> Self {
         use futures::StreamExt;
         let (writer, reader) = ws.split();
@@ -224,49 +232,27 @@ where
     }
 }
 
-// #[async_trait]
-// pub trait ServerCodec: Send + Sync {
-//     async fn read_request_header(&mut self) -> Option<Result<RequestHeader, Error>>;
-//     async fn read_request_body(&mut self) -> Option<Result<RequestDeserializer, Error>>;
-
-//     // (Probably) don't need to worry about header/body interleaving
-//     // because rust guarantees only one mutable reference at a time
-//     async fn write_response(
-//         &mut self,
-//         header: ResponseHeader,
-//         body: &(dyn erased::Serialize + Send + Sync),
-//     ) -> Result<(), Error>;
-// }
-
-// #[async_trait]
-// pub trait ClientCodec: GracefulShutdown + Send + Sync {
-//     async fn read_response_header(&mut self) -> Option<Result<ResponseHeader, Error>>;
-//     async fn read_response_body(&mut self) -> Option<Result<RequestDeserializer, Error>>;
-
-//     // (Probably) don't need to worry about header/body interleaving
-//     // because rust guarantees only one mutable reference at a time
-//     async fn write_request(
-//         &mut self,
-//         header: RequestHeader,
-//         body: &(dyn erased::Serialize + Send + Sync),
-//     ) -> Result<(), Error>;
-// }
-
+/// A codec that can read the header and body of a message
 #[async_trait]
 pub trait CodecRead: Unmarshal {
+    /// Reads the header of the message.
     async fn read_header<H>(&mut self) -> Option<Result<H, Error>>
     where
         H: serde::de::DeserializeOwned;
 
+    /// Reads the body of the message
     async fn read_body(&mut self) -> Option<Result<RequestDeserializer, Error>>;
 }
 
+/// A codec that can write the header and body of a message
 #[async_trait]
 pub trait CodecWrite: Marshal {
+    /// Writes the header of the message
     async fn write_header<H>(&mut self, header: H) -> Result<(), Error>
     where
         H: serde::Serialize + Metadata + Send;
 
+    /// Writes the body of the message
     async fn write_body(
         &mut self,
         id: &MessageId,
@@ -482,74 +468,21 @@ cfg_if! {
     }
 }
 
+/// This trait should be implemented by serializer (Codec) to serialize messages into bytes
 pub trait Marshal {
+    /// Marshals/serializes an object into `Vec<u8>`
     fn marshal<S: serde::Serialize>(val: &S) -> Result<Vec<u8>, Error>;
 }
 
+/// This trait should be implemented by deserializer (Codec) to deserialize messages from bytes
 pub trait Unmarshal {
+    /// Unmarshals an object from bytes
     fn unmarshal<'de, D: serde::Deserialize<'de>>(buf: &'de [u8]) -> Result<D, Error>;
 }
 
-// #[async_trait]
-// impl<T> ServerCodec for T
-// where
-//     T: CodecRead + CodecWrite + Send + Sync,
-// {
-//     async fn read_request_header(&mut self) -> Option<Result<RequestHeader, Error>> {
-//         self.read_header().await
-//     }
-
-//     async fn read_request_body(
-//         &mut self,
-//     ) -> Option<Result<RequestDeserializer, Error>> {
-//         self.read_body().await
-//     }
-
-//     async fn write_response(
-//         &mut self,
-//         header: ResponseHeader,
-//         body: &(dyn erased::Serialize + Send + Sync),
-//     ) -> Result<(), Error> {
-//         let id = header.get_id();
-
-//         log::trace!("Sending response id: {}", &id);
-
-//         self.write_header(header).await?;
-//         self.write_body(&id, body).await?;
-
-//         Ok(())
-//     }
-// }
-
-// #[async_trait]
-// impl<T> ClientCodec for T
-// where
-//     T: CodecRead + CodecWrite + GracefulShutdown + Send + Sync,
-// {
-//     async fn read_response_header(&mut self) -> Option<Result<ResponseHeader, Error>> {
-//         self.read_header().await
-//     }
-
-//     async fn read_response_body(&mut self) -> Option<Result<RequestDeserializer, Error>> {
-//         self.read_body().await
-//     }
-
-//     async fn write_request(
-//         &mut self,
-//         header: RequestHeader,
-//         body: &(dyn erased::Serialize + Send + Sync),
-//     ) -> Result<(), Error> {
-//         let id = header.get_id();
-
-//         log::trace!("Sending request id: {}", &id);
-
-//         self.write_header(header).await?;
-//         self.write_body(&id, body).await?;
-
-//         Ok(())
-//     }
-// }
-
+/// This trait should be implemented by a codec to allow creating a `erased_serde::Deserilizer` from 
+/// bytes
 pub trait EraseDeserializer {
+    /// Creates an `erased_serde::Deserializer` from bytes
     fn from_bytes(buf: Vec<u8>) -> Box<dyn erased::Deserializer<'static> + Send>;
 }
