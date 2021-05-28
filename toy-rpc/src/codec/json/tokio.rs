@@ -12,6 +12,7 @@ cfg_if! {
     } else {
         use ::tokio::io::{AsyncBufRead, AsyncBufReadExt, AsyncWrite, AsyncWriteExt};
         use std::marker::PhantomData;
+        use async_trait::async_trait;
 
         use super::*;
         use crate::codec::split::{SplittableServerCodec, SplittableClientCodec};
