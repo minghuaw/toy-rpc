@@ -86,7 +86,7 @@ cfg_if! {
             /// }
             /// ```
             ///
-            /// See `toy-rpc/examples/rap_tcp/` for the example
+            /// See `toy-rpc/examples/tokio_tcp/` for the example
             pub async fn accept(&self, listener: TcpListener) -> Result<(), Error> {
                 let mut incoming = tokio_stream::wrappers::TcpListenerStream::new(listener);
 

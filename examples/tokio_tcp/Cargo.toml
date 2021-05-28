@@ -15,7 +15,7 @@ name = "client"
 path = "src/bin/client.rs" 
 
 [dependencies]
-tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "sync", "time", "io-util"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", ] }
 log = "0.4.14"
 env_logger = "0.8.3"
 
