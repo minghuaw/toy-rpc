@@ -19,16 +19,6 @@ use crate::{
 use crate::util::Terminate;
 
 cfg_if! {
-    if #[cfg(any(feature = "async_std_runtime", feature = "tokio_runtime"))] {
-        use flume::Receiver;
-        use futures::{FutureExt, select};
-        
-        use crate::codec::split::{ClientCodecRead, ClientCodecWrite};
-        use crate::message::{ResponseHeader, CANCELLATION_TOKEN, CANCELLATION_TOKEN_DELIM};
-    }
-}
-
-cfg_if! {
     if #[cfg(any(
         all(
             feature = "serde_bincode",
@@ -163,180 +153,192 @@ impl<Mode> Drop for Client<Mode> {
     }
 }
 
-#[cfg(any(feature = "async_std_runtime", feature = "tokio_runtime"))]
-pub(crate) async fn reader_loop(
-    mut reader: impl ClientCodecRead,
-    pending: Arc<Mutex<ResponseMap>>,
-    stop: Receiver<()>,
-) {
-    loop {
-        select! {
-            _ = stop.recv_async().fuse() => {
-                return 
-            },
-            res = read_once(&mut reader, &pending).fuse() => {
-                match res {
-                    Ok(_) => {}
-                    Err(err) => log::error!("{:?}", err),
+
+cfg_if! {
+    if #[cfg(any(feature = "async_std_runtime", feature = "tokio_runtime"))] {
+        use flume::Receiver;
+        use futures::{FutureExt, select};
+        
+        use crate::codec::split::{ClientCodecRead, ClientCodecWrite};
+        use crate::message::{ResponseHeader, CANCELLATION_TOKEN, CANCELLATION_TOKEN_DELIM, Metadata};
+    
+        #[cfg(any(feature = "async_std_runtime", feature = "tokio_runtime"))]
+        pub(crate) async fn reader_loop(
+            mut reader: impl ClientCodecRead,
+            pending: Arc<Mutex<ResponseMap>>,
+            stop: Receiver<()>,
+        ) {
+            loop {
+                select! {
+                    _ = stop.recv_async().fuse() => {
+                        return 
+                    },
+                    res = read_once(&mut reader, &pending).fuse() => {
+                        match res {
+                            Ok(_) => {}
+                            Err(err) => log::error!("{:?}", err),
+                        }
+                    }
                 }
             }
         }
-    }
-}
-
-#[cfg(any(feature = "async_std_runtime", feature = "tokio_runtime"))]
-async fn read_once(
-    reader: &mut impl ClientCodecRead,
-    pending: &Arc<Mutex<ResponseMap>>,
-) -> Result<(), Error> {
-    if let Some(header) = reader.read_response_header().await {
-        // [1] destructure header
-        let ResponseHeader { id, is_error } = header?;
-        // [2] get resposne body
-        let deserialzer =
-            reader
-                .read_response_body()
-                .await
-                .ok_or_else(|| Error::IoError(std::io::Error::new(
-                    std::io::ErrorKind::UnexpectedEof,
-                    "Unexpected EOF reading response body",
-                )))?;
-                // .ok_or(Error::IoError(std::io::Error::new(
-                //     std::io::ErrorKind::UnexpectedEof,
-                //     "Unexpected EOF reading response body",
-                // )))?;
-        let deserializer = deserialzer?;
-
-        let res = match is_error {
-            false => Ok(deserializer),
-            true => Err(deserializer),
-        };
-
-        // [3] send back response
-        {
-            let mut _pending = pending.lock().await;
-            if let Some(done_sender) = _pending.remove(&id) {
-                done_sender.send(res).map_err(|_| {
-                    Error::Internal(
-                        "InternalError: client failed to send response over channel".into(),
-                    )
-                })?;
+        
+        #[cfg(any(feature = "async_std_runtime", feature = "tokio_runtime"))]
+        async fn read_once(
+            reader: &mut impl ClientCodecRead,
+            pending: &Arc<Mutex<ResponseMap>>,
+        ) -> Result<(), Error> {
+            if let Some(header) = reader.read_response_header().await {
+                // [1] destructure header
+                let ResponseHeader { id, is_error } = header?;
+                // [2] get resposne body
+                let deserialzer =
+                    reader
+                        .read_response_body()
+                        .await
+                        .ok_or_else(|| Error::IoError(std::io::Error::new(
+                            std::io::ErrorKind::UnexpectedEof,
+                            "Unexpected EOF reading response body",
+                        )))?;
+                        // .ok_or(Error::IoError(std::io::Error::new(
+                        //     std::io::ErrorKind::UnexpectedEof,
+                        //     "Unexpected EOF reading response body",
+                        // )))?;
+                let deserializer = deserialzer?;
+        
+                let res = match is_error {
+                    false => Ok(deserializer),
+                    true => Err(deserializer),
+                };
+        
+                // [3] send back response
+                {
+                    let mut _pending = pending.lock().await;
+                    if let Some(done_sender) = _pending.remove(&id) {
+                        done_sender.send(res).map_err(|_| {
+                            Error::Internal(
+                                "InternalError: client failed to send response over channel".into(),
+                            )
+                        })?;
+                    }
+                }
+            }
+            Ok(())
+        }
+        
+        #[cfg(any(feature = "async_std_runtime", feature = "tokio_runtime"))]
+        pub(crate) async fn writer_loop(
+            mut writer: impl ClientCodecWrite,
+            requests: Receiver<(RequestHeader, ClientRequestBody)>,
+            stop: Receiver<()>,
+        ) {
+            loop {
+                select! {
+                    _ = stop.recv_async().fuse() => {
+                        // finish sending all requests available before dropping
+                        for (header, body) in requests.drain().into_iter() {
+                            match writer.write_request(header, &body).await {
+                                Ok(_) => { },
+                                Err(err) => log::error!("{:?}", err)
+                            }
+                        }
+                        return 
+                    },
+                    res = write_once(&mut writer, &requests).fuse() => {
+                        match res {
+                            Ok(_) => {}
+                            Err(err) => log::error!("{:?}", err),
+                        }
+                    }
+                }
             }
         }
-    }
-    Ok(())
-}
-
-#[cfg(any(feature = "async_std_runtime", feature = "tokio_runtime"))]
-pub(crate) async fn writer_loop(
-    mut writer: impl ClientCodecWrite,
-    requests: Receiver<(RequestHeader, ClientRequestBody)>,
-    stop: Receiver<()>,
-) {
-    loop {
-        select! {
-            _ = stop.recv_async().fuse() => {
-                // finish sending all requests available before dropping
-                for (header, body) in requests.drain().into_iter() {
-                    match writer.write_request(header, &body).await {
+        
+        #[cfg(any(feature = "async_std_runtime", feature = "tokio_runtime"))]
+        async fn write_once(
+            writer: &mut impl ClientCodecWrite,
+            request: &Receiver<(RequestHeader, ClientRequestBody)>,
+        ) -> Result<(), Error> {
+            if let Ok(req) = request.recv_async().await {
+                let (header, body) = req;
+                writer.write_request(header, &body).await?;
+            }
+            Ok(())
+        }
+        
+        #[cfg(any(feature = "async_std_runtime", feature = "tokio_runtime"))]
+        async fn handle_call<Res>(
+            pending: Arc<Mutex<ResponseMap>>,
+            header: RequestHeader,
+            body: ClientRequestBody,
+            request_tx: Sender<(RequestHeader, ClientRequestBody)>,
+            cancel: oneshot::Receiver<MessageId>,
+            done: oneshot::Sender<Result<Res, Error>>,
+        ) -> Result<(), Error>
+        where
+            Res: serde::de::DeserializeOwned + Send,
+        {
+            let id = header.get_id();
+            request_tx.send_async((header, body)).await?;
+        
+            let (resp_tx, resp_rx) = oneshot::channel();
+        
+            // insert done channel to ResponseMap
+            {
+                let mut _pending = pending.lock().await;
+                _pending.insert(id, resp_tx);
+            }
+        
+            select! {
+                res = cancel.fuse() => {
+                    if let Ok(id) = res {
+                        let header = RequestHeader {
+                            id,
+                            service_method: CANCELLATION_TOKEN.into(),
+                        };
+                        let body: String =
+                            format!("{}{}{}", CANCELLATION_TOKEN, CANCELLATION_TOKEN_DELIM, id);
+                        let body = Box::new(body) as ClientRequestBody;
+                        request_tx.send_async((header, body)).await?;
+                    }
+                },
+                res = handle_response(resp_rx, done).fuse() => {
+                    match res {
                         Ok(_) => { },
                         Err(err) => log::error!("{:?}", err)
                     }
                 }
-                return 
-            },
-            res = write_once(&mut writer, &requests).fuse() => {
-                match res {
-                    Ok(_) => {}
-                    Err(err) => log::error!("{:?}", err),
-                }
-            }
+            };
+        
+            Ok(())
+        }
+        
+        #[cfg(any(feature = "async_std_runtime", feature = "tokio_runtime"))]
+        async fn handle_response<Res>(
+            response: oneshot::Receiver<ClientResponseResult>,
+            done: oneshot::Sender<Result<Res, Error>>,
+        ) -> Result<(), Error>
+        where
+            Res: serde::de::DeserializeOwned + Send,
+        {
+            let val = response
+                .await
+                // cancellation of the oneshot channel is not intended
+                // and thus should be considered as an InternalError
+                .map_err(|err| Error::Internal(Box::new(err)))?;
+            let res = match val {
+                Ok(mut resp_body) => erased_serde::deserialize(&mut resp_body)
+                    .map_err(|err| Error::ParseError(Box::new(err))),
+                Err(mut err_body) => erased_serde::deserialize(&mut err_body).map_or_else(
+                    |err| Err(Error::ParseError(Box::new(err))),
+                    |msg| Err(Error::from_err_msg(msg)),
+                ), // handles error msg sent from server
+            };
+        
+            done.send(res)
+                .map_err(|_| Error::Internal("Failed to send over done channel".into()))?;
+            Ok(())
         }
     }
 }
 
-#[cfg(any(feature = "async_std_runtime", feature = "tokio_runtime"))]
-async fn write_once(
-    writer: &mut impl ClientCodecWrite,
-    request: &Receiver<(RequestHeader, ClientRequestBody)>,
-) -> Result<(), Error> {
-    if let Ok(req) = request.recv_async().await {
-        let (header, body) = req;
-        writer.write_request(header, &body).await?;
-    }
-    Ok(())
-}
-
-#[cfg(any(feature = "async_std_runtime", feature = "tokio_runtime"))]
-async fn handle_call<Res>(
-    pending: Arc<Mutex<ResponseMap>>,
-    header: RequestHeader,
-    body: ClientRequestBody,
-    request_tx: Sender<(RequestHeader, ClientRequestBody)>,
-    cancel: oneshot::Receiver<MessageId>,
-    done: oneshot::Sender<Result<Res, Error>>,
-) -> Result<(), Error>
-where
-    Res: serde::de::DeserializeOwned + Send,
-{
-    let id = header.id;
-    request_tx.send_async((header, body)).await?;
-
-    let (resp_tx, resp_rx) = oneshot::channel();
-
-    // insert done channel to ResponseMap
-    {
-        let mut _pending = pending.lock().await;
-        _pending.insert(id, resp_tx);
-    }
-
-    select! {
-        res = cancel.fuse() => {
-            if let Ok(id) = res {
-                let header = RequestHeader {
-                    id,
-                    service_method: CANCELLATION_TOKEN.into(),
-                };
-                let body: String =
-                    format!("{}{}{}", CANCELLATION_TOKEN, CANCELLATION_TOKEN_DELIM, id);
-                let body = Box::new(body) as ClientRequestBody;
-                request_tx.send_async((header, body)).await?;
-            }
-        },
-        res = handle_response(resp_rx, done).fuse() => {
-            match res {
-                Ok(_) => { },
-                Err(err) => log::error!("{:?}", err)
-            }
-        }
-    };
-
-    Ok(())
-}
-
-#[cfg(any(feature = "async_std_runtime", feature = "tokio_runtime"))]
-async fn handle_response<Res>(
-    response: oneshot::Receiver<ClientResponseResult>,
-    done: oneshot::Sender<Result<Res, Error>>,
-) -> Result<(), Error>
-where
-    Res: serde::de::DeserializeOwned + Send,
-{
-    let val = response
-        .await
-        // cancellation of the oneshot channel is not intended
-        // and thus should be considered as an InternalError
-        .map_err(|err| Error::Internal(Box::new(err)))?;
-    let res = match val {
-        Ok(mut resp_body) => erased_serde::deserialize(&mut resp_body)
-            .map_err(|err| Error::ParseError(Box::new(err))),
-        Err(mut err_body) => erased_serde::deserialize(&mut err_body).map_or_else(
-            |err| Err(Error::ParseError(Box::new(err))),
-            |msg| Err(Error::from_err_msg(msg)),
-        ), // handles error msg sent from server
-    };
-
-    done.send(res)
-        .map_err(|_| Error::Internal("Failed to send over done channel".into()))?;
-    Ok(())
-}

@@ -175,9 +175,10 @@ where
         map: HashMap<&'static str, AsyncHandler<State>>,
     ) -> Self {
         let mut builder = self;
-        for (key, val) in map.iter() {
-            builder = builder.register_handler(key, *val);
-        }
+        // for (key, val) in map.iter() {
+        //     builder = builder.register_handler(key, *val);
+        // }
+        builder.handlers = map;
 
         builder
     }

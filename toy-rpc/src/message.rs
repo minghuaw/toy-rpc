@@ -11,13 +11,23 @@ pub type AtomicMessageId = AtomicU16;
 
 /// Returning the metadata
 pub trait Metadata {
+    /// Gets the id from the metadata
     fn get_id(&self) -> MessageId;
 }
 
 /// Header of a request
 #[derive(Serialize, Deserialize, Debug, Default)]
 pub struct RequestHeader {
+    /// The id number of a request. 
+    /// 
+    /// The id number is tracked by the client and monotonically increases.
     pub id: MessageId,
+
+    /// A string that represents the requested service and method 
+    /// 
+    /// The format should follow "{service}.{method}" where {service} should be 
+    /// replaced by the service name and {method} should be replaced by the method name. 
+    /// Both the service name and method name are case sensitive.
     pub service_method: String,
 }
 
@@ -30,7 +40,12 @@ impl Metadata for RequestHeader {
 /// Header of a response
 #[derive(Serialize, Deserialize, Debug, Default)]
 pub struct ResponseHeader {
+    /// The id of an RPC response. 
+    /// 
+    /// The response will have the same id as the request
     pub id: MessageId,
+
+    /// Whether the response carries an error message
     pub is_error: bool,
 }
 

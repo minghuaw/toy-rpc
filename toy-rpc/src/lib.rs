@@ -841,6 +841,13 @@ pub mod service;
 pub mod transport;
 pub mod util;
 
+/// The default path added to the HTTP url 
+#[cfg(any(
+    feature = "http_actix_web",
+    feature = "http_warp",
+    feature = "http_tide",
+    feature = "client"
+))]
 pub const DEFAULT_RPC_PATH: &str = "_rpc_";
 
 #[cfg(feature = "client")]

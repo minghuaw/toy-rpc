@@ -34,6 +34,7 @@ pub enum Error {
     #[error("{0}")]
     ExecutionError(String),
 
+    /// Cancellation error when an RPC call is cancelled
     #[error("Request is canceled")]
     Canceled(Option<MessageId>),
 }

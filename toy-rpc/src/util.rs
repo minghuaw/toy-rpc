@@ -1,5 +1,6 @@
+//! Utility traits and functions.
+
 use async_trait::async_trait;
-// use cfg_if::cfg_if;
 use std::collections::HashMap;
 
 use crate::service::AsyncHandler;
@@ -22,6 +23,7 @@ pub trait RegisterService {
 /// sending some kind of closing message
 #[async_trait]
 pub trait GracefulShutdown {
+    /// Closes the connection to allow graceful shutdown.
     async fn close(&mut self);
 }
 
