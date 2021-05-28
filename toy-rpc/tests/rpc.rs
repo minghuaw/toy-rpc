@@ -8,7 +8,6 @@ cfg_if::cfg_if! {
 
         use serde::{Deserialize, Serialize};
         
-        use toy_rpc::client::{Client, Connected};
         use toy_rpc::macros::export_impl;
         
         pub const COMMON_TEST_MAGIC_U8: u8 = 167;
@@ -136,6 +135,13 @@ cfg_if::cfg_if! {
                 Err(args)
             }
         }
+    }
+}
+
+cfg_if::cfg_if! {
+    if #[cfg(feature = "client")] {
+
+        use toy_rpc::client::{Client, Connected};
         
         pub async fn test_get_magic_u8(client: &Client<Connected>) {
             let reply: u8 = client
@@ -280,4 +286,3 @@ cfg_if::cfg_if! {
         }
     }
 }
-

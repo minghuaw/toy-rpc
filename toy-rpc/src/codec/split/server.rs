@@ -1,3 +1,5 @@
+//! Implements `SplittableServerCodec`
+
 use super::*;
 /// A server codec that can split into a reader half and a writer half
 /// 

@@ -1,3 +1,5 @@
+//! Implements json codec with `tokio` runtime
+
 use cfg_if::cfg_if;
 
 cfg_if! {

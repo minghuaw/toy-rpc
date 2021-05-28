@@ -1,3 +1,5 @@
+//! Implements integration with `actix_web`
+
 use cfg_if::cfg_if;
 use actix::{Actor, ActorContext, AsyncContext, Context, Recipient, Running, StreamHandler};
 use actix_web::{web, HttpRequest, HttpResponse};
@@ -18,7 +20,7 @@ use super::preprocess_service_method;
 /// In the "Started" state, it will start a new `ExecutionManager`
 /// actor. Upon reception of a request, the 
 pub struct WsMessageActor<C> {
-    pub services: Arc<AsyncServiceMap>,
+    services: Arc<AsyncServiceMap>,
     manager: Option<Recipient<ExecutionMessage>>,
     req_header: Option<RequestHeader>,
     marker: PhantomData<C>,
@@ -403,6 +405,18 @@ cfg_if! {
         }
 
         impl Server {
+            /// Configuration for integration with an actix-web scope.
+            /// A convenient funciont "handle_http" may be used to achieve the same thing
+            /// with the `actix-web` feature turned on.
+            ///
+            /// The `DEFAULT_RPC_PATH` will be appended to the end of the scope's path.
+            ///
+            /// This is enabled
+            /// if and only if **exactly one** of the the following feature flag is turned on
+            /// - `serde_bincode`
+            /// - `serde_json`
+            /// - `serde_cbor`
+            /// - `serde_rmp`
             #[cfg(any(feature = "http_actix_web", feature = "docs"))]
             #[cfg_attr(feature = "docs", doc(cfg(feature = "http_actix_web")))]
             pub fn scope_config(cfg: &mut web::ServiceConfig) {
@@ -415,6 +429,21 @@ cfg_if! {
                 );
             }
 
+            /// A conevience function that calls the corresponding http handling
+            /// function depending on the enabled feature flag
+            ///
+            /// | feature flag | function name  |
+            /// | ------------ |---|
+            /// | `http_tide`| [`into_endpoint`](#method.into_endpoint) |
+            /// | `http_actix_web` | [`scope_config`](#method.scope_config) |
+            /// | `http_warp` | [`into_boxed_filter`](#method.into_boxed_filter) |
+            ///
+            /// This is enabled
+            /// if and only if **exactly one** of the the following feature flag is turned on
+            /// - `serde_bincode`
+            /// - `serde_json`
+            /// - `serde_cbor`
+            /// - `serde_rmp`
             #[cfg(any(all(feature = "http_actix_web", not(feature = "http_tide"),), feature = "docs"))]
             #[cfg_attr(
                 feature = "docs",

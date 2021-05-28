@@ -1,4 +1,5 @@
-//! Implements split of Codec into read half and write half
+//! Implements `SplittableServerCodec` and `SplittableClientCodec`
+
 use async_trait::async_trait;
 use std::marker::PhantomData;
 

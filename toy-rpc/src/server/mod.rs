@@ -53,11 +53,11 @@ cfg_if! {
     }
 }
 
-#[derive(Debug)]
-pub enum ConnectionStatus {
-    KeepReading,
-    Stop,
-}
+// #[derive(Debug)]
+// pub enum ConnectionStatus {
+//     KeepReading,
+//     Stop,
+// }
 
 /// RPC Server
 ///

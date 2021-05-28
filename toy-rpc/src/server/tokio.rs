@@ -1,5 +1,5 @@
-/// This modules implements `Server`'s methods that require `feature = "tokio_runtime"`,
-/// `feature = "http_actix_web"` or `feature = "http_warp"`.
+//! This modules implements `Server`'s methods that require `feature = "tokio_runtime"`,
+//! `feature = "http_actix_web"` or `feature = "http_warp"`.
 use cfg_if::cfg_if;
 
 cfg_if! {

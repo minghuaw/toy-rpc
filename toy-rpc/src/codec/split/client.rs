@@ -1,3 +1,5 @@
+//! Implements `SplittableClientCodec`
+
 use super::*;
 /// Split the ClientCodec into a reader half and writer half
 ///

@@ -1,3 +1,5 @@
+//! Implements json codec with `async_std` runtime
+
 use cfg_if::cfg_if;
 
 cfg_if! {
