@@ -4,7 +4,7 @@ use ::async_std::task;
 use futures::{AsyncRead, AsyncWrite};
 use std::sync::atomic::Ordering;
 
-use crate::{codec::split::SplittableClientCodec, transport::ws::WebSocketConn};
+use crate::{codec::split::SplittableClientCodec};
 
 use super::*;
 
@@ -39,6 +39,7 @@ cfg_if! {
         use ::async_std::net::{TcpStream, ToSocketAddrs};
         use async_tungstenite::async_std::connect_async;
         use crate::DEFAULT_RPC_PATH;
+        use crate::transport::ws::WebSocketConn;
 
         /// The following impl block is controlled by feature flag. It is enabled
         /// if and only if **exactly one** of the the following feature flag is turned on

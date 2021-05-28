@@ -215,6 +215,30 @@ cfg_if! {
                 ret
             }
 
+            /// This is like serve_conn except that it uses a specified codec
+            ///
+            /// Example
+            ///
+            /// ```rust
+            /// let stream = TcpStream::connect("127.0.0.1:8080").await.unwrap();
+            /// let codec = Codec::new(stream);
+            /// 
+            /// let server = Server::builder()
+            ///     .register(example_service)
+            ///     .build();
+            /// // assume `ExampleService` exist
+            /// let handle = task::spawn(async move {
+            ///     server.serve_codec(codec).await.unwrap();
+            /// })    
+            /// handle.await;
+            /// ```
+            pub async fn serve_codec<C>(&self, codec: C) -> Result<(), Error>
+            where
+                C: SplittableServerCodec + Send + Sync + 'static,
+            {
+                Self::serve_codec_setup(codec, self.services.clone()).await
+            }
+
             pub(crate) async fn serve_codec_setup(
                 codec: impl SplittableServerCodec + 'static,
                 services: Arc<AsyncServiceMap>

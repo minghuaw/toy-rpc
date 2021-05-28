@@ -61,9 +61,26 @@ args = ["test",
 ]
 
 [tasks.test_tokio_tcp]
+run_task = [
+    { name = [
+        "test_tokio_tcp_bincode",
+        "test_tokio_tcp_json",
+    ] },
+]
+
+[tasks.test_tokio_tcp_bincode]
 command = "cargo"
 args = ["test", 
     "--features", "serde_bincode tokio_runtime server client", 
+    "--no-default-features", 
+    "--test", "tokio_tcp", 
+    "--", "--nocapture"
+]
+
+[tasks.test_tokio_tcp_json]
+command = "cargo"
+args = ["test", 
+    "--features", "serde_json tokio_runtime server client", 
     "--no-default-features", 
     "--test", "tokio_tcp", 
     "--", "--nocapture"

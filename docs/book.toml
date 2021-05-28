@@ -3,4 +3,4 @@ authors = ["minghuaw"]
 language = "en"
 multilingual = false
 src = "src"
-title = "`toy-rpc`"
+title = "toy-rpc Book"

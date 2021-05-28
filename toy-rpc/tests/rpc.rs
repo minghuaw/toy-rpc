@@ -148,6 +148,7 @@ cfg_if::cfg_if! {
                 .await
                 .expect("Unexpected error executing RPC");
             assert_eq!(COMMON_TEST_MAGIC_U8, reply);
+            println!("test_get_magic_u8() Passed")
         }
         
         pub async fn test_get_magic_u16(client: &Client<Connected>) {

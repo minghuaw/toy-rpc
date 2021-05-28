@@ -25,33 +25,45 @@ pub mod http_tide;
 #[cfg_attr(doc, doc(cfg(feature = "http_warp")))]
 pub mod http_warp;
 
-cfg_if! {
-    if #[cfg(any(feature = "docs", doc))] {
-        #[doc(cfg(any(
-            feature = "async_std_runtime",
-            feature = "http_tide",
-        )))]
-        pub mod async_std;
+// cfg_if! {
+//     if #[cfg(any(feature = "docs", doc))] {
+//         #[doc(cfg(any(
+//             feature = "async_std_runtime",
+//             feature = "http_tide",
+//         )))]
+//         pub mod async_std;
 
-        #[doc(cfg(any(
-            feature = "tokio_runtime",
-            feature = "http_warp",
-            feature = "http_actix_web"
-        )))]
-        pub mod tokio;
-    } else if #[cfg(any(
-        feature = "async_std_runtime",
-        feature = "http_tide",
-    ))] {
-        pub mod async_std;
-    } else if #[cfg(any(
-        feature = "tokio_runtime",
-        feature = "http_warp",
-        feature = "http_actix_web"
-    ))] {
-        pub mod tokio;
-    }
-}
+//         #[doc(cfg(any(
+//             feature = "tokio_runtime",
+//             feature = "http_warp",
+//             feature = "http_actix_web"
+//         )))]
+//         pub mod tokio;
+//     } else if #[cfg(any(
+//         feature = "async_std_runtime",
+//         feature = "http_tide",
+//     ))] {
+//         pub mod async_std;
+//     } else if #[cfg(any(
+//         feature = "tokio_runtime",
+//         feature = "http_warp",
+//         feature = "http_actix_web"
+//     ))] {
+//         pub mod tokio;
+//     }
+// }
+
+#[cfg(any(
+    feature = "docs", doc,
+    feature = "async_std_runtime"
+))]
+pub mod async_std;
+
+#[cfg(any(
+    feature = "docs", doc,
+    feature = "tokio_runtime"
+))]
+pub mod tokio;
 
 // #[derive(Debug)]
 // pub enum ConnectionStatus {
@@ -93,7 +105,7 @@ cfg_if! {
         use crate::service::{ArcAsyncServiceCall, HandlerResult};
         use crate::{
             codec::{
-                split::{ServerCodecRead, SplittableServerCodec, ServerCodecWrite},
+                split::{ServerCodecRead, ServerCodecWrite},
                 RequestDeserializer,
             },
             message::{
@@ -101,41 +113,6 @@ cfg_if! {
             },
         };
         use crate::error::Error;
-
-        impl Server {
-            /// This is like serve_conn except that it uses a specified codec
-            ///
-            /// Example
-            ///
-            /// ```rust
-            /// use async_std::net::TcpStream;
-            /// // the default `Codec` will be used as an example
-            /// use toy_rpc::codec::Codec;
-            ///
-            /// #[async_std::main]
-            /// async fn main() {
-            ///     // assume the following connection can be established
-            ///     let stream = TcpStream::connect("127.0.0.1:8080").await.unwrap();
-            ///     let codec = Codec::new(stream);
-            ///     
-            ///     let server = Server::builder()
-            ///         .register(example_service)
-            ///         .build();
-            ///     // assume `ExampleService` exist
-            ///     let handle = task::spawn(async move {
-            ///         server.serve_codec(codec).await.unwrap();
-            ///     })    
-            ///     handle.await;
-            /// }
-            /// ```
-            pub async fn serve_codec<C>(&self, codec: C) -> Result<(), Error>
-            where
-                C: SplittableServerCodec + Send + Sync + 'static,
-            {
-                // Self::serve_codec_loop(codec, self.services.clone()).await
-                Self::serve_codec_setup(codec, self.services.clone()).await
-            }
-        }
         
         async fn serve_codec_reader_loop(
             mut codec_reader: impl ServerCodecRead,
