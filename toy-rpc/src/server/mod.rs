@@ -25,34 +25,6 @@ pub mod http_tide;
 #[cfg_attr(doc, doc(cfg(feature = "http_warp")))]
 pub mod http_warp;
 
-// cfg_if! {
-//     if #[cfg(any(feature = "docs", doc))] {
-//         #[doc(cfg(any(
-//             feature = "async_std_runtime",
-//             feature = "http_tide",
-//         )))]
-//         pub mod async_std;
-
-//         #[doc(cfg(any(
-//             feature = "tokio_runtime",
-//             feature = "http_warp",
-//             feature = "http_actix_web"
-//         )))]
-//         pub mod tokio;
-//     } else if #[cfg(any(
-//         feature = "async_std_runtime",
-//         feature = "http_tide",
-//     ))] {
-//         pub mod async_std;
-//     } else if #[cfg(any(
-//         feature = "tokio_runtime",
-//         feature = "http_warp",
-//         feature = "http_actix_web"
-//     ))] {
-//         pub mod tokio;
-//     }
-// }
-
 #[cfg(any(
     feature = "docs", doc,
     feature = "async_std_runtime"
@@ -64,12 +36,6 @@ pub mod async_std;
     feature = "tokio_runtime"
 ))]
 pub mod tokio;
-
-// #[derive(Debug)]
-// pub enum ConnectionStatus {
-//     KeepReading,
-//     Stop,
-// }
 
 /// RPC Server
 ///
