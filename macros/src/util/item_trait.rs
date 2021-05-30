@@ -4,24 +4,34 @@ use super::*;
 pub(crate) fn transform_trait(input: syn::ItemTrait) -> (syn::ItemTrait, syn::ItemImpl, Vec<String>, Vec<syn::Ident>) {
     let mut names: Vec<String> = Vec::new();
     let mut idents: Vec<syn::Ident> = Vec::new();
-    let mut transformed_trait = filter_exported_trait_items(input.clone());
+    let input = filter_exported_trait_items(input.clone());
     let trait_ident = &input.ident;
 
-    let concat_name = format!("{}{}", &transformed_trait.ident.to_string(), EXPORTED_TRAIT_SUFFIX);
-    let transformed_ident = syn::Ident::new(&&concat_name, transformed_trait.ident.span());
-    transformed_trait.ident = transformed_ident.clone();
-    transformed_trait.items
-        .iter_mut()
+    let concat_name = format!("{}{}", &input.ident.to_string(), EXPORTED_TRAIT_SUFFIX);
+    let transformed_trait_ident = syn::Ident::new(&&concat_name, input.ident.span());
+    input.items
+        .iter()
         .for_each(|item| 
             if let syn::TraitItem::Method(f) = item {
                 names.push(f.sig.ident.to_string());
-                transform_trait_item(f);
+                // transform_trait_item(f);
                 idents.push(f.sig.ident.clone());
             }
         );
+    let mut transformed_trait: syn::ItemTrait = syn::parse_quote!(
+        pub trait #transformed_trait_ident: Send + Sync {
+
+        }
+    );
+    for item in input.items.iter() {
+        if let syn::TraitItem::Method(f) = item {
+            let item_gen = generate_transformed_trait_item(&f.sig.ident);
+            transformed_trait.items.push(item_gen);
+        }
+    }
 
     let transformed_trait_impl: syn::ItemImpl = syn::parse_quote!(
-        impl<T: #trait_ident> #transformed_ident for T {
+        impl<T: #trait_ident + Send + Sync + 'static> #transformed_trait_ident for T {
 
         }
     );
@@ -35,24 +45,19 @@ pub(crate) fn transform_trait(input: syn::ItemTrait) -> (syn::ItemTrait, syn::It
 }
 
 #[cfg(feature = "server")]
-fn transform_trait_item(f: &mut syn::TraitItemMethod) {
-    let ident = f.sig.ident.clone();
+fn generate_transformed_trait_item(
+    ident: &syn::Ident,
+) -> syn::TraitItem {
     let concat_name = format!("{}_{}", &ident.to_string(), HANDLER_SUFFIX);
     let handler_ident = syn::Ident::new(&concat_name, ident.span());
 
-    // change asyncness
-    f.sig.asyncness = None;
-
-    if let syn::FnArg::Typed(_pt) = f.sig.inputs.last().unwrap() {
-        f.sig.inputs = syn::parse_quote!(
-            self: std::sync::Arc<Self>, deserializer: Box<dyn toy_rpc::erased_serde::Deserializer<'static> + Send>
-        );
-        f.sig.output = syn::parse_quote!(
-            -> toy_rpc::service::HandlerResultFut
-        );
-    }
-
-    f.sig.ident = handler_ident;
+    let f = syn::parse_quote!(
+        fn #handler_ident(
+            self: std::sync::Arc<Self>, 
+            deserializer: Box<dyn toy_rpc::erased_serde::Deserializer<'static> + Send>
+        ) -> toy_rpc::service::HandlerResultFut;
+    );
+    syn::TraitItem::Method(f)
 }
 
 #[cfg(feature = "server")]
@@ -96,7 +101,7 @@ fn impl_transformed_trait(
                                 .map_err(|e| toy_rpc::error::Error::ParseError(Box::new(e)))?;
                             self.#orig_ident(req).await 
                                 .map(|r| Box::new(r) as Box<dyn toy_rpc::erased_serde::Serialize + Send + Sync + 'static>)
-                                .map_err(|e| toy_rpc::error::Error::ExecutionError(e.to_string()));
+                                .map_err(|e| toy_rpc::error::Error::ExecutionError(e.to_string()))
                         }
                     )
                 }
@@ -127,15 +132,16 @@ pub(crate) fn remove_export_attr_from_trait(mut input: syn::ItemTrait) -> syn::I
 #[cfg(feature = "server")]
 pub(crate) fn impl_register_service_for_trait(
     orig_trait_ident: &syn::Ident,
+    transformed_traid_ident: &syn::Ident,
     names: Vec<String>,
     handler_idents: Vec<syn::Ident>
 ) -> impl quote::ToTokens {
     let service_name = orig_trait_ident.to_string();
     let ret = quote::quote! {
-        impl<T: #orig_trait_ident> toy_rpc::util::RegisterService for T {
-            fn handlers() -> std::collections::HashMap<&'static str, toy_rpc::service::AsyncHandler<T>> {
-                let mut map = std::collections::HashMap::<&'static str, toy_rpc::service::AsyncHandler<T>>::new();
-                #(map.insert(#names, T::#handler_idents);)*;
+        impl<T: #transformed_traid_ident + Send + Sync + 'static> toy_rpc::util::RegisterService for T {
+            fn handlers() -> std::collections::HashMap<&'static str, toy_rpc::service::AsyncHandler<Self>> {
+                let mut map = std::collections::HashMap::<&'static str, toy_rpc::service::AsyncHandler<Self>>::new();
+                #(map.insert(#names, Self::#handler_idents);)*;
                 map
             }
 

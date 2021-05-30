@@ -1,5 +1,5 @@
 [package]
-name = "async_std_tcp"
+name = "tokio_tcp"
 version = "0.1.0"
 authors = ["minghuaw <michael.wu1107@gmail.com>"]
 edition = "2018"
@@ -15,7 +15,8 @@ name = "client"
 path = "src/bin/client.rs" 
 
 [dependencies]
-tokio = { version = "1", features = ["rt-multi-thread", "macros", ] }
+# tokio = { version = "1", features = ["rt-multi-thread", "macros", ] }
+tokio = { version = "1.6.0", features = ["rt-multi-thread", "macros", "net", "sync", "time", "io-util"], optional = true }
 log = "0.4.14"
 env_logger = "0.8.3"
 

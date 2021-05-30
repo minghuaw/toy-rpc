@@ -169,6 +169,7 @@ pub(crate) fn filter_exported_impl_items(input: syn::ItemImpl) -> syn::ItemImpl 
     output
 }
 
+#[cfg(feature = "client")]
 pub(crate) fn generate_service_client_for_struct(
     struct_ident: &syn::Ident,
     input: &syn::ItemImpl,

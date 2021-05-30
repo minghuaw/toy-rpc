@@ -14,4 +14,7 @@ exclude = [
     "examples/docs_examples",
     "examples/macro_expand",
     "examples/cancellation",
+    "examples/example-service",
+    "examples/example-server",
+    "examples/example-client"
 ]

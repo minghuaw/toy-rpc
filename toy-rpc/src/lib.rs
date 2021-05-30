@@ -865,3 +865,4 @@ pub use error::Error;
 // re-export
 pub use erased_serde;
 pub use serde;
+pub use lazy_static;
