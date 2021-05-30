@@ -6,10 +6,18 @@ edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[features]
+default = [ 
+
+]
+
+async_std_runtime = ["toy-rpc/async_std_runtime"]
+tokio_runtime = ["toy-rpc/tokio_runtime"]
+
 [dependencies]
 async-trait = "0.1.50"
 
 [dependencies.toy-rpc]
 version = "0.7.0-alpha.0"
 path = "../../toy-rpc/"
-features = [ "tokio_runtime", "server", "client" ]
+features = [ "server", "client" ]

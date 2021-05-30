@@ -4,7 +4,7 @@ use std::sync::{Arc};
 
 use toy_rpc::Server;
 
-use async_std_tcp::rpc::{Echo};
+use tokio_tcp::rpc::{Echo};
 
 #[tokio::main]
 async fn main() {

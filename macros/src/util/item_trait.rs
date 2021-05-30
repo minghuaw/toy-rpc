@@ -168,10 +168,10 @@ pub(crate) fn impl_local_registry_for_trait(
     handler_idents: Vec<syn::Ident>
 ) -> impl quote::ToTokens {
     let service_name = orig_trait_ident.to_string();
-    let concat_name = format!("{}{}", orig_trait_ident.to_string(), REGISTRY_SUFFIX);
-    let registry_ident = syn::Ident::new(&concat_name, orig_trait_ident.span());
+    let concat_name = format!("{}{}", transformed_trait_ident.to_string(), REGISTRY_SUFFIX);
+    let registry_ident = syn::Ident::new(&concat_name, transformed_trait_ident.span());
     let ret = quote::quote! {
-        trait #registry_ident {
+        pub trait #registry_ident {
             fn handlers() -> std::collections::HashMap<&'static str, toy_rpc::service::AsyncHandler<Self>>;
             fn default_name() -> &'static str;
         }
@@ -202,10 +202,10 @@ pub(crate) fn impl_register_service_for_trait_impl(
     // handler_idents: Vec<syn::Ident>
 ) -> impl quote::ToTokens {
     // let service_name = trait_ident.to_string();
-    // let concat_name = format!("{}{}", &trait_ident.to_string(), EXPORTED_TRAIT_SUFFIX);
-    // let transformed_trait_ident = syn::Ident::new(&&concat_name, trait_ident.span());
-    let registry_name = format!("{}{}", trait_ident, REGISTRY_SUFFIX);
-    let registry_ident = syn::Ident::new(&registry_name, trait_ident.span());
+    let concat_name = format!("{}{}", &trait_ident.to_string(), EXPORTED_TRAIT_SUFFIX);
+    let transformed_trait_ident = syn::Ident::new(&&concat_name, trait_ident.span());
+    let registry_name = format!("{}{}", transformed_trait_ident, REGISTRY_SUFFIX);
+    let registry_ident = syn::Ident::new(&registry_name, transformed_trait_ident.span());
 
     let ret = quote::quote! {
         impl toy_rpc::util::RegisterService for #type_ident {

@@ -519,6 +519,7 @@ pub fn export_trait_impl(_attr: proc_macro::TokenStream, item: proc_macro::Token
     let register_impl = impl_register_service_for_trait_impl(&trait_ident, type_ident);
 
     let output = quote::quote! {
+        #input
         #register_impl
     };
     output.into()

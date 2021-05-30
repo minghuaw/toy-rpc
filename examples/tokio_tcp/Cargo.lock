@@ -35,16 +35,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "async_std_tcp"
-version = "0.1.0"
-dependencies = [
- "env_logger",
- "log",
- "tokio",
- "toy-rpc",
-]
-
-[[package]]
 name = "atty"
 version = "0.2.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -924,6 +914,16 @@ dependencies = [
  "futures-core",
  "pin-project-lite",
  "tokio",
+]
+
+[[package]]
+name = "tokio_tcp"
+version = "0.1.0"
+dependencies = [
+ "env_logger",
+ "log",
+ "tokio",
+ "toy-rpc",
 ]
 
 [[package]]
