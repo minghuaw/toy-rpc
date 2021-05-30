@@ -15,9 +15,15 @@ pub(crate) const ATTR_EXPORT_METHOD: &str = "export_method";
 pub(crate) const HANDLER_SUFFIX: &str = "handler";
 #[cfg(feature = "server")]
 pub(crate) const EXPORTED_TRAIT_SUFFIX: &str = "Handler";
-#[cfg(feature = "client")]
+#[cfg(all(
+    feature = "client",
+    feature = "runtime",
+))]
 pub(crate) const CLIENT_SUFFIX: &str = "Client";
-#[cfg(feature = "client")]
+#[cfg(all(
+    feature = "client",
+    feature = "runtime",
+))]
 pub(crate) const CLIENT_STUB_SUFFIX: &str = "ClientStub";
 
 /// A macro that impls serde::Deserializer by simply calling the
@@ -316,7 +322,11 @@ pub fn impl_inner_deserializer(_: proc_macro::TokenStream) -> proc_macro::TokenS
 /// }
 ///
 /// ```
-#[cfg(all(feature="server", feature="client"))]
+#[cfg(all(
+    feature="server", 
+    feature="client",
+    feature="runtime",
+))]
 #[proc_macro_attribute]
 pub fn export_impl(_attr: proc_macro::TokenStream, item: proc_macro::TokenStream) -> proc_macro::TokenStream {
     // parse item
@@ -351,7 +361,11 @@ pub fn export_impl(_attr: proc_macro::TokenStream, item: proc_macro::TokenStream
     output.into()
 }
 
-#[cfg(all(feature="server", not(feature="client")))]
+#[cfg(all(
+    feature="server", 
+    feature="client",
+    not(feature="runtime"),
+))]
 #[proc_macro_attribute]
 pub fn export_impl(_attr: proc_macro::TokenStream, item: proc_macro::TokenStream) -> proc_macro::TokenStream {
     // parse item
@@ -364,7 +378,6 @@ pub fn export_impl(_attr: proc_macro::TokenStream, item: proc_macro::TokenStream
         Ok(i) => i,
         Err(err) => return err.to_compile_error().into(),
     };
-
     let register_service_impl = impl_register_service_for_struct(ident, names, handler_idents);
 
     let input = remove_export_attr_from_impl(input);
@@ -378,12 +391,15 @@ pub fn export_impl(_attr: proc_macro::TokenStream, item: proc_macro::TokenStream
     output.into()
 }
 
-#[cfg(all(not(feature="server"), feature="client"))]
+#[cfg(all(
+    feature="server", 
+    not(feature="client")
+))]
 #[proc_macro_attribute]
 pub fn export_impl(_attr: proc_macro::TokenStream, item: proc_macro::TokenStream) -> proc_macro::TokenStream {
     // parse item
     let input = syn::parse_macro_input!(item as syn::ItemImpl);
-    // let (handler_impl, names, handler_idents) = transform_impl(input.clone());
+    let (handler_impl, names, handler_idents) = transform_impl(input.clone());
 
     // extract Self type and use it for construct Ident for handler HashMap
     let self_ty = &input.self_ty;
@@ -391,7 +407,35 @@ pub fn export_impl(_attr: proc_macro::TokenStream, item: proc_macro::TokenStream
         Ok(i) => i,
         Err(err) => return err.to_compile_error().into(),
     };
-    // let register_service_impl = impl_register_service_for_struct(ident, names, handler_idents);
+    let register_service_impl = impl_register_service_for_struct(ident, names, handler_idents);
+
+    let input = remove_export_attr_from_impl(input);
+    let handler_impl = remove_export_attr_from_impl(handler_impl);
+
+    let output = quote::quote! {
+        #input
+        #handler_impl
+        #register_service_impl
+    };
+    output.into()
+}
+
+#[cfg(all(
+    not(feature="server"), 
+    feature="client", 
+    feature = "runtime"
+))]
+#[proc_macro_attribute]
+pub fn export_impl(_attr: proc_macro::TokenStream, item: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    // parse item
+    let input = syn::parse_macro_input!(item as syn::ItemImpl);
+
+    // extract Self type and use it for construct Ident for handler HashMap
+    let self_ty = &input.self_ty;
+    let ident = match util::parse_impl_self_ty(self_ty) {
+        Ok(i) => i,
+        Err(err) => return err.to_compile_error().into(),
+    };
 
     // generate client stub
     let (client_ty, client_impl) = generate_service_client_for_struct(&ident, &input);
@@ -399,7 +443,6 @@ pub fn export_impl(_attr: proc_macro::TokenStream, item: proc_macro::TokenStream
 
     let input = remove_export_attr_from_impl(input);
     let client_impl = remove_export_attr_from_impl(client_impl);
-    // let handler_impl = remove_export_attr_from_impl(handler_impl);
 
     let output = quote::quote! {
         #input
@@ -407,6 +450,40 @@ pub fn export_impl(_attr: proc_macro::TokenStream, item: proc_macro::TokenStream
         #client_impl
         #stub_trait
         #stub_impl
+    };
+    output.into()
+}
+
+#[cfg(all(
+    not(feature="server"), 
+    feature="client", 
+    not(feature = "runtime")
+))]
+#[proc_macro_attribute]
+pub fn export_impl(_attr: proc_macro::TokenStream, item: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    // parse item
+    let input = syn::parse_macro_input!(item as syn::ItemImpl);
+
+    // extract Self type and use it for construct Ident for handler HashMap
+    // let self_ty = &input.self_ty;
+    // let ident = match util::parse_impl_self_ty(self_ty) {
+    //     Ok(i) => i,
+    //     Err(err) => return err.to_compile_error().into(),
+    // };
+
+    // generate client stub
+    // let (client_ty, client_impl) = generate_service_client_for_struct(&ident, &input);
+    // let (stub_trait, stub_impl) = generate_client_stub_for_struct(&ident);
+
+    let input = remove_export_attr_from_impl(input);
+    // let client_impl = remove_export_attr_from_impl(client_impl);
+
+    let output = quote::quote! {
+        #input
+        // #client_ty
+        // #client_impl
+        // #stub_trait
+        // #stub_impl
     };
     output.into()
 }
@@ -415,7 +492,11 @@ pub fn export_impl(_attr: proc_macro::TokenStream, item: proc_macro::TokenStream
 // #[export_trait]
 // =============================================================================
 
-#[cfg(all(feature = "server", feature = "client"))]
+#[cfg(all(
+    feature = "server", 
+    feature = "client",
+    feature = "runtime",
+))]
 #[proc_macro_attribute]
 pub fn export_trait(_attr: proc_macro::TokenStream, item: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let input = syn::parse_macro_input!(item as syn::ItemTrait);
@@ -447,7 +528,11 @@ pub fn export_trait(_attr: proc_macro::TokenStream, item: proc_macro::TokenStrea
     output.into()
 }
 
-#[cfg(all(feature = "server", not(feature = "client")))]
+#[cfg(all(
+    feature = "server", 
+    feature = "client",
+    not(feature = "runtime"),
+))]
 #[proc_macro_attribute]
 pub fn export_trait(_attr: proc_macro::TokenStream, item: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let input = syn::parse_macro_input!(item as syn::ItemTrait);
@@ -456,11 +541,8 @@ pub fn export_trait(_attr: proc_macro::TokenStream, item: proc_macro::TokenStrea
         names, 
         handler_idents
     ) = transform_trait(input.clone());
-    let register_service_impl = impl_register_service_for_trait(
-        &input.ident, names, handler_idents);
-
-    // let (client_ty, client_impl) = generate_service_client_for_trait(&input.ident, &input);
-    // let (stub_trait, stub_impl) = generate_client_stub_for_trait(&input.ident);
+    let local_registry = impl_local_registry_for_trait(
+        &input.ident, &transformed_trait.ident, names, handler_idents);
 
     let input = remove_export_attr_from_trait(input);
     let transformed_trait = remove_export_attr_from_trait(transformed_trait);
@@ -470,29 +552,52 @@ pub fn export_trait(_attr: proc_macro::TokenStream, item: proc_macro::TokenStrea
         #input
         #transformed_trait
         #transformed_trait_impl
-        #register_service_impl
+        #local_registry
     };
     output.into()
 }
 
-#[cfg(all(not(feature = "server"), feature = "client"))]
+#[cfg(all(
+    feature = "server", 
+    not(feature = "client")
+))]
 #[proc_macro_attribute]
 pub fn export_trait(_attr: proc_macro::TokenStream, item: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let input = syn::parse_macro_input!(item as syn::ItemTrait);
-    // let (transformed_trait, 
-    //     transformed_trait_impl,
-    //     names, 
-    //     handler_idents
-    // ) = transform_trait(input.clone());
-    // let register_service_impl = impl_register_service_for_trait(
-    //     &input.ident, names, handler_idents);
+    let (transformed_trait, 
+        transformed_trait_impl,
+        names, 
+        handler_idents
+    ) = transform_trait(input.clone());
+    let local_registry = impl_local_registry_for_trait(
+        &input.ident, &transformed_trait.ident, names, handler_idents);
+
+    let input = remove_export_attr_from_trait(input);
+    let transformed_trait = remove_export_attr_from_trait(transformed_trait);
+    let transformed_trait_impl = remove_export_attr_from_impl(transformed_trait_impl);
+
+    let output = quote::quote! {
+        #input
+        #transformed_trait
+        #transformed_trait_impl
+        #local_registry
+    };
+    output.into()
+}
+
+#[cfg(all(
+    not(feature = "server"), 
+    feature = "client",
+    feature = "runtime"
+))]
+#[proc_macro_attribute]
+pub fn export_trait(_attr: proc_macro::TokenStream, item: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    let input = syn::parse_macro_input!(item as syn::ItemTrait);
 
     let (client_ty, client_impl) = generate_service_client_for_trait(&input.ident, &input);
     let (stub_trait, stub_impl) = generate_client_stub_for_trait(&input.ident);
 
     let input = remove_export_attr_from_trait(input);
-    // let transformed_trait = remove_export_attr_from_trait(transformed_trait);
-    // let transformed_trait_impl = remove_export_attr_from_impl(transformed_trait_impl);
 
     let output = quote::quote! {
         #input
@@ -500,6 +605,22 @@ pub fn export_trait(_attr: proc_macro::TokenStream, item: proc_macro::TokenStrea
         #client_impl
         #stub_trait
         #stub_impl
+    };
+    output.into()
+}
+
+#[cfg(all(
+    not(feature = "server"), 
+    feature = "client",
+    not(feature = "runtime"),
+))]
+#[proc_macro_attribute]
+pub fn export_trait(_attr: proc_macro::TokenStream, item: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    let input = syn::parse_macro_input!(item as syn::ItemTrait);
+    let input = remove_export_attr_from_trait(input);
+
+    let output = quote::quote! {
+        #input
     };
     output.into()
 }

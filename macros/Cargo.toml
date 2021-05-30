@@ -19,6 +19,7 @@ default = []
 
 server = []
 client = []
+runtime = []
 
 [lib]
 proc-macro = true

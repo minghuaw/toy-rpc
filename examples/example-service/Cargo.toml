@@ -11,6 +11,9 @@ default = [
 
 ]
 
+server = ["toy-rpc/server"]
+client = ["toy-rpc/client"]
+
 async_std_runtime = ["toy-rpc/async_std_runtime"]
 tokio_runtime = ["toy-rpc/tokio_runtime"]
 
@@ -20,4 +23,4 @@ async-trait = "0.1.50"
 [dependencies.toy-rpc]
 version = "0.7.0-alpha.0"
 path = "../../toy-rpc/"
-features = [ "server", "client" ]
+# features = [ "server", "client" ]

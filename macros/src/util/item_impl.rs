@@ -109,7 +109,10 @@ pub(crate) fn transform_impl_item(f: &mut syn::ImplItemMethod) {
 }
 
 /// remove #[export_method] attribute
-#[cfg(any(feature = "server", feature = "client"))]
+#[cfg(any(
+    feature = "server", 
+    feature = "client"
+))]
 pub(crate) fn remove_export_attr_from_impl(mut input: syn::ItemImpl) -> syn::ItemImpl {
     input
         .items
@@ -156,7 +159,13 @@ pub(crate) fn impl_register_service_for_struct(
     ret
 }
 
-#[cfg(any(feature = "server", feature = "client"))]
+#[cfg(any(
+    feature = "server", 
+    all(
+        feature = "client",
+        feature = "runtime"
+    )
+))]
 pub(crate) fn filter_exported_impl_items(input: syn::ItemImpl) -> syn::ItemImpl {
     let mut output = input;
     output.items.retain(|item| match item {
@@ -169,7 +178,10 @@ pub(crate) fn filter_exported_impl_items(input: syn::ItemImpl) -> syn::ItemImpl 
     output
 }
 
-#[cfg(feature = "client")]
+#[cfg(all(
+    feature = "client",
+    feature = "runtime"
+))]
 pub(crate) fn generate_service_client_for_struct(
     struct_ident: &syn::Ident,
     input: &syn::ItemImpl,
@@ -190,7 +202,10 @@ pub(crate) fn generate_service_client_for_struct(
 }
 
 /// Generate client stub implementation that allows, conveniently, type checking with the RPC argument
-#[cfg(feature = "client")]
+#[cfg(all(
+    feature = "client",
+    feature = "runtime"
+))]
 fn client_stub_impl_for_struct(
     service_ident: &syn::Ident,
     client_ident: &syn::Ident,
@@ -219,7 +234,10 @@ fn client_stub_impl_for_struct(
     output
 }
 
-#[cfg(feature = "client")]
+#[cfg(all(
+    feature = "client",
+    feature = "runtime"
+))]
 pub(crate) fn generate_client_stub_for_struct_method(
     service_ident: &syn::Ident,
     f: &syn::ImplItemMethod,
@@ -243,7 +261,10 @@ pub(crate) fn generate_client_stub_for_struct_method(
 }
 
 /// Generate client stub for the service impl block
-#[cfg(feature = "client")]
+#[cfg(all(
+    feature = "client",
+    feature = "runtime"
+))]
 pub(crate) fn generate_client_stub_for_struct(
     struct_ident: &syn::Ident,
 ) -> (syn::Item, syn::ItemImpl) {

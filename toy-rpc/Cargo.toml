@@ -43,8 +43,8 @@ serde_bincode = []
 serde_rmp = ["rmp-serde"]
 
 # feature flags for runtime
-tokio_runtime = ["tokio", "async-tungstenite/tokio-runtime", "tokio-stream"]
-async_std_runtime = ["async-std", "async-tungstenite/async-std-runtime"]
+tokio_runtime = ["tokio", "async-tungstenite/tokio-runtime", "tokio-stream", "toy-rpc-macros/runtime"]
+async_std_runtime = ["async-std", "async-tungstenite/async-std-runtime", "toy-rpc-macros/runtime"]
 http_tide = ["tide", "tide-websockets", "async_std_runtime", "server"]
 http_actix_web = ["actix-web", "actix", "actix-web-actors", "actix-http", "tokio_runtime", "server"]
 http_warp = ["warp", "tokio_runtime", "server"]

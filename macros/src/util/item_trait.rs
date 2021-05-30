@@ -1,3 +1,4 @@
+#[cfg(feature = "server")]
 const REGISTRY_SUFFIX: &str = "Registry";
 
 use super::*;
@@ -117,7 +118,10 @@ fn impl_transformed_trait(
     trait_impl
 }
 
-#[cfg(any(feature = "server", feature = "client"))]
+#[cfg(any(
+    feature = "server", 
+    feature = "client"
+))]
 pub(crate) fn remove_export_attr_from_trait(mut input: syn::ItemTrait) -> syn::ItemTrait {
     input 
         .items
@@ -132,33 +136,6 @@ pub(crate) fn remove_export_attr_from_trait(mut input: syn::ItemTrait) -> syn::I
 
     input
 }
-
-// #[cfg(feature = "server")]
-// pub(crate) fn impl_register_service_for_trait(
-//     orig_trait_ident: &syn::Ident,
-//     transformed_trait_ident: &syn::Ident,
-//     names: Vec<String>,
-//     handler_idents: Vec<syn::Ident>
-// ) -> impl quote::ToTokens {
-//     let service_name = orig_trait_ident.to_string();
-//     let ret = quote::quote! {
-//         impl<T> toy_rpc::util::RegisterService for T 
-//         where 
-//             T: #transformed_trait_ident + Send + Sync + 'static
-//         {
-//             fn handlers() -> std::collections::HashMap<&'static str, toy_rpc::service::AsyncHandler<Self>> {
-//                 let mut map = std::collections::HashMap::<&'static str, toy_rpc::service::AsyncHandler<Self>>::new();
-//                 #(map.insert(#names, Self::#handler_idents);)*;
-//                 map
-//             }
-
-//             fn default_name() -> &'static str {
-//                 #service_name
-//             }
-//         }
-//     };
-//     ret
-// }
 
 #[cfg(feature = "server")]
 pub(crate) fn impl_local_registry_for_trait(
@@ -198,8 +175,6 @@ pub(crate) fn impl_local_registry_for_trait(
 pub(crate) fn impl_register_service_for_trait_impl(
     trait_ident: &syn::Ident,
     type_ident: &syn::Ident,
-    // names: Vec<String>,
-    // handler_idents: Vec<syn::Ident>
 ) -> impl quote::ToTokens {
     // let service_name = trait_ident.to_string();
     let concat_name = format!("{}{}", &trait_ident.to_string(), EXPORTED_TRAIT_SUFFIX);
@@ -221,7 +196,23 @@ pub(crate) fn impl_register_service_for_trait_impl(
     ret
 }
 
-#[cfg(any(feature = "server", feature = "client"))]
+#[cfg(feature = "server")]
+pub(crate) fn get_trait_ident_from_item_impl(input: &syn::ItemImpl) -> Option<syn::Ident> {
+    if let Some((_, ref path, _)) = input.trait_ {
+        path.get_ident()
+            .map(|id| id.clone())
+    } else {
+        None
+    }
+}
+
+#[cfg(any(
+    feature = "server", 
+    all(
+        feature = "client",
+        feature = "runtime",
+    )
+))]
 pub(crate) fn filter_exported_trait_items(input: syn::ItemTrait) -> syn::ItemTrait {
     let mut output = input;
     output.items.retain(|item| match item {
@@ -235,7 +226,10 @@ pub(crate) fn filter_exported_trait_items(input: syn::ItemTrait) -> syn::ItemTra
     output
 }
 
-#[cfg(feature = "client")]
+#[cfg(all(
+    feature = "client",
+    feature = "runtime"
+))]
 pub(crate) fn generate_service_client_for_trait(
     trait_ident: &syn::Ident,
     input: &syn::ItemTrait
@@ -254,7 +248,10 @@ pub(crate) fn generate_service_client_for_trait(
     (client_struct, client_impl)
 }
 
-#[cfg(feature = "client")]
+#[cfg(all(
+    feature = "client",
+    feature = "runtime"
+))]
 fn client_stub_impl_for_trait(
     service_ident: &syn::Ident,
     client_ident: &syn::Ident,
@@ -280,7 +277,10 @@ fn client_stub_impl_for_trait(
     output
 }
 
-#[cfg(feature = "client")]
+#[cfg(all(
+    feature = "client",
+    feature = "runtime"
+))]
 fn generate_client_stub_for_trait_method(
     service_ident: &syn::Ident,
     f: &syn::TraitItemMethod
@@ -299,7 +299,10 @@ fn generate_client_stub_for_trait_method(
     None
 }
 
-#[cfg(feature = "client")]
+#[cfg(all(
+    feature = "client",
+    feature = "runtime"
+))]
 pub(crate) fn generate_client_stub_for_trait(
     trait_ident: &syn::Ident,
 ) -> (syn::Item, syn::ItemImpl) {
@@ -330,14 +333,4 @@ pub(crate) fn generate_client_stub_for_trait(
     );
 
     (stub_trait, stub_impl)
-}
-
-#[cfg(feature = "server")]
-pub(crate) fn get_trait_ident_from_item_impl(input: &syn::ItemImpl) -> Option<syn::Ident> {
-    if let Some((_, ref path, _)) = input.trait_ {
-        path.get_ident()
-            .map(|id| id.clone())
-    } else {
-        None
-    }
 }
