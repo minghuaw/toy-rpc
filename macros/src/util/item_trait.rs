@@ -132,13 +132,16 @@ pub(crate) fn remove_export_attr_from_trait(mut input: syn::ItemTrait) -> syn::I
 #[cfg(feature = "server")]
 pub(crate) fn impl_register_service_for_trait(
     orig_trait_ident: &syn::Ident,
-    transformed_traid_ident: &syn::Ident,
+    transformed_trait_ident: &syn::Ident,
     names: Vec<String>,
     handler_idents: Vec<syn::Ident>
 ) -> impl quote::ToTokens {
     let service_name = orig_trait_ident.to_string();
     let ret = quote::quote! {
-        impl<T: #transformed_traid_ident + Send + Sync + 'static> toy_rpc::util::RegisterService for T {
+        impl<T> toy_rpc::util::RegisterService for T 
+        where 
+            T: #transformed_trait_ident + Send + Sync + 'static
+        {
             fn handlers() -> std::collections::HashMap<&'static str, toy_rpc::service::AsyncHandler<Self>> {
                 let mut map = std::collections::HashMap::<&'static str, toy_rpc::service::AsyncHandler<Self>>::new();
                 #(map.insert(#names, Self::#handler_idents);)*;
