@@ -1,9 +1,12 @@
+const REGISTRY_SUFFIX: &str = "Registry";
+
 use super::*;
 
 #[cfg(feature = "server")]
 pub(crate) fn transform_trait(input: syn::ItemTrait) -> (syn::ItemTrait, syn::ItemImpl, Vec<String>, Vec<syn::Ident>) {
     let mut names: Vec<String> = Vec::new();
     let mut idents: Vec<syn::Ident> = Vec::new();
+    let mut handler_idents = Vec::new();
     let input = filter_exported_trait_items(input.clone());
     let trait_ident = &input.ident;
 
@@ -25,7 +28,9 @@ pub(crate) fn transform_trait(input: syn::ItemTrait) -> (syn::ItemTrait, syn::It
     );
     for item in input.items.iter() {
         if let syn::TraitItem::Method(f) = item {
-            let item_gen = generate_transformed_trait_item(&f.sig.ident);
+            let f_gen = generate_transformed_trait_item(&f.sig.ident);
+            handler_idents.push(f_gen.sig.ident.clone());
+            let item_gen = syn::TraitItem::Method(f_gen);
             transformed_trait.items.push(item_gen);
         }
     }
@@ -41,23 +46,22 @@ pub(crate) fn transform_trait(input: syn::ItemTrait) -> (syn::ItemTrait, syn::It
         &input
     );
 
-    (transformed_trait, transformed_trait_impl, names, idents)
+    (transformed_trait, transformed_trait_impl, names, handler_idents)
 }
 
 #[cfg(feature = "server")]
 fn generate_transformed_trait_item(
     ident: &syn::Ident,
-) -> syn::TraitItem {
+) -> syn::TraitItemMethod {
     let concat_name = format!("{}_{}", &ident.to_string(), HANDLER_SUFFIX);
     let handler_ident = syn::Ident::new(&concat_name, ident.span());
 
-    let f = syn::parse_quote!(
+    syn::parse_quote!(
         fn #handler_ident(
             self: std::sync::Arc<Self>, 
             deserializer: Box<dyn toy_rpc::erased_serde::Deserializer<'static> + Send>
         ) -> toy_rpc::service::HandlerResultFut;
-    );
-    syn::TraitItem::Method(f)
+    )
 }
 
 #[cfg(feature = "server")]
@@ -129,16 +133,50 @@ pub(crate) fn remove_export_attr_from_trait(mut input: syn::ItemTrait) -> syn::I
     input
 }
 
+// #[cfg(feature = "server")]
+// pub(crate) fn impl_register_service_for_trait(
+//     orig_trait_ident: &syn::Ident,
+//     transformed_trait_ident: &syn::Ident,
+//     names: Vec<String>,
+//     handler_idents: Vec<syn::Ident>
+// ) -> impl quote::ToTokens {
+//     let service_name = orig_trait_ident.to_string();
+//     let ret = quote::quote! {
+//         impl<T> toy_rpc::util::RegisterService for T 
+//         where 
+//             T: #transformed_trait_ident + Send + Sync + 'static
+//         {
+//             fn handlers() -> std::collections::HashMap<&'static str, toy_rpc::service::AsyncHandler<Self>> {
+//                 let mut map = std::collections::HashMap::<&'static str, toy_rpc::service::AsyncHandler<Self>>::new();
+//                 #(map.insert(#names, Self::#handler_idents);)*;
+//                 map
+//             }
+
+//             fn default_name() -> &'static str {
+//                 #service_name
+//             }
+//         }
+//     };
+//     ret
+// }
+
 #[cfg(feature = "server")]
-pub(crate) fn impl_register_service_for_trait(
+pub(crate) fn impl_local_registry_for_trait(
     orig_trait_ident: &syn::Ident,
     transformed_trait_ident: &syn::Ident,
     names: Vec<String>,
     handler_idents: Vec<syn::Ident>
 ) -> impl quote::ToTokens {
     let service_name = orig_trait_ident.to_string();
+    let concat_name = format!("{}{}", orig_trait_ident.to_string(), REGISTRY_SUFFIX);
+    let registry_ident = syn::Ident::new(&concat_name, orig_trait_ident.span());
     let ret = quote::quote! {
-        impl<T> toy_rpc::util::RegisterService for T 
+        trait #registry_ident {
+            fn handlers() -> std::collections::HashMap<&'static str, toy_rpc::service::AsyncHandler<Self>>;
+            fn default_name() -> &'static str;
+        }
+
+        impl<T> #registry_ident for T 
         where 
             T: #transformed_trait_ident + Send + Sync + 'static
         {
@@ -150,6 +188,33 @@ pub(crate) fn impl_register_service_for_trait(
 
             fn default_name() -> &'static str {
                 #service_name
+            }
+        }
+    };
+    ret
+}
+
+#[cfg(feature = "server")]
+pub(crate) fn impl_register_service_for_trait_impl(
+    trait_ident: &syn::Ident,
+    type_ident: &syn::Ident,
+    // names: Vec<String>,
+    // handler_idents: Vec<syn::Ident>
+) -> impl quote::ToTokens {
+    // let service_name = trait_ident.to_string();
+    // let concat_name = format!("{}{}", &trait_ident.to_string(), EXPORTED_TRAIT_SUFFIX);
+    // let transformed_trait_ident = syn::Ident::new(&&concat_name, trait_ident.span());
+    let registry_name = format!("{}{}", trait_ident, REGISTRY_SUFFIX);
+    let registry_ident = syn::Ident::new(&registry_name, trait_ident.span());
+
+    let ret = quote::quote! {
+        impl toy_rpc::util::RegisterService for #type_ident {
+            fn handlers() -> std::collections::HashMap<&'static str, toy_rpc::service::AsyncHandler<Self>> {
+                <Self as #registry_ident>::handlers()
+            }
+
+            fn default_name() -> &'static str {
+                <Self as #registry_ident>::default_name()
             }
         }
     };
@@ -265,4 +330,14 @@ pub(crate) fn generate_client_stub_for_trait(
     );
 
     (stub_trait, stub_impl)
+}
+
+#[cfg(feature = "server")]
+pub(crate) fn get_trait_ident_from_item_impl(input: &syn::ItemImpl) -> Option<syn::Ident> {
+    if let Some((_, ref path, _)) = input.trait_ {
+        path.get_ident()
+            .map(|id| id.clone())
+    } else {
+        None
+    }
 }
