@@ -1,20 +1,38 @@
 #![allow(dead_code)]
 
-use toy_rpc::macros::export_impl;
+use toy_rpc::macros::{export_impl, export_trait};
 use async_trait::async_trait;
-use std::sync::Arc;
 
-pub struct FooBarService { }
+// =============================================================================
+// #[export_trait]
+// =============================================================================
 
 #[async_trait]
-pub trait ExampleService {
+#[export_trait]
+pub trait AnotherExample {
+    #[export_method]
+    async fn one(&self, args: i32) -> Result<i32, String>;
+    #[export_method]
+    async fn two(&self, args: bool) -> Result<bool, String>;
+    fn three();
+}
+
+// =============================================================================
+// #[export_impl]
+// =============================================================================
+
+pub struct FooBar { }
+
+#[async_trait]
+pub trait Example {
     async fn foo(&self, args: i32) -> Result<i32, String>;
     async fn bar(&self, args: bool) -> Result<bool, String>;
+    async fn not_exported(&self);
 }
 
 #[async_trait]
 #[export_impl]
-impl ExampleService for FooBarService {
+impl Example for FooBar {
 // impl Example {
     #[export_method]
     async fn foo(&self, args: i32) -> Result<i32, String> {
@@ -25,11 +43,10 @@ impl ExampleService for FooBarService {
     async fn bar(&self, args: bool) -> Result<bool, String> {
         Ok(!args)
     }
-}
 
-fn expand_service() {
-    let example = Arc::new(FooBarService{});
-
+    async fn not_exported(&self) {
+        println!("this is not exported");
+    }
 }
 
 #[cfg(test)]
