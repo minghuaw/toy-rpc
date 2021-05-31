@@ -17,11 +17,11 @@ toy-rpc = { version = "0.7.0-alpha.0, feature = ["tokio_runtime", "server", "cli
 ## Project structure
 
 ```
-./src/
-|- bin/ 
-  |- client.rs
-  |- server.rs
-|- lib.rs
+./src
+├── /bin
+│   ├── server.rs
+│   ├── client.rs
+└── lib.rs
 ```
 
 In the `Cargo.toml`, you may need to specify the binaries with 

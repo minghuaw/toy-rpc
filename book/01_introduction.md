@@ -1,12 +1,30 @@
 # Introduction
 
+<div align="center">
+<!-- Crates version -->
+<a href="https://crates.io/crates/toy-rpc">
+<img src="https://img.shields.io/crates/v/toy-rpc.svg?style=flat" alt="Crates.io version" />
+</a>
+<!-- docs.rs docs -->
+<a href="https://docs.rs/toy-rpc">
+<img src="https://img.shields.io/badge/docs-latest-blue.svg?style=flat" alt="docs.rs docs" />
+</a>
+<!-- Downloads -->
+<a href="https://crates.io/crates/toy-rpc">
+<img src="https://img.shields.io/crates/d/toy-rpc.svg?style=flat" alt="Download" />
+</a>
+<a href="https://github.com/rust-secure-code/safety-dance/">
+<img src="https://img.shields.io/badge/unsafe-forbidden-success.svg?style=flat" alt="Unsafe Rust forbidden" />
+</a>
+</div>
+
 `toy-rpc` aims to be an easy-to-use `async` RPC tool that is inspired by golang's `net/rpc`'s API. 
 It supports both `async_std` and `tokio` runtimes and provides integration with `actix_web`, `warp` and `tide`
 HTTP server frameworks.
 
 The overall usage and API should feel similar to that of the golang's `net/rpc` package. Some of the names are changed 
 to make them sound more "rusty". Because rust does not come with runtime reflection, attribute macros `#[export_impl]`
-and `#[export_trait]` (WIP), and attribute `#[export_method]` are used to mark functions "exported" in golang's 
+and `#[export_trait]` / `#[export_trait_impl]`, and attribute `#[export_method]` are used to mark functions "exported" in golang's 
 `net/rpc` perspective.
 
 ## Why?
