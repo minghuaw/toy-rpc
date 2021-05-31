@@ -1,4 +1,4 @@
-# Server with `async-std` runtime
+# Server with `tokio` runtime
 
 This is just going to be an identical copy of the previous [`#[export_trait]` and `#[export_trait_impl]` example](https://minghuaw.github.io/toy-rpc/04_server.html#example-with-export_trait-and-export_trait_impl).
 
