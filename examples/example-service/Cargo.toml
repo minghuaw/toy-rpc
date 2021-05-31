@@ -9,12 +9,6 @@ edition = "2018"
 [features]
 default = [ ]
 
-server = ["toy-rpc/server"]
-client = ["toy-rpc/client"]
-
-async_std_runtime = ["toy-rpc/async_std_runtime"]
-tokio_runtime = ["toy-rpc/tokio_runtime"]
-
 [dependencies]
 async-trait = "0.1.50"
 

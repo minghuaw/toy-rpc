@@ -1,0 +1,383 @@
+<!DOCTYPE HTML>
+<html lang="en" class="sidebar-visible no-js light">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>toy-rpc Book</title>
+        
+        <meta name="robots" content="noindex" />
+        
+        
+
+
+        <!-- Custom HTML head -->
+        
+
+
+        <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff" />
+
+        
+        <link rel="icon" href="favicon.svg">
+        
+        
+        <link rel="shortcut icon" href="favicon.png">
+        
+        <link rel="stylesheet" href="css/variables.css">
+        <link rel="stylesheet" href="css/general.css">
+        <link rel="stylesheet" href="css/chrome.css">
+        
+        <link rel="stylesheet" href="css/print.css" media="print">
+        
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="FontAwesome/css/font-awesome.css">
+        
+        <link rel="stylesheet" href="fonts/fonts.css">
+        
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="highlight.css">
+        <link rel="stylesheet" href="tomorrow-night.css">
+        <link rel="stylesheet" href="ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+        
+
+        
+    </head>
+    <body>
+        <!-- Provide site root to javascript -->
+        <script type="text/javascript">
+            var path_to_root = "";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "light";
+        </script>
+
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script type="text/javascript">
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script type="text/javascript">
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            var html = document.querySelector('html');
+            html.classList.remove('no-js')
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add('js');
+        </script>
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script type="text/javascript">
+            var html = document.querySelector('html');
+            var sidebar = 'hidden';
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            }
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <div class="sidebar-scrollbox">
+                <ol class="chapter"><li class="chapter-item expanded "><a href="01_introduction.html"><strong aria-hidden="true">1.</strong> Introduction</a></li><li class="chapter-item expanded "><a href="02_quickstart.html"><strong aria-hidden="true">2.</strong> Quickstart</a></li><li class="chapter-item expanded "><a href="03_define_service.html"><strong aria-hidden="true">3.</strong> Define Service</a></li><li class="chapter-item expanded "><a href="04_server.html"><strong aria-hidden="true">4.</strong> Server</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="04a_async_std.html"><strong aria-hidden="true">4.1.</strong> async-std</a></li><li class="chapter-item expanded "><a href="04b_tokio.html"><strong aria-hidden="true">4.2.</strong> tokio</a></li><li class="chapter-item expanded "><a href="04c_actix_web.html"><strong aria-hidden="true">4.3.</strong> actix-web Integration</a></li><li class="chapter-item expanded "><a href="04d_tide.html"><strong aria-hidden="true">4.4.</strong> tide Integration</a></li><li class="chapter-item expanded "><a href="04e_warp.html"><strong aria-hidden="true">4.5.</strong> warp Integration</a></li></ol></li><li class="chapter-item expanded "><a href="05_client.html"><strong aria-hidden="true">5.</strong> Client</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="05a_cancellation.html"><strong aria-hidden="true">5.1.</strong> Cancellation</a></li><li class="chapter-item expanded "><a href="05b_timeout.html"><strong aria-hidden="true">5.2.</strong> Timeout</a></li></ol></li><li class="chapter-item expanded "><a href="06_examples.html"><strong aria-hidden="true">6.</strong> Examples</a></li><li class="chapter-item expanded "><a href="07_change_log.html"><strong aria-hidden="true">7.</strong> Change Logs</a></li></ol>
+            </div>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky bordered">
+                    <div class="left-buttons">
+                        <button id="sidebar-toggle" class="icon-button" type="button" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </button>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light (default)</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                        
+                    </div>
+
+                    <h1 class="menu-title">toy-rpc Book</h1>
+
+                    <div class="right-buttons">
+                        
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+                        
+                        
+                        
+
+                    </div>
+                </div>
+
+                
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+                
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script type="text/javascript">
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="introduction"><a class="header" href="#introduction">Introduction</a></h1>
+<p><code>toy-rpc</code> aims to be an easy-to-use <code>async</code> RPC tool that is inspired by golang's <code>net/rpc</code>'s API. 
+It supports both <code>async_std</code> and <code>tokio</code> runtimes and provides integration with <code>actix_web</code>, <code>warp</code> and <code>tide</code>
+HTTP server frameworks.</p>
+<p>The overall usage and API should feel similar to that of the golang's <code>net/rpc</code> package. Some of the names are changed 
+to make them sound more &quot;rusty&quot;. Because rust does not come with runtime reflection, attribute macros <code>#[export_impl]</code>
+and <code>#[export_trait]</code> (WIP), and attribute <code>#[export_method]</code> are used to mark functions &quot;exported&quot; in golang's 
+<code>net/rpc</code> perspective.</p>
+<h2 id="why"><a class="header" href="#why">Why?</a></h2>
+<p>While there are grpc implementations like <code>grpc-rs</code> and <code>tonic</code> as well as schema-free crates like <code>tarpc</code>, I didn't find 
+a crate that offers the same level of ease-of-use as that of the golang's <code>net/rpc</code> package. Other than the ease-of-use,
+not many async RPC crates work with both <code>async_std</code> and <code>tokio</code> runtime and could be difficult to integrate with the common
+async HTTP crates (<code>actix_web</code>, <code>warp</code>, and <code>tide</code>). Thus I started working on this crate to bring something that is 
+easy-to-use and supports both <code>async_std</code> and <code>tokio</code> runtimes.</p>
+<h2 id="feature-flags"><a class="header" href="#feature-flags">Feature flags</a></h2>
+<p>The feature flags can be put into three categories.</p>
+<p>Choice of serialization/deserialzation (only one should be enabled at a time)</p>
+<ul>
+<li><code>serde_bincode</code>: the default codec will use <code>bincode</code>
+for serialization/deserialization</li>
+<li><code>serde_json</code>: the default codec will use <code>serde_json</code>
+for <code>json</code> serialization/deserialization</li>
+<li><code>serde_cbor</code>: the default codec will use <code>serde_cbor</code>
+for serialization/deserialization</li>
+<li><code>serde_rmp</code>: the default codec will use <code>rmp-serde</code>
+for serialization/deserialization</li>
+</ul>
+<p>Choice of runtime and HTTP framework integration</p>
+<ul>
+<li><code>async_std_runtime</code>: supports usage with <code>async-std</code></li>
+<li><code>tokio_runtime</code>: supports usage with <code>tokio</code></li>
+<li><code>http_tide</code>: enables <code>tide</code> integration on the server side. This also enables <code>async_std_runtime</code></li>
+<li><code>http_actix_web</code>: enables <code>actix-web</code> integration on the server side. This also enables <code>tokio_runtime</code></li>
+<li><code>http_warp</code>: enables integration with <code>warp</code> on the server side. This also enables <code>tokio_runtime</code></li>
+</ul>
+<p>Choice of RPC server or client (both can be enabled at the same time)</p>
+<ul>
+<li><code>server</code>: enables RPC server</li>
+<li><code>client</code>: enables RPC client </li>
+</ul>
+<p>Other trivial feature flags are listed below, and they are likely of no actual usage for you.</p>
+<ul>
+<li><code>docs</code></li>
+<li><code>std</code>: <code>serde/std</code>. There is no actual usage right now.</li>
+</ul>
+<p>By default, only <code>serde_bincode</code> feature is enabled. 
+You must enable at least one runtime feature flag and the <code>server</code> and/or <code>client</code> to have something usable.</p>
+<h2 id="default-features"><a class="header" href="#default-features">Default features</a></h2>
+<pre><code class="language-toml">default = [
+    &quot;serde_bincode&quot;,
+]
+</code></pre>
+<div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><h1 id="quickstart"><a class="header" href="#quickstart">Quickstart</a></h1>
+<p>A simple quickstart with <code>tokio</code> runtime is shown below. More examples can be found in the <strong>Example</strong> chapter.</p>
+<h2 id="initialize-new-project"><a class="header" href="#initialize-new-project">Initialize new project</a></h2>
+<p><code>cargo new --lib toy_rpc_quickstart</code></p>
+<h2 id="add-dependencies"><a class="header" href="#add-dependencies">Add dependencies</a></h2>
+<pre><code class="language-toml">[dependencies]
+tokio = { version = &quot;1&quot;, features = [&quot;rt-multi-thread&quot;, &quot;macros&quot;, ] }
+toy-rpc = { version = &quot;0.7.0-alpha.0, feature = [&quot;tokio_runtime&quot;, &quot;server&quot;, &quot;client&quot;] }
+</code></pre>
+<h2 id="project-structure"><a class="header" href="#project-structure">Project structure</a></h2>
+<pre><code>./src/
+|- bin/ 
+  |- client.rs
+  |- server.rs
+|- lib.rs
+</code></pre>
+<p>In the <code>Cargo.toml</code>, you may need to specify the binaries with </p>
+<pre><code class="language-toml">[[bin]]
+name = &quot;server&quot;
+path = &quot;src/bin/server.rs&quot;
+
+[[bin]]
+name = &quot;client&quot;
+path = &quot;src/bin/client.rs&quot; 
+</code></pre>
+<h2 id="define-rpc-service"><a class="header" href="#define-rpc-service">Define RPC service</a></h2>
+<p>In <code>src/lib.rs</code></p>
+<pre><pre class="playground"><code class="language-rust">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// src/lib.rs
+
+mod rpc {
+    use toy_rpc::macros::export_impl;
+    pub struct Echo { }
+    
+    #[export_impl]
+    impl Echo {
+        #[export_method]
+        pub async fn echo_i32(&amp;self, arg: i32) -&gt; Result&lt;i32, String&gt; {
+            Ok(arg)
+        }
+    }
+}
+<span class="boring">}
+</span></code></pre></pre>
+<h2 id="rpc-server"><a class="header" href="#rpc-server">RPC server</a></h2>
+<p>In <code>src/bin/server.rs</code></p>
+<pre><pre class="playground"><code class="language-rust">// src/bin/server.rs
+
+use tokio::{task, net::TcpListener};
+use std::sync::Arc;
+use toy_rpc::Server;
+
+use toy_rpc_quickstart::rpc::Echo;
+
+#[tokio::main]
+async fn main() {
+    let addr = &quot;127.0.0.1:23333&quot;;
+    
+    // Creates an instance of the `Echo` service
+    let echo_service = Arc::new(
+        Echo { }
+    );
+
+    let server = Server::builder()
+        .register(echo_service) // register service
+        .build();
+    let listener = TcpListener::bind(addr).await.unwrap();
+
+    // Run the server in a separate task
+    let handle = task::spawn(async move {
+        println!(&quot;Starting server at {}&quot;, &amp;addr);
+        server.accept(listener).await.unwrap();
+    });
+    handle.await.expect(&quot;Error running the RPC server&quot;);
+}
+</code></pre></pre>
+<h2 id="rpc-client"><a class="header" href="#rpc-client">RPC client</a></h2>
+<p>In <code>src/bin/client.rs</code></p>
+<pre><pre class="playground"><code class="language-rust">
+<span class="boring">#![allow(unused)]
+</span>
+<span class="boring">fn main() {
+</span><span class="boring">}
+</span></code></pre></pre>
+<div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><h1 id="define-service"><a class="header" href="#define-service">Define Service</a></h1>
+<p>WIP</p>
+<div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><h1 id="server"><a class="header" href="#server">Server</a></h1>
+<p>WIP</p>
+<div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><h1 id="server-with-async-std-runtime"><a class="header" href="#server-with-async-std-runtime">Server with <code>async-std</code> runtime</a></h1>
+<p>WIP</p>
+<div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><p>WIP</p>
+<div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><p>WIP</p>
+<div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><p>WIP</p>
+<div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><p>WIP</p>
+<div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><p>WIP</p>
+<div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><p>WIP</p>
+<div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><p>WIP</p>
+<div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><p>WIP</p>
+<div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><p>WIP</p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                        
+
+                        
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                
+
+                
+            </nav>
+
+        </div>
+
+        
+
+        
+
+        
+
+        
+        <script type="text/javascript">
+            window.playground_copyable = true;
+        </script>
+        
+
+        
+
+        
+        <script src="elasticlunr.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="mark.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="searcher.js" type="text/javascript" charset="utf-8"></script>
+        
+
+        <script src="clipboard.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="highlight.js" type="text/javascript" charset="utf-8"></script>
+        <script src="book.js" type="text/javascript" charset="utf-8"></script>
+
+        <!-- Custom JS scripts -->
+        
+
+        
+        
+        <script type="text/javascript">
+        window.addEventListener('load', function() {
+            window.setTimeout(window.print, 100);
+        });
+        </script>
+        
+        
+
+    </body>
+</html>

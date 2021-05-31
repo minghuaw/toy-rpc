@@ -237,17 +237,30 @@ pub fn impl_inner_deserializer(_: proc_macro::TokenStream) -> proc_macro::TokenS
 // #[export_impl]
 // =============================================================================
 
-/// Export methods in the impl block with #[export_method] attribute. Methods without
+/// "Export" methods in the impl block with `#[export_method]` attribute. Methods without
 /// the attribute will not be affected. This will also generate client stub.
 ///
 /// When using with `#[async_trait]`, place `#[async_trait]` before `#[export_macro]`.
-/// Under the hood, this macro generates method wrappers which are added to a
-/// lazy static hashmap of handlers. This macro implements the
+/// Under the hood, this macro generates method handlers. This macro implements the
 /// `toy_rpc::util::RegisterService` trait, which returns the handler hashmap
 /// when a service is registered on the server.
-///
-/// Example - Export impl block
 /// 
+/// ### Note
+/// 
+/// - The default service name generated will be the same as the name of the struct.
+///
+/// ### Example - Export impl block
+/// 
+/// ```rust
+/// struct Abacus { }
+/// 
+/// #[export_impl]
+/// impl Abacus {
+///     #[export_method]
+///     async fn subtract(&self, args(i32, i32)) -> Result<i32, String> {
+///         // ...
+///     }
+/// }
 /// ```
 #[proc_macro_attribute]
 pub fn export_impl(_attr: proc_macro::TokenStream, item: proc_macro::TokenStream) -> proc_macro::TokenStream {
@@ -341,6 +354,30 @@ pub fn export_impl(_attr: proc_macro::TokenStream, item: proc_macro::TokenStream
 // #[export_trait]
 // =============================================================================
 
+/// "Exports" methods defined in the trait with the `#[export_method]` attribute. 
+/// Methods not marked with `#[export_method]` will not be affected. 
+/// 
+/// This macro should be used together with `#[export_trait_impl]` to allow conveniently 
+/// register the struct that implements the service trait as a service. 
+/// 
+/// ## Note
+/// 
+/// - The default service name generated will be the same as the name of the trait. 
+/// 
+/// - This macro should be placed on the trait definition. 
+/// 
+/// ## Example
+/// 
+/// ```rust 
+/// #[async_trait]
+/// #[export_trait]
+/// pub trait Arith {
+///     // Mark method(s) to be "exported" with `#[export_method]` 
+///     // in the definition.
+///     #[export_method]
+///     async fn add(&self, args(i32, i32)) -> Result<i32, String>;
+/// }
+/// ```
 #[proc_macro_attribute]
 pub fn export_trait(_attr: proc_macro::TokenStream, item: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let input = syn::parse_macro_input!(item as syn::ItemTrait);
@@ -418,7 +455,30 @@ pub fn export_trait(_attr: proc_macro::TokenStream, item: proc_macro::TokenStrea
     output.into()
 }
 
-// #[cfg(feature = "server")]
+/// This macro implements the `toy_rpc::util::RegisterService` trait to allow
+/// convenient registration of the service. This should be used along with the
+/// macro `#[export_trait]`. 
+/// 
+/// ## Note
+/// 
+/// - This macro should be placed on the impl block of the defined RPC service 
+/// trait 
+/// 
+/// ## Example 
+/// 
+/// ```rust 
+/// struct Abacus { }
+/// 
+/// #[async_trait]
+/// #[export_trait_impl]
+/// impl Arith  for Abacus {
+///     // Notice that you do NOT mark the method with `#[export_method]`
+///     // again
+///     async fn add(&self, args(i32, i32)) -> Result<i32, String> {
+///         // ...
+///     }
+/// }
+/// ```
 #[proc_macro_attribute]
 pub fn export_trait_impl(_attr: proc_macro::TokenStream, item: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let input = syn::parse_macro_input!(item as syn::ItemImpl);
