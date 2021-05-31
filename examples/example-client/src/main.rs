@@ -10,8 +10,14 @@ async fn main() {
 
     let call = client.arith().add((1, 3));
     let reply = call.await;
-    println!("1 add 3 yields result: {:?}", reply);
+    println!("[Arith]: 1 + 3 = {:?}", reply);
 
     let reply = client.arith().subtract((1, 89)).await;
-    println!("1 subtracted by 89 yields result: {:?}", reply);
+    println!("[Arith]: 1 - 89 = {:?}", reply);
+
+    let reply: Result<i32, _> = client.call("Calculator.multiply", (3i32, 4i32)).await;
+    println!("[Calculator]: 3 * 4 = {:?}", reply);
+
+    let reply: Result<i32, _> = client.call("Calculator.divide", (15i32, 3i32)).await;
+    println!("[Calculator]: 15 / 3 = {:?}", reply);
 }
