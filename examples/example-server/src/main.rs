@@ -9,7 +9,9 @@ use example_service::*;
 struct Abacus { }
 
 #[async_trait]
-#[export_trait_impl]
+// `#[export_trait_impl]` will allow conveniently registering service as "Arith", 
+// and you do **NOT** need to mark methods as `#[export_method]` again
+#[export_trait_impl] 
 impl Arith for Abacus {
     async fn add(&self, args: (i32, i32)) -> Result<i32, String> {
         Ok(args.0 + args.1)
@@ -44,7 +46,9 @@ async fn main() {
     let calculator = Arc::new(Calculator{});
     let listener = TcpListener::bind(addr).await.unwrap();
     let server = Server::builder()
-        .register(abacus)
+        // This will register service with name: "Arith"
+        .register(abacus) 
+        // This will register service with name: "Calculator"
         .register(calculator)
         .build();
 
