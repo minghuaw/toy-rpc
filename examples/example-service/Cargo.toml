@@ -11,7 +11,8 @@ default = [ ]
 
 [dependencies]
 async-trait = "0.1.50"
+toy-rpc = "0.7.0-alpha.1"
 
-[dependencies.toy-rpc]
-version = "0.7.0-alpha.0"
-path = "../../toy-rpc/"
+# [dependencies.toy-rpc]
+# version = "0.7.0-alpha.1"
+# path = "../../toy-rpc/"

@@ -20,6 +20,10 @@ impl Arith for Abacus {
     async fn subtract(&self, args: (i32, i32)) -> Result<i32, String> {
         Ok(args.0 - args.1)
     }
+
+    fn say_hi(&self) {
+        println!("hi");
+    }
 }
 
 struct Calculator { }
