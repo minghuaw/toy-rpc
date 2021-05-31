@@ -2,5 +2,9 @@
 authors = ["minghuaw"]
 language = "en"
 multilingual = false
-src = "docs"
+src = "book"
 title = "toy-rpc Book"
+
+[build]
+build-dir = "docs"
+create-missing = false
