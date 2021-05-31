@@ -263,7 +263,7 @@ path = &quot;src/bin/client.rs&quot;
 </code></pre>
 <h2 id="define-rpc-service"><a class="header" href="#define-rpc-service">Define RPC service</a></h2>
 <p>In <code>src/lib.rs</code></p>
-<pre><pre class="playground"><code class="language-rust">
+<pre><pre class="playground"><code class="language-rust edition2018">
 <span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>// src/lib.rs
@@ -284,7 +284,7 @@ mod rpc {
 </span></code></pre></pre>
 <h2 id="rpc-server"><a class="header" href="#rpc-server">RPC server</a></h2>
 <p>In <code>src/bin/server.rs</code></p>
-<pre><pre class="playground"><code class="language-rust">// src/bin/server.rs
+<pre><pre class="playground"><code class="language-rust edition2018">// src/bin/server.rs
 
 use tokio::{task, net::TcpListener};
 use std::sync::Arc;
@@ -316,7 +316,7 @@ async fn main() {
 </code></pre></pre>
 <h2 id="rpc-client"><a class="header" href="#rpc-client">RPC client</a></h2>
 <p>In <code>src/bin/client.rs</code></p>
-<pre><pre class="playground"><code class="language-rust">
+<pre><pre class="playground"><code class="language-rust edition2018">
 <span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>use toy_rpc::Client;
@@ -368,7 +368,7 @@ The methods to export must meet the following criteria on the server side</p>
 </li>
 </ul>
 <p>The method is essentially in the form</p>
-<pre><pre class="playground"><code class="language-rust">
+<pre><pre class="playground"><code class="language-rust edition2018">
 <span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>#[export_method]
@@ -398,7 +398,7 @@ toy-rpc = &quot;0.7.0-alpha.1&quot;
 └── lib.rs
 </code></pre>
 <p>Suppose that <em>both</em> the service definitions and implementations are placed in <code>src/lib.rs</code>.</p>
-<pre><pre class="playground"><code class="language-rust">
+<pre><pre class="playground"><code class="language-rust edition2018">
 <span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>// src/lib.rs
@@ -421,7 +421,7 @@ impl Foo {
 <span class="boring">}
 </span></code></pre></pre>
 <p>You may also define a separate trait in <code>src/lib.rs</code> which is implemented by some <code>struct</code> in the same file.</p>
-<pre><pre class="playground"><code class="language-rust">
+<pre><pre class="playground"><code class="language-rust edition2018">
 <span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>// continuing in src/lib.rs
@@ -465,7 +465,7 @@ impl Arith for Bar {
 </ul>
 <p>which can also be found in the GitHub examples (<a href="https://github.com/minghuaw/toy-rpc/tree/main/examples/example-service">service</a>, <a href="https://github.com/minghuaw/toy-rpc/tree/main/examples/example-server">server</a>, <a href="https://github.com/minghuaw/toy-rpc/tree/main/examples/example-client">client</a>).</p>
 <p>We are going to define the RPC service just as a trait in <code>&quot;example-service&quot;</code>.</p>
-<pre><pre class="playground"><code class="language-rust">
+<pre><pre class="playground"><code class="language-rust edition2018">
 <span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>// example-service/src/lib.rs
@@ -505,7 +505,7 @@ toy-rpc = { version = &quot;0.7.0-alpha.1&quot;, features = [&quot;tokio_runtime
 └── lib.rs
 </code></pre>
 <p>Using the service we have defined and implemented in the <a href="https://minghuaw.github.io/toy-rpc/03_define_service.html#export_impl">previous chapter</a>, we are going instantiate those services and register those instances in <code>src/bin/server.rs</code>.</p>
-<pre><pre class="playground"><code class="language-rust">// src/bin/server.rs
+<pre><pre class="playground"><code class="language-rust edition2018">// src/bin/server.rs
 use tokio::net::TcpListener;
 use std::sync::Arc;
 use toy_rpc::Server;
@@ -545,7 +545,7 @@ toy-rpc = { version = &quot;0.7.0-alpha.1&quot;, features = [&quot;tokio_runtime
 example-service = { version = &quot;0.1.0&quot;, path = &quot;../example-service&quot; }
 </code></pre>
 <p>Now, let's implement the service and start the server</p>
-<pre><pre class="playground"><code class="language-rust">use tokio::net::TcpListener;
+<pre><pre class="playground"><code class="language-rust edition2018">use tokio::net::TcpListener;
 use std::sync::Arc;
 use async_trait::async_trait;
 use toy_rpc::Server;
@@ -591,8 +591,121 @@ async fn main() {
 }
 </code></pre></pre>
 <div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><h1 id="server-with-async-std-runtime"><a class="header" href="#server-with-async-std-runtime">Server with <code>async-std</code> runtime</a></h1>
-<p>WIP</p>
-<div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><p>WIP</p>
+<p>The overall usage with <code>async-std</code> runtime should look (almost) the same as the examples before. The only difference would be </p>
+<ol>
+<li>add <code>async_std</code> to your dependecies</li>
+<li>enable feature <code>&quot;async_std_runtime&quot;</code> as opposed to <code>&quot;tokio_runtime&quot;</code></li>
+<li>use <code>async_std::net::TcpListener</code> instead of <code>tokio::net::TcpListener</code></li>
+</ol>
+<p>If we were to run the server with <code>async-std</code> runtime, our previous <a href="https://minghuaw.github.io/toy-rpc/04_server.html#example-with-export_trait-and-export_trait_impl"><code>#[export_trait]</code> and <code>#[export_trait_impl]</code> example</a> would then look like the code below.</p>
+<pre><code class="language-toml">[dependencies]
+async-trait = &quot;0.1.50&quot;
+async-std = { version = &quot;1.9.0&quot;, features = [&quot;attributes&quot;] }
+toy-rpc = { version = &quot;0.7.0-alpha.1&quot;, features = [&quot;async_std_runtime&quot;, &quot;server&quot;] }
+
+# our service definition 
+example-service = { version = &quot;0.1.0&quot;, path = &quot;../example-service&quot; }
+</code></pre>
+<pre><pre class="playground"><code class="language-rust edition2018">use async_std::net::TcpListener;
+use std::sync::Arc;
+use async_trait::async_trait;
+use toy_rpc::Server;
+use toy_rpc::macros::export_trait_impl;
+
+// Import our service definition
+// Make sure you import everything to include the auto-generated helper 
+// traits that allow convenient service registration
+use example_service::*;
+
+struct Abacus { }
+
+#[async_trait]
+#[export_trait_impl] // The default service name will be &quot;Arith&quot;
+impl Arith for Abacus {
+    // Please note that you do NOT need to mark methods with
+    // `#[export_method]` another time
+
+    async fn add(&amp;self, args: (i32, i32)) -&gt; Result&lt;i32, String&gt; {
+        Ok(args.0 + args.1)
+    }
+
+    async fn subtract(&amp;self, args: (i32, i32)) -&gt; Result&lt;i32, String&gt; {
+        Ok(args.0 - args.1)
+    }
+
+    fn say_hi(&amp;self) {
+        println!(&quot;hi&quot;);
+    }
+}
+
+#[async_std::main]
+async fn main() {
+    let addr = &quot;127.0.0.1:23333&quot;;
+    let arith = Arc::new(Abacus{}); // create an instance of the `Arith` service
+    let listener = TcpListener::bind(addr).await.unwrap();
+    let server = Server::builder()
+        .register(arith) // register service with default name &quot;Arith&quot;
+        .build();
+
+    log::info!(&quot;Starting server at {}&quot;, &amp;addr);
+    server.accept(listener).await.unwrap()
+}
+</code></pre></pre>
+<div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><h1 id="server-with-async-std-runtime-1"><a class="header" href="#server-with-async-std-runtime-1">Server with <code>async-std</code> runtime</a></h1>
+<p>This is just going to be an identical copy of the previous <a href="https://minghuaw.github.io/toy-rpc/04_server.html#example-with-export_trait-and-export_trait_impl"><code>#[export_trait]</code> and <code>#[export_trait_impl]</code> example</a>.</p>
+<pre><code class="language-toml">[dependencies]
+async-trait = &quot;0.1.50&quot;
+tokio = { version = &quot;1&quot;, features = [&quot;rt-multi-thread&quot;, &quot;macros&quot;, &quot;net&quot;] }
+toy-rpc = { version = &quot;0.7.0-alpha.1&quot;, features = [&quot;tokio_runtime&quot;, &quot;server&quot;] }
+
+# our service definition 
+example-service = { version = &quot;0.1.0&quot;, path = &quot;../example-service&quot; }
+</code></pre>
+<pre><pre class="playground"><code class="language-rust edition2018">use tokio::net::TcpListener;
+use std::sync::Arc;
+use async_trait::async_trait;
+use toy_rpc::Server;
+use toy_rpc::macros::export_trait_impl;
+
+// Import our service definition
+// Make sure you import everything to include the auto-generated helper 
+// traits that allow convenient service registration
+use example_service::*;
+
+struct Abacus { }
+
+#[async_trait]
+#[export_trait_impl] // The default service name will be &quot;Arith&quot;
+impl Arith for Abacus {
+    // Please note that you do NOT need to mark methods with
+    // `#[export_method]` another time
+
+    async fn add(&amp;self, args: (i32, i32)) -&gt; Result&lt;i32, String&gt; {
+        Ok(args.0 + args.1)
+    }
+
+    async fn subtract(&amp;self, args: (i32, i32)) -&gt; Result&lt;i32, String&gt; {
+        Ok(args.0 - args.1)
+    }
+
+    fn say_hi(&amp;self) {
+        println!(&quot;hi&quot;);
+    }
+}
+
+#[tokio::main]
+async fn main() {
+    let addr = &quot;127.0.0.1:23333&quot;;
+    let arith = Arc::new(Abacus{}); // create an instance of the `Arith` service
+    let listener = TcpListener::bind(addr).await.unwrap();
+    let server = Server::builder()
+        .register(arith) // register service with default name &quot;Arith&quot;
+        .build();
+
+    log::info!(&quot;Starting server at {}&quot;, &amp;addr);
+    server.accept(listener).await.unwrap()
+}
+</code></pre></pre>
 <div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><p>WIP</p>
 <div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><p>WIP</p>
 <div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><p>WIP</p>

@@ -188,7 +188,7 @@ The methods to export must meet the following criteria on the server side</p>
 </li>
 </ul>
 <p>The method is essentially in the form</p>
-<pre><pre class="playground"><code class="language-rust">
+<pre><pre class="playground"><code class="language-rust edition2018">
 <span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>#[export_method]
@@ -218,7 +218,7 @@ toy-rpc = &quot;0.7.0-alpha.1&quot;
 └── lib.rs
 </code></pre>
 <p>Suppose that <em>both</em> the service definitions and implementations are placed in <code>src/lib.rs</code>.</p>
-<pre><pre class="playground"><code class="language-rust">
+<pre><pre class="playground"><code class="language-rust edition2018">
 <span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>// src/lib.rs
@@ -241,7 +241,7 @@ impl Foo {
 <span class="boring">}
 </span></code></pre></pre>
 <p>You may also define a separate trait in <code>src/lib.rs</code> which is implemented by some <code>struct</code> in the same file.</p>
-<pre><pre class="playground"><code class="language-rust">
+<pre><pre class="playground"><code class="language-rust edition2018">
 <span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>// continuing in src/lib.rs
@@ -285,7 +285,7 @@ impl Arith for Bar {
 </ul>
 <p>which can also be found in the GitHub examples (<a href="https://github.com/minghuaw/toy-rpc/tree/main/examples/example-service">service</a>, <a href="https://github.com/minghuaw/toy-rpc/tree/main/examples/example-server">server</a>, <a href="https://github.com/minghuaw/toy-rpc/tree/main/examples/example-client">client</a>).</p>
 <p>We are going to define the RPC service just as a trait in <code>&quot;example-service&quot;</code>.</p>
-<pre><pre class="playground"><code class="language-rust">
+<pre><pre class="playground"><code class="language-rust edition2018">
 <span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>// example-service/src/lib.rs

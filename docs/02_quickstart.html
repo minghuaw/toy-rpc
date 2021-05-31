@@ -192,7 +192,7 @@ path = &quot;src/bin/client.rs&quot;
 </code></pre>
 <h2 id="define-rpc-service"><a class="header" href="#define-rpc-service">Define RPC service</a></h2>
 <p>In <code>src/lib.rs</code></p>
-<pre><pre class="playground"><code class="language-rust">
+<pre><pre class="playground"><code class="language-rust edition2018">
 <span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>// src/lib.rs
@@ -213,7 +213,7 @@ mod rpc {
 </span></code></pre></pre>
 <h2 id="rpc-server"><a class="header" href="#rpc-server">RPC server</a></h2>
 <p>In <code>src/bin/server.rs</code></p>
-<pre><pre class="playground"><code class="language-rust">// src/bin/server.rs
+<pre><pre class="playground"><code class="language-rust edition2018">// src/bin/server.rs
 
 use tokio::{task, net::TcpListener};
 use std::sync::Arc;
@@ -245,7 +245,7 @@ async fn main() {
 </code></pre></pre>
 <h2 id="rpc-client"><a class="header" href="#rpc-client">RPC client</a></h2>
 <p>In <code>src/bin/client.rs</code></p>
-<pre><pre class="playground"><code class="language-rust">
+<pre><pre class="playground"><code class="language-rust edition2018">
 <span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>use toy_rpc::Client;

@@ -165,7 +165,61 @@
 
                 <div id="content" class="content">
                     <main>
-                        <p>WIP</p>
+                        <h1 id="server-with-async-std-runtime"><a class="header" href="#server-with-async-std-runtime">Server with <code>async-std</code> runtime</a></h1>
+<p>This is just going to be an identical copy of the previous <a href="https://minghuaw.github.io/toy-rpc/04_server.html#example-with-export_trait-and-export_trait_impl"><code>#[export_trait]</code> and <code>#[export_trait_impl]</code> example</a>.</p>
+<pre><code class="language-toml">[dependencies]
+async-trait = &quot;0.1.50&quot;
+tokio = { version = &quot;1&quot;, features = [&quot;rt-multi-thread&quot;, &quot;macros&quot;, &quot;net&quot;] }
+toy-rpc = { version = &quot;0.7.0-alpha.1&quot;, features = [&quot;tokio_runtime&quot;, &quot;server&quot;] }
+
+# our service definition 
+example-service = { version = &quot;0.1.0&quot;, path = &quot;../example-service&quot; }
+</code></pre>
+<pre><pre class="playground"><code class="language-rust edition2018">use tokio::net::TcpListener;
+use std::sync::Arc;
+use async_trait::async_trait;
+use toy_rpc::Server;
+use toy_rpc::macros::export_trait_impl;
+
+// Import our service definition
+// Make sure you import everything to include the auto-generated helper 
+// traits that allow convenient service registration
+use example_service::*;
+
+struct Abacus { }
+
+#[async_trait]
+#[export_trait_impl] // The default service name will be &quot;Arith&quot;
+impl Arith for Abacus {
+    // Please note that you do NOT need to mark methods with
+    // `#[export_method]` another time
+
+    async fn add(&amp;self, args: (i32, i32)) -&gt; Result&lt;i32, String&gt; {
+        Ok(args.0 + args.1)
+    }
+
+    async fn subtract(&amp;self, args: (i32, i32)) -&gt; Result&lt;i32, String&gt; {
+        Ok(args.0 - args.1)
+    }
+
+    fn say_hi(&amp;self) {
+        println!(&quot;hi&quot;);
+    }
+}
+
+#[tokio::main]
+async fn main() {
+    let addr = &quot;127.0.0.1:23333&quot;;
+    let arith = Arc::new(Abacus{}); // create an instance of the `Arith` service
+    let listener = TcpListener::bind(addr).await.unwrap();
+    let server = Server::builder()
+        .register(arith) // register service with default name &quot;Arith&quot;
+        .build();
+
+    log::info!(&quot;Starting server at {}&quot;, &amp;addr);
+    server.accept(listener).await.unwrap()
+}
+</code></pre></pre>
 
                     </main>
 

@@ -182,7 +182,7 @@ toy-rpc = { version = &quot;0.7.0-alpha.1&quot;, features = [&quot;tokio_runtime
 └── lib.rs
 </code></pre>
 <p>Using the service we have defined and implemented in the <a href="https://minghuaw.github.io/toy-rpc/03_define_service.html#export_impl">previous chapter</a>, we are going instantiate those services and register those instances in <code>src/bin/server.rs</code>.</p>
-<pre><pre class="playground"><code class="language-rust">// src/bin/server.rs
+<pre><pre class="playground"><code class="language-rust edition2018">// src/bin/server.rs
 use tokio::net::TcpListener;
 use std::sync::Arc;
 use toy_rpc::Server;
@@ -222,7 +222,7 @@ toy-rpc = { version = &quot;0.7.0-alpha.1&quot;, features = [&quot;tokio_runtime
 example-service = { version = &quot;0.1.0&quot;, path = &quot;../example-service&quot; }
 </code></pre>
 <p>Now, let's implement the service and start the server</p>
-<pre><pre class="playground"><code class="language-rust">use tokio::net::TcpListener;
+<pre><pre class="playground"><code class="language-rust edition2018">use tokio::net::TcpListener;
 use std::sync::Arc;
 use async_trait::async_trait;
 use toy_rpc::Server;
