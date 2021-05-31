@@ -63,6 +63,7 @@ Now we are back with the example with `#[export_trait]` and `#[export_trait_impl
 We will continue to use the `tokio` runtime so that we don't need to change our `Cargo.toml` file, but because we will be implementing the service below, we will need to add `async-trait` and our service definition crate into our dependencies.
 
 ```toml
+[dependencies]
 async-trait = "0.1.50"
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "net"] }
 toy-rpc = { version = "0.7.0-alpha.1", features = ["tokio_runtime", "server"] }
