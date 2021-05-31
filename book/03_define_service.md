@@ -104,7 +104,7 @@ impl Arith for Bar {
 }
 ```
 
-We will continue to use this example in the Server and Client chapter.
+We will continue to use this example in the [Server](https://minghuaw.github.io/toy-rpc/04_server.html) and [Client](https://minghuaw.github.io/toy-rpc/06_client.html) chapters.
 
 ### `#[export_trait]` and `#[export_trait_impl]`
 
@@ -116,7 +116,32 @@ Suppose we will have three separate crates
 - `"example-server"` acting as the server,
 - and `"example-client"` acting as the client
 
-which can also be found in the GitHub examples ([service](), [server](), [client]())
+which can also be found in the GitHub examples ([service](https://github.com/minghuaw/toy-rpc/tree/main/examples/example-service), [server](https://github.com/minghuaw/toy-rpc/tree/main/examples/example-server), [client](https://github.com/minghuaw/toy-rpc/tree/main/examples/example-client)).
+
+We are going to define the RPC service just as a trait in `"example-service"`.
+
+```rust
+// example-service/src/lib.rs
+use async_trait::async_trait;
+use toy_rpc::macros::export_trait;
+
+#[async_trait]
+#[export_trait] // The default service name will be "Arith"
+pub trait Arith {
+    // let's mark both `add(...)` and `subtract(...)` as RPC method
+    #[export_method]
+    async fn add(&self, args: (i32, i32)) -> Result<i32, String>;
+
+    #[export_method]
+    async fn subtract(&self, args: (i32, i32)) -> Result<i32, String>;
+
+    // some method that we don't want to export
+    fn say_hi(&self);
+}
+```
+
+We will continue to use this example in the [Server](https://minghuaw.github.io/toy-rpc/04_server.html) and [Client](https://minghuaw.github.io/toy-rpc/06_client.html) chapters.
+
 
 
 

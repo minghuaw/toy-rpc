@@ -9,4 +9,6 @@ pub trait Arith {
 
     #[export_method]
     async fn subtract(&self, args: (i32, i32)) -> Result<i32, String>;
+
+    fn say_hi(&self);
 }
