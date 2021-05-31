@@ -42,12 +42,12 @@ async fn main() {
     env_logger::init();
 
     let addr = "127.0.0.1:23333";
-    let abacus = Arc::new(Abacus{});
-    let calculator = Arc::new(Calculator{});
+    let arith = Arc::new(Abacus{}); // create an instance of the `Arith` service
+    let calculator = Arc::new(Calculator{}); // create an instance of the `Calculator` service
     let listener = TcpListener::bind(addr).await.unwrap();
     let server = Server::builder()
         // This will register service with name: "Arith"
-        .register(abacus) 
+        .register(arith) 
         // This will register service with name: "Calculator"
         .register(calculator)
         .build();

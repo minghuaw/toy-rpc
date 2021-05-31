@@ -257,7 +257,13 @@ pub fn export_impl(_attr: proc_macro::TokenStream, item: proc_macro::TokenStream
     let (handler_impl, names, handler_idents) = transform_impl(input.clone());
 
     // extract Self type and use it for construct Ident for handler HashMap
-    #[cfg(any(feature = "server", feature = "client"))]
+    #[cfg(any(
+        feature = "server", 
+        all(
+            feature = "client",
+            feature = "runtime"
+        )
+    ))]
     let ident = {
         let self_ty = &input.self_ty;
         match util::parse_impl_self_ty(self_ty) {
@@ -431,6 +437,8 @@ pub fn export_trait_impl(_attr: proc_macro::TokenStream, item: proc_macro::Token
 
     #[cfg(feature = "server")]
     let register_impl = impl_register_service_for_trait_impl(&trait_ident, type_ident);
+    
+    let input = remove_export_attr_from_impl(input);
 
     #[cfg(feature = "server")]
     let output = quote::quote! {
