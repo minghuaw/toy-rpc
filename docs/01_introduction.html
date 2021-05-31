@@ -95,7 +95,7 @@
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
             <div class="sidebar-scrollbox">
-                <ol class="chapter"><li class="chapter-item expanded "><a href="01_introduction.html" class="active"><strong aria-hidden="true">1.</strong> Introduction</a></li><li class="chapter-item expanded "><a href="02_quickstart.html"><strong aria-hidden="true">2.</strong> Quickstart</a></li><li class="chapter-item expanded "><a href="03_define_service.html"><strong aria-hidden="true">3.</strong> Define Service</a></li><li class="chapter-item expanded "><a href="04_server.html"><strong aria-hidden="true">4.</strong> Server</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="04a_async_std.html"><strong aria-hidden="true">4.1.</strong> async-std</a></li><li class="chapter-item expanded "><a href="04b_tokio.html"><strong aria-hidden="true">4.2.</strong> tokio</a></li><li class="chapter-item expanded "><a href="04c_actix_web.html"><strong aria-hidden="true">4.3.</strong> actix-web Integration</a></li><li class="chapter-item expanded "><a href="04d_tide.html"><strong aria-hidden="true">4.4.</strong> tide Integration</a></li><li class="chapter-item expanded "><a href="04e_warp.html"><strong aria-hidden="true">4.5.</strong> warp Integration</a></li></ol></li><li class="chapter-item expanded "><a href="05_client.html"><strong aria-hidden="true">5.</strong> Client</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="05a_cancellation.html"><strong aria-hidden="true">5.1.</strong> Cancellation</a></li><li class="chapter-item expanded "><a href="05b_timeout.html"><strong aria-hidden="true">5.2.</strong> Timeout</a></li></ol></li><li class="chapter-item expanded "><a href="06_examples.html"><strong aria-hidden="true">6.</strong> Examples</a></li><li class="chapter-item expanded "><a href="07_change_log.html"><strong aria-hidden="true">7.</strong> Change Logs</a></li></ol>
+                <ol class="chapter"><li class="chapter-item expanded "><a href="01_introduction.html" class="active"><strong aria-hidden="true">1.</strong> Introduction</a></li><li class="chapter-item expanded "><a href="02_quickstart.html"><strong aria-hidden="true">2.</strong> Quickstart</a></li><li class="chapter-item expanded "><a href="03_define_service.html"><strong aria-hidden="true">3.</strong> Define Service</a></li><li class="chapter-item expanded "><a href="04_server.html"><strong aria-hidden="true">4.</strong> Server</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="04a_async_std.html"><strong aria-hidden="true">4.1.</strong> async-std</a></li><li class="chapter-item expanded "><a href="04b_tokio.html"><strong aria-hidden="true">4.2.</strong> tokio</a></li></ol></li><li class="chapter-item expanded "><a href="05_integration.html"><strong aria-hidden="true">5.</strong> Integration</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="05a_actix_web.html"><strong aria-hidden="true">5.1.</strong> actix-web Integration</a></li><li class="chapter-item expanded "><a href="05b_tide.html"><strong aria-hidden="true">5.2.</strong> tide Integration</a></li><li class="chapter-item expanded "><a href="05c_warp.html"><strong aria-hidden="true">5.3.</strong> warp Integration</a></li></ol></li><li class="chapter-item expanded "><a href="06_client.html"><strong aria-hidden="true">6.</strong> Client</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="06a_cancellation.html"><strong aria-hidden="true">6.1.</strong> Cancellation</a></li><li class="chapter-item expanded "><a href="06b_timeout.html"><strong aria-hidden="true">6.2.</strong> Timeout</a></li></ol></li><li class="chapter-item expanded "><a href="07_examples.html"><strong aria-hidden="true">7.</strong> Examples</a></li><li class="chapter-item expanded "><a href="10_change_log.html"><strong aria-hidden="true">8.</strong> Change Logs</a></li></ol>
             </div>
             <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
         </nav>
@@ -169,22 +169,18 @@
 <div align="center">
 <!-- Crates version -->
 <a href="https://crates.io/crates/toy-rpc">
-<img src="https://img.shields.io/crates/v/toy-rpc.svg?style=flat"
-alt="Crates.io version" />
+<img src="https://img.shields.io/crates/v/toy-rpc.svg?style=flat" alt="Crates.io version" />
 </a>
 <!-- docs.rs docs -->
 <a href="https://docs.rs/toy-rpc">
-<img src="https://img.shields.io/badge/docs-latest-blue.svg?style=flat"
-alt="docs.rs docs" />
+<img src="https://img.shields.io/badge/docs-latest-blue.svg?style=flat" alt="docs.rs docs" />
 </a>
 <!-- Downloads -->
 <a href="https://crates.io/crates/toy-rpc">
-<img src="https://img.shields.io/crates/d/toy-rpc.svg?style=flat"
-alt="Download" />
+<img src="https://img.shields.io/crates/d/toy-rpc.svg?style=flat" alt="Download" />
 </a>
 <a href="https://github.com/rust-secure-code/safety-dance/">
-<img src="https://img.shields.io/badge/unsafe-forbidden-success.svg?style=flat"
-alt="Unsafe Rust forbidden" />
+<img src="https://img.shields.io/badge/unsafe-forbidden-success.svg?style=flat" alt="Unsafe Rust forbidden" />
 </a>
 </div>
 <p><code>toy-rpc</code> aims to be an easy-to-use <code>async</code> RPC tool that is inspired by golang's <code>net/rpc</code>'s API. 
@@ -192,7 +188,7 @@ It supports both <code>async_std</code> and <code>tokio</code> runtimes and prov
 HTTP server frameworks.</p>
 <p>The overall usage and API should feel similar to that of the golang's <code>net/rpc</code> package. Some of the names are changed 
 to make them sound more &quot;rusty&quot;. Because rust does not come with runtime reflection, attribute macros <code>#[export_impl]</code>
-and <code>#[export_trait]</code> (WIP), and attribute <code>#[export_method]</code> are used to mark functions &quot;exported&quot; in golang's 
+and <code>#[export_trait]</code> / <code>#[export_trait_impl]</code>, and attribute <code>#[export_method]</code> are used to mark functions &quot;exported&quot; in golang's 
 <code>net/rpc</code> perspective.</p>
 <h2 id="why"><a class="header" href="#why">Why?</a></h2>
 <p>While there are grpc implementations like <code>grpc-rs</code> and <code>tonic</code> as well as schema-free crates like <code>tarpc</code>, I didn't find 
