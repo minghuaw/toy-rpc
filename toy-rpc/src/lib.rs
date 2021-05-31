@@ -88,7 +88,7 @@
 //! # Integration
 //! 
 //! HTTP integration is provided for `actix-web`, `tide`, and `warp`. More details can be found
-//! in the [Book/Integrations](https://minghuaw.github.io/toy-rpc/01_introduction.html) and in 
+//! in the [Book/Integrations](https://minghuaw.github.io/toy-rpc/05_integration.html) and in 
 //! [examples](https://github.com/minghuaw/toy-rpc/tree/main/examples).
 //! 
 //! # Quickstart Example
@@ -128,4 +128,3 @@ pub use error::Error;
 // re-export
 pub use erased_serde;
 pub use serde;
-pub use lazy_static;
