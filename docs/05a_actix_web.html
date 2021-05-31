@@ -165,7 +165,59 @@
 
                 <div id="content" class="content">
                     <main>
-                        <p>WIP</p>
+                        <h1 id="http-integration-with-actix-web"><a class="header" href="#http-integration-with-actix-web">HTTP integration with <code>actix-web</code></a></h1>
+<p>A convenience method <code>Server::handle_http()</code> is available when <code>&quot;http_actix_web&quot;</code> is the only enabled http integration feature flag. If you have multiple http integration feature flags enabled, you can use the <code>Server::scope_config</code> method instead (please note that you should use <code>scope_config</code> without brackets).</p>
+<p>The <code>&quot;http_actix_web&quot;</code> feature flag should be toggled on to enable HTTP integration with <code>actix-web</code>. Enabling <code>&quot;http_actix_web&quot;</code> feature flag will also enable the <code>&quot;tokio_runtime&quot;</code> feature flag. We will demonstrate the usage with a new example.</p>
+<pre><code class="language-toml">[dependencies]
+actix-web = &quot;3.3.2&quot;
+toy-rpc = { version = &quot;0.7.0-alpha.1&quot;, features = [&quot;http_actix_web&quot;, &quot;server&quot;] }
+</code></pre>
+<pre><pre class="playground"><code class="language-rust edition2018">use std::sync::Arc;
+use toy_rpc::macros::export_impl;
+use toy_rpc::Server;
+use actix_web::{web, HttpServer, App};
+
+pub struct Calculator { }
+
+#[export_impl]
+impl Calculator {
+    #[export_method]
+    async fn multiply(&amp;self, args(i32, i32)) -&gt; Result&lt;i32, String&gt; {
+        Ok(args.0 * args.1)
+    }
+
+    #[export_method]
+    async fn divide(&amp;self, args(i32, i32)) -&gt; Result&lt;i32, String&gt; {
+        Ok(args.0 / args.1)
+    }
+}
+
+#[actix_web::main]
+async fn main() {
+    let addr = &quot;127.0.0.1:23333&quot;;
+    let calculator = Arc::new(Calculator { });
+    let server = Server::builder()
+        .register(calculator)
+        .build();
+
+    let app_data = web::Data::new(server);
+
+    HttpServer::new(
+        move || {
+            App::new()
+                .service(
+                    web::scope(&quot;/rpc/&quot;)
+                        .app_data(app_data.clone())
+                        .configure(Server::handle_http()) // equivalent to the line below
+                        // .configure(Server::scope_config)
+                )
+        }
+    )
+    .bind(addr).unwrap()
+    .run()
+    .await;
+}
+</code></pre></pre>
 
                     </main>
 

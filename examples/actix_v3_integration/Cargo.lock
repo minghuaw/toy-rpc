@@ -317,7 +317,6 @@ dependencies = [
 name = "actix_v3_integration"
 version = "0.1.0"
 dependencies = [
- "actix",
  "actix-web",
  "async-trait",
  "env_logger",
@@ -2028,7 +2027,7 @@ dependencies = [
 
 [[package]]
 name = "toy-rpc"
-version = "0.7.0-alpha.0"
+version = "0.7.0-alpha.1"
 dependencies = [
  "actix",
  "actix-http",
@@ -2055,7 +2054,9 @@ dependencies = [
 
 [[package]]
 name = "toy-rpc-macros"
-version = "0.5.0-alpha"
+version = "0.5.0-beta"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b31d5226fdc7946f955be2cd951158585aca11554854eacbd9b43b75cbf47166"
 dependencies = [
  "quote",
  "syn",
