@@ -2,5 +2,5 @@
 authors = ["minghuaw"]
 language = "en"
 multilingual = false
-src = "src"
+src = "docs"
 title = "toy-rpc Book"
