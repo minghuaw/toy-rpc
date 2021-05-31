@@ -46,17 +46,6 @@ This crate uses `#![forbid(unsafe_code)]` to ensure no usage of `unsafe` in the 
 
 The feature flags can be put into three categories.
 
-Choice of serialization/deserialzation (only one should be enabled at a time)
-
-- `serde_bincode`: the default codec will use `bincode`
-    for serialization/deserialization
-- `serde_json`: the default codec will use `serde_json`
-    for `json` serialization/deserialization
-- `serde_cbor`: the default codec will use `serde_cbor`
-    for serialization/deserialization
-- `serde_rmp`: the default codec will use `rmp-serde`
-    for serialization/deserialization
-
 Choice of runtime and HTTP framework integration
 
 - `async_std_runtime`: supports usage with `async-std`
@@ -69,6 +58,17 @@ Choice of RPC server or client (both can be enabled at the same time)
 
 - `server`: enables RPC server
 - `client`: enables RPC client
+
+Choice of serialization/deserialzation (only one should be enabled at a time)
+
+- `serde_bincode`: (default) the default codec will use `bincode`
+    for serialization/deserialization
+- `serde_json`: the default codec will use `serde_json`
+    for `json` serialization/deserialization
+- `serde_cbor`: the default codec will use `serde_cbor`
+    for serialization/deserialization
+- `serde_rmp`: the default codec will use `rmp-serde`
+    for serialization/deserialization
 
 Other trivial feature flags are listed below, and they are likely of no actual usage for you.
 - `docs`
@@ -86,7 +86,7 @@ default = ["serde_bincode"]
 ## Integration
 
 HTTP integration is provided for `actix-web`, `tide`, and `warp`. More details can be found
-in the [book](https://minghuaw.github.io/toy-rpc/01_introduction.html) and in
+in the [Book/Integrations](https://minghuaw.github.io/toy-rpc/05_integration.html) and in
 [examples](https://github.com/minghuaw/toy-rpc/tree/main/examples).
 
 ## Quickstart Example

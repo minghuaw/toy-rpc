@@ -48,17 +48,6 @@
 //! 
 //! The feature flags can be put into three categories.
 //! 
-//! Choice of serialization/deserialzation (only one should be enabled at a time)
-//! 
-//! - `serde_bincode`: the default codec will use `bincode`
-//!     for serialization/deserialization
-//! - `serde_json`: the default codec will use `serde_json`
-//!     for `json` serialization/deserialization
-//! - `serde_cbor`: the default codec will use `serde_cbor`
-//!     for serialization/deserialization
-//! - `serde_rmp`: the default codec will use `rmp-serde`
-//!     for serialization/deserialization
-//! 
 //! Choice of runtime and HTTP framework integration
 //! 
 //! - `async_std_runtime`: supports usage with `async-std`
@@ -71,6 +60,17 @@
 //! 
 //! - `server`: enables RPC server
 //! - `client`: enables RPC client 
+//! 
+//! Choice of serialization/deserialzation (only one should be enabled at a time)
+//! 
+//! - `serde_bincode`: (default) the default codec will use `bincode`
+//!     for serialization/deserialization
+//! - `serde_json`: the default codec will use `serde_json`
+//!     for `json` serialization/deserialization
+//! - `serde_cbor`: the default codec will use `serde_cbor`
+//!     for serialization/deserialization
+//! - `serde_rmp`: the default codec will use `rmp-serde`
+//!     for serialization/deserialization
 //! 
 //! Other trivial feature flags are listed below, and they are likely of no actual usage for you.
 //! - `docs`

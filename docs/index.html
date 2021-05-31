@@ -198,17 +198,6 @@ async HTTP crates (<code>actix_web</code>, <code>warp</code>, and <code>tide</co
 easy-to-use and supports both <code>async_std</code> and <code>tokio</code> runtimes.</p>
 <h2 id="feature-flags"><a class="header" href="#feature-flags">Feature flags</a></h2>
 <p>The feature flags can be put into three categories.</p>
-<p>Choice of serialization/deserialzation (only one should be enabled at a time)</p>
-<ul>
-<li><code>serde_bincode</code>: the default codec will use <code>bincode</code>
-for serialization/deserialization</li>
-<li><code>serde_json</code>: the default codec will use <code>serde_json</code>
-for <code>json</code> serialization/deserialization</li>
-<li><code>serde_cbor</code>: the default codec will use <code>serde_cbor</code>
-for serialization/deserialization</li>
-<li><code>serde_rmp</code>: the default codec will use <code>rmp-serde</code>
-for serialization/deserialization</li>
-</ul>
 <p>Choice of runtime and HTTP framework integration</p>
 <ul>
 <li><code>async_std_runtime</code>: supports usage with <code>async-std</code></li>
@@ -221,6 +210,17 @@ for serialization/deserialization</li>
 <ul>
 <li><code>server</code>: enables RPC server</li>
 <li><code>client</code>: enables RPC client </li>
+</ul>
+<p>Choice of serialization/deserialzation (only one should be enabled at a time)</p>
+<ul>
+<li><code>serde_bincode</code>: (default) the default codec will use <code>bincode</code>
+for serialization/deserialization</li>
+<li><code>serde_json</code>: the default codec will use <code>serde_json</code>
+for <code>json</code> serialization/deserialization</li>
+<li><code>serde_cbor</code>: the default codec will use <code>serde_cbor</code>
+for serialization/deserialization</li>
+<li><code>serde_rmp</code>: the default codec will use <code>rmp-serde</code>
+for serialization/deserialization</li>
 </ul>
 <p>Other trivial feature flags are listed below, and they are likely of no actual usage for you.</p>
 <ul>
