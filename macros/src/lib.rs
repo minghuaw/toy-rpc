@@ -2,14 +2,14 @@
 //!
 //! This is exported in `toy_rpc` as the `toy_rpc::macros` module.
 
-#[cfg(any(feature = "server", feature = "client"))]
+// #[cfg(any(feature = "server", feature = "client"))]
 mod util;
-#[cfg(any(feature = "server", feature = "client"))]
+// #[cfg(any(feature = "server", feature = "client"))]
 use util::item_impl::*;
-#[cfg(any(feature = "server", feature = "client"))]
+// #[cfg(any(feature = "server", feature = "client"))]
 use util::item_trait::*;
 
-#[cfg(any(feature = "server", feature = "client"))]
+// #[cfg(any(feature = "server", feature = "client"))]
 pub(crate) const ATTR_EXPORT_METHOD: &str = "export_method";
 #[cfg(feature = "server")]
 pub(crate) const HANDLER_SUFFIX: &str = "handler";
@@ -322,33 +322,42 @@ pub fn impl_inner_deserializer(_: proc_macro::TokenStream) -> proc_macro::TokenS
 /// }
 ///
 /// ```
-#[cfg(all(
-    feature="server", 
-    feature="client",
-    feature="runtime",
-))]
 #[proc_macro_attribute]
 pub fn export_impl(_attr: proc_macro::TokenStream, item: proc_macro::TokenStream) -> proc_macro::TokenStream {
     // parse item
     let input = syn::parse_macro_input!(item as syn::ItemImpl);
+    #[cfg(feature = "server")]
     let (handler_impl, names, handler_idents) = transform_impl(input.clone());
 
     // extract Self type and use it for construct Ident for handler HashMap
-    let self_ty = &input.self_ty;
-    let ident = match util::parse_impl_self_ty(self_ty) {
-        Ok(i) => i,
-        Err(err) => return err.to_compile_error().into(),
+    #[cfg(any(feature = "server", feature = "client"))]
+    let ident = {
+        let self_ty = &input.self_ty;
+        match util::parse_impl_self_ty(self_ty) {
+            Ok(i) => i,
+            Err(err) => return err.to_compile_error().into(),
+        }
     };
+    #[cfg(feature = "server")]
     let register_service_impl = impl_register_service_for_struct(ident, names, handler_idents);
 
     // generate client stub
+    #[cfg(all(feature = "client", feature = "runtime"))]
     let (client_ty, client_impl) = generate_service_client_for_struct(&ident, &input);
+    #[cfg(all(feature = "client", feature = "runtime"))]
     let (stub_trait, stub_impl) = generate_client_stub_for_struct(&ident);
 
     let input = remove_export_attr_from_impl(input);
-    let client_impl = remove_export_attr_from_impl(client_impl);
+    #[cfg(feature = "server")]
     let handler_impl = remove_export_attr_from_impl(handler_impl);
+    #[cfg(all(feature = "client", feature = "runtime"))]
+    let client_impl = remove_export_attr_from_impl(client_impl);
 
+    #[cfg(all(
+        feature = "server",
+        feature = "client",
+        feature = "runtime"
+    ))]
     let output = quote::quote! {
         #input
         #handler_impl
@@ -358,92 +367,11 @@ pub fn export_impl(_attr: proc_macro::TokenStream, item: proc_macro::TokenStream
         #stub_trait
         #stub_impl
     };
-    output.into()
-}
-
-#[cfg(all(
-    feature="server", 
-    feature="client",
-    not(feature="runtime"),
-))]
-#[proc_macro_attribute]
-pub fn export_impl(_attr: proc_macro::TokenStream, item: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    // parse item
-    let input = syn::parse_macro_input!(item as syn::ItemImpl);
-    let (handler_impl, names, handler_idents) = transform_impl(input.clone());
-
-    // extract Self type and use it for construct Ident for handler HashMap
-    let self_ty = &input.self_ty;
-    let ident = match util::parse_impl_self_ty(self_ty) {
-        Ok(i) => i,
-        Err(err) => return err.to_compile_error().into(),
-    };
-    let register_service_impl = impl_register_service_for_struct(ident, names, handler_idents);
-
-    let input = remove_export_attr_from_impl(input);
-    let handler_impl = remove_export_attr_from_impl(handler_impl);
-
-    let output = quote::quote! {
-        #input
-        #handler_impl
-        #register_service_impl
-    };
-    output.into()
-}
-
-#[cfg(all(
-    feature="server", 
-    not(feature="client")
-))]
-#[proc_macro_attribute]
-pub fn export_impl(_attr: proc_macro::TokenStream, item: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    // parse item
-    let input = syn::parse_macro_input!(item as syn::ItemImpl);
-    let (handler_impl, names, handler_idents) = transform_impl(input.clone());
-
-    // extract Self type and use it for construct Ident for handler HashMap
-    let self_ty = &input.self_ty;
-    let ident = match util::parse_impl_self_ty(self_ty) {
-        Ok(i) => i,
-        Err(err) => return err.to_compile_error().into(),
-    };
-    let register_service_impl = impl_register_service_for_struct(ident, names, handler_idents);
-
-    let input = remove_export_attr_from_impl(input);
-    let handler_impl = remove_export_attr_from_impl(handler_impl);
-
-    let output = quote::quote! {
-        #input
-        #handler_impl
-        #register_service_impl
-    };
-    output.into()
-}
-
-#[cfg(all(
-    not(feature="server"), 
-    feature="client", 
-    feature = "runtime"
-))]
-#[proc_macro_attribute]
-pub fn export_impl(_attr: proc_macro::TokenStream, item: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    // parse item
-    let input = syn::parse_macro_input!(item as syn::ItemImpl);
-
-    // extract Self type and use it for construct Ident for handler HashMap
-    let self_ty = &input.self_ty;
-    let ident = match util::parse_impl_self_ty(self_ty) {
-        Ok(i) => i,
-        Err(err) => return err.to_compile_error().into(),
-    };
-
-    // generate client stub
-    let (client_ty, client_impl) = generate_service_client_for_struct(&ident, &input);
-    let (stub_trait, stub_impl) = generate_client_stub_for_struct(&ident);
-
-    let input = remove_export_attr_from_impl(input);
-    let client_impl = remove_export_attr_from_impl(client_impl);
-
+    #[cfg(all(
+        not(feature = "server"),
+        feature = "client",
+        feature = "runtime"
+    ))]
     let output = quote::quote! {
         #input
         #client_ty
@@ -451,39 +379,27 @@ pub fn export_impl(_attr: proc_macro::TokenStream, item: proc_macro::TokenStream
         #stub_trait
         #stub_impl
     };
-    output.into()
-}
-
-#[cfg(all(
-    not(feature="server"), 
-    feature="client", 
-    not(feature = "runtime")
-))]
-#[proc_macro_attribute]
-pub fn export_impl(_attr: proc_macro::TokenStream, item: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    // parse item
-    let input = syn::parse_macro_input!(item as syn::ItemImpl);
-
-    // extract Self type and use it for construct Ident for handler HashMap
-    // let self_ty = &input.self_ty;
-    // let ident = match util::parse_impl_self_ty(self_ty) {
-    //     Ok(i) => i,
-    //     Err(err) => return err.to_compile_error().into(),
-    // };
-
-    // generate client stub
-    // let (client_ty, client_impl) = generate_service_client_for_struct(&ident, &input);
-    // let (stub_trait, stub_impl) = generate_client_stub_for_struct(&ident);
-
-    let input = remove_export_attr_from_impl(input);
-    // let client_impl = remove_export_attr_from_impl(client_impl);
-
+    #[cfg(all(
+        feature = "server",
+        any(
+            not(feature = "client"),
+            not(feature = "runtime")
+        )
+    ))]
     let output = quote::quote! {
         #input
-        // #client_ty
-        // #client_impl
-        // #stub_trait
-        // #stub_impl
+        #handler_impl
+        #register_service_impl
+    };
+    #[cfg(all(
+        not(feature = "server"),
+        any(
+            not(feature = "client"),
+            not(feature = "runtime")
+        )
+    ))]
+    let output = quote::quote! {
+        #input
     };
     output.into()
 }
@@ -492,29 +408,35 @@ pub fn export_impl(_attr: proc_macro::TokenStream, item: proc_macro::TokenStream
 // #[export_trait]
 // =============================================================================
 
-#[cfg(all(
-    feature = "server", 
-    feature = "client",
-    feature = "runtime",
-))]
 #[proc_macro_attribute]
 pub fn export_trait(_attr: proc_macro::TokenStream, item: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let input = syn::parse_macro_input!(item as syn::ItemTrait);
+    #[cfg(feature = "server")]
     let (transformed_trait, 
         transformed_trait_impl,
         names, 
         handler_idents
     ) = transform_trait(input.clone());
+    #[cfg(feature = "server")]
     let local_registry = impl_local_registry_for_trait(
         &input.ident, &transformed_trait.ident, names, handler_idents);
 
+    #[cfg(all(feature = "client", feature = "runtime"))]
     let (client_ty, client_impl) = generate_service_client_for_trait(&input.ident, &input);
+    #[cfg(all(feature = "client", feature = "runtime"))]
     let (stub_trait, stub_impl) = generate_client_stub_for_trait(&input.ident);
 
     let input = remove_export_attr_from_trait(input);
+    #[cfg(feature = "server")]
     let transformed_trait = remove_export_attr_from_trait(transformed_trait);
+    #[cfg(feature = "server")]
     let transformed_trait_impl = remove_export_attr_from_impl(transformed_trait_impl);
 
+    #[cfg(all(
+        feature = "server",
+        feature = "client",
+        feature = "runtime"
+    ))]
     let output = quote::quote! {
         #input
         #transformed_trait
@@ -525,80 +447,11 @@ pub fn export_trait(_attr: proc_macro::TokenStream, item: proc_macro::TokenStrea
         #stub_trait
         #stub_impl
     };
-    output.into()
-}
-
-#[cfg(all(
-    feature = "server", 
-    feature = "client",
-    not(feature = "runtime"),
-))]
-#[proc_macro_attribute]
-pub fn export_trait(_attr: proc_macro::TokenStream, item: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    let input = syn::parse_macro_input!(item as syn::ItemTrait);
-    let (transformed_trait, 
-        transformed_trait_impl,
-        names, 
-        handler_idents
-    ) = transform_trait(input.clone());
-    let local_registry = impl_local_registry_for_trait(
-        &input.ident, &transformed_trait.ident, names, handler_idents);
-
-    let input = remove_export_attr_from_trait(input);
-    let transformed_trait = remove_export_attr_from_trait(transformed_trait);
-    let transformed_trait_impl = remove_export_attr_from_impl(transformed_trait_impl);
-
-    let output = quote::quote! {
-        #input
-        #transformed_trait
-        #transformed_trait_impl
-        #local_registry
-    };
-    output.into()
-}
-
-#[cfg(all(
-    feature = "server", 
-    not(feature = "client")
-))]
-#[proc_macro_attribute]
-pub fn export_trait(_attr: proc_macro::TokenStream, item: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    let input = syn::parse_macro_input!(item as syn::ItemTrait);
-    let (transformed_trait, 
-        transformed_trait_impl,
-        names, 
-        handler_idents
-    ) = transform_trait(input.clone());
-    let local_registry = impl_local_registry_for_trait(
-        &input.ident, &transformed_trait.ident, names, handler_idents);
-
-    let input = remove_export_attr_from_trait(input);
-    let transformed_trait = remove_export_attr_from_trait(transformed_trait);
-    let transformed_trait_impl = remove_export_attr_from_impl(transformed_trait_impl);
-
-    let output = quote::quote! {
-        #input
-        #transformed_trait
-        #transformed_trait_impl
-        #local_registry
-    };
-    output.into()
-}
-
-#[cfg(all(
-    not(feature = "server"), 
-    feature = "client",
-    feature = "runtime"
-))]
-#[proc_macro_attribute]
-pub fn export_trait(_attr: proc_macro::TokenStream, item: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    let input = syn::parse_macro_input!(item as syn::ItemTrait);
-
-    let (client_ty, client_impl) = generate_service_client_for_trait(&input.ident, &input);
-    let (stub_trait, stub_impl) = generate_client_stub_for_trait(&input.ident);
-
-    let input = remove_export_attr_from_trait(input);
-
+    #[cfg(all(
+        not(feature = "server"),
+        feature = "client",
+        feature = "runtime"
+    ))]
     let output = quote::quote! {
         #input
         #client_ty
@@ -606,42 +459,60 @@ pub fn export_trait(_attr: proc_macro::TokenStream, item: proc_macro::TokenStrea
         #stub_trait
         #stub_impl
     };
-    output.into()
-}
-
-#[cfg(all(
-    not(feature = "server"), 
-    feature = "client",
-    not(feature = "runtime"),
-))]
-#[proc_macro_attribute]
-pub fn export_trait(_attr: proc_macro::TokenStream, item: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    let input = syn::parse_macro_input!(item as syn::ItemTrait);
-    let input = remove_export_attr_from_trait(input);
-
+    #[cfg(all(
+        feature = "server",
+        any(
+            not(feature = "client"),
+            not(feature = "runtime")
+        )
+    ))]
+    let output = quote::quote! {
+        #input
+        #transformed_trait
+        #transformed_trait_impl
+        #local_registry
+    };
+    #[cfg(all(
+        not(feature = "server"),
+        any(
+            not(feature = "client"),
+            not(feature = "runtime")
+        )
+    ))]
     let output = quote::quote! {
         #input
     };
     output.into()
 }
 
-#[cfg(feature = "server")]
+// #[cfg(feature = "server")]
 #[proc_macro_attribute]
 pub fn export_trait_impl(_attr: proc_macro::TokenStream, item: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let input = syn::parse_macro_input!(item as syn::ItemImpl);
+    #[cfg(feature = "server")]
     let trait_ident = get_trait_ident_from_item_impl(&input).unwrap();
+
     // extract Self type and use it for construct Ident for handler HashMap
-    let self_ty = &input.self_ty;
-    let type_ident = match util::parse_impl_self_ty(self_ty) {
-        Ok(i) => i,
-        Err(err) => return err.to_compile_error().into(),
+    #[cfg(feature = "server")]
+    let type_ident = {
+        let self_ty = &input.self_ty;
+        match util::parse_impl_self_ty(self_ty) {
+            Ok(i) => i,
+            Err(err) => return err.to_compile_error().into(),
+        }
     };
 
+    #[cfg(feature = "server")]
     let register_impl = impl_register_service_for_trait_impl(&trait_ident, type_ident);
 
+    #[cfg(feature = "server")]
     let output = quote::quote! {
         #input
         #register_impl
+    };
+    #[cfg(not(feature = "server"))]
+    let output = quote::quote! {
+        #input
     };
     output.into()
 }

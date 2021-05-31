@@ -109,10 +109,10 @@ pub(crate) fn transform_impl_item(f: &mut syn::ImplItemMethod) {
 }
 
 /// remove #[export_method] attribute
-#[cfg(any(
-    feature = "server", 
-    feature = "client"
-))]
+// #[cfg(any(
+//     feature = "server", 
+//     feature = "client"
+// ))]
 pub(crate) fn remove_export_attr_from_impl(mut input: syn::ItemImpl) -> syn::ItemImpl {
     input
         .items

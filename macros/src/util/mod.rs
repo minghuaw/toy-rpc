@@ -5,7 +5,7 @@ use super::{HANDLER_SUFFIX, EXPORTED_TRAIT_SUFFIX};
     feature = "runtime",
 ))]
 use super::{CLIENT_SUFFIX, CLIENT_STUB_SUFFIX};
-#[cfg(any(feature = "server", feature = "client"))]
+// #[cfg(any(feature = "server", feature = "client"))]
 use super::{ATTR_EXPORT_METHOD};
 
 pub mod item_impl;

@@ -11,11 +11,14 @@ pub use server::*;
 mod client;
 pub use client::*;
 
+#[allow(dead_code)]
 pub(crate) struct CodecReadHalf<R, C, CT> {
     pub reader: R,
     pub marker: PhantomData<C>,
     pub conn_type: PhantomData<CT>,
 }
+
+#[allow(dead_code)]
 pub(crate) struct CodecWriteHalf<W, C, CT> {
     pub writer: W,
     pub marker: PhantomData<C>,

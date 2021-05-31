@@ -118,10 +118,10 @@ fn impl_transformed_trait(
     trait_impl
 }
 
-#[cfg(any(
-    feature = "server", 
-    feature = "client"
-))]
+// #[cfg(any(
+//     feature = "server", 
+//     feature = "client"
+// ))]
 pub(crate) fn remove_export_attr_from_trait(mut input: syn::ItemTrait) -> syn::ItemTrait {
     input 
         .items
