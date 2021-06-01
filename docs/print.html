@@ -714,8 +714,9 @@ async fn main() {
 <li><code>warp</code>: <code>&quot;http_warp&quot;</code></li>
 </ul>
 <div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><h1 id="http-integration-with-actix-web"><a class="header" href="#http-integration-with-actix-web">HTTP integration with <code>actix-web</code></a></h1>
-<p>A convenience method <code>Server::handle_http()</code> is available when <code>&quot;http_actix_web&quot;</code> is the only enabled http integration feature flag. If you have multiple http integration feature flags enabled, you can use the <code>Server::scope_config</code> method instead (please note that you should use <code>scope_config</code> without brackets).</p>
-<p>The <code>&quot;http_actix_web&quot;</code> feature flag should be toggled on to enable HTTP integration with <code>actix-web</code>. Enabling <code>&quot;http_actix_web&quot;</code> feature flag will also enable the <code>&quot;tokio_runtime&quot;</code> feature flag. We will demonstrate the usage with a new example.</p>
+<p>The <code>&quot;http_actix_web&quot;</code> feature flag should be toggled on to enable HTTP integration with <code>actix-web</code>. Enabling <code>&quot;http_actix_web&quot;</code> feature flag will also enable the <code>&quot;tokio_runtime&quot;</code> feature flag. </p>
+<p>A convenience method <a href="https://docs.rs/toy-rpc/0.7.0-alpha.1/toy_rpc/server/struct.Server.html#method.handle_http"><code>Server::handle_http()</code></a> is available when <code>&quot;http_actix_web&quot;</code> is the only enabled http integration feature flag. If you have multiple http integration feature flags enabled, you can use the <a href="https://docs.rs/toy-rpc/0.7.0-alpha.1/toy_rpc/server/struct.Server.html#method.scope_config"><code>Server::scope_config</code></a> method instead (please note that you should use <code>scope_config</code> without brackets).</p>
+<p>We will demonstrate the usage with a new example.</p>
 <pre><code class="language-toml">[dependencies]
 actix-web = &quot;3.3.2&quot;
 toy-rpc = { version = &quot;0.7.0-alpha.1&quot;, features = [&quot;http_actix_web&quot;, &quot;server&quot;] }
@@ -766,8 +767,100 @@ async fn main() {
     .await;
 }
 </code></pre></pre>
-<div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><p>WIP</p>
-<div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><p>WIP</p>
+<div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><h1 id="http-integration-with-actix-web-1"><a class="header" href="#http-integration-with-actix-web-1">HTTP integration with <code>actix-web</code></a></h1>
+<p>The <code>&quot;http_tide&quot;</code> feature flag should be toggled on to enable HTTP integration with <code>tide</code>. Enabling <code>&quot;http_tide&quot;</code> feature flag will also enable the <code>&quot;async_std_runtime&quot;</code> feature flag.</p>
+<p>A convenience method <a href="https://docs.rs/toy-rpc/0.7.0-alpha.1/toy_rpc/server/struct.Server.html#method.handle_http-1"><code>Server::handle_http(self)</code></a> is available when <code>&quot;http_tide&quot;</code> is the only http integration flag that is enabled. If multiple http integration feature flags are enabled, you can use <a href="https://docs.rs/toy-rpc/0.7.0-alpha.1/toy_rpc/server/struct.Server.html#method.into_endpoint"><code>Server::into_endpoint(self)</code></a> method instead.</p>
+<p>We will demonstrate the usage with a new example.</p>
+<pre><code class="language-toml">[dependencies]
+tide = &quot;0.16.0&quot;
+async-std = { version = &quot;1&quot;, features = [ &quot;attributes&quot;, ] }  
+toy-rpc = { version = &quot;0.7.0-alpha.1&quot;, features = [&quot;http_tide&quot;, &quot;server&quot;] }
+</code></pre>
+<pre><pre class="playground"><code class="language-rust edition2018">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use std::sync::Arc;
+use toy_rpc::macros::export_impl;
+use toy_rpc::Server;
+use tide::prelude::*;
+
+pub struct Calculator { }
+
+#[export_impl]
+impl Calculator {
+    #[export_method]
+    async fn multiply(&amp;self, args(i32, i32)) -&gt; Result&lt;i32, String&gt; {
+        Ok(args.0 * args.1)
+    }
+
+    #[export_method]
+    async fn divide(&amp;self, args(i32, i32)) -&gt; Result&lt;i32, String&gt; {
+        Ok(args.0 / args.1)
+    }
+}
+
+#[async_std::main]
+async main() {
+    // Get the RPC server ready
+    let addr = &quot;127.0.0.1:23333&quot;;
+    let calculator = Arc::new(Calculator { });
+    let server = Server::builder()
+        .register(calculator)
+        .build();
+
+    // Now we will work with `tide` HTTP server
+    let mut app = tide::new();
+    app.at(&quot;/rpc/&quot;).nest(server.handle_http());
+    app.listen(addr).await.unwrap();
+}
+<span class="boring">}
+</span></code></pre></pre>
+<div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><h1 id="http-integration-with-actix-web-2"><a class="header" href="#http-integration-with-actix-web-2">HTTP integration with <code>actix-web</code></a></h1>
+<p>The <code>&quot;http_warp&quot;</code> feature flag should be toggled on to enable HTTP integration with <code>warp</code> crate. Enabling <code>&quot;http_warp&quot;</code> feature flag will also enable the <code>&quot;tokio_runtime&quot;</code> featrue flag.</p>
+<p>A convenience method <a href="https://docs.rs/toy-rpc/0.7.0-alpha.1/toy_rpc/server/struct.Server.html#method.handle_http-2"><code>Server::handle_http(self)</code></a> is available when <code>&quot;http_warp&quot;</code> is the only enabled http integration feature flag. If you have multiple http integration flags enabled, you can use the <a href="https://docs.rs/toy-rpc/0.7.0-alpha.1/toy_rpc/server/struct.Server.html#method.into_boxed_filter"><code>Server::into_boxed_filter(self)</code></a> method instead.</p>
+<p>We will demonstrate the usage with a new example.</p>
+<pre><code class="language-toml">[dependencies]
+warp = &quot;0.3.0&quot;
+tokio = { version = &quot;1.4.0&quot;, features = [&quot;rt-multi-thread&quot;, &quot;macros&quot;] }
+toy-rpc = { version = &quot;0.7.0-alpha.1&quot;, features = [&quot;http_warp&quot;, &quot;server&quot;] }
+</code></pre>
+<pre><pre class="playground"><code class="language-rust edition2018">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use std::sync::Arc;
+use toy_rpc::macros::export_impl;
+use toy_rpc::Server;
+
+pub struct Calculator { }
+
+#[export_impl]
+impl Calculator {
+    #[export_method]
+    async fn multiply(&amp;self, args(i32, i32)) -&gt; Result&lt;i32, String&gt; {
+        Ok(args.0 * args.1)
+    }
+
+    #[export_method]
+    async fn divide(&amp;self, args(i32, i32)) -&gt; Result&lt;i32, String&gt; {
+        Ok(args.0 / args.1)
+    }
+}
+
+#[tokio::main]
+async main() {
+    let calculator = Arc::new(Calculator { });
+    let server = Server::builder()
+        .register(calculator)
+        .build();
+
+    // Serve RPC at &quot;ws://127.0.0.1/rpc/&quot; 
+    // (there is a &quot;_rpc_&quot; appended to the end of the path but the client takes care of that) 
+    let routes = warp::path(&quot;rpc&quot;)
+        .and(server.handle_http());
+    warp::serve(routes).run(([127, 0, 0, 1], 23333)).await;
+}
+<span class="boring">}
+</span></code></pre></pre>
 <div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><p>WIP</p>
 <div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><p>WIP</p>
 <div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><p>WIP</p>

@@ -65,6 +65,15 @@ cfg_if! {
 ///
 /// # Example
 ///
+/// ```rust 
+/// // `.await` to wait for the response
+/// let call: Call<i32> = client.call("Arith.add", (1i32, 6i32));
+/// let result = call.await;
+///
+/// // cancel the call regardless of whether the response is received or not
+/// let call: Call<()> = client.call("Arith.infinite_loop", ());
+/// call.cancel();
+/// ```
 #[pin_project]
 pub struct Call<Res> {
     id: MessageId,
