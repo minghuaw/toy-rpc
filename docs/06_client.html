@@ -203,7 +203,8 @@ async main() {
 </span></code></pre></pre>
 <h1 id="accessing-rpc-services"><a class="header" href="#accessing-rpc-services">Accessing RPC services</a></h1>
 <h2 id="call_blocking-and-call"><a class="header" href="#call_blocking-and-call"><code>call_blocking(...)</code> and <code>call(...)</code></a></h2>
-<p>WIP</p>
+<p>There are two methods available for accessing the RPC services and methods. The <code>call_blocking</code> method blocks the execution until the response is received, and the <code>call</code> method is the asynchronous version where the execution will yield to other tasks scheduled by the runtime while waiting for the response. Cancellation is also supported on the <code>call</code> method, which is discussed with more details in the <a href="https://minghuaw.github.io/toy-rpc/06a_cancellation.html">next chapter</a>.</p>
+<p>(Support of timeout is still work-in-progress. The book will be updated once the feature is implemented.)</p>
 <h2 id="generated-client-stub-functions"><a class="header" href="#generated-client-stub-functions">Generated client stub functions</a></h2>
 <p>The generated client stub functions internally uses the <code>call(...)</code> method and are thus async. The client stub functions consist of two steps. The first step is to access your service, and the second step is to access the method defined in that particular service. The method in the first step is always the name of the service but in snake case. For example, if you have a service <code>struct FooBar { }</code>, then the client method you use to access the service will be <code>foo_bar()</code>. The client method you use to access the method is identical to the method definition in the RPC service. For example, if an RPC method is defined as <code>fn add(&amp;self, args(i32, i32)) -&gt; Result&lt;i32, String&gt;;</code>, then the client method you use would be <code>client.bar().add((3i32, 4i32)).await;</code></p>
 <h2 id="examples"><a class="header" href="#examples">Examples</a></h2>
@@ -260,7 +261,51 @@ async main() {
 <span class="boring">}
 </span></code></pre></pre>
 <h3 id="export_trait-and-export_trait_impl"><a class="header" href="#export_trait-and-export_trait_impl"><code>#[export_trait]</code> and <code>#[export_trait_impl]</code></a></h3>
-<p>WIP</p>
+<p>Again, let's just remind ourselves that the service in this example is defined in a separate crate <a href="https://minghuaw.github.io/toy-rpc/03_define_service.html#export_trait-and-export_trait_impl"><code>example-service</code></a> and the service is implemented and served by <a href="https://minghuaw.github.io/toy-rpc/04_server.html#example-with-export_trait-and-export_trait_impl"><code>example-server</code></a> crate. What we will be doing below is to demonstrate the client, which, not surprisingly, look pretty much the same as the example above.</p>
+<p>Because the service definition resides in a separate crate, we will need to import that crate as well.</p>
+<pre><code class="language-toml">[dependencies]
+tokio = { version = &quot;1&quot;, features = [&quot;rt-multi-thread&quot;, &quot;macros&quot;] }
+toy-rpc = { version = &quot;0.7.0-alpha.1&quot;, features = [&quot;tokio_runtime&quot;, &quot;client&quot;] }
+
+# import our service definition, assuming we have this definition at &quot;../example-service&quot;
+example-service = { version = &quot;0.1.0&quot;, path = &quot;../example-service&quot; }
+</code></pre>
+<pre><pre class="playground"><code class="language-rust edition2018">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use toy_rpc::{Client, Error};
+
+// import everything to use the generated client stub functions
+use example_service::*;
+
+#[tokio::main]
+async main() {
+    let client = Client::dial(&quot;127.0.0.1:23333&quot;).await
+        .expect(&quot;Failed to connect to the server&quot;);
+    
+    // Access the remote method `add` of service `Arith` in a blocking manner
+    let result: Result&lt;i32, Error&gt; = client.call_blocking(&quot;Arith.add&quot;, (3i32, 4i32));
+    assert_eq!(result, Ok(7));
+
+    // Access the remote method `subtract` of service `Arith` in an asynchronous manner
+    let result: Result&lt;i32, Error&gt; = client.call(&quot;Arith.subtract&quot;, (9i32, 6i32)).await;
+    assert_eq!(result, Ok(3));
+
+    // Let's use the generated client stub functions
+    let result = client
+        .arith() // access `Arith` service
+        .add((3i32, 4i32)) // access `add` method
+        .await;
+    assert_eq!(result, Ok(7));
+
+    let result = client
+        .arith() // access `Arith` service
+        .subtract((9i32, 6i32)) // access `subtract` method
+        .await;
+    assert_eq!(result, Ok(3));
+}
+<span class="boring">}
+</span></code></pre></pre>
 
                     </main>
 
