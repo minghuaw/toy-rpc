@@ -165,7 +165,102 @@
 
                 <div id="content" class="content">
                     <main>
-                        <p>WIP</p>
+                        <h1 id="client"><a class="header" href="#client">Client</a></h1>
+<p>The client side usage should feel fairly close to that of the golang's <code>net/rpc</code> package as well except some changes that makes the client API more rusty and async. </p>
+<p>To connect a client to a &quot;raw&quot; TCP server, you should use the <code>dial</code> function; to connect to a HTTP server, you should then use the <code>dial_http</code> function. Once you have a connected client,
+you can then use the <code>call_blocking</code> and <code>call</code> methods to access the RPC functions on the server. The <code>#[export_impl]</code> and <code>#[export_trait]</code> attribute macros also generates client stub functions that allows the client to conveniently access the RPC functions without worrying about typing the wrong service or method name. </p>
+<h1 id="connecting-to-tcp-server--http-server"><a class="header" href="#connecting-to-tcp-server--http-server">Connecting to TCP server / HTTP server</a></h1>
+<p>For the examples below, we will assume running with the <code>tokio</code> runtime.</p>
+<pre><code class="language-toml">[dependencies]
+tokio = { version = &quot;1&quot;, features = [&quot;rt-multi-thread&quot;, &quot;macros&quot;] }
+toy-rpc = { version = &quot;0.7.0-alpha.1&quot;, features = [&quot;tokio_runtime&quot;, &quot;client&quot;] }
+</code></pre>
+<p>The example below shows how to connect to a TCP server</p>
+<pre><pre class="playground"><code class="language-rust edition2018">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use toy_rpc::Client;
+
+#[tokio::main]
+async main() {
+    let client = Client::dial(&quot;127.0.0.1:23333&quot;).await
+        .expect(&quot;Failed to connect to server&quot;);
+}
+<span class="boring">}
+</span></code></pre></pre>
+<p>Connecting to the HTTP server looks very similar with some minor changes. The example below assumes that we are trying to connect to one of the <a href="https://minghuaw.github.io/toy-rpc/05_integration.html">HTTP servers</a> (all three HTTP integration examples have the RPC server serving at <code>&quot;ws://127.0.0.1:23333/rpc/&quot;</code>). Please note that there is a &quot;<em>rpc</em>&quot; appended to the end of the path by the server integration methods, but this is automatically handled by the <code>Client::dial_http</code> method so you don't need to worry about that. </p>
+<pre><pre class="playground"><code class="language-rust edition2018">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use toy_rpc::Client;
+
+#[tokio::main]
+async main() {
+    let client = Client::dial_http(&quot;ws://127.0.0.1:23333/rpc/&quot;).await
+        .expect(&quot;Failed to connect to server&quot;);
+}
+<span class="boring">}
+</span></code></pre></pre>
+<h1 id="accessing-rpc-services"><a class="header" href="#accessing-rpc-services">Accessing RPC services</a></h1>
+<h2 id="call_blocking-and-call"><a class="header" href="#call_blocking-and-call"><code>call_blocking(...)</code> and <code>call(...)</code></a></h2>
+<p>WIP</p>
+<h2 id="generated-client-stub-functions"><a class="header" href="#generated-client-stub-functions">Generated client stub functions</a></h2>
+<p>The generated client stub functions internally uses the <code>call(...)</code> method and are thus async. The client stub functions consist of two steps. The first step is to access your service, and the second step is to access the method defined in that particular service. The method in the first step is always the name of the service but in snake case. For example, if you have a service <code>struct FooBar { }</code>, then the client method you use to access the service will be <code>foo_bar()</code>. The client method you use to access the method is identical to the method definition in the RPC service. For example, if an RPC method is defined as <code>fn add(&amp;self, args(i32, i32)) -&gt; Result&lt;i32, String&gt;;</code>, then the client method you use would be <code>client.bar().add((3i32, 4i32)).await;</code></p>
+<h2 id="examples"><a class="header" href="#examples">Examples</a></h2>
+<p>We will continue the <a href="https://minghuaw.github.io/toy-rpc/03_define_service.html#export_impl"><code>#[export_impl]</code> example</a> and the [<code>#[export_trait]</code> and <code>#[export_trait_impl]</code>] example to demonstrate how to access RPC service on the server. The methods you will use to access the RPC service are the same for a TCP connection and a HTTP connection, and for simplicity, all the examples below will assume a TCP connection. For more examples on use with HTTP connections, please checkout the <a href="https://github.com/minghuaw/toy-rpc/tree/main/examples">GitHub examples</a>.</p>
+<h3 id="export_impl"><a class="header" href="#export_impl"><code>#[export_impl]</code></a></h3>
+<p>Let's just remind ourselves that in this example the service definition and implementation are located in the same file/project, and the file structure is as follows</p>
+<pre><code>./src
+├── /bin
+│   ├── server.rs
+│   ├── client.rs
+└── lib.rs
+</code></pre>
+<p>Since the service is defined and implemented in <code>src/lib.rs</code> from the <a href="https://minghuaw.github.io/toy-rpc/03_define_service.html#export_impl">previous chapter</a>, we are going to include everything in the <code>src/lib.rs</code> file to allow us use the generated client stub functions in our <code>src/bin/client.rs</code>.</p>
+<pre><pre class="playground"><code class="language-rust edition2018">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use toy_rpc::Client;
+use toy_rpc::Error;
+
+// include everything from the lib.rs file
+// assuming the name of the crate is &quot;example&quot;
+use example::*;
+
+#[tokio::main]
+async main() {
+    let client = Client::dial(&quot;127.0.0.1:23333&quot;).await
+        .expect(&quot;Failed to connect to the server&quot;);
+
+    // Access the remote `exported_method` method of `Foo` service in a blocking manner
+    let result: Result&lt;String, Error&gt; = client.call_blocking(&quot;Foo.exported_method&quot;, ());
+    assert_eq!(result, Ok(&quot;exported method&quot;.to_string()));
+
+    // Access the remote `add` method of `Bar` service in an asynchronous manner
+    let result: Result&lt;i32, Error&gt; = client.call(&quot;Bar.add&quot;, (3i32, 4i32)).await;
+    assert_eq!(result, Ok(7));
+
+    // You can also use the generated client stub functions
+    // Access the remote `exported_method` method of `Foo` service 
+    // using the generated client stub functions
+    let result = client
+        .foo() // access `Foo` service
+        .exported_method(()) // access `exported_method` of the `Foo` service
+        .await;
+    assert_eq!(result, Ok(&quot;exported method&quot;.to_string()));
+
+    // Access the remote `add` method of `Bar` service 
+    // using the generated client stub functions
+    let result = client
+        .bar()
+        .add((3, 4))
+        .await;
+    assert_eq!(result, Ok(7));
+}
+<span class="boring">}
+</span></code></pre></pre>
+<h3 id="export_trait-and-export_trait_impl"><a class="header" href="#export_trait-and-export_trait_impl"><code>#[export_trait]</code> and <code>#[export_trait_impl]</code></a></h3>
+<p>WIP</p>
 
                     </main>
 
