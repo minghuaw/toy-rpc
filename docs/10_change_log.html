@@ -165,7 +165,123 @@
 
                 <div id="content" class="content">
                     <main>
-                        <p>WIP</p>
+                        <h1 id="change-log"><a class="header" href="#change-log">Change Log</a></h1>
+<h2 id="070"><a class="header" href="#070">0.7.0</a></h2>
+<p><strong>Breaking Changes</strong></p>
+<ul>
+<li>The blocking RPC call on the client side is renamed to <code>call_blocking</code></li>
+<li>The asynchronous RPC call on the client side is renamed to <code>call</code></li>
+<li>The <code>call</code> method returns a <code>Call&lt;Res&gt;</code> type where <code>Res</code> represents the <code>Ok</code> type of 
+result. The request is sent by a background task and thus the new <code>call</code> method is 
+similar to the old <code>spawn_task</code> in terms of usage.</li>
+</ul>
+<p><strong>New Features</strong></p>
+<ul>
+<li>Cancellation. The <code>Call&lt;Res&gt;</code> type returned by the <code>call</code> method can be canceled by 
+using the <code>cancel()</code> method.</li>
+<li>Timeout. (WIP)</li>
+</ul>
+<h2 id="061"><a class="header" href="#061">0.6.1</a></h2>
+<ul>
+<li>Multiple objects of the same types can be registered on the same server again, but you will need to
+use the <code>ServerBuilder::register_with_name</code> method as opposed to the regular <code>ServerBuilder::register</code>.
+More details can be found in <code>ServerBuilder::register_with_name</code>'s documentation.</li>
+</ul>
+<h2 id="060"><a class="header" href="#060">0.6.0</a></h2>
+<p><strong>Breaking Changes</strong></p>
+<ul>
+<li>In short, this update makes the crate resemble closer to the usage of <code>go</code>'s <code>net/rpc</code> package</li>
+<li>Service registration is simplified to <code>Server::builder().register(foo_service).build()</code>. The examples will be
+updated accordingly. Thus
+<ul>
+<li><code>service!()</code> macro will be deprecated</li>
+<li><code>register</code> function now takes only one argument, which is the instance of the service</li>
+<li>on the client side, the service name will just be the name of the struct. for example,
+to call a RPC method on <code>struct Foo { }</code> service, the client simply uses
+<code>.async_call(&quot;Foo.&lt;method&gt;&quot;).await</code> where <code>&lt;method&gt;</code> should be replaced with the RPC method</li>
+<li>you can still register multiple services on the same server. However, only one object of the same type
+can be registered on the same server. Multiple servers are needed to have multiple objects of the same type.</li>
+</ul>
+</li>
+<li>Re-defined the custom <code>Error</code> type</li>
+</ul>
+<p>Non-breaking changes</p>
+<ul>
+<li>Fixed bug where client does not interpret error message correctly</li>
+<li>Fixed bug with <code>accept_websocket</code> crashes with incorrect protocol</li>
+</ul>
+<h2 id="054"><a class="header" href="#054">0.5.4</a></h2>
+<ul>
+<li>Handlers are now stored as a <code>fn</code> pointer as opposed to a trait object.</li>
+</ul>
+<h2 id="053"><a class="header" href="#053">0.5.3</a></h2>
+<ul>
+<li>The <code>#[export_impl]</code> macro now generates client stub functions by generating a new trait for <code>toy_rpc::Client</code>.</li>
+</ul>
+<h2 id="050"><a class="header" href="#050">0.5.0</a></h2>
+<p><strong>Breaking changes</strong></p>
+<ul>
+<li>HTTP integration is now accomplished using WebSocket with <code>async_tungstenite</code>, and thus HTTP connections
+of versions &lt;0.5.0 are not compatible with versions &gt;=0.5.0.</li>
+<li>The custom binary transport protocol now includes a magic byte at the beginning, making
+versions &lt;0.5.0 <strong>NOT</strong> compatible with versions &gt;= 0.5.0;</li>
+<li><code>toy_rpc::error::Error</code> changed from struct-like variants to simple enum variants</li>
+<li>Changes to feature flags
+<ul>
+<li>&quot;logging&quot; feature flag is removed</li>
+<li>&quot;surf&quot; feature flag is removed</li>
+<li>&quot;tide&quot; is changed to &quot;http_tide&quot;</li>
+<li>&quot;actix-web&quot; is changed to &quot;http_actix_web&quot;</li>
+<li>added &quot;http_warp&quot; feature flag</li>
+<li>added &quot;async_std_runtime&quot;</li>
+<li>added &quot;tokio_runtime&quot;</li>
+</ul>
+</li>
+</ul>
+<p>Non-breaking changes</p>
+<ul>
+<li>Removed <code>Stream</code> and <code>Sink</code> impl from the custom binary transport protocol <code>Frame</code></li>
+</ul>
+<h2 id="045"><a class="header" href="#045">0.4.5</a></h2>
+<ul>
+<li>Added <code>Sink</code> implementation for the custom binary transport protocol <code>Frame</code></li>
+</ul>
+<h2 id="044"><a class="header" href="#044">0.4.4</a></h2>
+<ul>
+<li>Modified traits <code>CodecRead</code>, <code>CodecWrite</code>, <code>ServerCodec</code>, <code>ClientCodec</code> to no longer
+return number of bytes written</li>
+<li>The number of bytes written for header and body will be logged separately</li>
+</ul>
+<h2 id="043"><a class="header" href="#043">0.4.3</a></h2>
+<ul>
+<li>Removed previously unused NoneError</li>
+<li>Unified <code>call</code>, <code>async_call</code> and <code>spawn_task</code> for socket client
+and HTTP client. The <code>call_http</code>, <code>async_call_http</code>, and <code>spawn_task_http</code>
+methods are kept for compatibility.</li>
+</ul>
+<h2 id="042"><a class="header" href="#042">0.4.2</a></h2>
+<ul>
+<li>Temporary fix of <code>spawn_task()</code> and <code>spawn_task_http()</code> with <code>Arc&lt;Mutex&lt;_&gt;&gt;</code> until
+lifetime with async task is figured out. As a result, <code>Client</code> no longer needs to be declared <code>mut</code>.</li>
+</ul>
+<h2 id="041"><a class="header" href="#041">0.4.1</a></h2>
+<ul>
+<li>Updated documentation</li>
+</ul>
+<h2 id="040"><a class="header" href="#040">0.4.0</a></h2>
+<ul>
+<li>Added <code>actix-web</code> feature flag to support integration with <code>actix-web</code></li>
+</ul>
+<h2 id="031"><a class="header" href="#031">0.3.1</a></h2>
+<ul>
+<li>Added <code>serde_rmp</code> features flag</li>
+<li>Updated and corrected examples in the documentation</li>
+</ul>
+<h2 id="030"><a class="header" href="#030">0.3.0</a></h2>
+<ul>
+<li>Added <code>serde_cbor</code> feature flag</li>
+<li>Changed <code>bincode</code> feature flag to <code>serde_bincode</code></li>
+</ul>
 
                     </main>
 

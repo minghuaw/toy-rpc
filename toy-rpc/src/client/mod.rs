@@ -63,6 +63,9 @@ cfg_if! {
 /// Call of a RPC request. The result can be obtained by `.await`ing the `Call`.
 /// The call can be cancelled with `cancel()` method.
 ///
+/// The type parameter `Res` is the `Ok` type of the result. `.await`ing on the `Call<Res>`
+/// will yield a `Result<Res, toy_rpc::Error>`.
+///
 /// # Example
 ///
 /// ```rust 
