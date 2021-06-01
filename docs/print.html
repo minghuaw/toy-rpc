@@ -357,13 +357,13 @@ located in the same file/project. The name of the <code>struct</code> will be us
 <code>#[export_method]</code> to mark which method(s) should be &quot;exported&quot; as RPC method(s). 
 The methods to export must meet the following criteria on the server side</p>
 <ul>
-<li>the method resides in an impl block marked with #[export_impl]</li>
-<li>the method is marked with #[export_method] attribute</li>
-<li>the method takes one argument other than &amp;self and returns a Result&lt;T, E&gt;
+<li>the method resides in an impl block marked with <code>#[export_impl]</code> or <code>#[export_trait]</code></li>
+<li>the method is marked with <code>#[export_method]</code> attribute</li>
+<li>the method takes one argument other than <code>&amp;self</code> and returns a <code>Result&lt;T, E&gt;</code>
 <ul>
-<li>the argument must implement trait serde::Deserialize</li>
-<li>the Ok type T of the result must implement trait serde::Serialize</li>
-<li>the Err type E of the result must implement trait ToString</li>
+<li>the argument must implement trait <code>serde::Deserialize</code></li>
+<li>the <code>Ok</code> type <code>T</code> of the result must implement trait <code>serde::Serialize</code></li>
+<li>the <code>Err</code> type <code>E</code> of the result must implement trait <code>ToString</code></li>
 </ul>
 </li>
 </ul>

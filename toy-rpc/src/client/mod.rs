@@ -216,10 +216,6 @@ cfg_if! {
                             std::io::ErrorKind::UnexpectedEof,
                             "Unexpected EOF reading response body",
                         )))?;
-                        // .ok_or(Error::IoError(std::io::Error::new(
-                        //     std::io::ErrorKind::UnexpectedEof,
-                        //     "Unexpected EOF reading response body",
-                        // )))?;
                 let deserializer = deserialzer?;
         
                 let res = match is_error {
