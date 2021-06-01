@@ -2,22 +2,24 @@
 
 use cfg_if::cfg_if;
 
+
 cfg_if! {
     if #[cfg(feature = "serde_bincode")] {
-
+        
     } else if #[cfg(feature = "serde_cbor")] {
-
+        
     } else if #[cfg(feature = "serde_rmp")] {
-
+        
     } else {
         use ::tokio::io::{AsyncBufRead, AsyncBufReadExt, AsyncWrite, AsyncWriteExt};
         use std::marker::PhantomData;
         use async_trait::async_trait;
-
+        
         use super::*;
         use crate::codec::split::{SplittableServerCodec, SplittableClientCodec};
         use crate::codec::RequestDeserializer;
         use crate::codec::split::{CodecReadHalf, CodecWriteHalf};
+        use crate::util::GracefulShutdown;
 
         #[async_trait]
         impl<R, W> CodecRead for Codec<R, W, ConnTypeReadWrite>
@@ -219,6 +221,24 @@ cfg_if! {
                         conn_type: PhantomData
                     }
                 )
+            }
+        }
+
+        #[async_trait]
+        impl<T> GracefulShutdown for T 
+        where 
+            T: AsyncWrite + Send + Unpin,
+        {
+            async fn close(&mut self) {
+                match self.flush().await {
+                    Ok(()) => (),
+                    Err(e) => log::error!("Error closing connection: {}", e),
+                }
+
+                match AsyncWriteExt::shutdown(self).await {
+                    Ok(()) => (),
+                    Err(e) => log::error!("Error closing connection: {}", e),
+                }
             }
         }
     }

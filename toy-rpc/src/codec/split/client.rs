@@ -1,5 +1,7 @@
 //! Implements `SplittableClientCodec`
 
+use crate::util::GracefulShutdown;
+
 use super::*;
 /// Split the ClientCodec into a reader half and writer half
 ///
@@ -27,7 +29,7 @@ pub trait ClientCodecRead: Send {
 
 /// A client side codec that can write requests
 #[async_trait]
-pub trait ClientCodecWrite: Send {
+pub trait ClientCodecWrite: Send + GracefulShutdown {
     /// Writes a request to the server
     async fn write_request(
         // (Probably) don't need to worry about header/body interleaving
@@ -65,7 +67,7 @@ cfg_if! {
         impl<R, W> SplittableClientCodec for Codec<R, W, ConnTypeReadWrite>
         where
             R: FrameRead + Send + Sync + Unpin,
-            W: FrameWrite + Send + Sync + Unpin,
+            W: FrameWrite + GracefulShutdown + Send + Sync + Unpin,
         {
             type Reader = CodecReadHalf::<R, Self, ConnTypeReadWrite>;
             type Writer = CodecWriteHalf::<W, Self, ConnTypeReadWrite>;
@@ -129,7 +131,7 @@ cfg_if! {
         impl<R, W> SplittableClientCodec for Codec<R, W, ConnTypePayload>
         where
             R: PayloadRead + Send,
-            W: PayloadWrite + Send,
+            W: PayloadWrite + GracefulShutdown + Send,
         {
             type Reader = CodecReadHalf::<R, Self, ConnTypePayload>;
             type Writer = CodecWriteHalf::<W, Self, ConnTypePayload>;
@@ -169,7 +171,7 @@ where
 #[async_trait]
 impl<T> ClientCodecWrite for T
 where
-    T: CodecWrite + Send,
+    T: CodecWrite + GracefulShutdown + Send,
 {
     async fn write_request(
         &mut self,
