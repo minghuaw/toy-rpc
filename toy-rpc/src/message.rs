@@ -144,20 +144,20 @@ cfg_if! {
             pub result: HandlerResult,
         }
 
-        #[cfg(feature = "client")]
-        pub(crate) enum ClientMessage {
-            Timeout(Duration), // the timeout will only be applied to the next request
-            Request(RequestHeader, ClientRequestBody),
-            Cancel(MessageId),
-            Stop,
-        }
-
-        #[cfg(feature = "client")]
-        pub(crate) enum CallMessage {
-            Timeout(MessageId),
-            Cancel(MessageId),
-        }
+        
+        // #[cfg(feature = "client")]
+        // pub(crate) enum CallMessage {
+            //     Timeout(MessageId),
+            //     Cancel(MessageId),
+            // }
     }
 }
-
-
+    
+#[cfg(feature = "client")]
+pub(crate) enum ClientMessage {
+    Timeout(MessageId, Duration), // the timeout will only be applied to the next request
+    Request(RequestHeader, ClientRequestBody),
+    Cancel(MessageId),
+    Stop,
+}
+    

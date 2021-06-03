@@ -181,6 +181,7 @@ impl Client<NotConnected> {
         Client::<Connected> {
             count: AtomicMessageId::new(0),
             pending,
+            timeout: AtomicCell::new(None),
             reader_stop,
             writer_tx,
 
@@ -243,16 +244,17 @@ impl Client<Connected> {
         let header = RequestHeader { id, service_method };
         let body = Box::new(args) as ClientRequestBody;
 
-        // create oneshot channel
         let (done_tx, done_rx) = oneshot::channel();
-        // let (cancel_tx, cancel_rx) = oneshot::channel();
         let (cancel_tx, cancel_rx) = flume::bounded(1);
-
         let pending = self.pending.clone();
         let writer_tx = self.writer_tx.clone();
-        let handle = task::spawn(handle_call(
-            pending, header, body, writer_tx, cancel_rx, done_tx,
-        ));
+
+        let timeout = self.timeout.take();
+        let handle = task::spawn(
+            handle_call(
+                pending, header, body, writer_tx, cancel_rx, done_tx, timeout
+            )
+        );
 
         // create Call
         Call::<Res> {

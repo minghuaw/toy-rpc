@@ -2,15 +2,10 @@
 
 use cfg_if::cfg_if;
 use flume::{Sender};
-use futures::{lock::Mutex, Future, channel::oneshot};
+use futures::{Future, TryFutureExt, channel::oneshot, lock::Mutex};
 use pin_project::pin_project;
-use std::{
-    collections::HashMap,
-    marker::PhantomData,
-    pin::Pin,
-    sync::Arc,
-    task::{Context, Poll},
-};
+use std::{collections::HashMap, marker::PhantomData, pin::Pin, sync::Arc, task::{Context, Poll}, time::Duration};
+use crossbeam::atomic::AtomicCell;
 
 use crate::{
     message::{
@@ -133,14 +128,12 @@ type ResponseMap = HashMap<MessageId, oneshot::Sender<ClientResponseResult>>;
 pub struct Client<Mode> {
     count: AtomicMessageId,
     pending: Arc<Mutex<ResponseMap>>,
-
-    // new request will be sent over this channel
-    // requests: Sender<(RequestHeader, ClientRequestBody)>,
+    // timeout: Mutex<Option<Duration>>,
+    timeout: AtomicCell<Option<Duration>>,
 
     // both reader and writer tasks should return nothing cliente handles will be used to drop the tasks
     // The Drop trait should be impled when tokio or async_std runtime is enabled
     reader_stop: Sender<()>,
-    // writer_stop: Sender<()>,
     writer_tx: Sender<ClientMessage>,
 
     marker: PhantomData<Mode>,
@@ -160,6 +153,12 @@ impl<Mode> Drop for Client<Mode> {
     }
 }
 
+impl Client<Connected> {
+    pub fn timeout(&self, duration: Duration) -> &Self {
+        self.timeout.store(Some(duration));
+        &self
+    }
+}
 
 cfg_if! {
     if #[cfg(any(feature = "async_std_runtime", feature = "tokio_runtime"))] {
@@ -239,30 +238,19 @@ cfg_if! {
             mut writer: impl ClientCodecWrite,
             msgs: Receiver<ClientMessage>,
         ) {
-            let mut timeout = None;
-
             while let Ok(msg) = msgs.recv_async().await {
                 match msg {
-                    ClientMessage::Timeout(dur) => {
-                        timeout = Some(dur);
-                        Ok(())
+                    ClientMessage::Timeout(id, dur) => {
+                        let timeout_header = RequestHeader {
+                            id,
+                            service_method: TIMEOUT_TOKEN.into()
+                        };
+                        let timeout_body = Box::new(
+                            TimeoutRequestBody::new(dur)
+                        ) as ClientRequestBody;
+                        writer.write_request(timeout_header, &timeout_body).await
                     },
                     ClientMessage::Request(header, body) => {
-                        let id = header.get_id();
-                        if let Some(dur) = timeout.take() {
-                            let timeout_header = RequestHeader {
-                                id,
-                                service_method: TIMEOUT_TOKEN.into()
-                            };
-                            let timeout_body = Box::new(
-                                TimeoutRequestBody::new(dur)
-                            ) as ClientRequestBody;
-                            writer.write_request(timeout_header, &timeout_body).await
-                                .unwrap_or_else(|err| {
-                                    log::error!("{:?}", err)
-                                });
-                        }
-
                         writer.write_request(header, &body).await  
                     },
                     ClientMessage::Cancel(id) => {
@@ -284,11 +272,6 @@ cfg_if! {
                 })
             }            
         }
-
-        // #[cfg(any(feature = "async_std_runtime", feature = "tokio_runtime"))]
-        // pub(crate) async fn wait_for_timeout() {
-
-        // }
         
         #[cfg(any(feature = "async_std_runtime", feature = "tokio_runtime"))]
         async fn handle_call<Res>(
@@ -298,6 +281,7 @@ cfg_if! {
             writer_tx: Sender<ClientMessage>,
             cancel: Receiver<MessageId>,
             done: oneshot::Sender<Result<Res, Error>>,
+            timeout: Option<Duration>,
         ) -> Result<(), Error>
         where
             Res: serde::de::DeserializeOwned + Send,
@@ -323,11 +307,11 @@ cfg_if! {
                         ).await?;
                     }
                 },
-                res = handle_response(resp_rx, done).fuse() => {
-                    match res {
-                        Ok(_) => { },
-                        Err(err) => log::error!("{:?}", err)
-                    }
+                res = handle_response::<Res>(resp_rx, timeout).fuse() => { 
+                    done.send(res)
+                        .unwrap_or_else(|_| {
+                            log::error!("Failed to send result over done channel")
+                        });
                 }
             };
         
@@ -337,16 +321,50 @@ cfg_if! {
         #[cfg(any(feature = "async_std_runtime", feature = "tokio_runtime"))]
         async fn handle_response<Res>(
             response: oneshot::Receiver<ClientResponseResult>,
-            done: oneshot::Sender<Result<Res, Error>>,
-        ) -> Result<(), Error>
+            // done: oneshot::Sender<Result<Res, Error>>,
+            timeout: Option<Duration>,
+        ) -> Result<Res, Error>
         where
             Res: serde::de::DeserializeOwned + Send,
         {
-            let val = response
-                .await
-                // cancellation of the oneshot channel is not intended
-                // and thus should be considered as an InternalError
-                .map_err(|err| Error::Internal(Box::new(err)))?;
+            let val = match timeout {
+                None => {
+                    response.await
+                        .map_err(|err| Error::Internal(Box::new(err)))?
+                }
+                Some(duration) => {
+                    #[cfg(all(
+                        feature = "async_std_runtime",
+                        not(feature = "tokio_runtime")
+                    ))]
+                    match ::async_std::future::timeout(duration, async {
+                        response.await
+                            .map_err(|err| Error::Internal(Box::new(err)))
+                    }).await {
+                        Ok(res) => res?,
+                        Err(_) => {
+                            // No need to deserialize if already timed out
+                            return Err(Error::Timeout(None))
+                        }
+                    }
+
+                    #[cfg(all(
+                        feature = "tokio_runtime",
+                        not(feature = "async_std_runtime")
+                    ))]
+                    match ::tokio::time::timeout(duration, async {
+                        response.await
+                            .map_err(|err| Error::Internal(Box::new(err)))
+                    }).await {
+                        Ok(res) => res?,
+                        Err(_) => {
+                            // No need to deserialize if already timed out
+                            return Err(Error::Timeout(None))
+                        }
+                    }
+                }
+            };
+
             let res = match val {
                 Ok(mut resp_body) => erased_serde::deserialize(&mut resp_body)
                     .map_err(|err| Error::ParseError(Box::new(err))),
@@ -356,9 +374,10 @@ cfg_if! {
                 ), // handles error msg sent from server
             };
         
-            done.send(res)
-                .map_err(|_| Error::Internal("Failed to send over done channel".into()))?;
-            Ok(())
+            // done.send(res)
+            //     .map_err(|_| Error::Internal("Failed to send over done channel".into()))?;
+            // Ok(())
+            res
         }
     }
 }
