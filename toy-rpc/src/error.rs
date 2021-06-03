@@ -38,6 +38,9 @@ pub enum Error {
     /// Cancellation error when an RPC call is cancelled
     #[error("Request is canceled")]
     Canceled(Option<MessageId>),
+
+    #[error("Request timedout")]
+    Timeout(Option<MessageId>),
 }
 
 impl Error {

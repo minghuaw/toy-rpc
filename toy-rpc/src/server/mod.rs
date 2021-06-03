@@ -113,6 +113,9 @@ cfg_if! {
                                     })
                                     .await?;
                             },
+                            Error::Timeout(id) => {
+                                unimplemented!()
+                            }
         
                             // Note: not using `_` in case of mishanlding of new additions of Error types
                             Error::IoError(_) => {},

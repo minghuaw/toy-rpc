@@ -247,7 +247,8 @@ impl Client<Connected> {
 
         // create oneshot channel
         let (done_tx, done_rx) = oneshot::channel();
-        let (cancel_tx, cancel_rx) = oneshot::channel();
+        // let (cancel_tx, cancel_rx) = oneshot::channel();
+        let (cancel_tx, cancel_rx) = flume::bounded(1);
 
         let pending = self.pending.clone();
         let writer_tx = self.writer_tx.clone();

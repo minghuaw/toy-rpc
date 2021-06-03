@@ -243,6 +243,9 @@ where
                 };
                 Self::send_response_via_context(err, ctx)?;
             },
+            Error::Timeout(id) => {
+                unimplemented!()
+            }
 
             // Note: not using `_` in case of mishanlding of new additions of Error types
             Error::IoError(_) => {},

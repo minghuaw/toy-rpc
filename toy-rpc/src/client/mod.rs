@@ -69,7 +69,8 @@ cfg_if! {
 #[pin_project]
 pub struct Call<Res> {
     id: MessageId,
-    cancel: oneshot::Sender<MessageId>,
+    // cancel: oneshot::Sender<MessageId>,
+    cancel: Sender<MessageId>,
     #[pin]
     done: oneshot::Receiver<Result<Res, Error>>,
     handle: Box<dyn Terminate + Send + Sync>,
@@ -237,19 +238,31 @@ cfg_if! {
         pub(crate) async fn writer_loop(
             mut writer: impl ClientCodecWrite,
             msgs: Receiver<ClientMessage>,
-            // stop: Receiver<()>,
         ) {
+            let mut timeout = None;
+
             while let Ok(msg) = msgs.recv_async().await {
                 match msg {
-                    ClientMessage::Timeout(id, dur) => {
-                        let header = RequestHeader {
-                            id,
-                            service_method: TIMEOUT_TOKEN.into()
-                        };
-                        let body = Box::new(TimeoutRequestBody::new(dur)) as ClientRequestBody;
-                        writer.write_request(header, &body).await
+                    ClientMessage::Timeout(dur) => {
+                        timeout = Some(dur);
+                        Ok(())
                     },
                     ClientMessage::Request(header, body) => {
+                        let id = header.get_id();
+                        if let Some(dur) = timeout.take() {
+                            let timeout_header = RequestHeader {
+                                id,
+                                service_method: TIMEOUT_TOKEN.into()
+                            };
+                            let timeout_body = Box::new(
+                                TimeoutRequestBody::new(dur)
+                            ) as ClientRequestBody;
+                            writer.write_request(timeout_header, &timeout_body).await
+                                .unwrap_or_else(|err| {
+                                    log::error!("{:?}", err)
+                                });
+                        }
+
                         writer.write_request(header, &body).await  
                     },
                     ClientMessage::Cancel(id) => {
@@ -271,17 +284,10 @@ cfg_if! {
                 })
             }            
         }
-        
+
         // #[cfg(any(feature = "async_std_runtime", feature = "tokio_runtime"))]
-        // async fn write_once(
-        //     writer: &mut impl ClientCodecWrite,
-        //     request: &Receiver<(RequestHeader, ClientRequestBody)>,
-        // ) -> Result<(), Error> {
-        //     if let Ok(req) = request.recv_async().await {
-        //         let (header, body) = req;
-        //         writer.write_request(header, &body).await?;
-        //     }
-        //     Ok(())
+        // pub(crate) async fn wait_for_timeout() {
+
         // }
         
         #[cfg(any(feature = "async_std_runtime", feature = "tokio_runtime"))]
@@ -290,7 +296,7 @@ cfg_if! {
             header: RequestHeader,
             body: ClientRequestBody,
             writer_tx: Sender<ClientMessage>,
-            cancel: oneshot::Receiver<MessageId>,
+            cancel: Receiver<MessageId>,
             done: oneshot::Sender<Result<Res, Error>>,
         ) -> Result<(), Error>
         where
@@ -310,15 +316,8 @@ cfg_if! {
             }
         
             select! {
-                res = cancel.fuse() => {
+                res = cancel.recv_async().fuse() => {
                     if let Ok(id) = res {
-                        // let header = RequestHeader {
-                        //     id,
-                        //     service_method: CANCELLATION_TOKEN.into(),
-                        // };
-                        // let body: String =
-                        //     format!("{}{}{}", CANCELLATION_TOKEN, CANCELLATION_TOKEN_DELIM, id);
-                        // let body = Box::new(body) as ClientRequestBody;
                         writer_tx.send_async(
                             ClientMessage::Cancel(id)
                         ).await?;

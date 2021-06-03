@@ -116,6 +116,7 @@ cfg_if! {
                     e @ Error::ParseError(_) => Err(e),
                     e @ Error::Internal(_) => Err(e),
                     e @ Error::Canceled(_) => Err(e),
+                    e @ Error::Timeout(_) => Err(e),
                 }
             }
         }
@@ -145,10 +146,16 @@ cfg_if! {
 
         #[cfg(feature = "client")]
         pub(crate) enum ClientMessage {
-            Timeout(MessageId, Duration),
+            Timeout(Duration), // the timeout will only be applied to the next request
             Request(RequestHeader, ClientRequestBody),
             Cancel(MessageId),
             Stop,
+        }
+
+        #[cfg(feature = "client")]
+        pub(crate) enum CallMessage {
+            Timeout(MessageId),
+            Cancel(MessageId),
         }
     }
 }
