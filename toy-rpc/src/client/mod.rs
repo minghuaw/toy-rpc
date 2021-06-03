@@ -4,7 +4,6 @@ use cfg_if::cfg_if;
 use flume::{Sender};
 use futures::{lock::Mutex, Future, channel::oneshot};
 use pin_project::pin_project;
-use tungstenite::handshake::client::Request;
 use std::{
     collections::HashMap,
     marker::PhantomData,
@@ -270,40 +269,20 @@ cfg_if! {
                 .unwrap_or_else(|err| {
                     log::error!("{:?}", err)
                 })
-            }
-                // select! {
-                //     _ = stop.recv_async().fuse() => {
-                //         // finish sending all requests available before dropping
-                //         for (header, body) in requests.drain().into_iter() {
-                //             match writer.write_request(header, &body).await {
-                //                 Ok(_) => { },
-                //                 Err(err) => log::error!("{:?}", err)
-                //             }
-                //         }
-                //         return 
-                //     },
-                //     res = write_once(&mut writer, &requests).fuse() => {
-                //         match res {
-                //             Ok(_) => {}
-                //             Err(err) => log::error!("{:?}", err),
-                //         }
-                //     }
-                // }
-
-            
+            }            
         }
         
-        #[cfg(any(feature = "async_std_runtime", feature = "tokio_runtime"))]
-        async fn write_once(
-            writer: &mut impl ClientCodecWrite,
-            request: &Receiver<(RequestHeader, ClientRequestBody)>,
-        ) -> Result<(), Error> {
-            if let Ok(req) = request.recv_async().await {
-                let (header, body) = req;
-                writer.write_request(header, &body).await?;
-            }
-            Ok(())
-        }
+        // #[cfg(any(feature = "async_std_runtime", feature = "tokio_runtime"))]
+        // async fn write_once(
+        //     writer: &mut impl ClientCodecWrite,
+        //     request: &Receiver<(RequestHeader, ClientRequestBody)>,
+        // ) -> Result<(), Error> {
+        //     if let Ok(req) = request.recv_async().await {
+        //         let (header, body) = req;
+        //         writer.write_request(header, &body).await?;
+        //     }
+        //     Ok(())
+        // }
         
         #[cfg(any(feature = "async_std_runtime", feature = "tokio_runtime"))]
         async fn handle_call<Res>(
