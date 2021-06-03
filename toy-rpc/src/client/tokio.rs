@@ -172,20 +172,19 @@ impl Client<NotConnected> {
         C: SplittableClientCodec + Send + Sync + 'static,
     {
         let (writer, reader) = codec.split();
-        let (req_sender, req_recver) = flume::unbounded();
+        let (writer_tx, writer_rx) = flume::unbounded();
         let pending = Arc::new(Mutex::new(HashMap::new()));
         let (reader_stop, stop) = flume::bounded(1);
         task::spawn(reader_loop(reader, pending.clone(), stop));
 
-        let (writer_stop, stop) = flume::bounded(1);
-        task::spawn(writer_loop(writer, req_recver, stop));
+        // let (writer_stop, stop) = flume::bounded(1);
+        task::spawn(writer_loop(writer, writer_rx));
 
         Client::<Connected> {
             count: AtomicMessageId::new(0),
             pending,
-            requests: req_sender,
             reader_stop,
-            writer_stop,
+            writer_tx,
 
             marker: PhantomData,
         }
@@ -253,9 +252,9 @@ impl Client<Connected> {
         let (cancel_tx, cancel_rx) = oneshot::channel();
 
         let pending = self.pending.clone();
-        let request_tx = self.requests.clone();
+        let writer_tx = self.writer_tx.clone();
         let handle = task::spawn(handle_call(
-            pending, header, body, request_tx, cancel_rx, done_tx,
+            pending, header, body, writer_tx, cancel_rx, done_tx,
         ));
 
         // create Call

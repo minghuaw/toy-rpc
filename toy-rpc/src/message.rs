@@ -2,6 +2,7 @@
 use cfg_if::cfg_if;
 use serde::{Deserialize, Serialize};
 use std::sync::atomic::AtomicU16;
+use std::time::Duration;
 
 /// Type of message id is u16
 pub type MessageId = u16;
@@ -55,7 +56,6 @@ impl Metadata for ResponseHeader {
     }
 }
 
-
 /// The Error message that will be sent over for a error response
 #[derive(Serialize, Deserialize)]
 pub(crate) enum ErrorMessage {
@@ -65,6 +65,17 @@ pub(crate) enum ErrorMessage {
     ExecutionError(String),
 }
 
+#[derive(Serialize, Deserialize, Debug)]
+pub(crate) struct TimeoutRequestBody(Duration);
+
+impl TimeoutRequestBody {
+    pub(crate) fn new(dur: Duration) -> Self {
+        Self(dur)
+    }
+}
+
+/// Client request needs to be serialzed while the request on the server needs to be 
+/// deserialized
 #[cfg(feature = "client")]
 pub(crate) type ClientRequestBody = Box<dyn erased_serde::Serialize + Send + Sync>;
 #[cfg(feature = "client")]
@@ -82,6 +93,9 @@ cfg_if! {
         pub(crate) const CANCELLATION_TOKEN: &str = "RPC_TASK_CANCELLATION";
         #[cfg(any(feature = "server", feature = "client"))]
         pub(crate) const CANCELLATION_TOKEN_DELIM: &str = ".";
+
+        #[cfg(any(feature = "server", feature = "client"))]
+        pub(crate) const TIMEOUT_TOKEN: &str = "RPC_TASK_TIMEOUT";
         
         #[cfg(feature = "server")]
         use crate::{
@@ -127,6 +141,14 @@ cfg_if! {
         pub(crate) struct ExecutionResult {
             pub id: MessageId,
             pub result: HandlerResult,
+        }
+
+        #[cfg(feature = "client")]
+        pub(crate) enum ClientMessage {
+            Timeout(MessageId, Duration),
+            Request(RequestHeader, ClientRequestBody),
+            Cancel(MessageId),
+            Stop,
         }
     }
 }

@@ -4,6 +4,7 @@ use cfg_if::cfg_if;
 use flume::{Sender};
 use futures::{lock::Mutex, Future, channel::oneshot};
 use pin_project::pin_project;
+use tungstenite::handshake::client::Request;
 use std::{
     collections::HashMap,
     marker::PhantomData,
@@ -15,6 +16,7 @@ use std::{
 use crate::{
     message::{
         AtomicMessageId, ClientRequestBody, ClientResponseResult, MessageId, RequestHeader,
+        ClientMessage,
     },
     Error,
 };
@@ -133,12 +135,13 @@ pub struct Client<Mode> {
     pending: Arc<Mutex<ResponseMap>>,
 
     // new request will be sent over this channel
-    requests: Sender<(RequestHeader, ClientRequestBody)>,
+    // requests: Sender<(RequestHeader, ClientRequestBody)>,
 
-    // both reader and writer tasks should return nothingcliente handles will be used to drop the tasks
+    // both reader and writer tasks should return nothing cliente handles will be used to drop the tasks
     // The Drop trait should be impled when tokio or async_std runtime is enabled
     reader_stop: Sender<()>,
-    writer_stop: Sender<()>,
+    // writer_stop: Sender<()>,
+    writer_tx: Sender<ClientMessage>,
 
     marker: PhantomData<Mode>,
 }
@@ -151,7 +154,7 @@ impl<Mode> Drop for Client<Mode> {
         if self.reader_stop.send(()).is_err() {
             log::error!("Failed to send stop signal to reader loop")
         }
-        if self.writer_stop.send(()).is_err() {
+        if self.writer_tx.send(ClientMessage::Stop).is_err() {
             log::error!("Failed to send stop signal to writer loop")
         }
     }
@@ -164,7 +167,8 @@ cfg_if! {
         use futures::{FutureExt, select};
         
         use crate::codec::split::{ClientCodecRead, ClientCodecWrite};
-        use crate::message::{ResponseHeader, CANCELLATION_TOKEN, CANCELLATION_TOKEN_DELIM, Metadata};
+        use crate::message::{ResponseHeader, CANCELLATION_TOKEN, CANCELLATION_TOKEN_DELIM, 
+            Metadata, TIMEOUT_TOKEN, TimeoutRequestBody};
     
         #[cfg(any(feature = "async_std_runtime", feature = "tokio_runtime"))]
         pub(crate) async fn reader_loop(
@@ -233,29 +237,60 @@ cfg_if! {
         #[cfg(any(feature = "async_std_runtime", feature = "tokio_runtime"))]
         pub(crate) async fn writer_loop(
             mut writer: impl ClientCodecWrite,
-            requests: Receiver<(RequestHeader, ClientRequestBody)>,
-            stop: Receiver<()>,
+            msgs: Receiver<ClientMessage>,
+            // stop: Receiver<()>,
         ) {
-            loop {
-                select! {
-                    _ = stop.recv_async().fuse() => {
-                        // finish sending all requests available before dropping
-                        for (header, body) in requests.drain().into_iter() {
-                            match writer.write_request(header, &body).await {
-                                Ok(_) => { },
-                                Err(err) => log::error!("{:?}", err)
-                            }
-                        }
-                        return 
+            while let Ok(msg) = msgs.recv_async().await {
+                match msg {
+                    ClientMessage::Timeout(id, dur) => {
+                        let header = RequestHeader {
+                            id,
+                            service_method: TIMEOUT_TOKEN.into()
+                        };
+                        let body = Box::new(TimeoutRequestBody::new(dur)) as ClientRequestBody;
+                        writer.write_request(header, &body).await
                     },
-                    res = write_once(&mut writer, &requests).fuse() => {
-                        match res {
-                            Ok(_) => {}
-                            Err(err) => log::error!("{:?}", err),
-                        }
-                    }
+                    ClientMessage::Request(header, body) => {
+                        writer.write_request(header, &body).await  
+                    },
+                    ClientMessage::Cancel(id) => {
+                        let header = RequestHeader {
+                            id,
+                            service_method: CANCELLATION_TOKEN.into(),
+                        };
+                        let body: String =
+                            format!("{}{}{}", CANCELLATION_TOKEN, CANCELLATION_TOKEN_DELIM, id);
+                        let body = Box::new(body) as ClientRequestBody;
+                        writer.write_request(header, &body).await  
+                    },
+                    ClientMessage::Stop => {
+                        return
+                    }     
                 }
+                .unwrap_or_else(|err| {
+                    log::error!("{:?}", err)
+                })
             }
+                // select! {
+                //     _ = stop.recv_async().fuse() => {
+                //         // finish sending all requests available before dropping
+                //         for (header, body) in requests.drain().into_iter() {
+                //             match writer.write_request(header, &body).await {
+                //                 Ok(_) => { },
+                //                 Err(err) => log::error!("{:?}", err)
+                //             }
+                //         }
+                //         return 
+                //     },
+                //     res = write_once(&mut writer, &requests).fuse() => {
+                //         match res {
+                //             Ok(_) => {}
+                //             Err(err) => log::error!("{:?}", err),
+                //         }
+                //     }
+                // }
+
+            
         }
         
         #[cfg(any(feature = "async_std_runtime", feature = "tokio_runtime"))]
@@ -275,7 +310,7 @@ cfg_if! {
             pending: Arc<Mutex<ResponseMap>>,
             header: RequestHeader,
             body: ClientRequestBody,
-            request_tx: Sender<(RequestHeader, ClientRequestBody)>,
+            writer_tx: Sender<ClientMessage>,
             cancel: oneshot::Receiver<MessageId>,
             done: oneshot::Sender<Result<Res, Error>>,
         ) -> Result<(), Error>
@@ -283,7 +318,9 @@ cfg_if! {
             Res: serde::de::DeserializeOwned + Send,
         {
             let id = header.get_id();
-            request_tx.send_async((header, body)).await?;
+            writer_tx.send_async(
+                ClientMessage::Request(header, body)
+            ).await?;
         
             let (resp_tx, resp_rx) = oneshot::channel();
         
@@ -296,14 +333,16 @@ cfg_if! {
             select! {
                 res = cancel.fuse() => {
                     if let Ok(id) = res {
-                        let header = RequestHeader {
-                            id,
-                            service_method: CANCELLATION_TOKEN.into(),
-                        };
-                        let body: String =
-                            format!("{}{}{}", CANCELLATION_TOKEN, CANCELLATION_TOKEN_DELIM, id);
-                        let body = Box::new(body) as ClientRequestBody;
-                        request_tx.send_async((header, body)).await?;
+                        // let header = RequestHeader {
+                        //     id,
+                        //     service_method: CANCELLATION_TOKEN.into(),
+                        // };
+                        // let body: String =
+                        //     format!("{}{}{}", CANCELLATION_TOKEN, CANCELLATION_TOKEN_DELIM, id);
+                        // let body = Box::new(body) as ClientRequestBody;
+                        writer_tx.send_async(
+                            ClientMessage::Cancel(id)
+                        ).await?;
                     }
                 },
                 res = handle_response(resp_rx, done).fuse() => {
