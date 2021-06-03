@@ -176,8 +176,6 @@ impl Client<NotConnected> {
         let pending = Arc::new(Mutex::new(HashMap::new()));
         let (reader_stop, stop) = flume::bounded(1);
         task::spawn(reader_loop(reader, pending.clone(), stop));
-
-        // let (writer_stop, stop) = flume::bounded(1);
         task::spawn(writer_loop(writer, writer_rx));
 
         Client::<Connected> {
