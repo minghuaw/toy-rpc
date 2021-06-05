@@ -97,9 +97,9 @@ cfg_if! {
 
                 match preprocess_header(&header) {
                     Ok(req_type) => {
-                        match preprocess_request(&services, req_type, deserializer).await {
-                            Ok(exe_msg) => { 
-                                executor.send_async(exe_msg).await?;
+                        match preprocess_request(&services, req_type, deserializer) {
+                            Ok(msg) => { 
+                                executor.send_async(msg).await?;
                             },
                             Err(err) => {
                                 log::error!("{:?}", err);
@@ -222,8 +222,8 @@ cfg_if! {
             match header.service_method.rfind('.') {
                 Some(pos) => {
                     // split service and method
-                    let service = &header.service_method[..pos];
-                    let method = &header.service_method[pos + 1..];
+                    let service = header.service_method[..pos].to_string();
+                    let method = header.service_method[pos + 1..].to_string();
                     Ok(RequestType::Request{
                         id: header.id,
                         service,
@@ -245,9 +245,9 @@ cfg_if! {
             }
         }
 
-        async fn preprocess_request<'a> (
+        fn preprocess_request<'a> (
             services: &AsyncServiceMap,
-            req_type: RequestType<'a>, 
+            req_type: RequestType, 
             deserializer: RequestDeserializer
         ) -> Result<ExecutionMessage, Error> {
             match req_type {
@@ -265,13 +265,13 @@ cfg_if! {
                     log::trace!("Message id: {}, service: {}, method: {}", id, service, method);
 
                     // look up the service
-                    match services.get(service) {
+                    match services.get(&service[..]) {
                         Some(call) => {
                             // send to executor
                             Ok(ExecutionMessage::Request {
                                 call: call.clone(),
-                                id,
-                                method: method.into(),
+                                id: id,
+                                method: method,
                                 deserializer
                             })
                         },

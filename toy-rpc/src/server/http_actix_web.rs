@@ -9,7 +9,7 @@ use std::{collections::HashMap, marker::PhantomData, sync::Arc};
 
 use crate::{codec::{EraseDeserializer, Marshal, Unmarshal}, error::Error, message::{ErrorMessage, ExecutionMessage, ExecutionResult, MessageId, RequestHeader, ResponseHeader}, service::{ArcAsyncServiceCall, AsyncServiceMap}};
 
-use super::preprocess_service_method;
+use super::{preprocess_header, preprocess_request};
 
 // =============================================================================
 // `WsMessageActor`
@@ -96,52 +96,43 @@ where
                     },
                     Some(header) => {
                         let deserializer = C::from_bytes(buf.to_vec());
-                        let RequestHeader{ id, service_method } = header;
+                        // let RequestHeader{ id, service_method } = header;
 
-                        let (service, method) = match preprocess_service_method(id, &service_method) {
-                            Ok(pair) => pair,
+                        match preprocess_header(&header) {
+                            Ok(req_type) => {
+                                match preprocess_request(&self.services, req_type, deserializer) {
+                                    Ok(msg) => {
+                                        if let Some(ref manager) = self.manager {
+                                            manager.do_send(msg)
+                                                .unwrap_or_else(|e| log::error!("{:?}", e));
+                                        }
+                                    },
+                                    Err(err) => {
+                                        log::error!("{:?}", err);
+                                        match err {
+                                            Error::ServiceNotFound => {
+                                                Self::send_response_via_context(
+                                                    ExecutionResult {
+                                                        id: header.id,
+                                                        result: Err(Error::ServiceNotFound)
+                                                    }, 
+                                                    ctx
+                                                ).unwrap_or_else(|e| log::error!("{:?}", e));
+                                            },
+                                            _ => { }
+                                        }
+                                    }
+                                }
+                            },
                             Err(err) => {
-                                match self.handle_preprocess_error(err, id, deserializer, ctx) {
-                                    Ok(_) => { },
-                                    Err(err) => {
-                                        log::error!("{:?}", err)
-                                    }
-                                }
-                                return;
-                            }
-                        };
-
-                        let call: ArcAsyncServiceCall = match HashMap::get(&self.services, service) {
-                            Some(serv_call) => serv_call.clone(),
-                            None => {
-                                let err = ExecutionResult{
-                                    id,
-                                    result: Err(Error::ServiceNotFound)
+                                // the only error returned is MethodNotFound,
+                                // which should be sent back to client
+                                let err = ExecutionResult {
+                                    id: header.id,
+                                    result: Err(err)
                                 };
-                                match Self::send_response_via_context(err, ctx) {
-                                    Ok(_) => { },
-                                    Err(err) => {
-                                        log::error!("Error encountered sending response via context: {:?}", err)
-                                    }
-                                }
-                                log::error!("Service not found: '{}'", service);
-                                return;
-                            }
-                        };
-
-                        // Send to ExecutorManager
-                        if let Some(ref manager) = self.manager {
-                            let msg = ExecutionMessage::Request{
-                                call,
-                                id,
-                                method: method.into(),
-                                deserializer
-                            };
-                            match manager.do_send(msg) {
-                                Ok(_) => { },
-                                Err(err) => {
-                                    log::error!("{:?}", err)
-                                }
+                                Self::send_response_via_context(err, ctx)
+                                    .unwrap_or_else(|e| log::error!("{:?}", e));
                             }
                         }
                     }
@@ -210,51 +201,6 @@ where
                 ctx.binary(buf);
             }
         };
-
-        Ok(())
-    }
-
-    fn handle_preprocess_error(
-        &mut self, 
-        err: Error, 
-        id: MessageId, 
-        mut deserializer: Box<dyn erased_serde::Deserializer<'static> + Send>,
-        ctx: &mut <Self as Actor>::Context
-    ) -> Result<(), Error> {
-        match err {
-            Error::Canceled(_) => {
-                let token: String = erased_serde::deserialize(&mut deserializer)?;
-                if super::is_correct_cancellation_token(id, &token) {
-                    if let Some(ref manager) = self.manager {
-                        let msg = ExecutionMessage::Cancel(id);
-                        match manager.do_send(msg) {
-                            Ok(_) => { },
-                            Err(err) => {
-                                log::error!("{:?}", err)
-                            }
-                        } 
-                    }
-                }
-            },
-            Error::MethodNotFound => {
-                let err = ExecutionResult {
-                    id, 
-                    result: Err(err)
-                };
-                Self::send_response_via_context(err, ctx)?;
-            },
-            Error::Timeout(id) => {
-                unimplemented!()
-            }
-
-            // Note: not using `_` in case of mishanlding of new additions of Error types
-            Error::IoError(_) => {},
-            Error::ParseError(_) => {},
-            Error::Internal(_) => {},
-            Error::InvalidArgument => {},
-            Error::ServiceNotFound => {},
-            Error::ExecutionError(_) => {},
-        }
 
         Ok(())
     }
