@@ -154,6 +154,13 @@ impl<Mode> Drop for Client<Mode> {
 }
 
 impl Client<Connected> {
+    /// Sets the timeout duration **ONLY** for the next RPC request
+    ///
+    /// Example
+    /// 
+    /// ```rust 
+    ///
+    /// ```
     pub fn timeout(&self, duration: Duration) -> &Self {
         self.timeout.store(Some(duration));
         &self
@@ -207,10 +214,6 @@ cfg_if! {
                             std::io::ErrorKind::UnexpectedEof,
                             "Unexpected EOF reading response body",
                         )))?;
-                        // .ok_or(Error::IoError(std::io::Error::new(
-                        //     std::io::ErrorKind::UnexpectedEof,
-                        //     "Unexpected EOF reading response body",
-                        // )))?;
                 let deserializer = deserialzer?;
         
                 let res = match is_error {

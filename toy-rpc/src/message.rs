@@ -145,18 +145,14 @@ cfg_if! {
         }
 
         #[cfg(feature = "server")]
-        pub(crate) enum RequestType {
-            Timeout {
-                id: MessageId,
-                duration: Duration
-            },
+        pub(crate) enum RequestType<'a> {
+            Timeout(MessageId),
             Request {
-                service: String,
-                method: String,
+                id: MessageId, 
+                service: &'a str,
+                method: &'a str,
             },
-            Cancel{
-                id: MessageId,
-            }
+            Cancel(MessageId),
         }
     }
 }

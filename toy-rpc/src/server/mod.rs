@@ -75,7 +75,8 @@ cfg_if! {
                 RequestDeserializer,
             },
             message::{
-                ExecutionMessage, ExecutionResult, MessageId, CANCELLATION_TOKEN, CANCELLATION_TOKEN_DELIM
+                ExecutionMessage, ExecutionResult, MessageId, CANCELLATION_TOKEN, CANCELLATION_TOKEN_DELIM,
+                RequestType, TIMEOUT_TOKEN, 
             },
         };
         use crate::error::Error;
@@ -88,80 +89,41 @@ cfg_if! {
         ) -> Result<(), Error> {
             // Keep reading until no header can be read
             while let Some(header) = codec_reader.read_request_header().await {
+                let header = header?;
                 // [0] read request body
-                let mut deserializer = get_request_deserializer(&mut codec_reader).await?;
-                // [1] destructure header
-                let RequestHeader { id, service_method } = header?;
-                // [2] split service name and method name
-                let (service, method) = match preprocess_service_method(id, &service_method) {
-                    Ok(pair) => pair,
-                    Err(err) => {
-                        match err {
-                            Error::Canceled(_) => {
-                                // double check the message body
-                                let token: String = erased_serde::deserialize(&mut deserializer)?;
-                                if is_correct_cancellation_token(id, &token) {
-                                    executor.send_async(ExecutionMessage::Cancel(id)).await?;
+                // This should be performed before processing because even if an
+                // invalid request body should be consumed from the IO
+                let deserializer = get_request_deserializer(&mut codec_reader).await?;
+
+                match preprocess_header(&header) {
+                    Ok(req_type) => {
+                        match preprocess_request(&services, req_type, deserializer).await {
+                            Ok(exe_msg) => { 
+                                executor.send_async(exe_msg).await?;
+                            },
+                            Err(err) => {
+                                log::error!("{:?}", err);
+                                match err {
+                                    Error::ServiceNotFound => {
+                                        writer.send_async(ExecutionResult {
+                                            id: header.id,
+                                            result: Err(Error::ServiceNotFound)
+                                        }).await?;
+                                    },
+                                    _ => { }
                                 }
-                            },
-                            Error::MethodNotFound => {
-                                // should not stop the reader if the service is not found
-                                writer.send_async(ExecutionResult {
-                                        id,
-                                        result: Err(err),
-                                    }).await?;
-                            },
-                            Error::ServiceNotFound => {
-                                writer.send_async(ExecutionResult {
-                                        id,
-                                        result: Err(err),
-                                    }).await?;
-                            },
-                            Error::Timeout(id) => {
-                                unimplemented!()
                             }
-        
-                            // Note: not using `_` in case of mishanlding of new additions of Error types
-                            Error::IoError(_) => {},
-                            Error::ParseError(_) => {},
-                            Error::Internal(_) => {},
-                            Error::InvalidArgument => {},
-                            Error::ExecutionError(_) => {},
                         }
-                        continue;
+                    },
+                    Err(err) => {
+                        // the only error returned is MethodNotFound,
+                        // which should be sent back to client
+                        writer.send_async(ExecutionResult {
+                            id: header.id,
+                            result: Err(err),
+                        }).await?;
                     }
-                };
-                log::trace!(
-                    "Message id: {}, service: {}, method: {}",
-                    id,
-                    service,
-                    method
-                );
-                // [3] look up the service
-                let call: ArcAsyncServiceCall = match services.get(service) {
-                    Some(serv_call) => serv_call.clone(),
-                    None => {
-                        log::error!("Service not found: '{}'", service);
-        
-                        // should not stop the reader if the method is not found
-                        writer
-                            .send_async(ExecutionResult {
-                                id,
-                                result: Err(Error::ServiceNotFound),
-                            })
-                            .await?;
-                        continue;
-                    }
-                };
-                // [4] send to executor
-                executor
-                    .send_async(ExecutionMessage::Request {
-                        call,
-                        id,
-                        method: method.into(),
-                        deserializer,
-                    })
-                    .await?;
+                }
             }
         
             // Stop the executor loop when client connection is gone
@@ -256,25 +218,91 @@ cfg_if! {
         }
         
 
-        /// TODO: change this function to preprocess the header
-        fn preprocess_service_method(id: MessageId, service_method: &str) -> Result<(&str, &str), Error> {
-            let pos = match service_method.rfind('.') {
-                Some(p) => p,
+        fn preprocess_header(header: &RequestHeader) -> Result<RequestType, Error> {
+            match header.service_method.rfind('.') {
+                Some(pos) => {
+                    // split service and method
+                    let service = &header.service_method[..pos];
+                    let method = &header.service_method[pos + 1..];
+                    Ok(RequestType::Request{
+                        id: header.id,
+                        service,
+                        method
+                    })
+                },
                 None => {
-                    // test whether a cancellation request is received
-                    if service_method == CANCELLATION_TOKEN {
-                        log::error!("Received cancellation request with id: {}", id);
-                        return Err(Error::Canceled(Some(id)));
+                    // check for timeout request
+                    if header.service_method == TIMEOUT_TOKEN {
+                        Ok(RequestType::Timeout(header.id))
+                    // check for cancellation request
+                    } else if header.service_method == CANCELLATION_TOKEN {
+                        Ok(RequestType::Cancel(header.id))
+                    // Method is not provided
                     } else {
-                        log::error!("Method not supplied from request: '{}'", service_method);
-                        return Err(Error::MethodNotFound);
+                        Err(Error::MethodNotFound)
                     }
                 }
-            };
-            let service = &service_method[..pos];
-            let method = &service_method[pos + 1..];
-            Ok((service, method))
+            }
         }
+
+        async fn preprocess_request<'a> (
+            services: &AsyncServiceMap,
+            req_type: RequestType<'a>, 
+            deserializer: RequestDeserializer
+        ) -> Result<ExecutionMessage, Error> {
+            match req_type {
+                RequestType::Timeout(id) => {
+                    unimplemented!()
+                },
+                RequestType::Cancel(id) => {
+                    unimplemented!()
+                },
+                RequestType::Request{
+                    id, 
+                    service, 
+                    method
+                } => {
+                    log::trace!("Message id: {}, service: {}, method: {}", id, service, method);
+
+                    // look up the service
+                    match services.get(service) {
+                        Some(call) => {
+                            // send to executor
+                            Ok(ExecutionMessage::Request {
+                                call: call.clone(),
+                                id,
+                                method: method.into(),
+                                deserializer
+                            })
+                        },
+                        None => {
+                            log::error!("Service not found: {}", service);
+                            Err(Error::ServiceNotFound)
+                        }
+                    }
+                }
+            }
+        }
+
+        // /// TODO: change this function to preprocess the header
+        // fn preprocess_service_method(id: MessageId, service_method: &str) -> Result<(&str, &str), Error> {
+        //     let pos = match service_method.rfind('.') {
+        //         Some(p) => p,
+        //         None => {
+        //             // test whether a cancellation request is received
+        //             if service_method == CANCELLATION_TOKEN {
+        //                 log::error!("Received cancellation request with id: {}", id);
+        //                 return Err(Error::Canceled(Some(id)));
+        //             } else {
+        //                 log::error!("Method not supplied from request: '{}'", service_method);
+        //                 return Err(Error::MethodNotFound);
+        //             }
+        //         }
+        //     };
+        //     let service = &service_method[..pos];
+        //     let method = &service_method[pos + 1..];
+        //     Ok((service, method))
+        // }
         
         fn is_correct_cancellation_token(id: MessageId, token: &str) -> bool {
             match token.find(CANCELLATION_TOKEN_DELIM) {
