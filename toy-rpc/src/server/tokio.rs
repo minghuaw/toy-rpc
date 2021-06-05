@@ -248,11 +248,11 @@ cfg_if! {
                 let (codec_writer, codec_reader) = codec.split();
 
                 let reader_handle = task::spawn(
-                    super::serve_codec_reader_loop(codec_reader, services, exec_sender.clone(), resp_sender.clone())
+                    super::reader_loop(codec_reader, services, exec_sender.clone(), resp_sender.clone())
                 );
 
                 let writer_handle = task::spawn(
-                    super::serve_codec_writer_loop(codec_writer, resp_recver)
+                    super::writer_loop(codec_writer, resp_recver)
                 );
 
                 let executor_handle = task::spawn(
@@ -285,7 +285,7 @@ cfg_if! {
                         let fut = call(method, deserializer);
                         let _broker = broker.clone();
                         let handle = task::spawn(async move {
-                            let result = super::serve_codec_execute_call(id, fut).await;
+                            let result = super::execute_call(id, fut).await;
                             let result = ExecutionResult { id, result };
                             match _broker.send_async(ExecutionMessage::Result(result)).await {
                                 Ok(_) => {}

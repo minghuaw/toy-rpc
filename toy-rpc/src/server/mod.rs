@@ -68,7 +68,7 @@ cfg_if! {
         use std::io::ErrorKind;
         
         use crate::message::{ErrorMessage, RequestHeader, ResponseHeader};
-        use crate::service::{ArcAsyncServiceCall, HandlerResult};
+        use crate::service::{HandlerResult};
         use crate::{
             codec::{
                 split::{ServerCodecRead, ServerCodecWrite},
@@ -81,7 +81,7 @@ cfg_if! {
         };
         use crate::error::Error;
         
-        async fn serve_codec_reader_loop(
+        async fn reader_loop(
             mut codec_reader: impl ServerCodecRead,
             services: Arc<AsyncServiceMap>,
             executor: Sender<ExecutionMessage>,
@@ -132,7 +132,7 @@ cfg_if! {
             Ok(())
         }
         
-        async fn serve_codec_execute_call(
+        async fn execute_call(
             id: MessageId,
             fut: impl std::future::Future<Output = HandlerResult>,
             // executor: Sender<ExecutionMessage>,
@@ -161,12 +161,12 @@ cfg_if! {
             result
         }
         
-        async fn serve_codec_writer_loop(
+        async fn writer_loop(
             mut codec_writer: impl ServerCodecWrite,
             results: Receiver<ExecutionResult>,
         ) -> Result<(), Error> {
             while let Ok(msg) = results.recv_async().await {
-                match serve_codec_write_once(&mut codec_writer, msg).await {
+                match writer_once(&mut codec_writer, msg).await {
                     Ok(_) => {}
                     Err(err) => {
                         log::error!("{}", err);
@@ -176,7 +176,7 @@ cfg_if! {
             Ok(())
         }
         
-        async fn serve_codec_write_once(
+        async fn writer_once(
             writer: &mut impl ServerCodecWrite,
             result: ExecutionResult,
         ) -> Result<(), Error> {

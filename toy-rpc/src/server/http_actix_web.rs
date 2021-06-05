@@ -309,7 +309,7 @@ impl actix::Handler<ExecutionMessage> for ExecutionManager {
                 let call_fut = call(method, deserializer);
                 let broker = ctx.address().recipient();
                 let fut = async move {
-                    let result = super::serve_codec_execute_call(id, call_fut).await;
+                    let result = super::execute_call(id, call_fut).await;
                     let result = ExecutionResult { id, result };
                     match broker.do_send(ExecutionMessage::Result(result)) {
                         Ok(_) => { },
