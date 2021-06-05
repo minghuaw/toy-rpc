@@ -248,14 +248,20 @@ cfg_if! {
         fn preprocess_request<'a> (
             services: &AsyncServiceMap,
             req_type: RequestType, 
-            deserializer: RequestDeserializer
+            mut deserializer: RequestDeserializer
         ) -> Result<ExecutionMessage, Error> {
             match req_type {
                 RequestType::Timeout(id) => {
                     unimplemented!()
                 },
                 RequestType::Cancel(id) => {
-                    unimplemented!()
+                    let token: String = erased_serde::deserialize(&mut deserializer)?;
+                    if is_correct_cancellation_token(id, &token) {
+                        Ok(ExecutionMessage::Cancel(id))
+                    } else {
+                        // If the token is wrong, it should be considered as an InvalidArgument
+                        Err(Error::InvalidArgument)
+                    }
                 },
                 RequestType::Request{
                     id, 
