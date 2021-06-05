@@ -144,12 +144,20 @@ cfg_if! {
             pub result: HandlerResult,
         }
 
-        
-        // #[cfg(feature = "client")]
-        // pub(crate) enum CallMessage {
-            //     Timeout(MessageId),
-            //     Cancel(MessageId),
-            // }
+        #[cfg(feature = "server")]
+        pub(crate) enum RequestType {
+            Timeout {
+                id: MessageId,
+                duration: Duration
+            },
+            Request {
+                service: String,
+                method: String,
+            },
+            Cancel{
+                id: MessageId,
+            }
+        }
     }
 }
     

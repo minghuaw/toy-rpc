@@ -106,12 +106,16 @@ cfg_if! {
                             },
                             Error::MethodNotFound => {
                                 // should not stop the reader if the service is not found
-                                writer
-                                    .send_async(ExecutionResult {
+                                writer.send_async(ExecutionResult {
                                         id,
                                         result: Err(err),
-                                    })
-                                    .await?;
+                                    }).await?;
+                            },
+                            Error::ServiceNotFound => {
+                                writer.send_async(ExecutionResult {
+                                        id,
+                                        result: Err(err),
+                                    }).await?;
                             },
                             Error::Timeout(id) => {
                                 unimplemented!()
@@ -122,7 +126,6 @@ cfg_if! {
                             Error::ParseError(_) => {},
                             Error::Internal(_) => {},
                             Error::InvalidArgument => {},
-                            Error::ServiceNotFound => {},
                             Error::ExecutionError(_) => {},
                         }
                         continue;
@@ -252,6 +255,8 @@ cfg_if! {
             }
         }
         
+
+        /// TODO: change this function to preprocess the header
         fn preprocess_service_method(id: MessageId, service_method: &str) -> Result<(&str, &str), Error> {
             let pos = match service_method.rfind('.') {
                 Some(p) => p,
