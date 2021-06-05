@@ -277,9 +277,7 @@ where
     async fn close(&mut self) {
         // send a trailer frame with message id 0 and END_FRAME_ID and empty payload
         let end_frame = Frame::new(0, END_FRAME_ID, PayloadType::Trailer, Vec::with_capacity(0));
-        match self.write_frame(end_frame).await {
-            Ok(_) => {}
-            Err(err) => log::error!("{:?}", err),
-        }
+        self.write_frame(end_frame).await                                    
+            .unwrap_or_else(|e| log::error!("{:?}", e));
     }
 }

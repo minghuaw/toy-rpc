@@ -149,10 +149,8 @@ cfg_if! {
                         .expect("Error during the websocket handshake occurred");
                     log::trace!("Established WebSocket connection.");
 
-                match Self::serve_ws_connection(ws_stream, services).await {
-                    Ok(_) => {},
-                    Err(e) => log::error!("{}", e),
-                };
+                Self::serve_ws_connection(ws_stream, services).await
+                    .unwrap_or_else(|e| log::error!("{:?}", e));
             }
 
             /// Serves a single connection
@@ -256,7 +254,7 @@ cfg_if! {
                 );
 
                 let executor_handle = task::spawn(
-                    serve_codec_broker_loop(exec_sender, exec_recver, resp_sender)
+                    broker_loop(exec_sender, exec_recver, resp_sender)
                 );
 
                 reader_handle.await??;
@@ -267,7 +265,7 @@ cfg_if! {
             }
         }
 
-        async fn serve_codec_broker_loop(
+        async fn broker_loop(
             broker: Sender<ExecutionMessage>,
             reader: Receiver<ExecutionMessage>,
             writer: Sender<ExecutionResult>,
@@ -287,10 +285,8 @@ cfg_if! {
                         let handle = task::spawn(async move {
                             let result = super::execute_call(id, fut).await;
                             let result = ExecutionResult { id, result };
-                            match _broker.send_async(ExecutionMessage::Result(result)).await {
-                                Ok(_) => {}
-                                Err(err) => log::error!("Failed to send to response writer ({})", err),
-                            };
+                            _broker.send_async(ExecutionMessage::Result(result)).await                                    
+                                .unwrap_or_else(|e| log::error!("{:?}", e));
                         });
                         task_map.insert(id, handle);
                     },

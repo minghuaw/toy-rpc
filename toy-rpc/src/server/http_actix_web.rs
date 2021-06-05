@@ -48,12 +48,8 @@ where
     fn stopping(&mut self, _: &mut Self::Context) -> Running {
         log::debug!("WsMessageActor is stopping");
         if let Some(ref manager) = self.manager {
-            match manager.do_send(ExecutionMessage::Stop) {
-                Ok(_) => { },
-                Err(err) => {
-                    log::error!("{:?}", err);
-                }
-            }
+            manager.do_send(ExecutionMessage::Stop)
+                .unwrap_or_else(|err| log::error!("{:?}", err));
         }
 
         Running::Stop
@@ -152,12 +148,10 @@ where
     type Result = ();
 
     fn handle(&mut self, msg: ExecutionResult, ctx: &mut Self::Context) -> Self::Result {
-        match Self::send_response_via_context(msg, ctx) {
-            Ok(_) => { },
-            Err(err ) => {
-                log::error!("Error encountered sending response via context: {:?}", err);
-            }
-        }
+        Self::send_response_via_context(msg, ctx)
+            .unwrap_or_else(|err|                 
+                log::error!("Error encountered sending response via context: {:?}", err)
+            );
     }
 }
 
@@ -229,12 +223,8 @@ impl Actor for ExecutionManager {
     fn stopping(&mut self, _: &mut Self::Context) -> Running {
         log::debug!("ExecutionManager is stopping");
         for (id, exec) in self.executions.drain() {
-            match exec.send(Cancel(id)) {
-                Ok(_) => { },
-                Err(err) => {
-                    log::error!("{:?}", err);
-                }
-            }
+            exec.send(Cancel(id)) 
+                .unwrap_or_else(|e| log::error!("{:?}", e));
         }
 
         Running::Stop
@@ -257,12 +247,9 @@ impl actix::Handler<ExecutionMessage> for ExecutionManager {
                 let fut = async move {
                     let result = super::execute_call(id, call_fut).await;
                     let result = ExecutionResult { id, result };
-                    match broker.do_send(ExecutionMessage::Result(result)) {
-                        Ok(_) => { },
-                        Err(err) => {
-                            log::error!("{:?}", err)
-                        }
-                    }
+                    broker.do_send(ExecutionMessage::Result(result)) 
+                        .unwrap_or_else(|e| log::error!("{:?}", e));
+
                 };
                 let (tx, rx) = flume::bounded(1);
                 self.executions.insert(id, tx);
@@ -280,20 +267,15 @@ impl actix::Handler<ExecutionMessage> for ExecutionManager {
             },
             ExecutionMessage::Result(msg) => {
                 self.executions.remove(&msg.id);
-                match self.responder.do_send(msg){
-                    Ok(_) => { },
-                    Err(err) => {
-                        log::error!("{:?}", err)
-                    }
-                }
+                self.responder.do_send(msg)
+                    .unwrap_or_else(|e| log::error!("{:?}", e));
+
             },
             ExecutionMessage::Cancel(id) => {
                 log::debug!("Sending Cancel({})", &id);
                 if let Some(exec) = self.executions.remove(&id) {
-                    match exec.send(Cancel(id)) {
-                        Ok(_) => { },
-                        Err(err) => log::error!("{:?}", err)
-                    }
+                    exec.send(Cancel(id))
+                        .unwrap_or_else(|e| log::error!("{:?}", e));
                 }
             },
             ExecutionMessage::Stop => {

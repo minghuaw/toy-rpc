@@ -34,12 +34,8 @@ pub(crate) trait Terminate {
 #[cfg(feature = "async_std_runtime")]
 impl Terminate for async_std::task::JoinHandle<Result<(), Error>> {
     fn terminate(&mut self) {
-        match async_std::task::block_on(self) {
-            Ok(_) => { },
-            Err(err) => {
-                log::error!("{:?}", err);
-            }
-        }
+        async_std::task::block_on(self) 
+            .unwrap_or_else(|err| log::error!("{:?}", err));
     }
 }
 
@@ -47,7 +43,7 @@ impl Terminate for async_std::task::JoinHandle<Result<(), Error>> {
 impl Terminate for tokio::task::JoinHandle<Result<(), Error>> {
     fn terminate(&mut self) {
         match tokio::task::block_in_place(|| tokio::runtime::Handle::current().block_on(self)) {
-            Ok(_) => { },
+            Ok(res) => res.unwrap_or_else(|err| log::error!("{:?}", err)),
             Err(err) => log::error!("{:?}", err)
         }
     }

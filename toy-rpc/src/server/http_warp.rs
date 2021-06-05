@@ -49,10 +49,7 @@ cfg_if! {
                     let services = state.services.clone();
 
                     let fut = Self::serve_codec_setup(codec, services);
-                    match fut.await {
-                        Ok(_) => (),
-                        Err(e) => log::error!("Error encountered {}", e),
-                    };
+                    fut.await.unwrap_or_else(|e| log::error!("{:?}", e));
                 })
             }
 

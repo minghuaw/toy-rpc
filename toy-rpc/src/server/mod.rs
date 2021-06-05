@@ -152,12 +152,6 @@ cfg_if! {
                     e => e,
                 }
             });
-            // // [6] send result to response writer
-            // let result = ExecutionResult { id, result };
-            // match executor.send_async(ExecutionMessage::Result(result)).await {
-            //     Ok(_) => {}
-            //     Err(err) => log::error!("Failed to send to response writer ({})", err),
-            // };
             result
         }
         
@@ -166,12 +160,8 @@ cfg_if! {
             results: Receiver<ExecutionResult>,
         ) -> Result<(), Error> {
             while let Ok(msg) = results.recv_async().await {
-                match writer_once(&mut codec_writer, msg).await {
-                    Ok(_) => {}
-                    Err(err) => {
-                        log::error!("{}", err);
-                    }
-                }
+                writer_once(&mut codec_writer, msg).await
+                    .unwrap_or_else(|e| log::error!("{:?}", e));
             }
             Ok(())
         }

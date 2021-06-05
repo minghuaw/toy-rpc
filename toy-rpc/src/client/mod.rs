@@ -188,10 +188,9 @@ cfg_if! {
                         return 
                     },
                     res = read_once(&mut reader, &pending).fuse() => {
-                        match res {
-                            Ok(_) => {}
-                            Err(err) => log::error!("{:?}", err),
-                        }
+                        res.unwrap_or_else(|err| 
+                            log::error!("{:?}", err)
+                        )
                     }
                 }
             }
