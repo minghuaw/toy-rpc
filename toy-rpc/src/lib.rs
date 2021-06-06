@@ -121,7 +121,7 @@ pub use client::Client;
 #[cfg(feature = "server")]
 pub mod server;
 #[cfg(feature = "server")]
-pub use server::{Server, ServerBuilder};
+pub use server::{Server, builder::ServerBuilder};
 
 pub use error::Error;
 
