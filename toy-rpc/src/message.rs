@@ -66,7 +66,7 @@ pub(crate) enum ErrorMessage {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-pub(crate) struct TimeoutRequestBody(Duration);
+pub(crate) struct TimeoutRequestBody(pub Duration);
 
 impl TimeoutRequestBody {
     pub(crate) fn new(dur: Duration) -> Self {
@@ -125,6 +125,7 @@ cfg_if! {
         #[cfg_attr(feature = "http_actix_web", derive(actix::Message))]
         #[cfg_attr(feature = "http_actix_web", rtype(result = "()"))]
         pub(crate) enum ExecutionMessage {
+            TimeoutInfo(MessageId, Duration),
             Request {
                 call: ArcAsyncServiceCall,
                 id: MessageId,

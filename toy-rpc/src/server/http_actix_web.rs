@@ -5,9 +5,13 @@ use actix::{Actor, ActorContext, AsyncContext, Context, Recipient, Running, Stre
 use actix_web::{web, HttpRequest, HttpResponse};
 use actix_web_actors::ws;
 use futures::{FutureExt};
-use std::{collections::HashMap, marker::PhantomData, sync::Arc};
+use std::{collections::HashMap, marker::PhantomData, sync::Arc, time::Duration, pin::Pin, future::Future};
 
-use crate::{codec::{EraseDeserializer, Marshal, Unmarshal}, error::Error, message::{ErrorMessage, ExecutionMessage, ExecutionResult, MessageId, RequestHeader, ResponseHeader}, service::{ArcAsyncServiceCall, AsyncServiceMap}};
+use crate::{
+    codec::{EraseDeserializer, Marshal, Unmarshal}, error::Error, 
+    message::{ErrorMessage, ExecutionMessage, ExecutionResult, MessageId, RequestHeader, ResponseHeader}, 
+    service::{AsyncServiceMap}
+};
 
 use super::{preprocess_header, preprocess_request};
 
@@ -38,6 +42,7 @@ where
         let responder: Recipient<ExecutionResult> = ctx.address().recipient();
         let manager = ExecutionManager{ 
             responder,
+            durations: HashMap::new(),
             executions: HashMap::new(),
         };
         let addr = manager.start();
@@ -210,7 +215,8 @@ struct Cancel(MessageId);
 /// `ExecutionActor` 
 struct ExecutionManager {
     responder: Recipient<ExecutionResult>,
-    executions: HashMap<MessageId, flume::Sender<Cancel>>
+    durations: HashMap<MessageId, Duration>,
+    executions: HashMap<MessageId, flume::Sender<Cancel>>,
 }
 
 impl Actor for ExecutionManager {
@@ -236,6 +242,9 @@ impl actix::Handler<ExecutionMessage> for ExecutionManager {
 
     fn handle(&mut self, msg: ExecutionMessage, ctx: &mut Self::Context) -> Self::Result {
         match msg {
+            ExecutionMessage::TimeoutInfo(id, duration) => {
+                self.durations.insert(id, duration);
+            },
             ExecutionMessage::Request{
                 call,
                 id,
@@ -244,12 +253,34 @@ impl actix::Handler<ExecutionMessage> for ExecutionManager {
             } => {
                 let call_fut = call(method, deserializer);
                 let broker = ctx.address().recipient();
-                let fut = async move {
-                    let result = super::execute_call(id, call_fut).await;
-                    let result = ExecutionResult { id, result };
-                    broker.do_send(ExecutionMessage::Result(result)) 
-                        .unwrap_or_else(|e| log::error!("{:?}", e));
+                // let fut = async move {
+                //     let result = super::execute_call(id, call_fut).await;
+                //     let result = ExecutionResult { id, result };
+                //     broker.do_send(ExecutionMessage::Result(result)) 
+                //         .unwrap_or_else(|e| log::error!("{:?}", e));
+                // };
 
+                let fut: Pin<Box<dyn Future<Output=()>>> = match self.durations.remove(&id) {
+                    Some(duration) => {
+                        Box::pin(
+                            async move {
+                                let result = super::execute_timed_call(id, duration, call_fut).await;
+                                let result = ExecutionResult{ id, result };
+                                broker.do_send(ExecutionMessage::Result(result))
+                                    .unwrap_or_else(|e| log::error!("{:?}", e));
+                            }
+                        )
+                    },
+                    None => {
+                        Box::pin(
+                            async move {
+                                let result = super::execute_call(id, call_fut).await;
+                                let result = ExecutionResult { id, result };
+                                broker.do_send(ExecutionMessage::Result(result))
+                                    .unwrap_or_else(|e| log::error!("{:?}", e));
+                            }
+                        )
+                    }
                 };
                 let (tx, rx) = flume::bounded(1);
                 self.executions.insert(id, tx);

@@ -271,8 +271,13 @@ cfg_if! {
             writer: Sender<ExecutionResult>,
         ) -> Result<(), Error> {
             let mut task_map = HashMap::new();
+            let mut durations = HashMap::new();
+
             while let Ok(msg) = reader.recv_async().await {
                 match msg {
+                    ExecutionMessage::TimeoutInfo(id, duration) => {
+                        durations.insert(id, duration);
+                    },
                     ExecutionMessage::Request{
                         call,
                         id,
@@ -281,12 +286,31 @@ cfg_if! {
                     } => {
                         let fut = call(method, deserializer);
                         let _broker = broker.clone();
-                        let handle = task::spawn(async move {
-                            let result = super::execute_call(id, fut).await;
-                            let result = ExecutionResult { id, result };
-                            _broker.send_async(ExecutionMessage::Result(result)).await
-                                .unwrap_or_else(|err| log::error!("Failed to send to response writer ({:?})", err));
-                        });
+                        // let handle = task::spawn(async move {
+                        //     let result = super::execute_call(id, fut).await;
+                        //     let result = ExecutionResult { id, result };
+                        //     _broker.send_async(ExecutionMessage::Result(result)).await
+                        //         .unwrap_or_else(|err| log::error!("Failed to send to response writer ({:?})", err));
+                        // });
+                        
+                        let handle = match durations.remove(&id) {
+                            Some(duration) => {
+                                task::spawn(async move {
+                                    let result = super::execute_timed_call(id, duration, fut).await;
+                                    let result = ExecutionResult { id, result };
+                                    _broker.send_async(ExecutionMessage::Result(result)).await
+                                        .unwrap_or_else(|e| log::error!("{:?}", e));
+                                })
+                            },
+                            None => {
+                                task::spawn(async move {
+                                    let result = super::execute_call(id, fut).await;
+                                    let result = ExecutionResult { id, result };
+                                    _broker.send_async(ExecutionMessage::Result(result)).await                                    
+                                        .unwrap_or_else(|e| log::error!("{:?}", e));
+                                })
+                            }
+                        };
                         task_map.insert(id, handle);
                     },
                     ExecutionMessage::Result(msg) => {

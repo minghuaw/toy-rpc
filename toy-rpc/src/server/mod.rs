@@ -6,7 +6,9 @@ use cfg_if::cfg_if;
 use erased_serde as erased;
 use std::collections::HashMap;
 use std::sync::Arc;
+use std::time::Duration;
 
+use crate::message::TimeoutRequestBody;
 use crate::service::{
     build_service, AsyncServiceMap, HandleService,
     HandlerResultFut, Service,
@@ -135,7 +137,6 @@ cfg_if! {
         async fn execute_call(
             id: MessageId,
             fut: impl std::future::Future<Output = HandlerResult>,
-            // executor: Sender<ExecutionMessage>,
         ) -> HandlerResult {
             let result: HandlerResult = fut.await.map_err(|err| {
                 log::error!(
@@ -153,6 +154,34 @@ cfg_if! {
                 }
             });
             result
+        }
+
+        async fn execute_timed_call(
+            id: MessageId,
+            duration: Duration,
+            fut: impl std::future::Future<Output = HandlerResult>
+        ) -> HandlerResult {
+            #[cfg(all(
+                feature = "async_std_runtime",
+                not(feature = "tokio_runtime")
+            ))]
+            match ::async_std::future::timeout(duration, async {
+                execute_call(id, fut).await
+            }).await {
+                Ok(res) => res,
+                Err(_) => Err(Error::Timeout(Some(id)))
+            }
+
+            #[cfg(all(
+                feature = "tokio_runtime",
+                not(feature = "async_std_runtime")
+            ))]
+            match ::tokio::time::timeout(duration, async {
+                execute_call(id, fut).await
+            }).await {
+                Ok(res) => res,
+                Err(_) => Err(Error::Timeout(Some(id)))
+            }
         }
         
         async fn writer_loop(
@@ -242,7 +271,8 @@ cfg_if! {
         ) -> Result<ExecutionMessage, Error> {
             match req_type {
                 RequestType::Timeout(id) => {
-                    unimplemented!()
+                    let timeout_body: TimeoutRequestBody = erased_serde::deserialize(&mut deserializer)?;
+                    Ok(ExecutionMessage::TimeoutInfo(id, timeout_body.0))
                 },
                 RequestType::Cancel(id) => {
                     let token: String = erased_serde::deserialize(&mut deserializer)?;
@@ -279,26 +309,6 @@ cfg_if! {
                 }
             }
         }
-
-        // /// TODO: change this function to preprocess the header
-        // fn preprocess_service_method(id: MessageId, service_method: &str) -> Result<(&str, &str), Error> {
-        //     let pos = match service_method.rfind('.') {
-        //         Some(p) => p,
-        //         None => {
-        //             // test whether a cancellation request is received
-        //             if service_method == CANCELLATION_TOKEN {
-        //                 log::error!("Received cancellation request with id: {}", id);
-        //                 return Err(Error::Canceled(Some(id)));
-        //             } else {
-        //                 log::error!("Method not supplied from request: '{}'", service_method);
-        //                 return Err(Error::MethodNotFound);
-        //             }
-        //         }
-        //     };
-        //     let service = &service_method[..pos];
-        //     let method = &service_method[pos + 1..];
-        //     Ok((service, method))
-        // }
         
         fn is_correct_cancellation_token(id: MessageId, token: &str) -> bool {
             match token.find(CANCELLATION_TOKEN_DELIM) {
