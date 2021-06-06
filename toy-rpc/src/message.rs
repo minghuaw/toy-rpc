@@ -68,6 +68,10 @@ pub(crate) enum ErrorMessage {
 #[derive(Serialize, Deserialize, Debug)]
 pub(crate) struct TimeoutRequestBody(pub Duration);
 
+#[cfg(any(
+    all(feature = "async_std_runtime", not(feature = "tokio_runtime")),
+    all(feature = "tokio_runtime", not(feature = "async_std_runtime"))
+))]
 impl TimeoutRequestBody {
     pub(crate) fn new(dur: Duration) -> Self {
         Self(dur)

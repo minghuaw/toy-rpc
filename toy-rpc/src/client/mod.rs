@@ -3,7 +3,6 @@
 use cfg_if::cfg_if;
 use flume::{Sender};
 use futures::{Future, channel::oneshot, lock::Mutex};
-// use pin_project::{pin_project, pinned_drop};
 use std::{collections::HashMap, marker::PhantomData, pin::Pin, sync::{Arc, atomic::Ordering}, task::{Context, Poll}, time::Duration};
 use crossbeam::atomic::AtomicCell;
 
@@ -61,9 +60,6 @@ cfg_if! {
 ///
 /// # Example
 ///
-<<<<<<< HEAD
-#[pin_project::pin_project(PinnedDrop)]
-=======
 /// ```rust 
 /// // `.await` to wait for the response
 /// let call: Call<i32> = client.call("Arith.add", (1i32, 6i32));
@@ -73,8 +69,7 @@ cfg_if! {
 /// let call: Call<()> = client.call("Arith.infinite_loop", ());
 /// call.cancel();
 /// ```
-#[pin_project]
->>>>>>> fbe0dbe3e30f913257cd67a2abe3544860d10220
+#[pin_project::pin_project(PinnedDrop)]
 pub struct Call<Res> {
     id: MessageId,
     // cancel: oneshot::Sender<MessageId>,
