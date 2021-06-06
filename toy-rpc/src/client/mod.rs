@@ -4,16 +4,13 @@ use cfg_if::cfg_if;
 use flume::{Sender};
 use futures::{Future, channel::oneshot, lock::Mutex};
 use pin_project::pin_project;
-use std::{collections::HashMap, marker::PhantomData, pin::Pin, sync::Arc, task::{Context, Poll}, time::Duration};
+use std::{collections::HashMap, marker::PhantomData, pin::Pin, sync::{Arc, atomic::Ordering}, task::{Context, Poll}, time::Duration};
 use crossbeam::atomic::AtomicCell;
 
-use crate::{
-    message::{
+use crate::{Error, codec::split::SplittableClientCodec, message::{
         AtomicMessageId, ClientRequestBody, ClientResponseResult, MessageId, RequestHeader,
         ClientMessage,
-    },
-    Error,
-};
+    }};
 use crate::util::Terminate;
 
 cfg_if! {
@@ -153,6 +150,60 @@ impl<Mode> Drop for Client<Mode> {
     }
 }
 
+impl Client<NotConnected> {
+    /// Creates an RPC 'Client` over socket with a specified codec
+    ///
+    /// Example
+    ///
+    /// ```rust
+    /// let addr = "127.0.0.1:8080";
+    /// let stream = TcpStream::connect(addr).await.unwrap();
+    /// let codec = Codec::new(stream);
+    /// let client = Client::with_codec(codec);
+    /// ```
+    #[cfg(any(
+        all(feature = "async_std_runtime", not(feature = "tokio_runtime")),
+        all(feature = "tokio_runtime", not(feature = "async_std_runtime"))
+    ))]
+    pub fn with_codec<C>(codec: C) -> Client<Connected>
+    where
+        C: SplittableClientCodec + Send + Sync + 'static,
+    {
+        let (writer, reader) = codec.split();
+        let (writer_tx, writer_rx) = flume::unbounded();
+        let pending = Arc::new(Mutex::new(HashMap::new()));
+        let (reader_stop, stop) = flume::bounded(1);
+        
+        #[cfg(all(
+            feature = "async_std_runtime",
+            not(feature = "tokio_runtime")
+        ))]
+        {
+            ::async_std::task::spawn(reader_loop(reader, pending.clone(), stop));
+            ::async_std::task::spawn(writer_loop(writer, writer_rx));
+        }
+
+        #[cfg(all(
+            feature = "tokio_runtime",
+            not(feature = "async_std_runtime")
+        ))]
+        {
+            ::tokio::task::spawn(reader_loop(reader, pending.clone(), stop));
+            ::tokio::task::spawn(writer_loop(writer, writer_rx));
+        }
+
+        Client::<Connected> {
+            count: AtomicMessageId::new(0),
+            pending,
+            timeout: AtomicCell::new(None),
+            reader_stop,
+            writer_tx,
+
+            marker: PhantomData,
+        }
+    }
+}
+
 impl Client<Connected> {
     /// Sets the timeout duration **ONLY** for the next RPC request
     ///
@@ -165,10 +216,124 @@ impl Client<Connected> {
         self.timeout.store(Some(duration));
         &self
     }
+
+    /// Invokes the named function and wait synchronously in a blocking manner.
+    ///
+    /// This function internally calls `task::block_on` to wait for the response.
+    /// Do NOT use this function inside another `task::block_on`.async_std
+    ///
+    /// Example
+    ///
+    /// ```rust
+    /// let args = "arguments";
+    /// let reply: Result<String, Error> = client.call("EchoService.echo", &args);
+    /// println!("{:?}", reply);
+    /// ```
+    #[cfg(any(
+        all(feature = "async_std_runtime", not(feature = "tokio_runtime")),
+        all(feature = "tokio_runtime", not(feature = "async_std_runtime"))
+    ))]
+    pub fn call_blocking<Req, Res>(
+        &self,
+        service_method: impl ToString,
+        args: Req,
+    ) -> Result<Res, Error>
+    where
+        Req: serde::Serialize + Send + Sync + 'static,
+        Res: serde::de::DeserializeOwned + Send + 'static,
+    {
+        let call = self.call(service_method, args);
+
+        #[cfg(all(
+            feature = "async_std_runtime",
+            not(feature = "tokio_runtime")
+        ))]
+        let res = ::async_std::task::block_on(call);
+
+
+        #[cfg(all(
+            feature = "tokio_runtime",
+            not(feature = "async_std_runtime")
+        ))]
+        let res = ::tokio::task::block_in_place(|| {
+            futures::executor::block_on(call)
+        });
+
+        res
+    }
+
+
+    /// Invokes the named RPC function call asynchronously and returns a cancellation `Call`
+    /// 
+    /// The `Call<Res>` type takes one type argument `Res` which is the type of successful RPC execution.
+    /// The result can be obtained by `.await`ing on the `Call`, which returns type `Result<Res, toy_rpc::Error>`
+    /// `Call` can be cancelled by calling the `cancel()` function. 
+    /// The request will be sent in a background task. 
+    /// 
+    /// Example 
+    /// 
+    /// ```rust
+    /// // Get the result by `.await`ing on the `Call`
+    /// let call: Call<i32> = client.call("SomeService.echo_i32", 7i32);
+    /// let reply: Result<i32, toy_rpc::Error> = call.await;
+    /// 
+    /// // Cancel the call
+    /// let call: Call<()> = client.call("SomeService.infinite_loop", ());
+    /// call.cancel();
+    /// ```
+    #[cfg(any(
+        all(feature = "async_std_runtime", not(feature = "tokio_runtime")),
+        all(feature = "tokio_runtime", not(feature = "async_std_runtime"))
+    ))]
+    pub fn call<Req, Res>(&self, service_method: impl ToString, args: Req) -> Call<Res>
+    where
+        Req: serde::Serialize + Send + Sync + 'static,
+        Res: serde::de::DeserializeOwned + Send + 'static,
+    {
+        // Prepare RPC request
+        let id = self.count.fetch_add(1, Ordering::Relaxed);
+        let service_method = service_method.to_string();
+        let header = RequestHeader { id, service_method };
+        let body = Box::new(args) as ClientRequestBody;
+        let timeout = self.timeout.take();
+
+        // Prepare response handler
+        let (done_tx, done_rx) = oneshot::channel();
+        let (cancel_tx, cancel_rx) = flume::bounded(1);
+        let pending = self.pending.clone();
+        let writer_tx = self.writer_tx.clone();
+
+        #[cfg(all(
+            feature = "async_std_runtime",
+            not(feature = "tokio_runtime")
+        ))]
+        let handle = ::async_std::task::spawn(
+            handle_call(pending, header, body, writer_tx, cancel_rx, done_tx, timeout)
+        );
+
+        #[cfg(all(
+            feature = "tokio_runtime",
+            not(feature = "async_std_runtime")
+        ))]
+        let handle = ::tokio::task::spawn(
+            handle_call(pending, header, body, writer_tx, cancel_rx, done_tx, timeout)
+        );
+
+        // Creates Call
+        Call::<Res> {
+            id,
+            cancel: cancel_tx,
+            done: done_rx,
+            handle: Box::new(handle)
+        }
+    }
 }
 
 cfg_if! {
-    if #[cfg(any(feature = "async_std_runtime", feature = "tokio_runtime"))] {
+    if #[cfg(any(
+        all(feature = "async_std_runtime", not(feature = "tokio_runtime")),
+        all(feature = "tokio_runtime", not(feature = "async_std_runtime"))
+    ))] {
         use flume::Receiver;
         use futures::{FutureExt, select};
         
@@ -176,7 +341,7 @@ cfg_if! {
         use crate::message::{ResponseHeader, CANCELLATION_TOKEN, CANCELLATION_TOKEN_DELIM, 
             Metadata, TIMEOUT_TOKEN, TimeoutRequestBody};
     
-        #[cfg(any(feature = "async_std_runtime", feature = "tokio_runtime"))]
+        // #[cfg(any(feature = "async_std_runtime", feature = "tokio_runtime"))]
         pub(crate) async fn reader_loop(
             mut reader: impl ClientCodecRead,
             pending: Arc<Mutex<ResponseMap>>,
@@ -196,7 +361,7 @@ cfg_if! {
             }
         }
         
-        #[cfg(any(feature = "async_std_runtime", feature = "tokio_runtime"))]
+        // #[cfg(any(feature = "async_std_runtime", feature = "tokio_runtime"))]
         async fn read_once(
             reader: &mut impl ClientCodecRead,
             pending: &Arc<Mutex<ResponseMap>>,
@@ -235,7 +400,7 @@ cfg_if! {
             Ok(())
         }
         
-        #[cfg(any(feature = "async_std_runtime", feature = "tokio_runtime"))]
+        // #[cfg(any(feature = "async_std_runtime", feature = "tokio_runtime"))]
         pub(crate) async fn writer_loop(
             mut writer: impl ClientCodecWrite,
             msgs: Receiver<ClientMessage>,
@@ -275,7 +440,7 @@ cfg_if! {
             }            
         }
         
-        #[cfg(any(feature = "async_std_runtime", feature = "tokio_runtime"))]
+        // #[cfg(any(feature = "async_std_runtime", feature = "tokio_runtime"))]
         async fn handle_call<Res>(
             pending: Arc<Mutex<ResponseMap>>,
             header: RequestHeader,
@@ -329,7 +494,7 @@ cfg_if! {
             Ok(())
         }
         
-        #[cfg(any(feature = "async_std_runtime", feature = "tokio_runtime"))]
+        // #[cfg(any(feature = "async_std_runtime", feature = "tokio_runtime"))]
         async fn handle_response<Res>(
             response: oneshot::Receiver<ClientResponseResult>,
             // done: oneshot::Sender<Result<Res, Error>>,

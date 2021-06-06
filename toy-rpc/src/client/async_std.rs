@@ -1,10 +1,6 @@
 //! Client implementation with `async_std` runtime
 
-use ::async_std::task;
 use futures::{AsyncRead, AsyncWrite};
-use std::sync::atomic::Ordering;
-
-use crate::{codec::split::SplittableClientCodec};
 
 use super::*;
 
@@ -152,116 +148,6 @@ cfg_if! {
                 let codec = DefaultCodec::new(stream);
                 Self::with_codec(codec)
             }
-        }
-    }
-}
-
-impl Client<NotConnected> {
-    /// Creates an RPC 'Client` over socket with a specified codec
-    ///
-    /// Example
-    ///
-    /// ```rust
-    /// let addr = "127.0.0.1:8080";
-    /// let stream = TcpStream::connect(addr).await.unwrap();
-    /// let codec = Codec::new(stream);
-    /// let client = Client::with_codec(codec);
-    /// ```
-    pub fn with_codec<C>(codec: C) -> Client<Connected>
-    where
-        C: SplittableClientCodec + Send + Sync + 'static,
-    {
-        let (writer, reader) = codec.split();
-        let (writer_tx, writer_rx) = flume::unbounded();
-        let pending = Arc::new(Mutex::new(HashMap::new()));
-        let (reader_stop, stop) = flume::bounded(1);
-        task::spawn(reader_loop(reader, pending.clone(), stop));
-        task::spawn(writer_loop(writer, writer_rx));
-
-        Client::<Connected> {
-            count: AtomicMessageId::new(0),
-            pending,
-            timeout: AtomicCell::new(None),
-            reader_stop,
-            writer_tx,
-
-            marker: PhantomData,
-        }
-    }
-}
-
-impl Client<Connected> {
-    /// Invokes the named function and wait synchronously in a blocking manner.
-    ///
-    /// This function internally calls `task::block_on` to wait for the response.
-    /// Do NOT use this function inside another `task::block_on`.async_std
-    ///
-    /// Example
-    ///
-    /// ```rust
-    /// let args = "arguments";
-    /// let reply: Result<String, Error> = client.call("EchoService.echo", &args);
-    /// println!("{:?}", reply);
-    /// ```
-    pub fn call_blocking<Req, Res>(
-        &self,
-        service_method: impl ToString,
-        args: Req,
-    ) -> Result<Res, Error>
-    where
-        Req: serde::Serialize + Send + Sync + 'static,
-        Res: serde::de::DeserializeOwned + Send + 'static,
-    {
-        let call = self.call(service_method, args);
-        task::block_on(call)
-    }
-
-    /// Invokes the named RPC function call asynchronously and returns a cancellation `Call`
-    /// 
-    /// The `Call<Res>` type takes one type argument `Res` which is the type of successful RPC execution.
-    /// The result can be obtained by `.await`ing on the `Call`, which returns type `Result<Res, toy_rpc::Error>`
-    /// `Call` can be cancelled by calling the `cancel()` function. 
-    /// The request will be sent in a background task. 
-    /// 
-    /// Example 
-    /// 
-    /// ```rust
-    /// // Get the result by `.await`ing on the `Call`
-    /// let call: Call<i32> = client.call("SomeService.echo_i32", 7i32);
-    /// let reply: Result<i32, toy_rpc::Error> = call.await;
-    /// 
-    /// // Cancel the call
-    /// let call: Call<()> = client.call("SomeService.infinite_loop", ());
-    /// call.cancel();
-    /// ```
-    pub fn call<Req, Res>(&self, service_method: impl ToString, args: Req) -> Call<Res>
-    where
-        Req: serde::Serialize + Send + Sync + 'static,
-        Res: serde::de::DeserializeOwned + Send + 'static,
-    {
-        let id = self.count.fetch_add(1, Ordering::Relaxed);
-        let service_method = service_method.to_string();
-        let header = RequestHeader { id, service_method };
-        let body = Box::new(args) as ClientRequestBody;
-
-        let (done_tx, done_rx) = oneshot::channel();
-        let (cancel_tx, cancel_rx) = flume::bounded(1);
-        let pending = self.pending.clone();
-        let writer_tx = self.writer_tx.clone();
-
-        let timeout = self.timeout.take();
-        let handle = task::spawn(
-            handle_call(
-                pending, header, body, writer_tx, cancel_rx, done_tx, timeout
-            )
-        );
-
-        // create Call
-        Call::<Res> {
-            id,
-            cancel: cancel_tx,
-            done: done_rx,
-            handle: Box::new(handle),
         }
     }
 }
