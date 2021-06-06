@@ -2,7 +2,7 @@
 
 The client can set the timeout for the next RPC request using the `timeout(duration: Duration)` method, which can be chained with the `call` method. Please note that the timeout is **ONLY** set for the immediate next RPC call, and all RPC calls do not have timeout if not explicitly set using the `timeout` method.
 
-We will re-use the example service definition in the [cancellation](https://minghuaw.github.io/toy-rpc/06a_cancellation.html). For you convenience, the service definition and server code are copied below.
+We will re-use the example service definition in the [cancellation chapter](https://minghuaw.github.io/toy-rpc/06a_cancellation.html). For you convenience, the service definition and server code are copied below.
 
 File structure:
 

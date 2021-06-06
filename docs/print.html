@@ -1107,7 +1107,7 @@ async main() {
 </span></code></pre></pre>
 <div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><h1 id="set-timeout-for-an-rpc-call"><a class="header" href="#set-timeout-for-an-rpc-call">Set timeout for an RPC call</a></h1>
 <p>The client can set the timeout for the next RPC request using the <code>timeout(duration: Duration)</code> method, which can be chained with the <code>call</code> method. Please note that the timeout is <strong>ONLY</strong> set for the immediate next RPC call, and all RPC calls do not have timeout if not explicitly set using the <code>timeout</code> method.</p>
-<p>We will re-use the example service definition in the <a href="https://minghuaw.github.io/toy-rpc/06a_cancellation.html">cancellation</a>. For you convenience, the service definition and server code are copied below.</p>
+<p>We will re-use the example service definition in the <a href="https://minghuaw.github.io/toy-rpc/06a_cancellation.html">cancellation chapter</a>. For you convenience, the service definition and server code are copied below.</p>
 <p>File structure:</p>
 <pre><code>./src
 ├── /bin
