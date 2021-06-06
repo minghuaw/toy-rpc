@@ -12,12 +12,12 @@ Inside the `impl` block or `trait` definition block, you should then use the att
 `#[export_method]` to mark which method(s) should be "exported" as RPC method(s). 
 The methods to export must meet the following criteria on the server side
 
-- the method resides in an impl block marked with #[export_impl]
-- the method is marked with #[export_method] attribute
-- the method takes one argument other than &self and returns a Result<T, E>
-    - the argument must implement trait serde::Deserialize
-    - the Ok type T of the result must implement trait serde::Serialize
-    - the Err type E of the result must implement trait ToString
+- the method resides in an impl block marked with `#[export_impl]` or `#[export_trait]`
+- the method is marked with `#[export_method]` attribute
+- the method takes one argument other than `&self` and returns a `Result<T, E>`
+    - the argument must implement trait `serde::Deserialize`
+    - the `Ok` type `T` of the result must implement trait `serde::Serialize`
+    - the `Err` type `E` of the result must implement trait `ToString`
 
 The method is essentially in the form
 

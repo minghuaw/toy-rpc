@@ -4,6 +4,7 @@ use async_trait::async_trait;
 use std::marker::PhantomData;
 
 use super::*;
+use crate::util::GracefulShutdown;
 
 mod server;
 pub use server::*;
@@ -242,6 +243,18 @@ cfg_if! {
                 let buf = Self::marshal(&body)?;
                 let writer = &mut self.writer;
                 writer.write_payload(buf).await
+            }
+        }
+
+        #[async_trait]
+        impl<W, C, Conn> GracefulShutdown for CodecWriteHalf<W, C, Conn>
+        where 
+            W: GracefulShutdown + Send,
+            C: Send,
+            Conn: Send, 
+        {
+            async fn close(&mut self) {
+                self.writer.close().await;
             }
         }
     }

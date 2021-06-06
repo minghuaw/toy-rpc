@@ -357,13 +357,13 @@ located in the same file/project. The name of the <code>struct</code> will be us
 <code>#[export_method]</code> to mark which method(s) should be &quot;exported&quot; as RPC method(s). 
 The methods to export must meet the following criteria on the server side</p>
 <ul>
-<li>the method resides in an impl block marked with #[export_impl]</li>
-<li>the method is marked with #[export_method] attribute</li>
-<li>the method takes one argument other than &amp;self and returns a Result&lt;T, E&gt;
+<li>the method resides in an impl block marked with <code>#[export_impl]</code> or <code>#[export_trait]</code></li>
+<li>the method is marked with <code>#[export_method]</code> attribute</li>
+<li>the method takes one argument other than <code>&amp;self</code> and returns a <code>Result&lt;T, E&gt;</code>
 <ul>
-<li>the argument must implement trait serde::Deserialize</li>
-<li>the Ok type T of the result must implement trait serde::Serialize</li>
-<li>the Err type E of the result must implement trait ToString</li>
+<li>the argument must implement trait <code>serde::Deserialize</code></li>
+<li>the <code>Ok</code> type <code>T</code> of the result must implement trait <code>serde::Serialize</code></li>
+<li>the <code>Err</code> type <code>E</code> of the result must implement trait <code>ToString</code></li>
 </ul>
 </li>
 </ul>
@@ -714,8 +714,9 @@ async fn main() {
 <li><code>warp</code>: <code>&quot;http_warp&quot;</code></li>
 </ul>
 <div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><h1 id="http-integration-with-actix-web"><a class="header" href="#http-integration-with-actix-web">HTTP integration with <code>actix-web</code></a></h1>
-<p>A convenience method <code>Server::handle_http()</code> is available when <code>&quot;http_actix_web&quot;</code> is the only enabled http integration feature flag. If you have multiple http integration feature flags enabled, you can use the <code>Server::scope_config</code> method instead (please note that you should use <code>scope_config</code> without brackets).</p>
-<p>The <code>&quot;http_actix_web&quot;</code> feature flag should be toggled on to enable HTTP integration with <code>actix-web</code>. Enabling <code>&quot;http_actix_web&quot;</code> feature flag will also enable the <code>&quot;tokio_runtime&quot;</code> feature flag. We will demonstrate the usage with a new example.</p>
+<p>The <code>&quot;http_actix_web&quot;</code> feature flag should be toggled on to enable HTTP integration with <code>actix-web</code>. Enabling <code>&quot;http_actix_web&quot;</code> feature flag will also enable the <code>&quot;tokio_runtime&quot;</code> feature flag. </p>
+<p>A convenience method <a href="https://docs.rs/toy-rpc/0.7.0-alpha.1/toy_rpc/server/struct.Server.html#method.handle_http"><code>Server::handle_http()</code></a> is available when <code>&quot;http_actix_web&quot;</code> is the only enabled http integration feature flag. If you have multiple http integration feature flags enabled, you can use the <a href="https://docs.rs/toy-rpc/0.7.0-alpha.1/toy_rpc/server/struct.Server.html#method.scope_config"><code>Server::scope_config</code></a> method instead (please note that you should use <code>scope_config</code> without brackets).</p>
+<p>We will demonstrate the usage with a new example.</p>
 <pre><code class="language-toml">[dependencies]
 actix-web = &quot;3.3.2&quot;
 toy-rpc = { version = &quot;0.7.0-alpha.1&quot;, features = [&quot;http_actix_web&quot;, &quot;server&quot;] }
@@ -766,13 +767,460 @@ async fn main() {
     .await;
 }
 </code></pre></pre>
+<div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><h1 id="http-integration-with-actix-web-1"><a class="header" href="#http-integration-with-actix-web-1">HTTP integration with <code>actix-web</code></a></h1>
+<p>The <code>&quot;http_tide&quot;</code> feature flag should be toggled on to enable HTTP integration with <code>tide</code>. Enabling <code>&quot;http_tide&quot;</code> feature flag will also enable the <code>&quot;async_std_runtime&quot;</code> feature flag.</p>
+<p>A convenience method <a href="https://docs.rs/toy-rpc/0.7.0-alpha.1/toy_rpc/server/struct.Server.html#method.handle_http-1"><code>Server::handle_http(self)</code></a> is available when <code>&quot;http_tide&quot;</code> is the only http integration flag that is enabled. If multiple http integration feature flags are enabled, you can use <a href="https://docs.rs/toy-rpc/0.7.0-alpha.1/toy_rpc/server/struct.Server.html#method.into_endpoint"><code>Server::into_endpoint(self)</code></a> method instead.</p>
+<p>We will demonstrate the usage with a new example.</p>
+<pre><code class="language-toml">[dependencies]
+tide = &quot;0.16.0&quot;
+async-std = { version = &quot;1&quot;, features = [ &quot;attributes&quot;, ] }  
+toy-rpc = { version = &quot;0.7.0-alpha.1&quot;, features = [&quot;http_tide&quot;, &quot;server&quot;] }
+</code></pre>
+<pre><pre class="playground"><code class="language-rust edition2018">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use std::sync::Arc;
+use toy_rpc::macros::export_impl;
+use toy_rpc::Server;
+use tide::prelude::*;
+
+pub struct Calculator { }
+
+#[export_impl]
+impl Calculator {
+    #[export_method]
+    async fn multiply(&amp;self, args(i32, i32)) -&gt; Result&lt;i32, String&gt; {
+        Ok(args.0 * args.1)
+    }
+
+    #[export_method]
+    async fn divide(&amp;self, args(i32, i32)) -&gt; Result&lt;i32, String&gt; {
+        Ok(args.0 / args.1)
+    }
+}
+
+#[async_std::main]
+async main() {
+    // Get the RPC server ready
+    let addr = &quot;127.0.0.1:23333&quot;;
+    let calculator = Arc::new(Calculator { });
+    let server = Server::builder()
+        .register(calculator)
+        .build();
+
+    // Now we will work with `tide` HTTP server
+    let mut app = tide::new();
+    app.at(&quot;/rpc/&quot;).nest(server.handle_http());
+    app.listen(addr).await.unwrap();
+}
+<span class="boring">}
+</span></code></pre></pre>
+<div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><h1 id="http-integration-with-actix-web-2"><a class="header" href="#http-integration-with-actix-web-2">HTTP integration with <code>actix-web</code></a></h1>
+<p>The <code>&quot;http_warp&quot;</code> feature flag should be toggled on to enable HTTP integration with <code>warp</code> crate. Enabling <code>&quot;http_warp&quot;</code> feature flag will also enable the <code>&quot;tokio_runtime&quot;</code> featrue flag.</p>
+<p>A convenience method <a href="https://docs.rs/toy-rpc/0.7.0-alpha.1/toy_rpc/server/struct.Server.html#method.handle_http-2"><code>Server::handle_http(self)</code></a> is available when <code>&quot;http_warp&quot;</code> is the only enabled http integration feature flag. If you have multiple http integration flags enabled, you can use the <a href="https://docs.rs/toy-rpc/0.7.0-alpha.1/toy_rpc/server/struct.Server.html#method.into_boxed_filter"><code>Server::into_boxed_filter(self)</code></a> method instead.</p>
+<p>We will demonstrate the usage with a new example.</p>
+<pre><code class="language-toml">[dependencies]
+warp = &quot;0.3.0&quot;
+tokio = { version = &quot;1.4.0&quot;, features = [&quot;rt-multi-thread&quot;, &quot;macros&quot;] }
+toy-rpc = { version = &quot;0.7.0-alpha.1&quot;, features = [&quot;http_warp&quot;, &quot;server&quot;] }
+</code></pre>
+<pre><pre class="playground"><code class="language-rust edition2018">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use std::sync::Arc;
+use toy_rpc::macros::export_impl;
+use toy_rpc::Server;
+
+pub struct Calculator { }
+
+#[export_impl]
+impl Calculator {
+    #[export_method]
+    async fn multiply(&amp;self, args(i32, i32)) -&gt; Result&lt;i32, String&gt; {
+        Ok(args.0 * args.1)
+    }
+
+    #[export_method]
+    async fn divide(&amp;self, args(i32, i32)) -&gt; Result&lt;i32, String&gt; {
+        Ok(args.0 / args.1)
+    }
+}
+
+#[tokio::main]
+async main() {
+    let calculator = Arc::new(Calculator { });
+    let server = Server::builder()
+        .register(calculator)
+        .build();
+
+    // Serve RPC at &quot;ws://127.0.0.1/rpc/&quot; 
+    // (there is a &quot;_rpc_&quot; appended to the end of the path but the client takes care of that) 
+    let routes = warp::path(&quot;rpc&quot;)
+        .and(server.handle_http());
+    warp::serve(routes).run(([127, 0, 0, 1], 23333)).await;
+}
+<span class="boring">}
+</span></code></pre></pre>
+<div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><h1 id="client"><a class="header" href="#client">Client</a></h1>
+<p>The client side usage should feel fairly close to that of the golang's <code>net/rpc</code> package as well except some changes that makes the client API more rusty and async. </p>
+<p>To connect a client to a &quot;raw&quot; TCP server, you should use the <code>dial</code> function; to connect to a HTTP server, you should then use the <code>dial_http</code> function. Once you have a connected client,
+you can then use the <code>call_blocking</code> and <code>call</code> methods to access the RPC functions on the server. The <code>#[export_impl]</code> and <code>#[export_trait]</code> attribute macros also generates client stub functions that allows the client to conveniently access the RPC functions without worrying about typing the wrong service or method name. </p>
+<h1 id="connecting-to-tcp-server--http-server"><a class="header" href="#connecting-to-tcp-server--http-server">Connecting to TCP server / HTTP server</a></h1>
+<p>For the examples below, we will assume running with the <code>tokio</code> runtime.</p>
+<pre><code class="language-toml">[dependencies]
+tokio = { version = &quot;1&quot;, features = [&quot;rt-multi-thread&quot;, &quot;macros&quot;] }
+toy-rpc = { version = &quot;0.7.0-alpha.1&quot;, features = [&quot;tokio_runtime&quot;, &quot;client&quot;] }
+</code></pre>
+<p>The example below shows how to connect to a TCP server</p>
+<pre><pre class="playground"><code class="language-rust edition2018">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use toy_rpc::Client;
+
+#[tokio::main]
+async main() {
+    let client = Client::dial(&quot;127.0.0.1:23333&quot;).await
+        .expect(&quot;Failed to connect to server&quot;);
+}
+<span class="boring">}
+</span></code></pre></pre>
+<p>Connecting to the HTTP server looks very similar with some minor changes. The example below assumes that we are trying to connect to one of the <a href="https://minghuaw.github.io/toy-rpc/05_integration.html">HTTP servers</a> (all three HTTP integration examples have the RPC server serving at <code>&quot;ws://127.0.0.1:23333/rpc/&quot;</code>). Please note that there is a &quot;<em>rpc</em>&quot; appended to the end of the path by the server integration methods, but this is automatically handled by the <code>Client::dial_http</code> method so you don't need to worry about that. </p>
+<pre><pre class="playground"><code class="language-rust edition2018">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use toy_rpc::Client;
+
+#[tokio::main]
+async main() {
+    let client = Client::dial_http(&quot;ws://127.0.0.1:23333/rpc/&quot;).await
+        .expect(&quot;Failed to connect to server&quot;);
+}
+<span class="boring">}
+</span></code></pre></pre>
+<h1 id="accessing-rpc-services"><a class="header" href="#accessing-rpc-services">Accessing RPC services</a></h1>
+<h2 id="call_blocking-and-call"><a class="header" href="#call_blocking-and-call"><code>call_blocking(...)</code> and <code>call(...)</code></a></h2>
+<p>There are two methods available for accessing the RPC services and methods. The <code>call_blocking</code> method blocks the execution until the response is received, and the <code>call</code> method is the asynchronous version where the execution will yield to other tasks scheduled by the runtime while waiting for the response. Cancellation is also supported on the <code>call</code> method, which is discussed with more details in the <a href="https://minghuaw.github.io/toy-rpc/06a_cancellation.html">next chapter</a>.</p>
+<p>(Support of timeout is still work-in-progress. The book will be updated once the feature is implemented.)</p>
+<h2 id="generated-client-stub-functions"><a class="header" href="#generated-client-stub-functions">Generated client stub functions</a></h2>
+<p>The generated client stub functions internally uses the <code>call(...)</code> method and are thus async. The client stub functions consist of two steps. The first step is to access your service, and the second step is to access the method defined in that particular service. The method in the first step is always the name of the service but in snake case. For example, if you have a service <code>struct FooBar { }</code>, then the client method you use to access the service will be <code>foo_bar()</code>. The client method you use to access the method is identical to the method definition in the RPC service. For example, if an RPC method is defined as <code>fn add(&amp;self, args(i32, i32)) -&gt; Result&lt;i32, String&gt;;</code>, then the client method you use would be <code>client.bar().add((3i32, 4i32)).await;</code></p>
+<h2 id="examples"><a class="header" href="#examples">Examples</a></h2>
+<p>We will continue the <a href="https://minghuaw.github.io/toy-rpc/03_define_service.html#export_impl"><code>#[export_impl]</code> example</a> and the [<code>#[export_trait]</code> and <code>#[export_trait_impl]</code>] example to demonstrate how to access RPC service on the server. The methods you will use to access the RPC service are the same for a TCP connection and a HTTP connection, and for simplicity, all the examples below will assume a TCP connection. For more examples on use with HTTP connections, please checkout the <a href="https://github.com/minghuaw/toy-rpc/tree/main/examples">GitHub examples</a>.</p>
+<h3 id="export_impl-1"><a class="header" href="#export_impl-1"><code>#[export_impl]</code></a></h3>
+<p>Let's just remind ourselves that in this example the service definition and implementation are located in the same file/project, and the file structure is as follows</p>
+<pre><code>./src
+├── /bin
+│   ├── server.rs
+│   ├── client.rs
+└── lib.rs
+</code></pre>
+<p>Since the service is defined and implemented in <code>src/lib.rs</code> from the <a href="https://minghuaw.github.io/toy-rpc/03_define_service.html#export_impl">previous chapter</a>, we are going to include everything in the <code>src/lib.rs</code> file to allow us use the generated client stub functions in our <code>src/bin/client.rs</code>.</p>
+<pre><pre class="playground"><code class="language-rust edition2018">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use toy_rpc::Client;
+use toy_rpc::Error;
+
+// include everything from the lib.rs file
+// assuming the name of the crate is &quot;example&quot;
+use example::*;
+
+#[tokio::main]
+async main() {
+    let client = Client::dial(&quot;127.0.0.1:23333&quot;).await
+        .expect(&quot;Failed to connect to the server&quot;);
+
+    // Access the remote `exported_method` method of `Foo` service in a blocking manner
+    let result: Result&lt;String, Error&gt; = client.call_blocking(&quot;Foo.exported_method&quot;, ());
+    assert_eq!(result, Ok(&quot;exported method&quot;.to_string()));
+
+    // Access the remote `add` method of `Bar` service in an asynchronous manner
+    let result: Result&lt;i32, Error&gt; = client.call(&quot;Bar.add&quot;, (3i32, 4i32)).await;
+    assert_eq!(result, Ok(7));
+
+    // You can also use the generated client stub functions
+    // Access the remote `exported_method` method of `Foo` service 
+    // using the generated client stub functions
+    let result = client
+        .foo() // access `Foo` service
+        .exported_method(()) // access `exported_method` of the `Foo` service
+        .await;
+    assert_eq!(result, Ok(&quot;exported method&quot;.to_string()));
+
+    // Access the remote `add` method of `Bar` service 
+    // using the generated client stub functions
+    let result = client
+        .bar()
+        .add((3, 4))
+        .await;
+    assert_eq!(result, Ok(7));
+}
+<span class="boring">}
+</span></code></pre></pre>
+<h3 id="export_trait-and-export_trait_impl-1"><a class="header" href="#export_trait-and-export_trait_impl-1"><code>#[export_trait]</code> and <code>#[export_trait_impl]</code></a></h3>
+<p>Again, let's just remind ourselves that the service in this example is defined in a separate crate <a href="https://minghuaw.github.io/toy-rpc/03_define_service.html#export_trait-and-export_trait_impl"><code>example-service</code></a> and the service is implemented and served by <a href="https://minghuaw.github.io/toy-rpc/04_server.html#example-with-export_trait-and-export_trait_impl"><code>example-server</code></a> crate. What we will be doing below is to demonstrate the client, which, not surprisingly, look pretty much the same as the example above.</p>
+<p>Because the service definition resides in a separate crate, we will need to import that crate as well.</p>
+<pre><code class="language-toml">[dependencies]
+tokio = { version = &quot;1&quot;, features = [&quot;rt-multi-thread&quot;, &quot;macros&quot;] }
+toy-rpc = { version = &quot;0.7.0-alpha.1&quot;, features = [&quot;tokio_runtime&quot;, &quot;client&quot;] }
+
+# import our service definition, assuming we have this definition at &quot;../example-service&quot;
+example-service = { version = &quot;0.1.0&quot;, path = &quot;../example-service&quot; }
+</code></pre>
+<pre><pre class="playground"><code class="language-rust edition2018">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use toy_rpc::{Client, Error};
+
+// import everything to use the generated client stub functions
+use example_service::*;
+
+#[tokio::main]
+async main() {
+    let client = Client::dial(&quot;127.0.0.1:23333&quot;).await
+        .expect(&quot;Failed to connect to the server&quot;);
+    
+    // Access the remote method `add` of service `Arith` in a blocking manner
+    let result: Result&lt;i32, Error&gt; = client.call_blocking(&quot;Arith.add&quot;, (3i32, 4i32));
+    assert_eq!(result, Ok(7));
+
+    // Access the remote method `subtract` of service `Arith` in an asynchronous manner
+    let result: Result&lt;i32, Error&gt; = client.call(&quot;Arith.subtract&quot;, (9i32, 6i32)).await;
+    assert_eq!(result, Ok(3));
+
+    // Let's use the generated client stub functions
+    let result = client
+        .arith() // access `Arith` service
+        .add((3i32, 4i32)) // access `add` method
+        .await;
+    assert_eq!(result, Ok(7));
+
+    let result = client
+        .arith() // access `Arith` service
+        .subtract((9i32, 6i32)) // access `subtract` method
+        .await;
+    assert_eq!(result, Ok(3));
+}
+<span class="boring">}
+</span></code></pre></pre>
+<div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><h1 id="cancellation-of-rpc-call"><a class="header" href="#cancellation-of-rpc-call">Cancellation of RPC call</a></h1>
+<p>Cancellation is supported starting from version 0.7.0-alpha.1. The client method <code>call(...)</code> returns a type <code>Call</code>, which can be either <code>.await</code>ed for the response or <code>cancel()</code>ed to stop the execution. When an RPC request is started with the method <code>call(...)</code>, the request is sent by a background task whether or not the <code>Call</code> is <code>.await</code>ed. Upon <code>cancel()</code>, the client will send a cancellation request to the server; however, it should be noted that if the client is dropped immediately after calling <code>cancel()</code>, the server may not be able to receive the cancellation request before the connection is dropped by the client.</p>
+<p>Below is a simple example showing cancellation on the <code>tokio</code> runtime.In this example, we are going to define a new service with a method that simply runs in loop and sleep for a certain period of time.</p>
+<p>File structure:</p>
+<pre><code>./src
+├── /bin
+│   ├── server.rs
+│   ├── client.rs
+└── lib.rs
+</code></pre>
+<p>Add dependencies:</p>
+<pre><code class="language-toml">[dependencies]
+tokio = { version = &quot;1&quot;, features = [&quot;rt-multi-thread&quot;, &quot;macros&quot;, &quot;time&quot;] }
+toy-rpc = { version = &quot;0.7.0-alpha.1&quot;, features = [&quot;tokio_runtime&quot;, &quot;server&quot;, &quot;client&quot;] }
+</code></pre>
+<p>Service definition and implementation placed in <code>src/lib.rs</code>:</p>
+<pre><pre class="playground"><code class="language-rust edition2018">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use std::time::Duration;
+use toy_rpc::macros::export_impl;
+use tokio::time;
+
+struct Example { }
+
+#[export_impl]
+impl Example {
+    #[export_method]
+    async fn finite_loop(&amp;self, args: ()) -&gt; Result&lt;(), String&gt; {
+        for counter in 0..500 {
+            time::sleep(Duration::from_millis(500)).await;
+        }
+    }
+
+    #[export_method]
+    async fn echo(&amp;self, args: String) -&gt; Result&lt;String, String&gt; {
+        Ok(args)
+    }
+}
+<span class="boring">}
+</span></code></pre></pre>
+<p>Serve the RPC service with <code>src/bin/server.rs</code></p>
+<pre><pre class="playground"><code class="language-rust edition2018">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use std::sync::Arc;
+use toy_rpc::Server;
+use tokio::net::TcpListener;
+
+// assume the name of the crate is &quot;example&quot;
+// import service definition and implementation
+use example::Example;
+
+#[tokio::main]
+async main() {
+    let addr = &quot;127.0.0.1:23333&quot;;
+    let ex = Arc::new(Example { });
+    let server = Server::builder()
+        .register(ex)
+        .build()
+
+    let listener = TcpListener::bind(addr).await.unwrap();
+    server.accept(listener).await.unwrap();
+}
+<span class="boring">}
+</span></code></pre></pre>
+<p>In the client, let's call the <code>finite_loop</code> RPC function and wait for two seconds and cancel it.</p>
+<pre><pre class="playground"><code class="language-rust edition2018">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use std::time::Duration;
+use tokio::time;
+use toy_rpc::client::{Client, Call};
+
+// assume the name of the crate is &quot;example&quot;
+// import service definitions and generated client stub functions
+use example::*;
+
+#[tokio::main]
+async main() {
+    let client = Client::dial(&quot;127.0.0.1:23333&quot;).await
+        .expect(&quot;Failed to connect to server&quot;);
+
+    let call: Call&lt;()&gt; = client
+        .example() // access `Example` service
+        .finite_loop(()); // access `finite_loop` method
+
+    // wait for 2 seconds and cancel
+    time::sleep(Duration::from_secs(2)).await;
+    call.cancel();
+
+    // the `Call` type can be `.await`ed to wait for the response
+    let call = client
+        .example() // access `Example` service
+        .echo(&quot;hello world&quot;.to_string()); // access `echo` method
+    let result = call.await;
+    assert_eq!(result, Ok(&quot;hello world&quot;.to_string()));
+}
+<span class="boring">}
+</span></code></pre></pre>
 <div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><p>WIP</p>
 <div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><p>WIP</p>
-<div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><p>WIP</p>
-<div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><p>WIP</p>
-<div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><p>WIP</p>
-<div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><p>WIP</p>
-<div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><p>WIP</p>
+<div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><h1 id="change-log"><a class="header" href="#change-log">Change Log</a></h1>
+<h2 id="070"><a class="header" href="#070">0.7.0</a></h2>
+<p><strong>Breaking Changes</strong></p>
+<ul>
+<li>The blocking RPC call on the client side is renamed to <code>call_blocking</code></li>
+<li>The asynchronous RPC call on the client side is renamed to <code>call</code></li>
+<li>The <code>call</code> method returns a <code>Call&lt;Res&gt;</code> type where <code>Res</code> represents the <code>Ok</code> type of 
+result. The request is sent by a background task and thus the new <code>call</code> method is 
+similar to the old <code>spawn_task</code> in terms of usage.</li>
+</ul>
+<p><strong>New Features</strong></p>
+<ul>
+<li>Cancellation. The <code>Call&lt;Res&gt;</code> type returned by the <code>call</code> method can be canceled by 
+using the <code>cancel()</code> method.</li>
+<li>Timeout. (WIP)</li>
+</ul>
+<h2 id="061"><a class="header" href="#061">0.6.1</a></h2>
+<ul>
+<li>Multiple objects of the same types can be registered on the same server again, but you will need to
+use the <code>ServerBuilder::register_with_name</code> method as opposed to the regular <code>ServerBuilder::register</code>.
+More details can be found in <code>ServerBuilder::register_with_name</code>'s documentation.</li>
+</ul>
+<h2 id="060"><a class="header" href="#060">0.6.0</a></h2>
+<p><strong>Breaking Changes</strong></p>
+<ul>
+<li>In short, this update makes the crate resemble closer to the usage of <code>go</code>'s <code>net/rpc</code> package</li>
+<li>Service registration is simplified to <code>Server::builder().register(foo_service).build()</code>. The examples will be
+updated accordingly. Thus
+<ul>
+<li><code>service!()</code> macro will be deprecated</li>
+<li><code>register</code> function now takes only one argument, which is the instance of the service</li>
+<li>on the client side, the service name will just be the name of the struct. for example,
+to call a RPC method on <code>struct Foo { }</code> service, the client simply uses
+<code>.async_call(&quot;Foo.&lt;method&gt;&quot;).await</code> where <code>&lt;method&gt;</code> should be replaced with the RPC method</li>
+<li>you can still register multiple services on the same server. However, only one object of the same type
+can be registered on the same server. Multiple servers are needed to have multiple objects of the same type.</li>
+</ul>
+</li>
+<li>Re-defined the custom <code>Error</code> type</li>
+</ul>
+<p>Non-breaking changes</p>
+<ul>
+<li>Fixed bug where client does not interpret error message correctly</li>
+<li>Fixed bug with <code>accept_websocket</code> crashes with incorrect protocol</li>
+</ul>
+<h2 id="054"><a class="header" href="#054">0.5.4</a></h2>
+<ul>
+<li>Handlers are now stored as a <code>fn</code> pointer as opposed to a trait object.</li>
+</ul>
+<h2 id="053"><a class="header" href="#053">0.5.3</a></h2>
+<ul>
+<li>The <code>#[export_impl]</code> macro now generates client stub functions by generating a new trait for <code>toy_rpc::Client</code>.</li>
+</ul>
+<h2 id="050"><a class="header" href="#050">0.5.0</a></h2>
+<p><strong>Breaking changes</strong></p>
+<ul>
+<li>HTTP integration is now accomplished using WebSocket with <code>async_tungstenite</code>, and thus HTTP connections
+of versions &lt;0.5.0 are not compatible with versions &gt;=0.5.0.</li>
+<li>The custom binary transport protocol now includes a magic byte at the beginning, making
+versions &lt;0.5.0 <strong>NOT</strong> compatible with versions &gt;= 0.5.0;</li>
+<li><code>toy_rpc::error::Error</code> changed from struct-like variants to simple enum variants</li>
+<li>Changes to feature flags
+<ul>
+<li>&quot;logging&quot; feature flag is removed</li>
+<li>&quot;surf&quot; feature flag is removed</li>
+<li>&quot;tide&quot; is changed to &quot;http_tide&quot;</li>
+<li>&quot;actix-web&quot; is changed to &quot;http_actix_web&quot;</li>
+<li>added &quot;http_warp&quot; feature flag</li>
+<li>added &quot;async_std_runtime&quot;</li>
+<li>added &quot;tokio_runtime&quot;</li>
+</ul>
+</li>
+</ul>
+<p>Non-breaking changes</p>
+<ul>
+<li>Removed <code>Stream</code> and <code>Sink</code> impl from the custom binary transport protocol <code>Frame</code></li>
+</ul>
+<h2 id="045"><a class="header" href="#045">0.4.5</a></h2>
+<ul>
+<li>Added <code>Sink</code> implementation for the custom binary transport protocol <code>Frame</code></li>
+</ul>
+<h2 id="044"><a class="header" href="#044">0.4.4</a></h2>
+<ul>
+<li>Modified traits <code>CodecRead</code>, <code>CodecWrite</code>, <code>ServerCodec</code>, <code>ClientCodec</code> to no longer
+return number of bytes written</li>
+<li>The number of bytes written for header and body will be logged separately</li>
+</ul>
+<h2 id="043"><a class="header" href="#043">0.4.3</a></h2>
+<ul>
+<li>Removed previously unused NoneError</li>
+<li>Unified <code>call</code>, <code>async_call</code> and <code>spawn_task</code> for socket client
+and HTTP client. The <code>call_http</code>, <code>async_call_http</code>, and <code>spawn_task_http</code>
+methods are kept for compatibility.</li>
+</ul>
+<h2 id="042"><a class="header" href="#042">0.4.2</a></h2>
+<ul>
+<li>Temporary fix of <code>spawn_task()</code> and <code>spawn_task_http()</code> with <code>Arc&lt;Mutex&lt;_&gt;&gt;</code> until
+lifetime with async task is figured out. As a result, <code>Client</code> no longer needs to be declared <code>mut</code>.</li>
+</ul>
+<h2 id="041"><a class="header" href="#041">0.4.1</a></h2>
+<ul>
+<li>Updated documentation</li>
+</ul>
+<h2 id="040"><a class="header" href="#040">0.4.0</a></h2>
+<ul>
+<li>Added <code>actix-web</code> feature flag to support integration with <code>actix-web</code></li>
+</ul>
+<h2 id="031"><a class="header" href="#031">0.3.1</a></h2>
+<ul>
+<li>Added <code>serde_rmp</code> features flag</li>
+<li>Updated and corrected examples in the documentation</li>
+</ul>
+<h2 id="030"><a class="header" href="#030">0.3.0</a></h2>
+<ul>
+<li>Added <code>serde_cbor</code> feature flag</li>
+<li>Changed <code>bincode</code> feature flag to <code>serde_bincode</code></li>
+</ul>
 
                     </main>
 

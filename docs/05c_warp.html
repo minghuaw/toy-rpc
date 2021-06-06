@@ -165,7 +165,52 @@
 
                 <div id="content" class="content">
                     <main>
-                        <p>WIP</p>
+                        <h1 id="http-integration-with-actix-web"><a class="header" href="#http-integration-with-actix-web">HTTP integration with <code>actix-web</code></a></h1>
+<p>The <code>&quot;http_warp&quot;</code> feature flag should be toggled on to enable HTTP integration with <code>warp</code> crate. Enabling <code>&quot;http_warp&quot;</code> feature flag will also enable the <code>&quot;tokio_runtime&quot;</code> featrue flag.</p>
+<p>A convenience method <a href="https://docs.rs/toy-rpc/0.7.0-alpha.1/toy_rpc/server/struct.Server.html#method.handle_http-2"><code>Server::handle_http(self)</code></a> is available when <code>&quot;http_warp&quot;</code> is the only enabled http integration feature flag. If you have multiple http integration flags enabled, you can use the <a href="https://docs.rs/toy-rpc/0.7.0-alpha.1/toy_rpc/server/struct.Server.html#method.into_boxed_filter"><code>Server::into_boxed_filter(self)</code></a> method instead.</p>
+<p>We will demonstrate the usage with a new example.</p>
+<pre><code class="language-toml">[dependencies]
+warp = &quot;0.3.0&quot;
+tokio = { version = &quot;1.4.0&quot;, features = [&quot;rt-multi-thread&quot;, &quot;macros&quot;] }
+toy-rpc = { version = &quot;0.7.0-alpha.1&quot;, features = [&quot;http_warp&quot;, &quot;server&quot;] }
+</code></pre>
+<pre><pre class="playground"><code class="language-rust edition2018">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use std::sync::Arc;
+use toy_rpc::macros::export_impl;
+use toy_rpc::Server;
+
+pub struct Calculator { }
+
+#[export_impl]
+impl Calculator {
+    #[export_method]
+    async fn multiply(&amp;self, args(i32, i32)) -&gt; Result&lt;i32, String&gt; {
+        Ok(args.0 * args.1)
+    }
+
+    #[export_method]
+    async fn divide(&amp;self, args(i32, i32)) -&gt; Result&lt;i32, String&gt; {
+        Ok(args.0 / args.1)
+    }
+}
+
+#[tokio::main]
+async main() {
+    let calculator = Arc::new(Calculator { });
+    let server = Server::builder()
+        .register(calculator)
+        .build();
+
+    // Serve RPC at &quot;ws://127.0.0.1/rpc/&quot; 
+    // (there is a &quot;_rpc_&quot; appended to the end of the path but the client takes care of that) 
+    let routes = warp::path(&quot;rpc&quot;)
+        .and(server.handle_http());
+    warp::serve(routes).run(([127, 0, 0, 1], 23333)).await;
+}
+<span class="boring">}
+</span></code></pre></pre>
 
                     </main>
 
