@@ -100,7 +100,7 @@ where
 
     /// Gets the ID number of the call
     ///
-    /// The client RPC calls have a monotonically increasing ID number of type `u16`
+    /// Each client RPC call has a monotonically increasing ID number of type `u16`
     pub fn get_id(&self) -> MessageId {
         self.id
     }
