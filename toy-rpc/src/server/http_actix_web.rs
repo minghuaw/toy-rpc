@@ -7,13 +7,9 @@ use actix_web_actors::ws;
 use futures::{FutureExt};
 use std::{collections::HashMap, marker::PhantomData, sync::Arc, time::Duration, pin::Pin, future::Future};
 
-use crate::{
-    codec::{EraseDeserializer, Marshal, Unmarshal}, error::Error, 
-    message::{ErrorMessage, ExecutionMessage, ExecutionResult, MessageId, RequestHeader, ResponseHeader}, 
-    service::{AsyncServiceMap}
-};
+use crate::{codec::{EraseDeserializer, Marshal, Unmarshal}, error::Error, message::{ErrorMessage, ExecutionMessage, ExecutionResult, MessageId, RequestHeader, ResponseHeader}, service::{AsyncServiceMap, HandlerResult}};
 
-use super::{preprocess_header, preprocess_request};
+use super::{preprocess_header, preprocess_request, execute_call};
 
 // =============================================================================
 // `WsMessageActor`
@@ -258,7 +254,7 @@ impl actix::Handler<ExecutionMessage> for ExecutionManager {
                     Some(duration) => {
                         Box::pin(
                             async move {
-                                let result = super::execute_timed_call(id, duration, call_fut).await;
+                                let result = Self::execute_timed_call(id, duration, call_fut).await;
                                 let result = ExecutionResult{ id, result };
                                 broker.do_send(ExecutionMessage::Result(result))
                                     .unwrap_or_else(|e| log::error!("{:?}", e));
@@ -268,7 +264,7 @@ impl actix::Handler<ExecutionMessage> for ExecutionManager {
                     None => {
                         Box::pin(
                             async move {
-                                let result = super::execute_call(id, call_fut).await;
+                                let result = execute_call(id, call_fut).await;
                                 let result = ExecutionResult { id, result };
                                 broker.do_send(ExecutionMessage::Result(result))
                                     .unwrap_or_else(|e| log::error!("{:?}", e));
@@ -306,6 +302,24 @@ impl actix::Handler<ExecutionMessage> for ExecutionManager {
             ExecutionMessage::Stop => {
                 ctx.stop();
             }
+        }
+    }
+}
+
+impl ExecutionManager {
+    // A separate implementation is required because actix-web still
+    // depends on older version of tokio (actix-rt)
+    async fn execute_timed_call(
+        id: MessageId,
+        duration: Duration,
+        fut: impl Future<Output = HandlerResult>
+    ) -> HandlerResult {
+        match actix_rt::time::timeout(
+            duration, 
+            execute_call(id, fut)
+        ).await {
+            Ok(res) => res,
+            Err(_) => Err(Error::Timeout(Some(id)))
         }
     }
 }

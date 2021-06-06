@@ -2,28 +2,15 @@
 use async_trait::async_trait;
 use std::time::Duration;
 use toy_rpc::macros::{export_impl, export_trait};
-use cfg_if::cfg_if;
 
-// cfg_if! {
-//     if #[cfg(feature = "async_std_runtime")] {
-//         use async_std::task;
-//         async fn sleep(dur: Duration) {
-//             task::sleep(dur).await;
-//         }
-//     } else {
-//         use tokio::time;
-//         async fn sleep(dur: Duration) {
-//             time::sleep(dur).await;
-//         }
-//     }
-// }
+use super::sleep;
 
 pub struct Echo { }
 
-// #[cfg(any(
-//     feature = "async_std_runtime",
-//     feature = "tokio_runtime"
-// ))]
+#[cfg(any(
+    feature = "async_std_runtime",
+    feature = "tokio_runtime"
+))]
 #[export_impl]
 impl Echo {
     pub async fn not_exported(&self, _: ()) -> Result<(), String> {
@@ -38,21 +25,23 @@ impl Echo {
 
     #[export_method]
     pub async fn finite_loop(&self, _: ()) -> Result<(), String> {
-        for counter in 0..500 {
-            tokio::time::sleep(Duration::from_millis(500)).await;
+        for counter in 0i32..500 {
+            sleep(Duration::from_millis(500)).await;
             println!("finite_loop counter: {}", &counter);
         }
 
         Ok(())
     }
 
-    // #[export_method]
-    // pub async fn long_sleep(&self, _: ()) -> Result<(), String> {
-    //     println!("Start sleeping");
-    //     sleep(Duration::from_secs(10)).await;
-    //     println!("Sleeping ended");
-    //     Ok(())
-    // }
+    #[export_method]
+    pub async fn infinite_loop(&self, _: ()) -> Result<(), String> {
+        let mut counter = 0i32;
+        loop {
+            sleep(Duration::from_millis(500)).await;
+            println!("infinite_loop counter: {}", &counter);
+            counter += 1;
+        }
+    }
 }
 
 #[async_trait]

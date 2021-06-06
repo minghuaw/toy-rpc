@@ -280,20 +280,22 @@ cfg_if! {
                 feature = "async_std_runtime",
                 not(feature = "tokio_runtime")
             ))]
-            match ::async_std::future::timeout(duration, async {
-                execute_call(id, fut).await
-            }).await {
+            match ::async_std::future::timeout(
+                duration, 
+                execute_call(id, fut)
+            ).await {
                 Ok(res) => res,
                 Err(_) => Err(Error::Timeout(Some(id)))
             }
 
             #[cfg(all(
                 feature = "tokio_runtime",
-                not(feature = "async_std_runtime")
+                not(feature = "async_std_runtime"),
             ))]
-            match ::tokio::time::timeout(duration, async {
-                execute_call(id, fut).await
-            }).await {
+            match ::tokio::time::timeout(
+                duration, 
+                execute_call(id, fut)
+            ).await {
                 Ok(res) => res,
                 Err(_) => Err(Error::Timeout(Some(id)))
             }

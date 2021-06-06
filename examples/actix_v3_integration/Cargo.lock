@@ -2109,6 +2109,7 @@ version = "0.7.0-alpha.2"
 dependencies = [
  "actix",
  "actix-http",
+ "actix-rt",
  "actix-web",
  "actix-web-actors",
  "async-trait",

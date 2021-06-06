@@ -1,6 +1,7 @@
 use env_logger;
 use toy_rpc::client::{Client, Call};
 use toy_rpc::error::Error;
+use std::time::Duration;
 
 use actix_v3_integration::rpc::{BarRequest, BarResponse, FooRequest, FooResponse};
 
@@ -37,6 +38,12 @@ async fn main() {
     tokio::time::sleep(std::time::Duration::from_secs(2)).await;
     println!("Calling cancellation");
     call.cancel();
+
+    println!("Calling finite_loop with timeout");
+    let reply: Result<(), _> = client.timeout(Duration::from_secs(4))
+        .call("BarService.finite_loop", ())
+        .await;
+    println!("{:?}", reply);
 
     // third request, get_counter
     let args = ();
