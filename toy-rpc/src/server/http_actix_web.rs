@@ -34,7 +34,6 @@ where
 
     /// Start a new `ExecutionManager`
     fn started(&mut self, ctx: &mut Self::Context) {
-        log::debug!("WsMessageActor is started");
         let responder: Recipient<ExecutionResult> = ctx.address().recipient();
         let manager = ExecutionManager{ 
             responder,
@@ -47,7 +46,6 @@ where
     }
 
     fn stopping(&mut self, _: &mut Self::Context) -> Running {
-        log::debug!("WsMessageActor is stopping");
         if let Some(ref manager) = self.manager {
             manager.do_send(ExecutionMessage::Stop)
                 .unwrap_or_else(|err| log::error!("{}", err));
@@ -212,12 +210,10 @@ struct ExecutionManager {
 impl Actor for ExecutionManager {
     type Context = Context<Self>;
 
-    fn started(&mut self, _: &mut Self::Context) {
-        log::debug!("ExecutionManager is started");
-    }
+    // fn started(&mut self, _: &mut Self::Context) {
+    // }
 
     fn stopping(&mut self, _: &mut Self::Context) -> Running {
-        log::debug!("ExecutionManager is stopping");
         for (id, exec) in self.executions.drain() {
             exec.send(Cancel(id)) 
                 .unwrap_or_else(|e| log::error!("{}", e));
@@ -272,10 +268,10 @@ impl actix::Handler<ExecutionMessage> for ExecutionManager {
                 actix::spawn(async move {
                     futures::select! {
                         _ = rx.recv_async().fuse() => { 
-                            log::debug!("Future is canceled")
+                            // log::debug!("Future is canceled")
                         },
                         _ = fut.fuse() => {
-                            log::debug!("Future is complete")
+                            // log::debug!("Future is complete")
                         }
                     }
                 });

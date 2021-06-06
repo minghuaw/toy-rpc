@@ -9,7 +9,7 @@ use crossbeam::atomic::AtomicCell;
 use crate::{Error, codec::split::SplittableClientCodec, message::{
         AtomicMessageId, ClientRequestBody, ClientResponseResult, MessageId, RequestHeader,
         ClientMessage,
-    }};
+    }, };
 use crate::util::Conclude;
 
 cfg_if! {
@@ -142,7 +142,6 @@ type ResponseMap = HashMap<MessageId, oneshot::Sender<ClientResponseResult>>;
 pub struct Client<Mode> {
     count: AtomicMessageId,
     pending: Arc<Mutex<ResponseMap>>,
-    // timeout: Mutex<Option<Duration>>,
     timeout: AtomicCell<Option<Duration>>,
 
     // both reader and writer tasks should return nothing cliente handles will be used to drop the tasks
@@ -348,6 +347,16 @@ impl Client<Connected> {
             handle: Box::new(handle)
         }
     }
+
+    /// Closes connection with the server 
+    /// 
+    /// Dropping the client will close the connection as well
+    pub async fn close(self) {
+        self.writer_tx.send_async(
+            ClientMessage::Stop
+        ).await
+        .unwrap_or_else(|err| log::error!("{}", err));
+    }
 }
 
 cfg_if! {
@@ -449,6 +458,7 @@ cfg_if! {
                         writer.write_request(header, &body).await  
                     },
                     ClientMessage::Stop => {
+                        writer.close().await;
                         return
                     }     
                 }

@@ -130,7 +130,7 @@ cfg_if! {
                             log::debug!("Stopping execution as client is disconnected");
                             util::Terminate::terminate(handle).await;
                         }
-                        log::debug!("Execution loop is stopped");
+                        log::debug!("Client connection is closed");
                         break;
                     }
                 }
