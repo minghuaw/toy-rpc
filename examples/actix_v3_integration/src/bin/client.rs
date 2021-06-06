@@ -38,6 +38,8 @@ async fn main() {
     tokio::time::sleep(std::time::Duration::from_secs(2)).await;
     println!("Calling cancellation");
     call.cancel();
+    let reply = call.await; // this should give a `Canceled` error
+    println!("{:?}", reply);
 
     println!("Calling finite_loop with timeout");
     let reply: Result<(), _> = client.timeout(Duration::from_secs(4))

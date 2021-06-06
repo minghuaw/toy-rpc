@@ -66,12 +66,6 @@ impl<T: 'static> From<flume::SendError<T>> for Error {
     }
 }
 
-// impl From<flume::RecvError> for Error {
-//     fn from(err: flume::RecvError) -> Self {
-//         Self::Internal(Box::new(err))
-//     }
-// }
-
 impl From<ErrorMessage> for Error {
     fn from(msg: ErrorMessage) -> Self {
         Self::from_err_msg(msg)

@@ -23,12 +23,16 @@ async fn run() {
     sleep(Duration::from_secs(2)).await;
     println!("Calling cancellation");
     call.cancel();
+    let reply = call.await;
+    println!("{:?}", reply);
 
     println!("Calling infinite loop");
     let call: Call<()> = client.echo().infinite_loop(());
     sleep(Duration::from_secs(3)).await;
     println!("Calling cancellation");
     call.cancel();
+    let reply = call.await;
+    println!("{:?}", reply);
 
     println!("Calling infinite loop with timeout");
     let call: Call<()> = client.timeout(Duration::from_secs(3))

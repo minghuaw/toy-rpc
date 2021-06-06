@@ -3,7 +3,7 @@
 use cfg_if::cfg_if;
 use flume::{Sender};
 use futures::{Future, channel::oneshot, lock::Mutex};
-use pin_project::pin_project;
+// use pin_project::{pin_project, pinned_drop};
 use std::{collections::HashMap, marker::PhantomData, pin::Pin, sync::{Arc, atomic::Ordering}, task::{Context, Poll}, time::Duration};
 use crossbeam::atomic::AtomicCell;
 
@@ -58,7 +58,7 @@ cfg_if! {
 ///
 /// # Example
 ///
-#[pin_project]
+#[pin_project::pin_project(PinnedDrop)]
 pub struct Call<Res> {
     id: MessageId,
     // cancel: oneshot::Sender<MessageId>,
@@ -74,8 +74,7 @@ where
 {
     /// Cancel the RPC call
     /// 
-    pub fn cancel(self) {
-        let mut handle = self.handle;
+    pub fn cancel(&self) {
         match self.cancel.send(self.id) {
             Ok(_) => {
                 log::info!("Call is canceled");
@@ -84,7 +83,14 @@ where
                 log::error!("Failed to cancel")
             }
         }
+    }
+}
 
+#[pin_project::pinned_drop]
+impl<Res> PinnedDrop for Call<Res> {
+    fn drop(self: Pin<&mut Self>) {
+        let this = self.project();
+        let handle = this.handle;
         handle.conclude();
     }
 }
@@ -482,6 +488,12 @@ cfg_if! {
                             ClientMessage::Cancel(id)
                         ).await?;
                     }
+                    
+                    done.send(
+                        Err(Error::Canceled(Some(id)))
+                    ).unwrap_or_else(|_| {
+                        log::error!("Failed to send result over done channel")
+                    });
                 },
                 res = handle_response::<Res>(resp_rx, timeout).fuse() => { 
                     done.send(res)
