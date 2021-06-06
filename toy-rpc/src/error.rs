@@ -36,7 +36,7 @@ pub enum Error {
     ExecutionError(String),
 
     /// Cancellation error when an RPC call is cancelled
-    #[error("Request is canceled")]
+    #[error("Request id {0:?} is canceled")]
     Canceled(Option<MessageId>),
 
     /// Timeout error when an RPC request timesout
@@ -45,7 +45,7 @@ pub enum Error {
     /// Thus, the situation where a response comes back to the client just
     /// at the moment of timeout could happen and may still result in a timeout
     /// error.
-    #[error("Request timedout")]
+    #[error("Request id {0:?} reached timeout")]
     Timeout(Option<MessageId>),
 }
 

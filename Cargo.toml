@@ -13,7 +13,7 @@ exclude = [
     "examples/warp_integration",
     "examples/docs_examples",
     "examples/macro_expand",
-    "examples/cancellation",
+    "examples/cancel_and_timeout",
     "examples/example-service",
     "examples/example-server",
     "examples/example-client"

@@ -285,7 +285,11 @@ impl Client<Connected> {
     /// 
     /// // Cancel the call
     /// let call: Call<()> = client.call("SomeService.infinite_loop", ());
-    /// call.cancel();
+    /// // cancel takes a reference
+    /// // .await on a canceled `Call` will return `Err(Error::Canceled(Some(id)))`
+    /// call.cancel(); 
+    /// let reply = call.await;
+    /// println!("This should be a Err(Error::Canceled) {:?}", reply);
     /// ```
     #[cfg(any(
         all(feature = "async_std_runtime", not(feature = "tokio_runtime")),
@@ -347,7 +351,6 @@ cfg_if! {
         use crate::message::{ResponseHeader, CANCELLATION_TOKEN, CANCELLATION_TOKEN_DELIM, 
             Metadata, TIMEOUT_TOKEN, TimeoutRequestBody};
     
-        // #[cfg(any(feature = "async_std_runtime", feature = "tokio_runtime"))]
         pub(crate) async fn reader_loop(
             mut reader: impl ClientCodecRead,
             pending: Arc<Mutex<ResponseMap>>,
@@ -367,7 +370,6 @@ cfg_if! {
             }
         }
         
-        // #[cfg(any(feature = "async_std_runtime", feature = "tokio_runtime"))]
         async fn read_once(
             reader: &mut impl ClientCodecRead,
             pending: &Arc<Mutex<ResponseMap>>,
@@ -406,7 +408,6 @@ cfg_if! {
             Ok(())
         }
         
-        // #[cfg(any(feature = "async_std_runtime", feature = "tokio_runtime"))]
         pub(crate) async fn writer_loop(
             mut writer: impl ClientCodecWrite,
             msgs: Receiver<ClientMessage>,
@@ -446,7 +447,6 @@ cfg_if! {
             }            
         }
         
-        // #[cfg(any(feature = "async_std_runtime", feature = "tokio_runtime"))]
         async fn handle_call<Res>(
             pending: Arc<Mutex<ResponseMap>>,
             header: RequestHeader,
@@ -483,6 +483,7 @@ cfg_if! {
             // .await both the cancellation and RPC response
             select! {
                 res = cancel.recv_async().fuse() => {
+                    // Send a cancellation request to the server
                     if let Ok(id) = res {
                         writer_tx.send_async(
                             ClientMessage::Cancel(id)
@@ -495,7 +496,13 @@ cfg_if! {
                         log::error!("Failed to send result over done channel")
                     });
                 },
-                res = handle_response::<Res>(resp_rx, timeout).fuse() => { 
+                res = handle_response::<Res>(id, resp_rx, timeout).fuse() => { 
+                    // In case of timeout, the response may not be received by the reader loop
+                    // and thus need to remove the response sender from the HashMap
+                    if let Err(Error::Timeout(_)) = res {
+                        let mut _pending = pending.lock().await;
+                        _pending.remove(&id);
+                    }
                     done.send(res)
                         .unwrap_or_else(|_| {
                             log::error!("Failed to send result over done channel")
@@ -506,10 +513,9 @@ cfg_if! {
             Ok(())
         }
         
-        // #[cfg(any(feature = "async_std_runtime", feature = "tokio_runtime"))]
         async fn handle_response<Res>(
+            id: MessageId,
             response: oneshot::Receiver<ClientResponseResult>,
-            // done: oneshot::Sender<Result<Res, Error>>,
             timeout: Option<Duration>,
         ) -> Result<Res, Error>
         where
@@ -525,29 +531,25 @@ cfg_if! {
                         feature = "async_std_runtime",
                         not(feature = "tokio_runtime")
                     ))]
-                    match ::async_std::future::timeout(duration, async {
+                    let result = ::async_std::future::timeout(duration, async {
                         response.await
                             .map_err(|err| Error::Internal(Box::new(err)))
-                    }).await {
-                        Ok(res) => res?,
-                        Err(_) => {
-                            // No need to deserialize if already timed out
-                            return Err(Error::Timeout(None))
-                        }
-                    }
+                    }).await;
 
                     #[cfg(all(
                         feature = "tokio_runtime",
                         not(feature = "async_std_runtime")
                     ))]
-                    match ::tokio::time::timeout(duration, async {
+                    let result = ::tokio::time::timeout(duration, async {
                         response.await
                             .map_err(|err| Error::Internal(Box::new(err)))
-                    }).await {
+                    }).await;
+                    
+                    match result {
                         Ok(res) => res?,
                         Err(_) => {
                             // No need to deserialize if already timed out
-                            return Err(Error::Timeout(None))
+                            return Err(Error::Timeout(Some(id)))
                         }
                     }
                 }
@@ -562,9 +564,6 @@ cfg_if! {
                 ), // handles error msg sent from server
             };
         
-            // done.send(res)
-            //     .map_err(|_| Error::Internal("Failed to send over done channel".into()))?;
-            // Ok(())
             res
         }
     }

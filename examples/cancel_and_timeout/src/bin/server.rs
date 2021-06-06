@@ -1,6 +1,6 @@
 use cfg_if::cfg_if;
 use toy_rpc::Server;
-use cancellation::rpc::{Echo};
+use cancel_and_timeout::rpc::{Echo};
 
 cfg_if! {
     if #[cfg(feature = "async_std_runtime")] {

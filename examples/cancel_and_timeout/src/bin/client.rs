@@ -3,7 +3,7 @@ use cfg_if::cfg_if;
 use std::time::Duration;
 use toy_rpc::client::{Client, Call};
 
-use cancellation::{sleep, rpc::*};
+use cancel_and_timeout::{sleep, rpc::*};
 
 async fn run() {
     env_logger::init();

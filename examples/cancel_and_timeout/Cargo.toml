@@ -1,5 +1,5 @@
 [package]
-name = "cancellation"
+name = "cancel_and_timeout"
 version = "0.1.0"
 authors = ["minghuaw <michael.wu1107@gmail.com>"]
 edition = "2018"
