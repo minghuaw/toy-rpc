@@ -70,6 +70,7 @@ impl Server {
 
 cfg_if! {
     if #[cfg(any(
+        feature = "docs",
         all(feature = "async_std_runtime", not(feature = "tokio_runtime")),
         all(feature = "tokio_runtime", not(feature = "async_std_runtime")),
     ))] {

@@ -407,7 +407,7 @@ cfg_if! {
             #[cfg(any(all(feature = "http_actix_web", not(feature = "http_tide"),), feature = "docs"))]
             #[cfg_attr(
                 feature = "docs",
-                doc(cfg(all(feature = "http_actix_web", not(feature = "http_tide"))))
+                doc(cfg(all(feature = "http_actix_web", not(feature = "http_tide"), not(feature = "http_warp"))))
             )]
             pub fn handle_http() -> fn(&mut web::ServiceConfig) {
                 Self::scope_config
