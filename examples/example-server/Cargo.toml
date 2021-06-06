@@ -15,7 +15,7 @@ log = "0.4.14"
 # RPC service definition
 example-service = { version = "0.1.0", path = "../example-service" }
 
-toy-rpc = { version = "0.7.0-alpha.1", features = ["tokio_runtime", "server"] }
+toy-rpc = { version = "0.7.0-alpha.2", features = ["tokio_runtime", "server"] }
 
 # [dependencies.toy-rpc]
 # version = "0.7.0-alpha.1"

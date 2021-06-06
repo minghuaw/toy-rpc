@@ -14,7 +14,7 @@ tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
 # RPC service definition
 example-service = { version = "0.1.0", path = "../example-service" }
 
-toy-rpc = { version = "0.7.0-alpha.1", features = ["tokio_runtime", "client"] }
+toy-rpc = { version = "0.7.0-alpha.2", features = ["tokio_runtime", "client"] }
 
 # [dependencies.toy-rpc]
 # version = "0.7.0-alpha.0"
