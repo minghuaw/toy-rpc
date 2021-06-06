@@ -253,12 +253,6 @@ impl actix::Handler<ExecutionMessage> for ExecutionManager {
             } => {
                 let call_fut = call(method, deserializer);
                 let broker = ctx.address().recipient();
-                // let fut = async move {
-                //     let result = super::execute_call(id, call_fut).await;
-                //     let result = ExecutionResult { id, result };
-                //     broker.do_send(ExecutionMessage::Result(result)) 
-                //         .unwrap_or_else(|e| log::error!("{:?}", e));
-                // };
 
                 let fut: Pin<Box<dyn Future<Output=()>>> = match self.durations.remove(&id) {
                     Some(duration) => {

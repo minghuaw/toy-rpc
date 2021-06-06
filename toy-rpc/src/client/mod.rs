@@ -11,7 +11,7 @@ use crate::{Error, codec::split::SplittableClientCodec, message::{
         AtomicMessageId, ClientRequestBody, ClientResponseResult, MessageId, RequestHeader,
         ClientMessage,
     }};
-use crate::util::Terminate;
+use crate::util::Conclude;
 
 cfg_if! {
     if #[cfg(any(
@@ -65,7 +65,7 @@ pub struct Call<Res> {
     cancel: Sender<MessageId>,
     #[pin]
     done: oneshot::Receiver<Result<Res, Error>>,
-    handle: Box<dyn Terminate + Send + Sync>,
+    handle: Box<dyn Conclude + Send + Sync>,
 }
 
 impl<Res> Call<Res>
@@ -73,7 +73,7 @@ where
     Res: serde::de::DeserializeOwned,
 {
     /// Cancel the RPC call
-
+    /// 
     pub fn cancel(self) {
         let mut handle = self.handle;
         match self.cancel.send(self.id) {
@@ -85,7 +85,7 @@ where
             }
         }
 
-        handle.terminate();
+        handle.conclude();
     }
 }
 

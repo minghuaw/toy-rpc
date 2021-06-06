@@ -32,18 +32,18 @@ cfg_if! {
         ),
     ))] {
         use std::sync::Arc;
-        use std::collections::HashMap;
+        // use std::collections::HashMap;
         use ::async_std::net::{TcpListener, TcpStream};
         use ::async_std::task::{self};
         use futures::{StreamExt};
-        use flume::{Receiver, Sender};
+        // use flume::{Receiver, Sender};
 
         use crate::error::Error;
         use crate::transport::ws::WebSocketConn;
         use crate::codec::split::SplittableServerCodec;
         use crate::{
             codec::{DefaultCodec},
-            message::{ExecutionMessage, ExecutionResult},
+            // message::{ExecutionMessage, ExecutionResult},
         };
 
         use super::{AsyncServiceMap, Server};
@@ -243,7 +243,7 @@ cfg_if! {
                 services: Arc<AsyncServiceMap>
             ) -> Result<(), Error> {
                 let (exec_sender, exec_recver) = flume::unbounded();
-                let (resp_sender, resp_recver) = flume::unbounded::<ExecutionResult>();
+                let (resp_sender, resp_recver) = flume::unbounded();
                 let (codec_writer, codec_reader) = codec.split();
 
                 let reader_handle = task::spawn(
@@ -255,7 +255,7 @@ cfg_if! {
                 );
 
                 let executor_handle = task::spawn(
-                    broker_loop(exec_sender, exec_recver, resp_sender)
+                    super::broker_loop(exec_sender, exec_recver, resp_sender)
                 );
 
                 reader_handle.await?;
@@ -265,75 +265,69 @@ cfg_if! {
             }
         }
 
-        async fn broker_loop(
-            broker: Sender<ExecutionMessage>,
-            reader: Receiver<ExecutionMessage>,
-            writer: Sender<ExecutionResult>,
-        ) -> Result<(), Error> {
-            let mut task_map = HashMap::new();
-            let mut durations = HashMap::new();
+        // async fn broker_loop(
+        //     broker: Sender<ExecutionMessage>,
+        //     reader: Receiver<ExecutionMessage>,
+        //     writer: Sender<ExecutionResult>,
+        // ) -> Result<(), Error> {
+        //     let mut task_map = HashMap::new();
+        //     let mut durations = HashMap::new();
 
-            while let Ok(msg) = reader.recv_async().await {
-                match msg {
-                    ExecutionMessage::TimeoutInfo(id, duration) => {
-                        durations.insert(id, duration);
-                    },
-                    ExecutionMessage::Request{
-                        call,
-                        id,
-                        method,
-                        deserializer
-                    } => {
-                        let fut = call(method, deserializer);
-                        let _broker = broker.clone();
-                        // let handle = task::spawn(async move {
-                        //     let result = super::execute_call(id, fut).await;
-                        //     let result = ExecutionResult { id, result };
-                        //     _broker.send_async(ExecutionMessage::Result(result)).await
-                        //         .unwrap_or_else(|err| log::error!("Failed to send to response writer ({:?})", err));
-                        // });
+        //     while let Ok(msg) = reader.recv_async().await {
+        //         match msg {
+        //             ExecutionMessage::TimeoutInfo(id, duration) => {
+        //                 durations.insert(id, duration);
+        //             },
+        //             ExecutionMessage::Request{
+        //                 call,
+        //                 id,
+        //                 method,
+        //                 deserializer
+        //             } => {
+        //                 let fut = call(method, deserializer);
+        //                 let _broker = broker.clone();
                         
-                        let handle = match durations.remove(&id) {
-                            Some(duration) => {
-                                task::spawn(async move {
-                                    let result = super::execute_timed_call(id, duration, fut).await;
-                                    let result = ExecutionResult { id, result };
-                                    _broker.send_async(ExecutionMessage::Result(result)).await
-                                        .unwrap_or_else(|e| log::error!("{:?}", e));
-                                })
-                            },
-                            None => {
-                                task::spawn(async move {
-                                    let result = super::execute_call(id, fut).await;
-                                    let result = ExecutionResult { id, result };
-                                    _broker.send_async(ExecutionMessage::Result(result)).await                                    
-                                        .unwrap_or_else(|e| log::error!("{:?}", e));
-                                })
-                            }
-                        };
-                        task_map.insert(id, handle);
-                    },
-                    ExecutionMessage::Result(msg) => {
-                        task_map.remove(&msg.id);
-                        writer.send_async(msg).await?;
-                    },
-                    ExecutionMessage::Cancel(id) => {
-                        if let Some(handle) = task_map.remove(&id) {
-                            handle.cancel().await;
-                        }
-                    },
-                    ExecutionMessage::Stop => {
-                        for (_, handle) in task_map.drain() {
-                            log::debug!("Stopping execution as client is disconnected");
-                            handle.cancel().await;
-                        }
-                        log::debug!("Execution loop is stopped");
-                        return Ok(())
-                    }
-                }
-            }
+        //                 let handle = match durations.remove(&id) {
+        //                     Some(duration) => {
+        //                         task::spawn(async move {
+        //                             let result = super::execute_timed_call(id, duration, fut).await;
+        //                             let result = ExecutionResult { id, result };
+        //                             _broker.send_async(ExecutionMessage::Result(result)).await
+        //                                 .unwrap_or_else(|e| log::error!("{:?}", e));
+        //                         })
+        //                     },
+        //                     None => {
+        //                         task::spawn(async move {
+        //                             let result = super::execute_call(id, fut).await;
+        //                             let result = ExecutionResult { id, result };
+        //                             _broker.send_async(ExecutionMessage::Result(result)).await                                    
+        //                                 .unwrap_or_else(|e| log::error!("{:?}", e));
+        //                         })
+        //                     }
+        //                 };
+        //                 task_map.insert(id, handle);
+        //             },
+        //             ExecutionMessage::Result(msg) => {
+        //                 task_map.remove(&msg.id);
+        //                 writer.send_async(msg).await?;
+        //             },
+        //             ExecutionMessage::Cancel(id) => {
+        //                 if let Some(handle) = task_map.remove(&id) {
+        //                     handle.cancel().await;
+        //                 }
+        //             },
+        //             ExecutionMessage::Stop => {
+        //                 for (_, handle) in task_map.drain() {
+        //                     log::debug!("Stopping execution as client is disconnected");
+        //                     handle.cancel().await;
+        //                 }
+        //                 log::debug!("Execution loop is stopped");
+        //                 return Ok(())
+        //             }
+        //         }
+        //     }
 
-            Ok(())
-        }
+        //     Ok(())
+        // }
     }
 }
