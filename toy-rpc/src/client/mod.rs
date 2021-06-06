@@ -68,6 +68,8 @@ cfg_if! {
 /// // cancel the call regardless of whether the response is received or not
 /// let call: Call<()> = client.call("Arith.infinite_loop", ());
 /// call.cancel();
+/// // You can still .await on the canceled `Call` but will get an error
+/// let result = call.await; // Err(Error::Canceled(Some(id)))
 /// ```
 #[pin_project::pin_project(PinnedDrop)]
 pub struct Call<Res> {
@@ -94,6 +96,13 @@ where
                 log::error!("Failed to cancel")
             }
         }
+    }
+
+    /// Gets the ID number of the call
+    ///
+    /// The client RPC calls have a monotonically increasing ID number of type `u16`
+    pub fn get_id(&self) -> MessageId {
+        self.id
     }
 }
 

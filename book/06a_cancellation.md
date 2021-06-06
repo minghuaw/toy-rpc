@@ -94,6 +94,9 @@ async main() {
     // wait for 2 seconds and cancel
     time::sleep(Duration::from_secs(2)).await;
     call.cancel();
+    // You can still .await on a canceled Call, but this will return an error
+    let reply = call.await;
+    println!("{:?}", reply); // Err(Error::Canceled(Some(id)))
 
     // the `Call` type can be `.await`ed to wait for the response
     let call = client
