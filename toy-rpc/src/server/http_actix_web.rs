@@ -151,7 +151,7 @@ where
     fn handle(&mut self, msg: ExecutionResult, ctx: &mut Self::Context) -> Self::Result {
         Self::send_response_via_context(msg, ctx)
             .unwrap_or_else(|err|                 
-                log::error!("Error encountered sending response via context: {:?}", err)
+                log::error!("{:?}", err)
             );
     }
 }
@@ -181,13 +181,7 @@ where
             Err(err) => {
                 log::trace!("Message {} Error", id.clone());
                 let header = ResponseHeader { id, is_error: true };
-                let msg = match ErrorMessage::from_err(err) {
-                    Ok(m) => m,
-                    Err(e) => {
-                        log::error!("Cannot send back IoError or ParseError: {:?}", e);
-                        return Err(e);
-                    }
-                };
+                let msg = ErrorMessage::from_err(err)?;
 
                 // compose error response header
                 let buf = C::marshal(&header)?;

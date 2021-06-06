@@ -36,6 +36,10 @@ async fn run() {
         .infinite_loop(());
     let reply = call.await;
     println!("{:?}", reply);
+
+    println!("Make another echo call before dropping client");
+    let reply = client.echo().echo_i32(31).await;
+    println!("{:?}", reply);
 }
 
 cfg_if! {

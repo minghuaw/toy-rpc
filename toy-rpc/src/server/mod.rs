@@ -116,9 +116,9 @@ cfg_if! {
                         let handle = handle_request(_broker, &mut durations, id, fut).await;
                         executions.insert(id, handle);
                     },
-                    ExecutionMessage::Result(msg) => {
-                        executions.remove(&msg.id);
-                        writer.send_async(msg).await?;
+                    ExecutionMessage::Result(result) => {
+                        executions.remove(&result.id);
+                        writer.send_async(result).await?;
                     },
                     ExecutionMessage::Cancel(id) => {
                         if let Some(handle) = executions.remove(&id) {
@@ -347,7 +347,7 @@ cfg_if! {
                         ErrorKind::UnexpectedEof,
                         "Failed to read message body",
                     ));
-                    log::error!("{}", &err);
+                    log::error!("{:?}", &err);
                     return Err(err);
                 }
             }
