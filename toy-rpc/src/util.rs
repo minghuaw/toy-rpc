@@ -27,6 +27,7 @@ pub trait GracefulShutdown {
     async fn close(&mut self);
 }
 
+/// .await until the end of the task in a blocking manner
 pub(crate) trait Conclude {
     fn conclude(&mut self);
 }
@@ -48,4 +49,27 @@ impl Conclude for tokio::task::JoinHandle<Result<(), Error>> {
         }
     }
 }
+
+/// This trait simply cancel/abort the task during execution
+#[async_trait]
+pub(crate) trait Terminate {
+    async fn terminate(self);
+}
+
+#[cfg(feature = "async_std_runtime")]
+#[async_trait]
+impl<T: Send> Terminate for async_std::task::JoinHandle<T> {
+    async fn terminate(self) {
+        self.cancel().await;
+    }
+}
+
+#[cfg(feature = "tokio_runtime")]
+#[async_trait]
+impl<T: Send> Terminate for tokio::task::JoinHandle<T> {
+    async fn terminate(self) {
+        self.abort();
+    }
+}
+
 

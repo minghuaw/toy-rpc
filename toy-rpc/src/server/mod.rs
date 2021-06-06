@@ -92,6 +92,7 @@ cfg_if! {
             },
         };
         use crate::error::Error;
+        use crate::util;
 
         async fn broker_loop(
             broker: Sender<ExecutionMessage>,
@@ -123,30 +124,13 @@ cfg_if! {
                     },
                     ExecutionMessage::Cancel(id) => {
                         if let Some(handle) = executions.remove(&id) {
-                            #[cfg(all(
-                                feature = "async_std_runtime", not(feature = "tokio_runtime")
-                            ))]
-                            handle.cancel().await;
-
-                            #[cfg(all(
-                                feature = "tokio_runtime", not(feature = "async_std_runtime")
-                            ))]
-                            handle.abort();
+                            util::Terminate::terminate(handle).await;
                         }
                     },
                     ExecutionMessage::Stop => {
                         for (_, handle) in executions.drain() {
                             log::debug!("Stopping execution as client is disconnected");
-
-                            #[cfg(all(
-                                feature = "async_std_runtime", not(feature = "tokio_runtime")
-                            ))]
-                            handle.cancel().await;
-
-                            #[cfg(all(
-                                feature = "tokio_runtime", not(feature = "async_std_runtime")
-                            ))]
-                            handle.abort();
+                            util::Terminate::terminate(handle).await;
                         }
                         log::debug!("Execution loop is stopped");
                         break;
@@ -226,7 +210,6 @@ cfg_if! {
             // Keep reading until no header can be read
             while let Some(header) = codec_reader.read_request_header().await {
                 let header = header?;
-                // [0] read request body
                 // This should be performed before processing because even if an
                 // invalid request body should be consumed from the IO
                 let deserializer = get_request_deserializer(&mut codec_reader).await?;
