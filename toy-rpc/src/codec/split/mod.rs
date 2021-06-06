@@ -4,7 +4,6 @@ use async_trait::async_trait;
 use std::marker::PhantomData;
 
 use super::*;
-use crate::util::GracefulShutdown;
 
 mod server;
 pub use server::*;
@@ -184,6 +183,7 @@ cfg_if! {
         )
     ))] {
         use crate::transport::{PayloadRead, PayloadWrite};
+        use crate::util::GracefulShutdown;
 
         #[async_trait]
         impl<R, C> CodecRead for CodecReadHalf<R, C, ConnTypePayload>
