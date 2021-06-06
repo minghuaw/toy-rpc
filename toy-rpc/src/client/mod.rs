@@ -2,7 +2,7 @@
 
 use cfg_if::cfg_if;
 use flume::{Sender};
-use futures::{Future, TryFutureExt, channel::oneshot, lock::Mutex};
+use futures::{Future, channel::oneshot, lock::Mutex};
 use pin_project::pin_project;
 use std::{collections::HashMap, marker::PhantomData, pin::Pin, sync::Arc, task::{Context, Poll}, time::Duration};
 use crossbeam::atomic::AtomicCell;
@@ -289,18 +289,27 @@ cfg_if! {
             Res: serde::de::DeserializeOwned + Send,
         {
             let id = header.get_id();
+
+            // Send a timeout request first if timeout is set
+            if let Some(duration) = &timeout {
+                writer_tx.send_async(
+                    ClientMessage::Timeout(id, duration.clone())
+                ).await?;
+            }
+            // Then send out the RPC request itself
             writer_tx.send_async(
                 ClientMessage::Request(header, body)
             ).await?;
         
+            // Done channels that .await for response
             let (resp_tx, resp_rx) = oneshot::channel();
-        
             // insert done channel to ResponseMap
             {
                 let mut _pending = pending.lock().await;
                 _pending.insert(id, resp_tx);
             }
         
+            // .await both the cancellation and RPC response
             select! {
                 res = cancel.recv_async().fuse() => {
                     if let Ok(id) = res {

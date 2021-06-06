@@ -2,7 +2,6 @@
 
 use ::tokio::io::{AsyncRead, AsyncWrite};
 use ::tokio::task;
-use ::tokio::runtime::Handle;
 use std::sync::atomic::Ordering;
 use crossbeam::atomic::AtomicCell;
 

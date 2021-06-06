@@ -39,6 +39,12 @@ pub enum Error {
     #[error("Request is canceled")]
     Canceled(Option<MessageId>),
 
+    /// Timeout error when an RPC request timesout
+    ///
+    /// The timeout is tracked independently on the client and the server.
+    /// Thus, the situation where a response comes back to the client just
+    /// at the moment of timeout could happen and may still result in a timeout
+    /// error.
     #[error("Request timedout")]
     Timeout(Option<MessageId>),
 }
