@@ -1,3 +1,5 @@
+//! Builder of the Server
+
 use std::{
     sync::Arc,
     collections::HashMap
