@@ -167,11 +167,11 @@
                     <main>
                         <h1 id="http-integration-with-actix-web"><a class="header" href="#http-integration-with-actix-web">HTTP integration with <code>actix-web</code></a></h1>
 <p>The <code>&quot;http_actix_web&quot;</code> feature flag should be toggled on to enable HTTP integration with <code>actix-web</code>. Enabling <code>&quot;http_actix_web&quot;</code> feature flag will also enable the <code>&quot;tokio_runtime&quot;</code> feature flag. </p>
-<p>A convenience method <a href="https://docs.rs/toy-rpc/0.7.0-alpha.1/toy_rpc/server/struct.Server.html#method.handle_http"><code>Server::handle_http()</code></a> is available when <code>&quot;http_actix_web&quot;</code> is the only enabled http integration feature flag. If you have multiple http integration feature flags enabled, you can use the <a href="https://docs.rs/toy-rpc/0.7.0-alpha.1/toy_rpc/server/struct.Server.html#method.scope_config"><code>Server::scope_config</code></a> method instead (please note that you should use <code>scope_config</code> without brackets).</p>
+<p>A convenience method <a href="https://docs.rs/toy-rpc/0.7.0-alpha.2/toy_rpc/server/struct.Server.html#method.handle_http"><code>Server::handle_http()</code></a> is available when <code>&quot;http_actix_web&quot;</code> is the only enabled http integration feature flag. If you have multiple http integration feature flags enabled, you can use the <a href="https://docs.rs/toy-rpc/0.7.0-alpha.2/toy_rpc/server/struct.Server.html#method.scope_config"><code>Server::scope_config</code></a> method instead (please note that you should use <code>scope_config</code> without brackets).</p>
 <p>We will demonstrate the usage with a new example.</p>
 <pre><code class="language-toml">[dependencies]
 actix-web = &quot;3.3.2&quot;
-toy-rpc = { version = &quot;0.7.0-alpha.1&quot;, features = [&quot;http_actix_web&quot;, &quot;server&quot;] }
+toy-rpc = { version = &quot;0.7.0-alpha.2&quot;, features = [&quot;http_actix_web&quot;, &quot;server&quot;] }
 </code></pre>
 <pre><pre class="playground"><code class="language-rust edition2018">use std::sync::Arc;
 use toy_rpc::macros::export_impl;

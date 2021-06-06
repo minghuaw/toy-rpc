@@ -243,7 +243,7 @@ You must enable at least one runtime feature flag and the <code>server</code> an
 <h2 id="add-dependencies"><a class="header" href="#add-dependencies">Add dependencies</a></h2>
 <pre><code class="language-toml">[dependencies]
 tokio = { version = &quot;1&quot;, features = [&quot;rt-multi-thread&quot;, &quot;macros&quot;, &quot;net&quot;] }
-toy-rpc = { version = &quot;0.7.0-alpha.1, feature = [&quot;tokio_runtime&quot;, &quot;server&quot;, &quot;client&quot;] }
+toy-rpc = { version = &quot;0.7.0-alpha.2&quot;, feature = [&quot;tokio_runtime&quot;, &quot;server&quot;, &quot;client&quot;] }
 </code></pre>
 <h2 id="project-structure"><a class="header" href="#project-structure">Project structure</a></h2>
 <pre><code>./src
@@ -386,7 +386,7 @@ where
 <p>Use the following dependencies to work with the examples below</p>
 <pre><code class="language-toml">[dependencies]
 async-trait = &quot;0.1.50&quot;
-toy-rpc = &quot;0.7.0-alpha.1&quot;
+toy-rpc = &quot;0.7.0-alpha.2&quot;
 </code></pre>
 <h3 id="export_impl"><a class="header" href="#export_impl"><code>#[export_impl]</code></a></h3>
 <p>When you have both the service definition and the implementation in the same file, you can use <code>#[export_impl]</code> on the <code>impl</code> block. This will also use the name of the <code>struct</code> as the default service name.</p>
@@ -492,7 +492,7 @@ pub trait Arith {
 <p>The server API look straightforward and fairly close to that of golang's <code>net/rpc</code> package. First we should choose an async runtime and enable the <code>&quot;server&quot;</code> feature flag in our <code>Cargo.toml</code> file. Here, we will choose the <code>tokio</code> runtime be enabling the <code>&quot;tokio_runtime&quot;</code> feature flag.</p>
 <pre><code class="language-toml">[dependencies]
 tokio = { version = &quot;1&quot;, features = [&quot;rt-multi-thread&quot;, &quot;macros&quot;, &quot;net&quot;] }
-toy-rpc = { version = &quot;0.7.0-alpha.1&quot;, features = [&quot;tokio_runtime&quot;, &quot;server&quot;] }
+toy-rpc = { version = &quot;0.7.0-alpha.2&quot;, features = [&quot;tokio_runtime&quot;, &quot;server&quot;] }
 </code></pre>
 <p>The next step is then to build the service instances and register the service instances onto a server which will be demonstrated below.</p>
 <p>You can definitely register services that are defined with <code>#[export_impl]</code> and <code>#[export_trait]</code> on the same server. However, for simplicity and consistency with the <a href="https://minghuaw.github.io/toy-rpc/03_define_service.html">service definition chapter</a>, in the discussions below, we are going to have separate examples. If you need an example where services defined with <code>#[export_impl]</code> and <code>#[export_trait]</code> are all registered on the same server, please refer to <a href="https://github.com/minghuaw/toy-rpc/tree/main/examples/example-server">this</a>.</p>
@@ -539,7 +539,7 @@ async fn main() {
 <pre><code class="language-toml">[dependencies]
 async-trait = &quot;0.1.50&quot;
 tokio = { version = &quot;1&quot;, features = [&quot;rt-multi-thread&quot;, &quot;macros&quot;, &quot;net&quot;] }
-toy-rpc = { version = &quot;0.7.0-alpha.1&quot;, features = [&quot;tokio_runtime&quot;, &quot;server&quot;] }
+toy-rpc = { version = &quot;0.7.0-alpha.2&quot;, features = [&quot;tokio_runtime&quot;, &quot;server&quot;] }
 
 # our service definition 
 example-service = { version = &quot;0.1.0&quot;, path = &quot;../example-service&quot; }
@@ -601,7 +601,7 @@ async fn main() {
 <pre><code class="language-toml">[dependencies]
 async-trait = &quot;0.1.50&quot;
 async-std = { version = &quot;1.9.0&quot;, features = [&quot;attributes&quot;] }
-toy-rpc = { version = &quot;0.7.0-alpha.1&quot;, features = [&quot;async_std_runtime&quot;, &quot;server&quot;] }
+toy-rpc = { version = &quot;0.7.0-alpha.2&quot;, features = [&quot;async_std_runtime&quot;, &quot;server&quot;] }
 
 # our service definition 
 example-service = { version = &quot;0.1.0&quot;, path = &quot;../example-service&quot; }
@@ -656,7 +656,7 @@ async fn main() {
 <pre><code class="language-toml">[dependencies]
 async-trait = &quot;0.1.50&quot;
 tokio = { version = &quot;1&quot;, features = [&quot;rt-multi-thread&quot;, &quot;macros&quot;, &quot;net&quot;] }
-toy-rpc = { version = &quot;0.7.0-alpha.1&quot;, features = [&quot;tokio_runtime&quot;, &quot;server&quot;] }
+toy-rpc = { version = &quot;0.7.0-alpha.2&quot;, features = [&quot;tokio_runtime&quot;, &quot;server&quot;] }
 
 # our service definition 
 example-service = { version = &quot;0.1.0&quot;, path = &quot;../example-service&quot; }
@@ -715,11 +715,11 @@ async fn main() {
 </ul>
 <div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><h1 id="http-integration-with-actix-web"><a class="header" href="#http-integration-with-actix-web">HTTP integration with <code>actix-web</code></a></h1>
 <p>The <code>&quot;http_actix_web&quot;</code> feature flag should be toggled on to enable HTTP integration with <code>actix-web</code>. Enabling <code>&quot;http_actix_web&quot;</code> feature flag will also enable the <code>&quot;tokio_runtime&quot;</code> feature flag. </p>
-<p>A convenience method <a href="https://docs.rs/toy-rpc/0.7.0-alpha.1/toy_rpc/server/struct.Server.html#method.handle_http"><code>Server::handle_http()</code></a> is available when <code>&quot;http_actix_web&quot;</code> is the only enabled http integration feature flag. If you have multiple http integration feature flags enabled, you can use the <a href="https://docs.rs/toy-rpc/0.7.0-alpha.1/toy_rpc/server/struct.Server.html#method.scope_config"><code>Server::scope_config</code></a> method instead (please note that you should use <code>scope_config</code> without brackets).</p>
+<p>A convenience method <a href="https://docs.rs/toy-rpc/0.7.0-alpha.2/toy_rpc/server/struct.Server.html#method.handle_http"><code>Server::handle_http()</code></a> is available when <code>&quot;http_actix_web&quot;</code> is the only enabled http integration feature flag. If you have multiple http integration feature flags enabled, you can use the <a href="https://docs.rs/toy-rpc/0.7.0-alpha.2/toy_rpc/server/struct.Server.html#method.scope_config"><code>Server::scope_config</code></a> method instead (please note that you should use <code>scope_config</code> without brackets).</p>
 <p>We will demonstrate the usage with a new example.</p>
 <pre><code class="language-toml">[dependencies]
 actix-web = &quot;3.3.2&quot;
-toy-rpc = { version = &quot;0.7.0-alpha.1&quot;, features = [&quot;http_actix_web&quot;, &quot;server&quot;] }
+toy-rpc = { version = &quot;0.7.0-alpha.2&quot;, features = [&quot;http_actix_web&quot;, &quot;server&quot;] }
 </code></pre>
 <pre><pre class="playground"><code class="language-rust edition2018">use std::sync::Arc;
 use toy_rpc::macros::export_impl;
@@ -769,12 +769,12 @@ async fn main() {
 </code></pre></pre>
 <div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><h1 id="http-integration-with-actix-web-1"><a class="header" href="#http-integration-with-actix-web-1">HTTP integration with <code>actix-web</code></a></h1>
 <p>The <code>&quot;http_tide&quot;</code> feature flag should be toggled on to enable HTTP integration with <code>tide</code>. Enabling <code>&quot;http_tide&quot;</code> feature flag will also enable the <code>&quot;async_std_runtime&quot;</code> feature flag.</p>
-<p>A convenience method <a href="https://docs.rs/toy-rpc/0.7.0-alpha.1/toy_rpc/server/struct.Server.html#method.handle_http-1"><code>Server::handle_http(self)</code></a> is available when <code>&quot;http_tide&quot;</code> is the only http integration flag that is enabled. If multiple http integration feature flags are enabled, you can use <a href="https://docs.rs/toy-rpc/0.7.0-alpha.1/toy_rpc/server/struct.Server.html#method.into_endpoint"><code>Server::into_endpoint(self)</code></a> method instead.</p>
+<p>A convenience method <a href="https://docs.rs/toy-rpc/0.7.0-alpha.2/toy_rpc/server/struct.Server.html#method.handle_http-1"><code>Server::handle_http(self)</code></a> is available when <code>&quot;http_tide&quot;</code> is the only http integration flag that is enabled. If multiple http integration feature flags are enabled, you can use <a href="https://docs.rs/toy-rpc/0.7.0-alpha.2/toy_rpc/server/struct.Server.html#method.into_endpoint"><code>Server::into_endpoint(self)</code></a> method instead.</p>
 <p>We will demonstrate the usage with a new example.</p>
 <pre><code class="language-toml">[dependencies]
 tide = &quot;0.16.0&quot;
 async-std = { version = &quot;1&quot;, features = [ &quot;attributes&quot;, ] }  
-toy-rpc = { version = &quot;0.7.0-alpha.1&quot;, features = [&quot;http_tide&quot;, &quot;server&quot;] }
+toy-rpc = { version = &quot;0.7.0-alpha.2&quot;, features = [&quot;http_tide&quot;, &quot;server&quot;] }
 </code></pre>
 <pre><pre class="playground"><code class="language-rust edition2018">
 <span class="boring">#![allow(unused)]
@@ -817,12 +817,12 @@ async main() {
 </span></code></pre></pre>
 <div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><h1 id="http-integration-with-actix-web-2"><a class="header" href="#http-integration-with-actix-web-2">HTTP integration with <code>actix-web</code></a></h1>
 <p>The <code>&quot;http_warp&quot;</code> feature flag should be toggled on to enable HTTP integration with <code>warp</code> crate. Enabling <code>&quot;http_warp&quot;</code> feature flag will also enable the <code>&quot;tokio_runtime&quot;</code> featrue flag.</p>
-<p>A convenience method <a href="https://docs.rs/toy-rpc/0.7.0-alpha.1/toy_rpc/server/struct.Server.html#method.handle_http-2"><code>Server::handle_http(self)</code></a> is available when <code>&quot;http_warp&quot;</code> is the only enabled http integration feature flag. If you have multiple http integration flags enabled, you can use the <a href="https://docs.rs/toy-rpc/0.7.0-alpha.1/toy_rpc/server/struct.Server.html#method.into_boxed_filter"><code>Server::into_boxed_filter(self)</code></a> method instead.</p>
+<p>A convenience method <a href="https://docs.rs/toy-rpc/0.7.0-alpha.2/toy_rpc/server/struct.Server.html#method.handle_http-2"><code>Server::handle_http(self)</code></a> is available when <code>&quot;http_warp&quot;</code> is the only enabled http integration feature flag. If you have multiple http integration flags enabled, you can use the <a href="https://docs.rs/toy-rpc/0.7.0-alpha.2/toy_rpc/server/struct.Server.html#method.into_boxed_filter"><code>Server::into_boxed_filter(self)</code></a> method instead.</p>
 <p>We will demonstrate the usage with a new example.</p>
 <pre><code class="language-toml">[dependencies]
 warp = &quot;0.3.0&quot;
 tokio = { version = &quot;1.4.0&quot;, features = [&quot;rt-multi-thread&quot;, &quot;macros&quot;] }
-toy-rpc = { version = &quot;0.7.0-alpha.1&quot;, features = [&quot;http_warp&quot;, &quot;server&quot;] }
+toy-rpc = { version = &quot;0.7.0-alpha.2&quot;, features = [&quot;http_warp&quot;, &quot;server&quot;] }
 </code></pre>
 <pre><pre class="playground"><code class="language-rust edition2018">
 <span class="boring">#![allow(unused)]
@@ -869,7 +869,7 @@ you can then use the <code>call_blocking</code> and <code>call</code> methods to
 <p>For the examples below, we will assume running with the <code>tokio</code> runtime.</p>
 <pre><code class="language-toml">[dependencies]
 tokio = { version = &quot;1&quot;, features = [&quot;rt-multi-thread&quot;, &quot;macros&quot;] }
-toy-rpc = { version = &quot;0.7.0-alpha.1&quot;, features = [&quot;tokio_runtime&quot;, &quot;client&quot;] }
+toy-rpc = { version = &quot;0.7.0-alpha.2&quot;, features = [&quot;tokio_runtime&quot;, &quot;client&quot;] }
 </code></pre>
 <p>The example below shows how to connect to a TCP server</p>
 <pre><pre class="playground"><code class="language-rust edition2018">
@@ -961,7 +961,7 @@ async main() {
 <p>Because the service definition resides in a separate crate, we will need to import that crate as well.</p>
 <pre><code class="language-toml">[dependencies]
 tokio = { version = &quot;1&quot;, features = [&quot;rt-multi-thread&quot;, &quot;macros&quot;] }
-toy-rpc = { version = &quot;0.7.0-alpha.1&quot;, features = [&quot;tokio_runtime&quot;, &quot;client&quot;] }
+toy-rpc = { version = &quot;0.7.0-alpha.2&quot;, features = [&quot;tokio_runtime&quot;, &quot;client&quot;] }
 
 # import our service definition, assuming we have this definition at &quot;../example-service&quot;
 example-service = { version = &quot;0.1.0&quot;, path = &quot;../example-service&quot; }
@@ -1003,7 +1003,7 @@ async main() {
 <span class="boring">}
 </span></code></pre></pre>
 <div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><h1 id="cancellation-of-rpc-call"><a class="header" href="#cancellation-of-rpc-call">Cancellation of RPC call</a></h1>
-<p>Cancellation is supported starting from version 0.7.0-alpha.1. The client method <code>call(...)</code> returns a type <code>Call</code>, which can be either <code>.await</code>ed for the response or <code>cancel()</code>ed to stop the execution. When an RPC request is started with the method <code>call(...)</code>, the request is sent by a background task whether or not the <code>Call</code> is <code>.await</code>ed. Upon <code>cancel()</code>, the client will send a cancellation request to the server; however, it should be noted that if the client is dropped immediately after calling <code>cancel()</code>, the server may not be able to receive the cancellation request before the connection is dropped by the client.</p>
+<p>Cancellation is supported starting from version 0.7.0-alpha.2. The client method <code>call(...)</code> returns a type <code>Call</code>, which can be either <code>.await</code>ed for the response or <code>cancel()</code>ed to stop the execution. When an RPC request is started with the method <code>call(...)</code>, the request is sent by a background task whether or not the <code>Call</code> is <code>.await</code>ed. Upon <code>cancel()</code>, the client will send a cancellation request to the server; however, it should be noted that if the client is dropped immediately after calling <code>cancel()</code>, the server may not be able to receive the cancellation request before the connection is dropped by the client.</p>
 <p>Below is a simple example showing cancellation on the <code>tokio</code> runtime.In this example, we are going to define a new service with a method that simply runs in loop and sleep for a certain period of time.</p>
 <p>File structure:</p>
 <pre><code>./src
@@ -1015,7 +1015,7 @@ async main() {
 <p>Add dependencies:</p>
 <pre><code class="language-toml">[dependencies]
 tokio = { version = &quot;1&quot;, features = [&quot;rt-multi-thread&quot;, &quot;macros&quot;, &quot;time&quot;] }
-toy-rpc = { version = &quot;0.7.0-alpha.1&quot;, features = [&quot;tokio_runtime&quot;, &quot;server&quot;, &quot;client&quot;] }
+toy-rpc = { version = &quot;0.7.0-alpha.2&quot;, features = [&quot;tokio_runtime&quot;, &quot;server&quot;, &quot;client&quot;] }
 </code></pre>
 <p>Service definition and implementation placed in <code>src/lib.rs</code>:</p>
 <pre><pre class="playground"><code class="language-rust edition2018">
@@ -1068,7 +1068,7 @@ async main() {
 }
 <span class="boring">}
 </span></code></pre></pre>
-<p>In the client, let's call the <code>finite_loop</code> RPC function and wait for two seconds and cancel it.</p>
+<p>On the client side, let's call the <code>finite_loop</code> RPC function and wait for two seconds and cancel it.</p>
 <pre><pre class="playground"><code class="language-rust edition2018">
 <span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
@@ -1105,7 +1105,97 @@ async main() {
 }
 <span class="boring">}
 </span></code></pre></pre>
-<div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><p>WIP</p>
+<div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><h1 id="set-timeout-for-an-rpc-call"><a class="header" href="#set-timeout-for-an-rpc-call">Set timeout for an RPC call</a></h1>
+<p>The client can set the timeout for the next RPC request using the <code>timeout(duration: Duration)</code> method, which can be chained with the <code>call</code> method. Please note that the timeout is <strong>ONLY</strong> set for the immediate next RPC call, and all RPC calls do not have timeout if not explicitly set using the <code>timeout</code> method.</p>
+<p>We will re-use the example service definition in the <a href="https://minghuaw.github.io/toy-rpc/06a_cancellation.html">cancellation</a>. For you convenience, the service definition and server code are copied below.</p>
+<p>File structure:</p>
+<pre><code>./src
+├── /bin
+│   ├── server.rs
+│   ├── client.rs
+└── lib.rs
+</code></pre>
+<p>Add dependencies:</p>
+<pre><code class="language-toml">[dependencies]
+tokio = { version = &quot;1&quot;, features = [&quot;rt-multi-thread&quot;, &quot;macros&quot;, &quot;time&quot;] }
+toy-rpc = { version = &quot;0.7.0-alpha.2&quot;, features = [&quot;tokio_runtime&quot;, &quot;server&quot;, &quot;client&quot;] }
+</code></pre>
+<p>Service definition and implementation placed in <code>src/lib.rs</code>:</p>
+<pre><pre class="playground"><code class="language-rust edition2018">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use std::time::Duration;
+use toy_rpc::macros::export_impl;
+use tokio::time;
+
+struct Example { }
+
+#[export_impl]
+impl Example {
+    #[export_method]
+    async fn finite_loop(&amp;self, args: ()) -&gt; Result&lt;(), String&gt; {
+        for counter in 0..500 {
+            time::sleep(Duration::from_millis(500)).await;
+        }
+    }
+
+    #[export_method]
+    async fn echo(&amp;self, args: String) -&gt; Result&lt;String, String&gt; {
+        Ok(args)
+    }
+}
+<span class="boring">}
+</span></code></pre></pre>
+<p>Serve the RPC service with <code>src/bin/server.rs</code>.</p>
+<pre><pre class="playground"><code class="language-rust edition2018">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use std::sync::Arc;
+use toy_rpc::Server;
+use tokio::net::TcpListener;
+
+// assume the name of the crate is &quot;example&quot;
+// import service definition and implementation
+use example::Example;
+
+#[tokio::main]
+async main() {
+    let addr = &quot;127.0.0.1:23333&quot;;
+    let ex = Arc::new(Example { });
+    let server = Server::builder()
+        .register(ex)
+        .build()
+
+    let listener = TcpListener::bind(addr).await.unwrap();
+    server.accept(listener).await.unwrap();
+}
+<span class="boring">}
+</span></code></pre></pre>
+<p>On the client side, let's call the <code>finite_loop</code> RPC function with a timeout of three seconds.</p>
+<pre><pre class="playground"><code class="language-rust edition2018">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use std::time::Duration;
+use tokio::time;
+use toy_rpc::client::{Client, Call};
+
+// assume the name of the crate is &quot;example&quot;
+// import service definitions and generated client stub functions
+use example::*;
+
+#[tokio::main]
+async main() {
+    let client = Client::dial(&quot;127.0.0.1:23333&quot;).await
+        .expect(&quot;Failed to connect to server&quot;);
+
+    let call: Call&lt;()&gt; = client
+        .timeout(Duration::from_secs(3))
+        .example() // access `Example` service
+        .finite_loop(()); // access `finite_loop` method
+    let result = call.await; // This should give you `Err(Error::Timeout)`
+}
+<span class="boring">}
+</span></code></pre></pre>
 <div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><p>WIP</p>
 <div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><h1 id="change-log"><a class="header" href="#change-log">Change Log</a></h1>
 <h2 id="070"><a class="header" href="#070">0.7.0</a></h2>

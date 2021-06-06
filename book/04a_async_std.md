@@ -12,7 +12,7 @@ If we were to run the server with `async-std` runtime, our previous [`#[export_t
 [dependencies]
 async-trait = "0.1.50"
 async-std = { version = "1.9.0", features = ["attributes"] }
-toy-rpc = { version = "0.7.0-alpha.1", features = ["async_std_runtime", "server"] }
+toy-rpc = { version = "0.7.0-alpha.2", features = ["async_std_runtime", "server"] }
 
 # our service definition 
 example-service = { version = "0.1.0", path = "../example-service" }

@@ -2,14 +2,14 @@
 
 The `"http_actix_web"` feature flag should be toggled on to enable HTTP integration with `actix-web`. Enabling `"http_actix_web"` feature flag will also enable the `"tokio_runtime"` feature flag. 
 
-A convenience method [`Server::handle_http()`](https://docs.rs/toy-rpc/0.7.0-alpha.1/toy_rpc/server/struct.Server.html#method.handle_http) is available when `"http_actix_web"` is the only enabled http integration feature flag. If you have multiple http integration feature flags enabled, you can use the [`Server::scope_config`](https://docs.rs/toy-rpc/0.7.0-alpha.1/toy_rpc/server/struct.Server.html#method.scope_config) method instead (please note that you should use `scope_config` without brackets).
+A convenience method [`Server::handle_http()`](https://docs.rs/toy-rpc/0.7.0-alpha.2/toy_rpc/server/struct.Server.html#method.handle_http) is available when `"http_actix_web"` is the only enabled http integration feature flag. If you have multiple http integration feature flags enabled, you can use the [`Server::scope_config`](https://docs.rs/toy-rpc/0.7.0-alpha.2/toy_rpc/server/struct.Server.html#method.scope_config) method instead (please note that you should use `scope_config` without brackets).
 
 We will demonstrate the usage with a new example.
 
 ```toml
 [dependencies]
 actix-web = "3.3.2"
-toy-rpc = { version = "0.7.0-alpha.1", features = ["http_actix_web", "server"] }
+toy-rpc = { version = "0.7.0-alpha.2", features = ["http_actix_web", "server"] }
 ```
 
 ```rust 

@@ -2,7 +2,7 @@
 
 The `"http_warp"` feature flag should be toggled on to enable HTTP integration with `warp` crate. Enabling `"http_warp"` feature flag will also enable the `"tokio_runtime"` featrue flag.
 
-A convenience method [`Server::handle_http(self)`](https://docs.rs/toy-rpc/0.7.0-alpha.1/toy_rpc/server/struct.Server.html#method.handle_http-2) is available when `"http_warp"` is the only enabled http integration feature flag. If you have multiple http integration flags enabled, you can use the [`Server::into_boxed_filter(self)`](https://docs.rs/toy-rpc/0.7.0-alpha.1/toy_rpc/server/struct.Server.html#method.into_boxed_filter) method instead.
+A convenience method [`Server::handle_http(self)`](https://docs.rs/toy-rpc/0.7.0-alpha.2/toy_rpc/server/struct.Server.html#method.handle_http-2) is available when `"http_warp"` is the only enabled http integration feature flag. If you have multiple http integration flags enabled, you can use the [`Server::into_boxed_filter(self)`](https://docs.rs/toy-rpc/0.7.0-alpha.2/toy_rpc/server/struct.Server.html#method.into_boxed_filter) method instead.
 
 We will demonstrate the usage with a new example.
 
@@ -10,7 +10,7 @@ We will demonstrate the usage with a new example.
 [dependencies]
 warp = "0.3.0"
 tokio = { version = "1.4.0", features = ["rt-multi-thread", "macros"] }
-toy-rpc = { version = "0.7.0-alpha.1", features = ["http_warp", "server"] }
+toy-rpc = { version = "0.7.0-alpha.2", features = ["http_warp", "server"] }
 ```
 
 ```rust 

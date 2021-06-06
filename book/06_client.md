@@ -12,7 +12,7 @@ For the examples below, we will assume running with the `tokio` runtime.
 ```toml
 [dependencies]
 tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
-toy-rpc = { version = "0.7.0-alpha.1", features = ["tokio_runtime", "client"] }
+toy-rpc = { version = "0.7.0-alpha.2", features = ["tokio_runtime", "client"] }
 ```
 
 The example below shows how to connect to a TCP server
@@ -117,7 +117,7 @@ Because the service definition resides in a separate crate, we will need to impo
 ```toml
 [dependencies]
 tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
-toy-rpc = { version = "0.7.0-alpha.1", features = ["tokio_runtime", "client"] }
+toy-rpc = { version = "0.7.0-alpha.2", features = ["tokio_runtime", "client"] }
 
 # import our service definition, assuming we have this definition at "../example-service"
 example-service = { version = "0.1.0", path = "../example-service" }

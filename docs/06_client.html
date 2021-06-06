@@ -173,7 +173,7 @@ you can then use the <code>call_blocking</code> and <code>call</code> methods to
 <p>For the examples below, we will assume running with the <code>tokio</code> runtime.</p>
 <pre><code class="language-toml">[dependencies]
 tokio = { version = &quot;1&quot;, features = [&quot;rt-multi-thread&quot;, &quot;macros&quot;] }
-toy-rpc = { version = &quot;0.7.0-alpha.1&quot;, features = [&quot;tokio_runtime&quot;, &quot;client&quot;] }
+toy-rpc = { version = &quot;0.7.0-alpha.2&quot;, features = [&quot;tokio_runtime&quot;, &quot;client&quot;] }
 </code></pre>
 <p>The example below shows how to connect to a TCP server</p>
 <pre><pre class="playground"><code class="language-rust edition2018">
@@ -265,7 +265,7 @@ async main() {
 <p>Because the service definition resides in a separate crate, we will need to import that crate as well.</p>
 <pre><code class="language-toml">[dependencies]
 tokio = { version = &quot;1&quot;, features = [&quot;rt-multi-thread&quot;, &quot;macros&quot;] }
-toy-rpc = { version = &quot;0.7.0-alpha.1&quot;, features = [&quot;tokio_runtime&quot;, &quot;client&quot;] }
+toy-rpc = { version = &quot;0.7.0-alpha.2&quot;, features = [&quot;tokio_runtime&quot;, &quot;client&quot;] }
 
 # import our service definition, assuming we have this definition at &quot;../example-service&quot;
 example-service = { version = &quot;0.1.0&quot;, path = &quot;../example-service&quot; }

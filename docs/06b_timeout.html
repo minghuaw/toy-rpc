@@ -165,7 +165,97 @@
 
                 <div id="content" class="content">
                     <main>
-                        <p>WIP</p>
+                        <h1 id="set-timeout-for-an-rpc-call"><a class="header" href="#set-timeout-for-an-rpc-call">Set timeout for an RPC call</a></h1>
+<p>The client can set the timeout for the next RPC request using the <code>timeout(duration: Duration)</code> method, which can be chained with the <code>call</code> method. Please note that the timeout is <strong>ONLY</strong> set for the immediate next RPC call, and all RPC calls do not have timeout if not explicitly set using the <code>timeout</code> method.</p>
+<p>We will re-use the example service definition in the <a href="https://minghuaw.github.io/toy-rpc/06a_cancellation.html">cancellation</a>. For you convenience, the service definition and server code are copied below.</p>
+<p>File structure:</p>
+<pre><code>./src
+├── /bin
+│   ├── server.rs
+│   ├── client.rs
+└── lib.rs
+</code></pre>
+<p>Add dependencies:</p>
+<pre><code class="language-toml">[dependencies]
+tokio = { version = &quot;1&quot;, features = [&quot;rt-multi-thread&quot;, &quot;macros&quot;, &quot;time&quot;] }
+toy-rpc = { version = &quot;0.7.0-alpha.2&quot;, features = [&quot;tokio_runtime&quot;, &quot;server&quot;, &quot;client&quot;] }
+</code></pre>
+<p>Service definition and implementation placed in <code>src/lib.rs</code>:</p>
+<pre><pre class="playground"><code class="language-rust edition2018">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use std::time::Duration;
+use toy_rpc::macros::export_impl;
+use tokio::time;
+
+struct Example { }
+
+#[export_impl]
+impl Example {
+    #[export_method]
+    async fn finite_loop(&amp;self, args: ()) -&gt; Result&lt;(), String&gt; {
+        for counter in 0..500 {
+            time::sleep(Duration::from_millis(500)).await;
+        }
+    }
+
+    #[export_method]
+    async fn echo(&amp;self, args: String) -&gt; Result&lt;String, String&gt; {
+        Ok(args)
+    }
+}
+<span class="boring">}
+</span></code></pre></pre>
+<p>Serve the RPC service with <code>src/bin/server.rs</code>.</p>
+<pre><pre class="playground"><code class="language-rust edition2018">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use std::sync::Arc;
+use toy_rpc::Server;
+use tokio::net::TcpListener;
+
+// assume the name of the crate is &quot;example&quot;
+// import service definition and implementation
+use example::Example;
+
+#[tokio::main]
+async main() {
+    let addr = &quot;127.0.0.1:23333&quot;;
+    let ex = Arc::new(Example { });
+    let server = Server::builder()
+        .register(ex)
+        .build()
+
+    let listener = TcpListener::bind(addr).await.unwrap();
+    server.accept(listener).await.unwrap();
+}
+<span class="boring">}
+</span></code></pre></pre>
+<p>On the client side, let's call the <code>finite_loop</code> RPC function with a timeout of three seconds.</p>
+<pre><pre class="playground"><code class="language-rust edition2018">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use std::time::Duration;
+use tokio::time;
+use toy_rpc::client::{Client, Call};
+
+// assume the name of the crate is &quot;example&quot;
+// import service definitions and generated client stub functions
+use example::*;
+
+#[tokio::main]
+async main() {
+    let client = Client::dial(&quot;127.0.0.1:23333&quot;).await
+        .expect(&quot;Failed to connect to server&quot;);
+
+    let call: Call&lt;()&gt; = client
+        .timeout(Duration::from_secs(3))
+        .example() // access `Example` service
+        .finite_loop(()); // access `finite_loop` method
+    let result = call.await; // This should give you `Err(Error::Timeout)`
+}
+<span class="boring">}
+</span></code></pre></pre>
 
                     </main>
 

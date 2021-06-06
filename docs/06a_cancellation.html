@@ -166,7 +166,7 @@
                 <div id="content" class="content">
                     <main>
                         <h1 id="cancellation-of-rpc-call"><a class="header" href="#cancellation-of-rpc-call">Cancellation of RPC call</a></h1>
-<p>Cancellation is supported starting from version 0.7.0-alpha.1. The client method <code>call(...)</code> returns a type <code>Call</code>, which can be either <code>.await</code>ed for the response or <code>cancel()</code>ed to stop the execution. When an RPC request is started with the method <code>call(...)</code>, the request is sent by a background task whether or not the <code>Call</code> is <code>.await</code>ed. Upon <code>cancel()</code>, the client will send a cancellation request to the server; however, it should be noted that if the client is dropped immediately after calling <code>cancel()</code>, the server may not be able to receive the cancellation request before the connection is dropped by the client.</p>
+<p>Cancellation is supported starting from version 0.7.0-alpha.2. The client method <code>call(...)</code> returns a type <code>Call</code>, which can be either <code>.await</code>ed for the response or <code>cancel()</code>ed to stop the execution. When an RPC request is started with the method <code>call(...)</code>, the request is sent by a background task whether or not the <code>Call</code> is <code>.await</code>ed. Upon <code>cancel()</code>, the client will send a cancellation request to the server; however, it should be noted that if the client is dropped immediately after calling <code>cancel()</code>, the server may not be able to receive the cancellation request before the connection is dropped by the client.</p>
 <p>Below is a simple example showing cancellation on the <code>tokio</code> runtime.In this example, we are going to define a new service with a method that simply runs in loop and sleep for a certain period of time.</p>
 <p>File structure:</p>
 <pre><code>./src
@@ -178,7 +178,7 @@
 <p>Add dependencies:</p>
 <pre><code class="language-toml">[dependencies]
 tokio = { version = &quot;1&quot;, features = [&quot;rt-multi-thread&quot;, &quot;macros&quot;, &quot;time&quot;] }
-toy-rpc = { version = &quot;0.7.0-alpha.1&quot;, features = [&quot;tokio_runtime&quot;, &quot;server&quot;, &quot;client&quot;] }
+toy-rpc = { version = &quot;0.7.0-alpha.2&quot;, features = [&quot;tokio_runtime&quot;, &quot;server&quot;, &quot;client&quot;] }
 </code></pre>
 <p>Service definition and implementation placed in <code>src/lib.rs</code>:</p>
 <pre><pre class="playground"><code class="language-rust edition2018">
@@ -231,7 +231,7 @@ async main() {
 }
 <span class="boring">}
 </span></code></pre></pre>
-<p>In the client, let's call the <code>finite_loop</code> RPC function and wait for two seconds and cancel it.</p>
+<p>On the client side, let's call the <code>finite_loop</code> RPC function and wait for two seconds and cancel it.</p>
 <pre><pre class="playground"><code class="language-rust edition2018">
 <span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {

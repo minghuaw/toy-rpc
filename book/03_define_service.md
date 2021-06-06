@@ -40,7 +40,7 @@ Use the following dependencies to work with the examples below
 ```toml
 [dependencies]
 async-trait = "0.1.50"
-toy-rpc = "0.7.0-alpha.1"
+toy-rpc = "0.7.0-alpha.2"
 ```
 
 ### `#[export_impl]`

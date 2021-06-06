@@ -167,12 +167,12 @@
                     <main>
                         <h1 id="http-integration-with-actix-web"><a class="header" href="#http-integration-with-actix-web">HTTP integration with <code>actix-web</code></a></h1>
 <p>The <code>&quot;http_tide&quot;</code> feature flag should be toggled on to enable HTTP integration with <code>tide</code>. Enabling <code>&quot;http_tide&quot;</code> feature flag will also enable the <code>&quot;async_std_runtime&quot;</code> feature flag.</p>
-<p>A convenience method <a href="https://docs.rs/toy-rpc/0.7.0-alpha.1/toy_rpc/server/struct.Server.html#method.handle_http-1"><code>Server::handle_http(self)</code></a> is available when <code>&quot;http_tide&quot;</code> is the only http integration flag that is enabled. If multiple http integration feature flags are enabled, you can use <a href="https://docs.rs/toy-rpc/0.7.0-alpha.1/toy_rpc/server/struct.Server.html#method.into_endpoint"><code>Server::into_endpoint(self)</code></a> method instead.</p>
+<p>A convenience method <a href="https://docs.rs/toy-rpc/0.7.0-alpha.2/toy_rpc/server/struct.Server.html#method.handle_http-1"><code>Server::handle_http(self)</code></a> is available when <code>&quot;http_tide&quot;</code> is the only http integration flag that is enabled. If multiple http integration feature flags are enabled, you can use <a href="https://docs.rs/toy-rpc/0.7.0-alpha.2/toy_rpc/server/struct.Server.html#method.into_endpoint"><code>Server::into_endpoint(self)</code></a> method instead.</p>
 <p>We will demonstrate the usage with a new example.</p>
 <pre><code class="language-toml">[dependencies]
 tide = &quot;0.16.0&quot;
 async-std = { version = &quot;1&quot;, features = [ &quot;attributes&quot;, ] }  
-toy-rpc = { version = &quot;0.7.0-alpha.1&quot;, features = [&quot;http_tide&quot;, &quot;server&quot;] }
+toy-rpc = { version = &quot;0.7.0-alpha.2&quot;, features = [&quot;http_tide&quot;, &quot;server&quot;] }
 </code></pre>
 <pre><pre class="playground"><code class="language-rust edition2018">
 <span class="boring">#![allow(unused)]

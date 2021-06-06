@@ -11,7 +11,7 @@ A simple quickstart with `tokio` runtime is shown below. More examples can be fo
 ```toml
 [dependencies]
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "net"] }
-toy-rpc = { version = "0.7.0-alpha.1, feature = ["tokio_runtime", "server", "client"] }
+toy-rpc = { version = "0.7.0-alpha.2", feature = ["tokio_runtime", "server", "client"] }
 ```
 
 ## Project structure

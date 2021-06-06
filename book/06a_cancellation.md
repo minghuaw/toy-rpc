@@ -1,6 +1,6 @@
 # Cancellation of RPC call
 
-Cancellation is supported starting from version 0.7.0-alpha.1. The client method `call(...)` returns a type `Call`, which can be either `.await`ed for the response or `cancel()`ed to stop the execution. When an RPC request is started with the method `call(...)`, the request is sent by a background task whether or not the `Call` is `.await`ed. Upon `cancel()`, the client will send a cancellation request to the server; however, it should be noted that if the client is dropped immediately after calling `cancel()`, the server may not be able to receive the cancellation request before the connection is dropped by the client.
+Cancellation is supported starting from version 0.7.0-alpha.2. The client method `call(...)` returns a type `Call`, which can be either `.await`ed for the response or `cancel()`ed to stop the execution. When an RPC request is started with the method `call(...)`, the request is sent by a background task whether or not the `Call` is `.await`ed. Upon `cancel()`, the client will send a cancellation request to the server; however, it should be noted that if the client is dropped immediately after calling `cancel()`, the server may not be able to receive the cancellation request before the connection is dropped by the client.
 
 Below is a simple example showing cancellation on the `tokio` runtime.In this example, we are going to define a new service with a method that simply runs in loop and sleep for a certain period of time.
 
@@ -19,7 +19,7 @@ Add dependencies:
 ```toml
 [dependencies]
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "time"] }
-toy-rpc = { version = "0.7.0-alpha.1", features = ["tokio_runtime", "server", "client"] }
+toy-rpc = { version = "0.7.0-alpha.2", features = ["tokio_runtime", "server", "client"] }
 ```
 
 Service definition and implementation placed in `src/lib.rs`:
@@ -71,7 +71,7 @@ async main() {
 }
 ```
 
-In the client, let's call the `finite_loop` RPC function and wait for two seconds and cancel it.
+On the client side, let's call the `finite_loop` RPC function and wait for two seconds and cancel it.
 
 ```rust 
 use std::time::Duration;
