@@ -155,7 +155,7 @@ cfg_if! {
                         let result = execute_timed_call(id, duration, fut).await;
                         let result = ExecutionResult { id, result };
                         broker.send_async(ExecutionMessage::Result(result)).await
-                            .unwrap_or_else(|e| log::error!("{:?}", e));
+                            .unwrap_or_else(|e| log::error!("{}", e));
                     })
                 },
                 None => {
@@ -163,7 +163,7 @@ cfg_if! {
                         let result = execute_call(id, fut).await;
                         let result = ExecutionResult { id, result };
                         broker.send_async(ExecutionMessage::Result(result)).await                                    
-                            .unwrap_or_else(|e| log::error!("{:?}", e));
+                            .unwrap_or_else(|e| log::error!("{}", e));
                     })
                 }
             }
@@ -185,7 +185,7 @@ cfg_if! {
                         let result = execute_timed_call(id, duration, fut).await;
                         let result = ExecutionResult { id, result };
                         broker.send_async(ExecutionMessage::Result(result)).await
-                            .unwrap_or_else(|e| log::error!("{:?}", e));
+                            .unwrap_or_else(|e| log::error!("{}", e));
                     })
                 },
                 None => {
@@ -193,7 +193,7 @@ cfg_if! {
                         let result = execute_call(id, fut).await;
                         let result = ExecutionResult { id, result };
                         broker.send_async(ExecutionMessage::Result(result)).await                                    
-                            .unwrap_or_else(|e| log::error!("{:?}", e));
+                            .unwrap_or_else(|e| log::error!("{}", e));
                     })
                 }
             }
@@ -219,7 +219,7 @@ cfg_if! {
                                 executor.send_async(msg).await?;
                             },
                             Err(err) => {
-                                log::error!("{:?}", err);
+                                log::error!("{}", err);
                                 match err {
                                     Error::ServiceNotFound => {
                                         writer.send_async(ExecutionResult {
@@ -307,7 +307,7 @@ cfg_if! {
         ) -> Result<(), Error> {
             while let Ok(msg) = results.recv_async().await {
                 writer_once(&mut codec_writer, msg).await
-                    .unwrap_or_else(|e| log::error!("{:?}", e));
+                    .unwrap_or_else(|e| log::error!("{}", e));
             }
             Ok(())
         }
@@ -347,7 +347,7 @@ cfg_if! {
                         ErrorKind::UnexpectedEof,
                         "Failed to read message body",
                     ));
-                    log::error!("{:?}", &err);
+                    log::error!("{}", &err);
                     return Err(err);
                 }
             }

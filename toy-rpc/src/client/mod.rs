@@ -360,7 +360,7 @@ cfg_if! {
                     },
                     res = read_once(&mut reader, &pending).fuse() => {
                         res.unwrap_or_else(|err| 
-                            log::error!("{:?}", err)
+                            log::error!("{}", err)
                         )
                     }
                 }
@@ -441,7 +441,7 @@ cfg_if! {
                     }     
                 }
                 .unwrap_or_else(|err| {
-                    log::error!("{:?}", err)
+                    log::error!("{}", err)
                 })
             }            
         }
@@ -488,7 +488,7 @@ cfg_if! {
                             ClientMessage::Cancel(id)
                         ).await?;
                     }
-                    
+
                     done.send(
                         Err(Error::Canceled(Some(id)))
                     ).unwrap_or_else(|_| {

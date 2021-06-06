@@ -50,7 +50,7 @@ where
         log::debug!("WsMessageActor is stopping");
         if let Some(ref manager) = self.manager {
             manager.do_send(ExecutionMessage::Stop)
-                .unwrap_or_else(|err| log::error!("{:?}", err));
+                .unwrap_or_else(|err| log::error!("{}", err));
         }
 
         Running::Stop
@@ -101,11 +101,11 @@ where
                                     Ok(msg) => {
                                         if let Some(ref manager) = self.manager {
                                             manager.do_send(msg)
-                                                .unwrap_or_else(|e| log::error!("{:?}", e));
+                                                .unwrap_or_else(|e| log::error!("{}", e));
                                         }
                                     },
                                     Err(err) => {
-                                        log::error!("{:?}", err);
+                                        log::error!("{}", err);
                                         match err {
                                             Error::ServiceNotFound => {
                                                 Self::send_response_via_context(
@@ -114,7 +114,7 @@ where
                                                         result: Err(Error::ServiceNotFound)
                                                     }, 
                                                     ctx
-                                                ).unwrap_or_else(|e| log::error!("{:?}", e));
+                                                ).unwrap_or_else(|e| log::error!("{}", e));
                                             },
                                             _ => { }
                                         }
@@ -129,14 +129,14 @@ where
                                     result: Err(err)
                                 };
                                 Self::send_response_via_context(err, ctx)
-                                    .unwrap_or_else(|e| log::error!("{:?}", e));
+                                    .unwrap_or_else(|e| log::error!("{}", e));
                             }
                         }
                     }
                 }
             },
             Err(err) => {
-                log::error!("{:?}", err);
+                log::error!("{}", err);
             }
         }
     }
@@ -151,7 +151,7 @@ where
     fn handle(&mut self, msg: ExecutionResult, ctx: &mut Self::Context) -> Self::Result {
         Self::send_response_via_context(msg, ctx)
             .unwrap_or_else(|err|                 
-                log::error!("{:?}", err)
+                log::error!("{}", err)
             );
     }
 }
@@ -220,7 +220,7 @@ impl Actor for ExecutionManager {
         log::debug!("ExecutionManager is stopping");
         for (id, exec) in self.executions.drain() {
             exec.send(Cancel(id)) 
-                .unwrap_or_else(|e| log::error!("{:?}", e));
+                .unwrap_or_else(|e| log::error!("{}", e));
         }
 
         Running::Stop
@@ -251,7 +251,7 @@ impl actix::Handler<ExecutionMessage> for ExecutionManager {
                                 let result = Self::execute_timed_call(id, duration, call_fut).await;
                                 let result = ExecutionResult{ id, result };
                                 broker.do_send(ExecutionMessage::Result(result))
-                                    .unwrap_or_else(|e| log::error!("{:?}", e));
+                                    .unwrap_or_else(|e| log::error!("{}", e));
                             }
                         )
                     },
@@ -261,7 +261,7 @@ impl actix::Handler<ExecutionMessage> for ExecutionManager {
                                 let result = execute_call(id, call_fut).await;
                                 let result = ExecutionResult { id, result };
                                 broker.do_send(ExecutionMessage::Result(result))
-                                    .unwrap_or_else(|e| log::error!("{:?}", e));
+                                    .unwrap_or_else(|e| log::error!("{}", e));
                             }
                         )
                     }
@@ -283,14 +283,14 @@ impl actix::Handler<ExecutionMessage> for ExecutionManager {
             ExecutionMessage::Result(msg) => {
                 self.executions.remove(&msg.id);
                 self.responder.do_send(msg)
-                    .unwrap_or_else(|e| log::error!("{:?}", e));
+                    .unwrap_or_else(|e| log::error!("{}", e));
 
             },
             ExecutionMessage::Cancel(id) => {
                 log::debug!("Sending Cancel({})", &id);
                 if let Some(exec) = self.executions.remove(&id) {
                     exec.send(Cancel(id))
-                        .unwrap_or_else(|e| log::error!("{:?}", e));
+                        .unwrap_or_else(|e| log::error!("{}", e));
                 }
             },
             ExecutionMessage::Stop => {
