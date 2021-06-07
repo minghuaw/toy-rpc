@@ -83,11 +83,11 @@ async main() {
 
     // Access the remote `exported_method` method of `Foo` service in a blocking manner
     let result: Result<String, Error> = client.call_blocking("Foo.exported_method", ());
-    assert_eq!(result, Ok("exported method".to_string()));
+    println!("{:?}", result);
 
     // Access the remote `add` method of `Bar` service in an asynchronous manner
     let result: Result<i32, Error> = client.call("Bar.add", (3i32, 4i32)).await;
-    assert_eq!(result, Ok(7));
+    println!("{:?}", result);
 
     // You can also use the generated client stub functions
     // Access the remote `exported_method` method of `Foo` service 
@@ -96,7 +96,7 @@ async main() {
         .foo() // access `Foo` service
         .exported_method(()) // access `exported_method` of the `Foo` service
         .await;
-    assert_eq!(result, Ok("exported method".to_string()));
+    println!("{:?}", result);
 
     // Access the remote `add` method of `Bar` service 
     // using the generated client stub functions
@@ -104,7 +104,7 @@ async main() {
         .bar()
         .add((3, 4))
         .await;
-    assert_eq!(result, Ok(7));
+    println!("{:?}", result);
 }
 ```
 
@@ -130,29 +130,29 @@ use toy_rpc::{Client, Error};
 use example_service::*;
 
 #[tokio::main]
-async main() {
+async fn main() {
     let client = Client::dial("127.0.0.1:23333").await
         .expect("Failed to connect to the server");
     
     // Access the remote method `add` of service `Arith` in a blocking manner
     let result: Result<i32, Error> = client.call_blocking("Arith.add", (3i32, 4i32));
-    assert_eq!(result, Ok(7));
+    println!("{:?}", result);
 
     // Access the remote method `subtract` of service `Arith` in an asynchronous manner
     let result: Result<i32, Error> = client.call("Arith.subtract", (9i32, 6i32)).await;
-    assert_eq!(result, Ok(3));
+    println!("{:?}", result);
 
     // Let's use the generated client stub functions
     let result = client
         .arith() // access `Arith` service
         .add((3i32, 4i32)) // access `add` method
         .await;
-    assert_eq!(result, Ok(7));
+    println!("{:?}", result);
 
     let result = client
         .arith() // access `Arith` service
         .subtract((9i32, 6i32)) // access `subtract` method
         .await;
-    assert_eq!(result, Ok(3));
+    println!("{:?}", result);
 }
 ```

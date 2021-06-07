@@ -235,11 +235,11 @@ async main() {
 
     // Access the remote `exported_method` method of `Foo` service in a blocking manner
     let result: Result&lt;String, Error&gt; = client.call_blocking(&quot;Foo.exported_method&quot;, ());
-    assert_eq!(result, Ok(&quot;exported method&quot;.to_string()));
+    println!(&quot;{:?}&quot;, result);
 
     // Access the remote `add` method of `Bar` service in an asynchronous manner
     let result: Result&lt;i32, Error&gt; = client.call(&quot;Bar.add&quot;, (3i32, 4i32)).await;
-    assert_eq!(result, Ok(7));
+    println!(&quot;{:?}&quot;, result);
 
     // You can also use the generated client stub functions
     // Access the remote `exported_method` method of `Foo` service 
@@ -248,7 +248,7 @@ async main() {
         .foo() // access `Foo` service
         .exported_method(()) // access `exported_method` of the `Foo` service
         .await;
-    assert_eq!(result, Ok(&quot;exported method&quot;.to_string()));
+    println!(&quot;{:?}&quot;, result);
 
     // Access the remote `add` method of `Bar` service 
     // using the generated client stub functions
@@ -256,7 +256,7 @@ async main() {
         .bar()
         .add((3, 4))
         .await;
-    assert_eq!(result, Ok(7));
+    println!(&quot;{:?}&quot;, result);
 }
 <span class="boring">}
 </span></code></pre></pre>
@@ -270,42 +270,38 @@ toy-rpc = { version = &quot;0.7.0-alpha.2&quot;, features = [&quot;tokio_runtime
 # import our service definition, assuming we have this definition at &quot;../example-service&quot;
 example-service = { version = &quot;0.1.0&quot;, path = &quot;../example-service&quot; }
 </code></pre>
-<pre><pre class="playground"><code class="language-rust edition2018">
-<span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>use toy_rpc::{Client, Error};
+<pre><pre class="playground"><code class="language-rust edition2018">use toy_rpc::{Client, Error};
 
 // import everything to use the generated client stub functions
 use example_service::*;
 
 #[tokio::main]
-async main() {
+async fn main() {
     let client = Client::dial(&quot;127.0.0.1:23333&quot;).await
         .expect(&quot;Failed to connect to the server&quot;);
     
     // Access the remote method `add` of service `Arith` in a blocking manner
     let result: Result&lt;i32, Error&gt; = client.call_blocking(&quot;Arith.add&quot;, (3i32, 4i32));
-    assert_eq!(result, Ok(7));
+    println!(&quot;{:?}&quot;, result);
 
     // Access the remote method `subtract` of service `Arith` in an asynchronous manner
     let result: Result&lt;i32, Error&gt; = client.call(&quot;Arith.subtract&quot;, (9i32, 6i32)).await;
-    assert_eq!(result, Ok(3));
+    println!(&quot;{:?}&quot;, result);
 
     // Let's use the generated client stub functions
     let result = client
         .arith() // access `Arith` service
         .add((3i32, 4i32)) // access `add` method
         .await;
-    assert_eq!(result, Ok(7));
+    println!(&quot;{:?}&quot;, result);
 
     let result = client
         .arith() // access `Arith` service
         .subtract((9i32, 6i32)) // access `subtract` method
         .await;
-    assert_eq!(result, Ok(3));
+    println!(&quot;{:?}&quot;, result);
 }
-<span class="boring">}
-</span></code></pre></pre>
+</code></pre></pre>
 
                     </main>
 
