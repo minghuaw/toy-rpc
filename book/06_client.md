@@ -17,7 +17,7 @@ toy-rpc = { version = "0.7.0-alpha.2", features = ["tokio_runtime", "client"] }
 
 The example below shows how to connect to a TCP server
 
-```rust 
+```rust,noplaypen 
 use toy_rpc::Client;
 
 #[tokio::main]
@@ -29,7 +29,7 @@ async main() {
 
 Connecting to the HTTP server looks very similar with some minor changes. The example below assumes that we are trying to connect to one of the [HTTP servers](https://minghuaw.github.io/toy-rpc/05_integration.html) (all three HTTP integration examples have the RPC server serving at `"ws://127.0.0.1:23333/rpc/"`). Please note that there is a "_rpc_" appended to the end of the path by the server integration methods, but this is automatically handled by the `Client::dial_http` method so you don't need to worry about that. 
 
-```rust 
+```rust,noplaypen 
 use toy_rpc::Client;
 
 #[tokio::main]
@@ -68,7 +68,7 @@ Let's just remind ourselves that in this example the service definition and impl
 
 Since the service is defined and implemented in `src/lib.rs` from the [previous chapter](https://minghuaw.github.io/toy-rpc/03_define_service.html#export_impl), we are going to include everything in the `src/lib.rs` file to allow us use the generated client stub functions in our `src/bin/client.rs`.
 
-```rust
+```rust,noplaypen,noplaypen
 use toy_rpc::Client;
 use toy_rpc::Error;
 
@@ -123,7 +123,7 @@ toy-rpc = { version = "0.7.0-alpha.2", features = ["tokio_runtime", "client"] }
 example-service = { version = "0.1.0", path = "../example-service" }
 ```
 
-```rust 
+```rust,noplaypen 
 use toy_rpc::{Client, Error};
 
 // import everything to use the generated client stub functions

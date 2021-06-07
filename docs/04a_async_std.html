@@ -181,7 +181,7 @@ toy-rpc = { version = &quot;0.7.0-alpha.2&quot;, features = [&quot;async_std_run
 # our service definition 
 example-service = { version = &quot;0.1.0&quot;, path = &quot;../example-service&quot; }
 </code></pre>
-<pre><pre class="playground"><code class="language-rust edition2018">use async_std::net::TcpListener;
+<pre><code class="language-rust noplaypen">use async_std::net::TcpListener;
 use std::sync::Arc;
 use async_trait::async_trait;
 use toy_rpc::Server;
@@ -225,7 +225,7 @@ async fn main() {
     log::info!(&quot;Starting server at {}&quot;, &amp;addr);
     server.accept(listener).await.unwrap()
 }
-</code></pre></pre>
+</code></pre>
 
                     </main>
 

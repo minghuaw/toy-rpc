@@ -13,7 +13,7 @@ tokio = { version = "1.4.0", features = ["rt-multi-thread", "macros"] }
 toy-rpc = { version = "0.7.0-alpha.2", features = ["http_warp", "server"] }
 ```
 
-```rust 
+```rust,noplaypen 
 use std::sync::Arc;
 use toy_rpc::macros::export_impl;
 use toy_rpc::Server;

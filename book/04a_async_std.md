@@ -18,7 +18,7 @@ toy-rpc = { version = "0.7.0-alpha.2", features = ["async_std_runtime", "server"
 example-service = { version = "0.1.0", path = "../example-service" }
 ```
 
-```rust 
+```rust,noplaypen 
 use async_std::net::TcpListener;
 use std::sync::Arc;
 use async_trait::async_trait;

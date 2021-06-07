@@ -174,10 +174,7 @@ warp = &quot;0.3.0&quot;
 tokio = { version = &quot;1.4.0&quot;, features = [&quot;rt-multi-thread&quot;, &quot;macros&quot;] }
 toy-rpc = { version = &quot;0.7.0-alpha.2&quot;, features = [&quot;http_warp&quot;, &quot;server&quot;] }
 </code></pre>
-<pre><pre class="playground"><code class="language-rust edition2018">
-<span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>use std::sync::Arc;
+<pre><code class="language-rust noplaypen">use std::sync::Arc;
 use toy_rpc::macros::export_impl;
 use toy_rpc::Server;
 
@@ -209,8 +206,7 @@ async main() {
         .and(server.handle_http());
     warp::serve(routes).run(([127, 0, 0, 1], 23333)).await;
 }
-<span class="boring">}
-</span></code></pre></pre>
+</code></pre>
 
                     </main>
 

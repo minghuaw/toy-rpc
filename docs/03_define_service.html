@@ -188,10 +188,7 @@ The methods to export must meet the following criteria on the server side</p>
 </li>
 </ul>
 <p>The method is essentially in the form</p>
-<pre><pre class="playground"><code class="language-rust edition2018">
-<span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>#[export_method]
+<pre><code class="language-rust noplaypen">#[export_method]
 async fn method_name(&amp;self, args: Req) -&gt; Result&lt;Res, ErrorMsg&gt;
 where
     Req: serde::Deserialize,
@@ -200,8 +197,7 @@ where
 {
     // ...
 }
-<span class="boring">}
-</span></code></pre></pre>
+</code></pre>
 <h2 id="example-usage"><a class="header" href="#example-usage">Example Usage</a></h2>
 <p>Use the following dependencies to work with the examples below</p>
 <pre><code class="language-toml">[dependencies]
@@ -218,10 +214,7 @@ toy-rpc = &quot;0.7.0-alpha.2&quot;
 └── lib.rs
 </code></pre>
 <p>Suppose that <em>both</em> the service definitions and implementations are placed in <code>src/lib.rs</code>.</p>
-<pre><pre class="playground"><code class="language-rust edition2018">
-<span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>// src/lib.rs
+<pre><code class="language-rust noplaypen">// src/lib.rs
 use toy_rpc::macros::export_impl;
 
 pub struct Foo { }
@@ -238,13 +231,9 @@ impl Foo {
         Ok(&quot;not exported method&quot;.into())
     }
 }
-<span class="boring">}
-</span></code></pre></pre>
+</code></pre>
 <p>You may also define a separate trait in <code>src/lib.rs</code> which is implemented by some <code>struct</code> in the same file.</p>
-<pre><pre class="playground"><code class="language-rust edition2018">
-<span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>// continuing in src/lib.rs
+<pre><code class="language-rust noplaypen">// continuing in src/lib.rs
 
 use async_trait::async_trait;
 
@@ -272,8 +261,7 @@ impl Arith for Bar {
         Ok(args.0 - args.1)
     }
 }
-<span class="boring">}
-</span></code></pre></pre>
+</code></pre>
 <p>We will continue to use this example in the <a href="https://minghuaw.github.io/toy-rpc/04_server.html">Server</a> and <a href="https://minghuaw.github.io/toy-rpc/06_client.html">Client</a> chapters.</p>
 <h3 id="export_trait-and-export_trait_impl"><a class="header" href="#export_trait-and-export_trait_impl"><code>#[export_trait]</code> and <code>#[export_trait_impl]</code></a></h3>
 <p>When you want the abstract service definition to be shared but without concreate implementations, you should use <code>#[export_trait]</code> on the trait definition and <code>#[export_trait_impl]</code> on the concrete trait implementation. Please note that the default service name hence will be the name of the <code>trait</code> <strong>NOT</strong> that of the <code>struct</code>.</p>
@@ -285,10 +273,7 @@ impl Arith for Bar {
 </ul>
 <p>which can also be found in the GitHub examples (<a href="https://github.com/minghuaw/toy-rpc/tree/main/examples/example-service">service</a>, <a href="https://github.com/minghuaw/toy-rpc/tree/main/examples/example-server">server</a>, <a href="https://github.com/minghuaw/toy-rpc/tree/main/examples/example-client">client</a>).</p>
 <p>We are going to define the RPC service just as a trait in <code>&quot;example-service&quot;</code>.</p>
-<pre><pre class="playground"><code class="language-rust edition2018">
-<span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>// example-service/src/lib.rs
+<pre><code class="language-rust noplaypen">// example-service/src/lib.rs
 use async_trait::async_trait;
 use toy_rpc::macros::export_trait;
 
@@ -305,8 +290,7 @@ pub trait Arith {
     // some method that we don't want to export
     fn say_hi(&amp;self);
 }
-<span class="boring">}
-</span></code></pre></pre>
+</code></pre>
 <p>We will continue to use this example in the <a href="https://minghuaw.github.io/toy-rpc/04_server.html">Server</a> and <a href="https://minghuaw.github.io/toy-rpc/06_client.html">Client</a> chapters.</p>
 
                     </main>

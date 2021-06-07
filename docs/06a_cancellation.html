@@ -181,10 +181,7 @@ tokio = { version = &quot;1&quot;, features = [&quot;rt-multi-thread&quot;, &quo
 toy-rpc = { version = &quot;0.7.0-alpha.2&quot;, features = [&quot;tokio_runtime&quot;, &quot;server&quot;, &quot;client&quot;] }
 </code></pre>
 <p>Service definition and implementation placed in <code>src/lib.rs</code>:</p>
-<pre><pre class="playground"><code class="language-rust edition2018">
-<span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>use std::time::Duration;
+<pre><code class="language-rust noplaypen">use std::time::Duration;
 use toy_rpc::macros::export_impl;
 use tokio::time;
 
@@ -204,13 +201,9 @@ impl Example {
         Ok(args)
     }
 }
-<span class="boring">}
-</span></code></pre></pre>
+</code></pre>
 <p>Serve the RPC service with <code>src/bin/server.rs</code></p>
-<pre><pre class="playground"><code class="language-rust edition2018">
-<span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>use std::sync::Arc;
+<pre><code class="language-rust noplaypen">use std::sync::Arc;
 use toy_rpc::Server;
 use tokio::net::TcpListener;
 
@@ -229,13 +222,9 @@ async main() {
     let listener = TcpListener::bind(addr).await.unwrap();
     server.accept(listener).await.unwrap();
 }
-<span class="boring">}
-</span></code></pre></pre>
+</code></pre>
 <p>On the client side, let's call the <code>finite_loop</code> RPC function and wait for two seconds and cancel it.</p>
-<pre><pre class="playground"><code class="language-rust edition2018">
-<span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>use std::time::Duration;
+<pre><code class="language-rust noplaypen">use std::time::Duration;
 use tokio::time;
 use toy_rpc::client::{Client, Call};
 
@@ -266,8 +255,7 @@ async main() {
     let result = call.await;
     assert_eq!(result, Ok(&quot;hello world&quot;.to_string()));
 }
-<span class="boring">}
-</span></code></pre></pre>
+</code></pre>
 
                     </main>
 

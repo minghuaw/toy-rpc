@@ -26,7 +26,7 @@ Let's just remind ourselves that in this example the service definition and impl
 
 Using the service we have defined and implemented in the [previous chapter](https://minghuaw.github.io/toy-rpc/03_define_service.html#export_impl), we are going instantiate those services and register those instances in `src/bin/server.rs`.
 
-```rust 
+```rust,noplaypen 
 // src/bin/server.rs
 use tokio::net::TcpListener;
 use std::sync::Arc;
@@ -74,7 +74,7 @@ example-service = { version = "0.1.0", path = "../example-service" }
 
 Now, let's implement the service and start the server
 
-```rust 
+```rust,noplaypen 
 use tokio::net::TcpListener;
 use std::sync::Arc;
 use async_trait::async_trait;

@@ -13,7 +13,7 @@ async-std = { version = "1", features = [ "attributes", ] }
 toy-rpc = { version = "0.7.0-alpha.2", features = ["http_tide", "server"] }
 ```
 
-```rust 
+```rust,noplaypen 
 use std::sync::Arc;
 use toy_rpc::macros::export_impl;
 use toy_rpc::Server;

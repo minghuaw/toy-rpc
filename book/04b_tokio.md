@@ -12,7 +12,7 @@ toy-rpc = { version = "0.7.0-alpha.2", features = ["tokio_runtime", "server"] }
 example-service = { version = "0.1.0", path = "../example-service" }
 ```
 
-```rust 
+```rust,noplaypen 
 use tokio::net::TcpListener;
 use std::sync::Arc;
 use async_trait::async_trait;

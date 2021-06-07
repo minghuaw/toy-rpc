@@ -174,10 +174,7 @@ tide = &quot;0.16.0&quot;
 async-std = { version = &quot;1&quot;, features = [ &quot;attributes&quot;, ] }  
 toy-rpc = { version = &quot;0.7.0-alpha.2&quot;, features = [&quot;http_tide&quot;, &quot;server&quot;] }
 </code></pre>
-<pre><pre class="playground"><code class="language-rust edition2018">
-<span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>use std::sync::Arc;
+<pre><code class="language-rust noplaypen">use std::sync::Arc;
 use toy_rpc::macros::export_impl;
 use toy_rpc::Server;
 use tide::prelude::*;
@@ -211,8 +208,7 @@ async main() {
     app.at(&quot;/rpc/&quot;).nest(server.handle_http());
     app.listen(addr).await.unwrap();
 }
-<span class="boring">}
-</span></code></pre></pre>
+</code></pre>
 
                     </main>
 

@@ -21,7 +21,7 @@ The methods to export must meet the following criteria on the server side
 
 The method is essentially in the form
 
-```rust 
+```rust,noplaypen 
 #[export_method]
 async fn method_name(&self, args: Req) -> Result<Res, ErrorMsg>
 where
@@ -59,7 +59,7 @@ File structure
 
 Suppose that *both* the service definitions and implementations are placed in `src/lib.rs`.
 
-```rust 
+```rust,noplaypen 
 // src/lib.rs
 use toy_rpc::macros::export_impl;
 
@@ -81,7 +81,7 @@ impl Foo {
 
 You may also define a separate trait in `src/lib.rs` which is implemented by some `struct` in the same file.
 
-```rust 
+```rust,noplaypen 
 // continuing in src/lib.rs
 
 use async_trait::async_trait;
@@ -128,7 +128,7 @@ which can also be found in the GitHub examples ([service](https://github.com/min
 
 We are going to define the RPC service just as a trait in `"example-service"`.
 
-```rust
+```rust,noplaypen
 // example-service/src/lib.rs
 use async_trait::async_trait;
 use toy_rpc::macros::export_trait;

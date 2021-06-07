@@ -24,7 +24,7 @@ toy-rpc = { version = "0.7.0-alpha.2", features = ["tokio_runtime", "server", "c
 
 Service definition and implementation placed in `src/lib.rs`:
 
-```rust
+```rust,noplaypen
 use std::time::Duration;
 use toy_rpc::macros::export_impl;
 use tokio::time;
@@ -49,7 +49,7 @@ impl Example {
 
 Serve the RPC service with `src/bin/server.rs`.
 
-```rust
+```rust,noplaypen
 use std::sync::Arc;
 use toy_rpc::Server;
 use tokio::net::TcpListener;
@@ -73,7 +73,7 @@ async main() {
 
 On the client side, let's call the `finite_loop` RPC function with a timeout of three seconds.
 
-```rust 
+```rust,noplaypen 
 use std::time::Duration;
 use tokio::time;
 use toy_rpc::client::{Client, Call};

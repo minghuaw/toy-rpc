@@ -182,7 +182,7 @@ toy-rpc = { version = &quot;0.7.0-alpha.2&quot;, features = [&quot;tokio_runtime
 └── lib.rs
 </code></pre>
 <p>Using the service we have defined and implemented in the <a href="https://minghuaw.github.io/toy-rpc/03_define_service.html#export_impl">previous chapter</a>, we are going instantiate those services and register those instances in <code>src/bin/server.rs</code>.</p>
-<pre><pre class="playground"><code class="language-rust edition2018">// src/bin/server.rs
+<pre><code class="language-rust noplaypen">// src/bin/server.rs
 use tokio::net::TcpListener;
 use std::sync::Arc;
 use toy_rpc::Server;
@@ -209,7 +209,7 @@ async fn main() {
     // Start our server and accept incoming connections and requests
     server.accept(listener).await.unwrap();
 }
-</code></pre></pre>
+</code></pre>
 <h2 id="example-with-export_trait-and-export_trait_impl"><a class="header" href="#example-with-export_trait-and-export_trait_impl">Example with <code>#[export_trait]</code> and <code>#[export_trait_impl]</code></a></h2>
 <p>Now we are back with the example with <code>#[export_trait]</code> and <code>#[export_trait_impl]</code>, let's just remind ourselves that we have three separate crates where the service is defined in <code>&quot;example-service&quot;</code> and will be implemented in <code>&quot;example-server&quot;</code> as shown below.</p>
 <p>We will continue to use the <code>tokio</code> runtime so that we don't need to change our <code>Cargo.toml</code> file, but because we will be implementing the service below, we will need to add <code>async-trait</code> and our service definition crate into our dependencies.</p>
@@ -222,7 +222,7 @@ toy-rpc = { version = &quot;0.7.0-alpha.2&quot;, features = [&quot;tokio_runtime
 example-service = { version = &quot;0.1.0&quot;, path = &quot;../example-service&quot; }
 </code></pre>
 <p>Now, let's implement the service and start the server</p>
-<pre><pre class="playground"><code class="language-rust edition2018">use tokio::net::TcpListener;
+<pre><code class="language-rust noplaypen">use tokio::net::TcpListener;
 use std::sync::Arc;
 use async_trait::async_trait;
 use toy_rpc::Server;
@@ -266,7 +266,7 @@ async fn main() {
     log::info!(&quot;Starting server at {}&quot;, &amp;addr);
     server.accept(listener).await.unwrap()
 }
-</code></pre></pre>
+</code></pre>
 
                     </main>
 

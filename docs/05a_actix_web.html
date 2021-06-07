@@ -173,7 +173,7 @@
 actix-web = &quot;3.3.2&quot;
 toy-rpc = { version = &quot;0.7.0-alpha.2&quot;, features = [&quot;http_actix_web&quot;, &quot;server&quot;] }
 </code></pre>
-<pre><pre class="playground"><code class="language-rust edition2018">use std::sync::Arc;
+<pre><code class="language-rust noplaypen">use std::sync::Arc;
 use toy_rpc::macros::export_impl;
 use toy_rpc::Server;
 use actix_web::{web, HttpServer, App};
@@ -218,7 +218,7 @@ async fn main() {
     .run()
     .await;
 }
-</code></pre></pre>
+</code></pre>
 
                     </main>
 

@@ -176,31 +176,23 @@ tokio = { version = &quot;1&quot;, features = [&quot;rt-multi-thread&quot;, &quo
 toy-rpc = { version = &quot;0.7.0-alpha.2&quot;, features = [&quot;tokio_runtime&quot;, &quot;client&quot;] }
 </code></pre>
 <p>The example below shows how to connect to a TCP server</p>
-<pre><pre class="playground"><code class="language-rust edition2018">
-<span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>use toy_rpc::Client;
+<pre><code class="language-rust noplaypen">use toy_rpc::Client;
 
 #[tokio::main]
 async main() {
     let client = Client::dial(&quot;127.0.0.1:23333&quot;).await
         .expect(&quot;Failed to connect to server&quot;);
 }
-<span class="boring">}
-</span></code></pre></pre>
+</code></pre>
 <p>Connecting to the HTTP server looks very similar with some minor changes. The example below assumes that we are trying to connect to one of the <a href="https://minghuaw.github.io/toy-rpc/05_integration.html">HTTP servers</a> (all three HTTP integration examples have the RPC server serving at <code>&quot;ws://127.0.0.1:23333/rpc/&quot;</code>). Please note that there is a &quot;<em>rpc</em>&quot; appended to the end of the path by the server integration methods, but this is automatically handled by the <code>Client::dial_http</code> method so you don't need to worry about that. </p>
-<pre><pre class="playground"><code class="language-rust edition2018">
-<span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>use toy_rpc::Client;
+<pre><code class="language-rust noplaypen">use toy_rpc::Client;
 
 #[tokio::main]
 async main() {
     let client = Client::dial_http(&quot;ws://127.0.0.1:23333/rpc/&quot;).await
         .expect(&quot;Failed to connect to server&quot;);
 }
-<span class="boring">}
-</span></code></pre></pre>
+</code></pre>
 <h1 id="accessing-rpc-services"><a class="header" href="#accessing-rpc-services">Accessing RPC services</a></h1>
 <h2 id="call_blocking-and-call"><a class="header" href="#call_blocking-and-call"><code>call_blocking(...)</code> and <code>call(...)</code></a></h2>
 <p>There are two methods available for accessing the RPC services and methods. The <code>call_blocking</code> method blocks the execution until the response is received, and the <code>call</code> method is the asynchronous version where the execution will yield to other tasks scheduled by the runtime while waiting for the response. Cancellation is also supported on the <code>call</code> method, which is discussed with more details in the <a href="https://minghuaw.github.io/toy-rpc/06a_cancellation.html">next chapter</a>.</p>
@@ -218,10 +210,7 @@ async main() {
 └── lib.rs
 </code></pre>
 <p>Since the service is defined and implemented in <code>src/lib.rs</code> from the <a href="https://minghuaw.github.io/toy-rpc/03_define_service.html#export_impl">previous chapter</a>, we are going to include everything in the <code>src/lib.rs</code> file to allow us use the generated client stub functions in our <code>src/bin/client.rs</code>.</p>
-<pre><pre class="playground"><code class="language-rust edition2018">
-<span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>use toy_rpc::Client;
+<pre><code class="language-rust noplaypen noplaypen">use toy_rpc::Client;
 use toy_rpc::Error;
 
 // include everything from the lib.rs file
@@ -258,8 +247,7 @@ async main() {
         .await;
     println!(&quot;{:?}&quot;, result);
 }
-<span class="boring">}
-</span></code></pre></pre>
+</code></pre>
 <h3 id="export_trait-and-export_trait_impl"><a class="header" href="#export_trait-and-export_trait_impl"><code>#[export_trait]</code> and <code>#[export_trait_impl]</code></a></h3>
 <p>Again, let's just remind ourselves that the service in this example is defined in a separate crate <a href="https://minghuaw.github.io/toy-rpc/03_define_service.html#export_trait-and-export_trait_impl"><code>example-service</code></a> and the service is implemented and served by <a href="https://minghuaw.github.io/toy-rpc/04_server.html#example-with-export_trait-and-export_trait_impl"><code>example-server</code></a> crate. What we will be doing below is to demonstrate the client, which, not surprisingly, look pretty much the same as the example above.</p>
 <p>Because the service definition resides in a separate crate, we will need to import that crate as well.</p>
@@ -270,7 +258,7 @@ toy-rpc = { version = &quot;0.7.0-alpha.2&quot;, features = [&quot;tokio_runtime
 # import our service definition, assuming we have this definition at &quot;../example-service&quot;
 example-service = { version = &quot;0.1.0&quot;, path = &quot;../example-service&quot; }
 </code></pre>
-<pre><pre class="playground"><code class="language-rust edition2018">use toy_rpc::{Client, Error};
+<pre><code class="language-rust noplaypen">use toy_rpc::{Client, Error};
 
 // import everything to use the generated client stub functions
 use example_service::*;
@@ -301,7 +289,7 @@ async fn main() {
         .await;
     println!(&quot;{:?}&quot;, result);
 }
-</code></pre></pre>
+</code></pre>
 
                     </main>
 

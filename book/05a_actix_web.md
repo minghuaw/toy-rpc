@@ -12,7 +12,7 @@ actix-web = "3.3.2"
 toy-rpc = { version = "0.7.0-alpha.2", features = ["http_actix_web", "server"] }
 ```
 
-```rust 
+```rust,noplaypen 
 use std::sync::Arc;
 use toy_rpc::macros::export_impl;
 use toy_rpc::Server;
