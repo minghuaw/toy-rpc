@@ -222,7 +222,9 @@ toy-rpc = { version = &quot;0.7.0-alpha.2&quot;, features = [&quot;tokio_runtime
 example-service = { version = &quot;0.1.0&quot;, path = &quot;../example-service&quot; }
 </code></pre>
 <p>Now, let's implement the service and start the server</p>
-<pre><code class="language-rust noplaypen">use tokio::net::TcpListener;
+<pre><code class="language-rust noplaypen">// src/main.rs
+
+use tokio::net::TcpListener;
 use std::sync::Arc;
 use async_trait::async_trait;
 use toy_rpc::Server;
@@ -263,7 +265,7 @@ async fn main() {
         .register(arith) // register service with default name &quot;Arith&quot;
         .build();
 
-    log::info!(&quot;Starting server at {}&quot;, &amp;addr);
+    println!(&quot;Starting server at {}&quot;, &amp;addr);
     server.accept(listener).await.unwrap()
 }
 </code></pre>

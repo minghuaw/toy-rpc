@@ -75,6 +75,8 @@ example-service = { version = "0.1.0", path = "../example-service" }
 Now, let's implement the service and start the server
 
 ```rust,noplaypen 
+// src/main.rs
+
 use tokio::net::TcpListener;
 use std::sync::Arc;
 use async_trait::async_trait;
@@ -116,7 +118,7 @@ async fn main() {
         .register(arith) // register service with default name "Arith"
         .build();
 
-    log::info!("Starting server at {}", &addr);
+    println!("Starting server at {}", &addr);
     server.accept(listener).await.unwrap()
 }
 ```
