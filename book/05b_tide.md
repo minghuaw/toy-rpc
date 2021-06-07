@@ -35,7 +35,7 @@ impl Calculator {
 }
 
 #[async_std::main]
-async main() {
+async fn main() {
     // Get the RPC server ready
     let addr = "127.0.0.1:23333";
     let calculator = Arc::new(Calculator { });

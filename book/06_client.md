@@ -21,7 +21,7 @@ The example below shows how to connect to a TCP server
 use toy_rpc::Client;
 
 #[tokio::main]
-async main() {
+async fn main() {
     let client = Client::dial("127.0.0.1:23333").await
         .expect("Failed to connect to server");
 }
@@ -33,7 +33,7 @@ Connecting to the HTTP server looks very similar with some minor changes. The ex
 use toy_rpc::Client;
 
 #[tokio::main]
-async main() {
+async fn main() {
     let client = Client::dial_http("ws://127.0.0.1:23333/rpc/").await
         .expect("Failed to connect to server");
 }
@@ -77,7 +77,7 @@ use toy_rpc::Error;
 use example::*;
 
 #[tokio::main]
-async main() {
+async fn main() {
     let client = Client::dial("127.0.0.1:23333").await
         .expect("Failed to connect to the server");
 

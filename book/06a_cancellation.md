@@ -59,7 +59,7 @@ use tokio::net::TcpListener;
 use example::Example;
 
 #[tokio::main]
-async main() {
+async fn main() {
     let addr = "127.0.0.1:23333";
     let ex = Arc::new(Example { });
     let server = Server::builder()
@@ -83,7 +83,7 @@ use toy_rpc::client::{Client, Call};
 use example::*;
 
 #[tokio::main]
-async main() {
+async fn main() {
     let client = Client::dial("127.0.0.1:23333").await
         .expect("Failed to connect to server");
 
@@ -103,6 +103,6 @@ async main() {
         .example() // access `Example` service
         .echo("hello world".to_string()); // access `echo` method
     let result = call.await;
-    assert_eq!(result, Ok("hello world".to_string()));
+    println!("{:?}", result);
 }
 ```

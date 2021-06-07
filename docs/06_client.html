@@ -179,7 +179,7 @@ toy-rpc = { version = &quot;0.7.0-alpha.2&quot;, features = [&quot;tokio_runtime
 <pre><code class="language-rust noplaypen">use toy_rpc::Client;
 
 #[tokio::main]
-async main() {
+async fn main() {
     let client = Client::dial(&quot;127.0.0.1:23333&quot;).await
         .expect(&quot;Failed to connect to server&quot;);
 }
@@ -188,7 +188,7 @@ async main() {
 <pre><code class="language-rust noplaypen">use toy_rpc::Client;
 
 #[tokio::main]
-async main() {
+async fn main() {
     let client = Client::dial_http(&quot;ws://127.0.0.1:23333/rpc/&quot;).await
         .expect(&quot;Failed to connect to server&quot;);
 }
@@ -218,7 +218,7 @@ use toy_rpc::Error;
 use example::*;
 
 #[tokio::main]
-async main() {
+async fn main() {
     let client = Client::dial(&quot;127.0.0.1:23333&quot;).await
         .expect(&quot;Failed to connect to the server&quot;);
 

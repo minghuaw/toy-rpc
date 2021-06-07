@@ -212,7 +212,7 @@ use tokio::net::TcpListener;
 use example::Example;
 
 #[tokio::main]
-async main() {
+async fn main() {
     let addr = &quot;127.0.0.1:23333&quot;;
     let ex = Arc::new(Example { });
     let server = Server::builder()
@@ -233,7 +233,7 @@ use toy_rpc::client::{Client, Call};
 use example::*;
 
 #[tokio::main]
-async main() {
+async fn main() {
     let client = Client::dial(&quot;127.0.0.1:23333&quot;).await
         .expect(&quot;Failed to connect to server&quot;);
 

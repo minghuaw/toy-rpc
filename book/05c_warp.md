@@ -34,7 +34,7 @@ impl Calculator {
 }
 
 #[tokio::main]
-async main() {
+async fn main() {
     let calculator = Arc::new(Calculator { });
     let server = Server::builder()
         .register(calculator)
