@@ -3,11 +3,8 @@
 //!
 
 use cfg_if::cfg_if;
-use std::collections::HashMap;
 use std::sync::Arc;
-use std::time::Duration;
 
-use crate::message::TimeoutRequestBody;
 use crate::service::AsyncServiceMap;
 
 #[cfg(all(feature = "http_actix_web"))]
@@ -77,6 +74,8 @@ cfg_if! {
         use flume::{Receiver, Sender};
         use std::io::ErrorKind;
         use std::future::Future;
+        use std::time::Duration;
+        use std::collections::HashMap;
         
         use crate::message::{ErrorMessage, RequestHeader, ResponseHeader};
         use crate::service::{HandlerResult};
@@ -87,7 +86,7 @@ cfg_if! {
             },
             message::{
                 ExecutionMessage, ExecutionResult, MessageId, CANCELLATION_TOKEN, CANCELLATION_TOKEN_DELIM,
-                RequestType, TIMEOUT_TOKEN, 
+                RequestType, TIMEOUT_TOKEN, TimeoutRequestBody
             },
         };
         use crate::error::Error;

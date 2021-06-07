@@ -72,6 +72,7 @@ pub(crate) struct TimeoutRequestBody(pub Duration);
     all(feature = "async_std_runtime", not(feature = "tokio_runtime")),
     all(feature = "tokio_runtime", not(feature = "async_std_runtime"))
 ))]
+#[cfg(any(feature = "client"))]
 impl TimeoutRequestBody {
     pub(crate) fn new(dur: Duration) -> Self {
         Self(dur)
@@ -162,6 +163,10 @@ cfg_if! {
     }
 }
     
+#[cfg_attr(
+    not(any(feature = "async_std_runtime", feature = "tokio_runtime")), 
+    allow(dead_code)
+)]
 #[cfg(feature = "client")]
 pub(crate) enum ClientMessage {
     Timeout(MessageId, Duration), // the timeout will only be applied to the next request

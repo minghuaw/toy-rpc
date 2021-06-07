@@ -14,15 +14,27 @@ path = "src/bin/server.rs"
 name = "client"
 path = "src/bin/client.rs" 
 
+[features]
+default = [
+    "async_std_runtime"
+]
+
+async_std_runtime = ["toy-rpc/async_std_runtime", "async-std"]
+tokio_runtime = ["toy-rpc/tokio_runtime", "tokio"]
+
 [dependencies]
-async-trait = "0.1.42"
-env_logger = "0.8.2"
-futures = "0.3.12"
+anyhow = "1.0.40"
+cfg-if = "1.0.0"
+env_logger = "0.8.3"
 log = "0.4.14"
-serde = { version = "1.0.123", features = ["derive"] }
-async-std = { version = "1.9.0", features = [ "attributes", ] }  
-toy-rpc = { version = "0.7.0-alpha.2", path = "../../toy-rpc", default-features = false, features = ["async_std_runtime", "server", "client"] }
-# tokio = { version = "1.4.0", features = ["rt", "rt-multi-thread", "macros", "net", "sync"] }
-# toy-rpc = { version = "0.6.0", path = "../../toy-rpc", default-features = false, features = ["std", "serde_bincode", "tokio_runtime"] }
+serde = { version = "1.0.125", features = ["derive"] }
+async-std = { version = "1.9.0", features = [ "attributes", ], optional = true }
+tokio = { version = "1.6.0", features = ["rt-multi-thread", "macros", "net", "sync", "time", "io-util"], optional = true }
+async-trait = "0.1.50"
 
-
+[dependencies.toy-rpc]
+path = "../../toy-rpc/"
+version = "0.7.0-alpha.2"
+default-features = false
+features = [ "serde_bincode", "server", "client" ]
+optional = true

@@ -32,19 +32,14 @@ cfg_if! {
         ),
     ))] {
         use std::sync::Arc;
-        // use std::collections::HashMap;
         use ::async_std::net::{TcpListener, TcpStream};
         use ::async_std::task::{self};
         use futures::{StreamExt};
-        // use flume::{Receiver, Sender};
 
         use crate::error::Error;
         use crate::transport::ws::WebSocketConn;
         use crate::codec::split::SplittableServerCodec;
-        use crate::{
-            codec::{DefaultCodec},
-            // message::{ExecutionMessage, ExecutionResult},
-        };
+        use crate::codec::DefaultCodec;
 
         use super::{AsyncServiceMap, Server};
 
@@ -92,8 +87,7 @@ cfg_if! {
 
                 while let Some(conn) = incoming.next().await {
                     let stream = conn?;
-
-                    log::trace!("Accepting incoming connection from {}", stream.peer_addr()?);
+                    log::info!("Accepting incoming connection from {}", stream.peer_addr()?);
 
                     task::spawn(Self::serve_tcp_connection(stream, self.services.clone()));
                 }
@@ -147,7 +141,7 @@ cfg_if! {
             async fn accept_ws_connection(stream: TcpStream, services: Arc<AsyncServiceMap>) {
                 let ws_stream = async_tungstenite::accept_async(stream).await
                         .expect("Error during the websocket handshake occurred");
-                    log::trace!("Established WebSocket connection.");
+                    log::debug!("Established WebSocket connection.");
 
                 Self::serve_ws_connection(ws_stream, services).await 
                     .unwrap_or_else(|e| log::error!("{}", e));
@@ -164,7 +158,7 @@ cfg_if! {
                 // let fut = task::spawn_blocking(|| Self::_serve_codec(codec, services)).await;
                 // let ret = Self::serve_codec_loop(codec, services).await;
                 let ret = Self::serve_codec_setup(codec, services).await;
-                log::trace!("Client disconnected from {}", _peer_addr);
+                log::info!("Client disconnected from {}", _peer_addr);
                 ret
             }
 
