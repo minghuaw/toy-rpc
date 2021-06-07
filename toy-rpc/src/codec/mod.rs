@@ -95,11 +95,14 @@ cfg_if! {
     if #[cfg(any(
         feature = "async_std_runtime",
         feature = "tokio_runtime",
-        feature = "http_tide",
-        feature = "http_warp",
-        feature = "http_actix_web",
         feature = "docs",
     ))] {
+        #[cfg(all(
+            feature = "serde_bincode",
+            not(feature = "serde_json"),
+            not(feature = "serde_cbor"),
+            not(feature = "serde_rmp"),
+        ))]
         #[cfg_attr(
             doc,
             doc(cfg(all(
@@ -111,6 +114,12 @@ cfg_if! {
         )]
         pub mod bincode;
 
+        #[cfg(all(
+            feature = "serde_json",
+            not(feature = "serde_bincode"),
+            not(feature = "serde_cbor"),
+            not(feature = "serde_rmp"),
+        ))]
         #[cfg_attr(
             doc,
             doc(cfg(all(
@@ -122,6 +131,12 @@ cfg_if! {
         )]
         pub mod json;
 
+        #[cfg(all(
+            feature = "serde_cbor",
+            not(feature = "serde_json"),
+            not(feature = "serde_bincode"),
+            not(feature = "serde_rmp"),
+        ))]
         #[cfg_attr(
             doc,
             doc(cfg(all(
@@ -133,6 +148,12 @@ cfg_if! {
         )]
         pub mod cbor;
 
+        #[cfg(all(
+            feature = "serde_rmp",
+            not(feature = "serde_cbor"),
+            not(feature = "serde_json"),
+            not(feature = "serde_bincode"),
+        ))]
         #[cfg_attr(
             doc,
             doc(cfg(all(
@@ -155,7 +176,21 @@ pub(crate) struct ConnTypePayload {}
 
 /// Default codec. `Codec` is re-exported as `DefaultCodec` when one of these feature
 /// flags is toggled (`serde_bincode`, `serde_json`, `serde_cbor`, `serde_rmp`")
-#[cfg_attr(not(any(feature = "async_std_runtime", feature = "tokio_runtime")), allow(dead_code))]
+#[cfg_attr(
+    not(all(
+        any( // there has to be a runtime
+            feature = "async_std_runtime", 
+            feature = "tokio_runtime",
+        ),
+        any( // there has to be a codec
+            feature = "serde_bincode",
+            feature = "serde_json",
+            feature = "serde_cbor",
+            feature = "serde_rmp",
+        )
+    )), 
+    allow(dead_code)
+)]
 pub struct Codec<R, W, C> {
     reader: R,
     writer: W,
