@@ -1269,9 +1269,9 @@ dependencies = [
 
 [[package]]
 name = "toy-rpc-macros"
-version = "0.5.0-beta"
+version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b31d5226fdc7946f955be2cd951158585aca11554854eacbd9b43b75cbf47166"
+checksum = "78878e5a7e1de67ca1c410c1e4ae9bebf79dd49c72af207254b17a6b71be9ed4"
 dependencies = [
  "quote",
  "syn",

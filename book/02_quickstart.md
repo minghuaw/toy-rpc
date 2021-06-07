@@ -11,7 +11,7 @@ A simple quickstart with `tokio` runtime is shown below. More examples can be fo
 ```toml
 [dependencies]
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "net"] }
-toy-rpc = { version = "0.7.0-alpha.2", feature = ["tokio_runtime", "server", "client"] }
+toy-rpc = { version = "0.7.0-alpha.2", features = ["tokio_runtime", "server", "client"] }
 ```
 
 ## Project structure
@@ -43,7 +43,7 @@ In `src/lib.rs`
 ```rust 
 // src/lib.rs
 
-mod rpc {
+pub mod rpc {
     use toy_rpc::macros::export_impl;
     pub struct Echo { }
     
@@ -104,7 +104,7 @@ use toy_rpc::Client;
 use toy_rpc_quickstart::rpc::*;
 
 #[tokio::main]
-async main() {
+async fn main() {
     let addr = "127.0.0.1:23333";
     let client = Client::dial(addr).await.unwrap();
 
