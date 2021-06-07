@@ -14,7 +14,9 @@ similar to the old `spawn_task` in terms of usage.
 
 - Cancellation. The `Call<Res>` type returned by the `call` method can be canceled by 
 using the `cancel()` method.
-- Timeout. (WIP)
+- Timeout. A timeout can be set for the next request by calling `client.timeout(duration)`. 
+only one request after setting the timeout is going to run with a timeout. If you want to set timeout
+for multiple requests, you need to set the timeout for each of them.
 
 ## 0.6.1
 

@@ -179,7 +179,9 @@ similar to the old <code>spawn_task</code> in terms of usage.</li>
 <ul>
 <li>Cancellation. The <code>Call&lt;Res&gt;</code> type returned by the <code>call</code> method can be canceled by 
 using the <code>cancel()</code> method.</li>
-<li>Timeout. (WIP)</li>
+<li>Timeout. A timeout can be set for the next request by calling <code>client.timeout(duration)</code>. 
+only one request after setting the timeout is going to run with a timeout. If you want to set timeout
+for multiple requests, you need to set the timeout for each of them.</li>
 </ul>
 <h2 id="061"><a class="header" href="#061">0.6.1</a></h2>
 <ul>
