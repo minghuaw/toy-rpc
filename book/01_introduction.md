@@ -37,7 +37,7 @@ easy-to-use and supports both `async_std` and `tokio` runtimes.
 
 ## Feature flags
 
-The feature flags can be put into three categories.
+Most of the feature flags can be put into three categories.
 
 Choice of runtime and HTTP framework integration
 
@@ -62,6 +62,10 @@ Choice of serialization/deserialzation (only one should be enabled at a time)
     for serialization/deserialization
 - `serde_rmp`: the default codec will use `rmp-serde`
     for serialization/deserialization
+
+TLS support
+
+- "tls": enables TLS support
 
 Other trivial feature flags are listed below, and they are likely of no actual usage for you.
 - `docs`
