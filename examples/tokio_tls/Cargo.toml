@@ -1,5 +1,5 @@
 [package]
-name = "async_std_tcp"
+name = "tokio_tls"
 version = "0.1.0"
 authors = ["minghuaw <michael.wu1107@gmail.com>"]
 edition = "2018"
@@ -15,12 +15,8 @@ name = "client"
 path = "src/bin/client.rs" 
 
 [dependencies]
-async-std = { version = "1.9.0", features = [ "attributes", ] }
-log = "0.4.14"
-env_logger = "0.8.3"
-
-[dependencies.toy-rpc]
-path = "../../toy-rpc/"
-version = "0.7.0-alpha.3"
-default-features = false
-features = [ "serde_json", "async_std_runtime", "server", "client"]
+anyhow = "1.0.41"
+env_logger = "0.8.4"
+rustls = "0.19.1"
+tokio = { version = "1.6.1", features = ["rt-multi-thread", "macros", "net"] }
+toy-rpc = {version = "0.7.0-alpha.3", path = "../../toy-rpc", features = ["tokio_runtime", "tls", "server", "client"]}

@@ -18,4 +18,4 @@ tokio_runtime = ["toy-rpc/tokio_runtime"]
 [dependencies]
 async-trait = "0.1.50"
 # toy-rpc-macros = { version = "0.5.0-alpha", path = "../../macros", features = ["server", "client"] }
-toy-rpc = { version = "0.7.0-alpha.2", path = "../../toy-rpc", features = ["server", "client", "tokio_runtime"] }
+toy-rpc = { version = "0.7.0-alpha.3", path = "../../toy-rpc", features = ["server", "client", "tokio_runtime"] }

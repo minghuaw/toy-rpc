@@ -16,5 +16,6 @@ exclude = [
     "examples/cancel_and_timeout",
     "examples/example-service",
     "examples/example-server",
-    "examples/example-client"
+    "examples/example-client",
+    "examples/tokio_tls",
 ]
