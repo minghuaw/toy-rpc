@@ -19,8 +19,8 @@
 </div>
 
 `toy-rpc` aims to be an easy-to-use `async` RPC tool that is inspired by golang's `net/rpc`'s API. 
-It supports both `async_std` and `tokio` runtimes and provides integration with `actix_web`, `warp` and `tide`
-HTTP server frameworks.
+It supports both `async_std` and `tokio` runtimes over either TCP or TLS. Integration with common HTTP server frameworks such as `actix_web`, `warp` and `tide`
+are supported.
 
 The overall usage and API should feel similar to that of the golang's `net/rpc` package. Some of the names are changed 
 to make them sound more "rusty". Because rust does not come with runtime reflection, attribute macros `#[export_impl]`

@@ -13,5 +13,6 @@
 - [Client](./06_client.md)
     - [Cancellation](./06a_cancellation.md)
     - [Timeout](./06b_timeout.md)
-- [Examples](./07_examples.md)
+- [TLS Support](./07_tls.md)
+- [Examples](./09_examples.md)
 - [Change Logs](./10_change_log.md)
