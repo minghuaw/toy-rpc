@@ -32,8 +32,9 @@ cfg_if! {
             not(feature = "serde_bincode"),
         ),
     ))] {
-        use crate::codec::DefaultCodec;
         use warp::{Filter, Reply, filters::BoxedFilter};
+        use crate::codec::DefaultCodec;
+        use super::tokio::serve_codec_setup;
 
         /// The following impl block is controlled by feature flag. It is enabled
         /// if and only if **exactly one** of the the following feature flag is turned on
@@ -48,7 +49,7 @@ cfg_if! {
                     let codec = DefaultCodec::with_warp_websocket(websocket);
                     let services = state.services.clone();
 
-                    let fut = Self::serve_codec_setup(codec, services);
+                    let fut = serve_codec_setup(codec, services);
                     fut.await.unwrap_or_else(|e| log::error!("{}", e));
                 })
             }

@@ -35,6 +35,7 @@ cfg_if! {
     ))] {
         use crate::codec::DefaultCodec;
         use crate::DEFAULT_RPC_PATH;
+        use super::async_std::serve_codec_setup;
 
         /// The following impl block is controlled by feature flag. It is enabled
         /// if and only if **exactly one** of the the following feature flag is turned on
@@ -107,7 +108,7 @@ cfg_if! {
                             let codec = DefaultCodec::with_tide_websocket(ws_stream);
                             let services = req.state().services.clone();
 
-                            let fut = Self::serve_codec_setup(codec, services);
+                            let fut = serve_codec_setup(codec, services);
 
                             log::trace!("Client disconnected.");
 

@@ -36,6 +36,11 @@ cfg_if! {
         use ::async_std::task::{self};
         use futures::{StreamExt};
 
+        #[cfg(feature = "tls")]
+        use async_rustls::{TlsAcceptor};
+        #[cfg(feature = "tls")]
+        use rustls::ServerConfig;
+
         use crate::error::Error;
         use crate::transport::ws::WebSocketConn;
         use crate::codec::split::SplittableServerCodec;
@@ -89,7 +94,24 @@ cfg_if! {
                     let stream = conn?;
                     log::info!("Accepting incoming connection from {}", stream.peer_addr()?);
 
-                    task::spawn(Self::serve_tcp_connection(stream, self.services.clone()));
+                    task::spawn(serve_tcp_connection(stream, self.services.clone()));
+                }
+
+                Ok(())
+            }
+
+            /// Accepts connections with TLS
+            /// 
+            #[cfg(feature = "tls")]
+            pub async fn accept_with_tls_config(&self, listener: TcpListener, config: ServerConfig) -> Result<(), Error> {
+                let mut incoming = listener.incoming();
+                let acceptor = TlsAcceptor::from(Arc::new(config));
+                
+                while let Some(conn) = incoming.next().await {
+                    let stream = conn?;
+                    let acceptor = acceptor.clone();
+
+                    task::spawn(serve_tls_connection(stream, acceptor, self.services.clone()));
                 }
 
                 Ok(())
@@ -132,34 +154,10 @@ cfg_if! {
                     let stream = conn?;
                     log::info!("Accepting incoming connection from {}", stream.peer_addr()?);
 
-                    task::spawn(Self::accept_ws_connection(stream, self.services.clone()));
+                    task::spawn(accept_ws_connection(stream, self.services.clone()));
                 }
 
                 Ok(())
-            }
-
-            async fn accept_ws_connection(stream: TcpStream, services: Arc<AsyncServiceMap>) {
-                let ws_stream = async_tungstenite::accept_async(stream).await
-                        .expect("Error during the websocket handshake occurred");
-                    log::debug!("Established WebSocket connection.");
-
-                Self::serve_ws_connection(ws_stream, services).await 
-                    .unwrap_or_else(|e| log::error!("{}", e));
-            }
-
-            /// Serves a single connection
-            async fn serve_tcp_connection(stream: TcpStream, services: Arc<AsyncServiceMap>) -> Result<(), Error> {
-                // let _stream = stream;
-                let _peer_addr = stream.peer_addr()?;
-
-                // using feature flag controlled default codec
-                let codec = DefaultCodec::new(stream);
-
-                // let fut = task::spawn_blocking(|| Self::_serve_codec(codec, services)).await;
-                // let ret = Self::serve_codec_loop(codec, services).await;
-                let ret = Self::serve_codec_setup(codec, services).await;
-                log::info!("Client disconnected from {}", _peer_addr);
-                ret
             }
 
             /// Serves a single connection using the default codec
@@ -192,19 +190,7 @@ cfg_if! {
             /// }
             /// ```
             pub async fn serve_conn(&self, stream: TcpStream) -> Result<(), Error> {
-                Self::serve_tcp_connection(stream, self.services.clone()).await
-            }
-
-            async fn serve_ws_connection(
-                ws_stream: async_tungstenite::WebSocketStream<TcpStream>,
-                services: Arc<AsyncServiceMap>,
-            ) -> Result<(), Error> {
-                let ws_stream = WebSocketConn::new(ws_stream);
-                let codec = DefaultCodec::with_websocket(ws_stream);
-
-                let ret = Self::serve_codec_setup(codec, services).await;
-                log::info!("Client disconnected from WebSocket connection");
-                ret
+                serve_tcp_connection(stream, self.services.clone()).await
             }
 
             /// This is like serve_conn except that it uses a specified codec
@@ -228,35 +214,85 @@ cfg_if! {
             where
                 C: SplittableServerCodec + Send + Sync + 'static,
             {
-                Self::serve_codec_setup(codec, self.services.clone()).await
+                serve_codec_setup(codec, self.services.clone()).await
             }
+        }
 
-            // Spawn tasks for the reader/broker/writer loops
-            pub(crate) async fn serve_codec_setup(
-                codec: impl SplittableServerCodec + 'static,
-                services: Arc<AsyncServiceMap>
-            ) -> Result<(), Error> {
-                let (exec_sender, exec_recver) = flume::unbounded();
-                let (resp_sender, resp_recver) = flume::unbounded();
-                let (codec_writer, codec_reader) = codec.split();
+        #[cfg(feature = "tls")]
+        async fn serve_tls_connection(
+            stream: TcpStream, 
+            acceptor: TlsAcceptor, 
+            services: Arc<AsyncServiceMap>
+        ) -> Result<(), Error> {
+            let peer_addr = stream.peer_addr()?;
+            let tls_stream = acceptor.accept(stream).await?;
+            let codec = DefaultCodec::new(tls_stream);
+            let ret = serve_codec_setup(codec, services).await;
+            log::info!("Client disconnected from {}", peer_addr);
+            ret
+        }
 
-                let reader_handle = task::spawn(
-                    super::reader_loop(codec_reader, services, exec_sender.clone(), resp_sender.clone())
-                );
+        /// Serves a single connection
+        async fn serve_tcp_connection(stream: TcpStream, services: Arc<AsyncServiceMap>) -> Result<(), Error> {
+            // let _stream = stream;
+            let _peer_addr = stream.peer_addr()?;
 
-                let writer_handle = task::spawn(
-                    super::writer_loop(codec_writer, resp_recver)
-                );
+            // using feature flag controlled default codec
+            let codec = DefaultCodec::new(stream);
 
-                let executor_handle = task::spawn(
-                    super::broker_loop(exec_sender, exec_recver, resp_sender)
-                );
+            // let fut = task::spawn_blocking(|| Self::_serve_codec(codec, services)).await;
+            // let ret = Self::serve_codec_loop(codec, services).await;
+            let ret = serve_codec_setup(codec, services).await;
+            log::info!("Client disconnected from {}", _peer_addr);
+            ret
+        }
 
-                reader_handle.await?;
-                executor_handle.await?;
-                writer_handle.await?;
-                Ok(())
-            }
+        async fn accept_ws_connection(stream: TcpStream, services: Arc<AsyncServiceMap>) {
+            let ws_stream = async_tungstenite::accept_async(stream).await
+                    .expect("Error during the websocket handshake occurred");
+                log::debug!("Established WebSocket connection.");
+
+            serve_ws_connection(ws_stream, services).await 
+                .unwrap_or_else(|e| log::error!("{}", e));
+        }
+
+        async fn serve_ws_connection(
+            ws_stream: async_tungstenite::WebSocketStream<TcpStream>,
+            services: Arc<AsyncServiceMap>,
+        ) -> Result<(), Error> {
+            let ws_stream = WebSocketConn::new(ws_stream);
+            let codec = DefaultCodec::with_websocket(ws_stream);
+
+            let ret = serve_codec_setup(codec, services).await;
+            log::info!("Client disconnected from WebSocket connection");
+            ret
+        }
+
+        // Spawn tasks for the reader/broker/writer loops
+        pub(crate) async fn serve_codec_setup(
+            codec: impl SplittableServerCodec + 'static,
+            services: Arc<AsyncServiceMap>
+        ) -> Result<(), Error> {
+            let (exec_sender, exec_recver) = flume::unbounded();
+            let (resp_sender, resp_recver) = flume::unbounded();
+            let (codec_writer, codec_reader) = codec.split();
+
+            let reader_handle = task::spawn(
+                super::reader_loop(codec_reader, services, exec_sender.clone(), resp_sender.clone())
+            );
+
+            let writer_handle = task::spawn(
+                super::writer_loop(codec_writer, resp_recver)
+            );
+
+            let executor_handle = task::spawn(
+                super::broker_loop(exec_sender, exec_recver, resp_sender)
+            );
+
+            reader_handle.await?;
+            executor_handle.await?;
+            writer_handle.await?;
+            Ok(())
         }
     }
 }

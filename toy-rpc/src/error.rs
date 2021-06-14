@@ -141,3 +141,10 @@ impl From<erased_serde::Error> for crate::error::Error {
         Self::ParseError(Box::new(err))
     }
 }
+
+#[cfg(feature = "tls")]
+impl From<webpki::InvalidDNSNameError> for crate::error::Error {
+    fn from(err: webpki::InvalidDNSNameError) -> Self {
+        Self::Internal(Box::new(err))
+    }
+}

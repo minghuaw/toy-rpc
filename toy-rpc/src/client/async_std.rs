@@ -34,6 +34,15 @@ cfg_if! {
     ))] {
         use ::async_std::net::{TcpStream, ToSocketAddrs};
         use async_tungstenite::async_std::connect_async;
+
+
+        #[cfg(feature = "tls")]
+        use rustls::ClientConfig;
+        #[cfg(feature = "tls")]
+        use async_rustls::TlsConnector;
+        #[cfg(feature = "tls")]
+        use webpki::DNSNameRef;
+
         use crate::DEFAULT_RPC_PATH;
         use crate::transport::ws::WebSocketConn;
 
@@ -64,6 +73,21 @@ cfg_if! {
             {
                 let stream = TcpStream::connect(addr).await?;
                 Ok(Self::with_stream(stream))
+            }
+
+            /// Connects to an RPC server with TLS enabled
+            #[cfg(feature = "tls")]
+            pub async fn dial_with_tls_config(
+                addr: impl ToSocketAddrs, 
+                domain: &str, 
+                config: ClientConfig
+            ) -> Result<Client<Connected>, Error> {
+                let stream = TcpStream::connect(addr).await?;
+                let connector = TlsConnector::from(Arc::new(config));
+                let domain = DNSNameRef::try_from_ascii_str(domain)?;
+                let tls_stream = connector.connect(domain, stream).await?;
+
+                Ok(Self::with_stream(tls_stream))
             }
 
             /// Connects to an HTTP RPC server at the specified network address using WebSocket and the defatul codec.
