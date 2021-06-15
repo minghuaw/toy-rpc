@@ -1,0 +1,22 @@
+[package]
+name = "async_std_tls"
+version = "0.1.0"
+authors = ["minghuaw <michael.wu1107@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[[bin]]
+name = "server"
+path = "src/bin/server.rs"
+
+[[bin]]
+name = "client"
+path = "src/bin/client.rs" 
+
+[dependencies]
+anyhow = "1.0.41"
+async-std = { version = "1.9.0", features = ["attributes"] }
+env_logger = "0.8.4"
+rustls = "0.19.1"
+toy-rpc = {version = "0.7.0-alpha.3", path = "../../toy-rpc", features = ["async_std_runtime", "tls", "server", "client"]}
