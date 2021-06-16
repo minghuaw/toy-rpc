@@ -65,7 +65,7 @@ Choice of serialization/deserialzation (only one should be enabled at a time)
 
 TLS support
 
-- "tls": enables TLS support
+- `tls`: enables TLS support
 
 Other trivial feature flags are listed below, and they are likely of no actual usage for you.
 - `docs`

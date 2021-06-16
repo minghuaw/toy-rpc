@@ -73,6 +73,10 @@
 //! - `serde_rmp`: the default codec will use `rmp-serde`
 //!     for serialization/deserialization
 //!
+//! TLS support
+//!
+//! - `tls`: enables TLS support
+//! 
 //! Other trivial feature flags are listed below, and they are likely of no actual usage for you.
 //! - `docs`
 //! - `std`: `serde/std`. There is no actual usage right now.
