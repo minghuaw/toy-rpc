@@ -5,7 +5,7 @@ The server API look straightforward and fairly close to that of golang's `net/rp
 ```toml
 [dependencies]
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "net"] }
-toy-rpc = { version = "0.7.1", features = ["tokio_runtime", "server"] }
+toy-rpc = { version = "0.7.2", features = ["tokio_runtime", "server"] }
 ```
 
 The next step is then to build the service instances and register the service instances onto a server which will be demonstrated below.
@@ -66,7 +66,7 @@ We will continue to use the `tokio` runtime so that we don't need to change our 
 [dependencies]
 async-trait = "0.1.50"
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "net"] }
-toy-rpc = { version = "0.7.1", features = ["tokio_runtime", "server"] }
+toy-rpc = { version = "0.7.2", features = ["tokio_runtime", "server"] }
 
 # our service definition 
 example-service = { version = "0.1.0", path = "../example-service" }

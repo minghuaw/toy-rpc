@@ -34,7 +34,7 @@ async-trait = "0.1.50"
 
 [dependencies.toy-rpc]
 path = "../../toy-rpc/"
-version = "0.7.1"
+version = "0.7.2"
 default-features = false
 features = [ "serde_bincode", "server", "client"]
 optional = true

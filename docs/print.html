@@ -247,7 +247,7 @@ You must enable at least one runtime feature flag and the <code>server</code> an
 <h2 id="add-dependencies"><a class="header" href="#add-dependencies">Add dependencies</a></h2>
 <pre><code class="language-toml">[dependencies]
 tokio = { version = &quot;1&quot;, features = [&quot;rt-multi-thread&quot;, &quot;macros&quot;, &quot;net&quot;] }
-toy-rpc = { version = &quot;0.7.1&quot;, features = [&quot;tokio_runtime&quot;, &quot;server&quot;, &quot;client&quot;] }
+toy-rpc = { version = &quot;0.7.2&quot;, features = [&quot;tokio_runtime&quot;, &quot;server&quot;, &quot;client&quot;] }
 </code></pre>
 <h2 id="project-structure"><a class="header" href="#project-structure">Project structure</a></h2>
 <pre><code>./src
@@ -378,7 +378,7 @@ where
 <p>Use the following dependencies to work with the examples below</p>
 <pre><code class="language-toml">[dependencies]
 async-trait = &quot;0.1.50&quot;
-toy-rpc = &quot;0.7.1&quot;
+toy-rpc = &quot;0.7.2&quot;
 </code></pre>
 <h3 id="export_impl"><a class="header" href="#export_impl"><code>#[export_impl]</code></a></h3>
 <p>When you have both the service definition and the implementation in the same file, you can use <code>#[export_impl]</code> on the <code>impl</code> block. This will also use the name of the <code>struct</code> as the default service name.</p>
@@ -472,7 +472,7 @@ pub trait Arith {
 <p>The server API look straightforward and fairly close to that of golang's <code>net/rpc</code> package. First we should choose an async runtime and enable the <code>&quot;server&quot;</code> feature flag in our <code>Cargo.toml</code> file. Here, we will choose the <code>tokio</code> runtime be enabling the <code>&quot;tokio_runtime&quot;</code> feature flag.</p>
 <pre><code class="language-toml">[dependencies]
 tokio = { version = &quot;1&quot;, features = [&quot;rt-multi-thread&quot;, &quot;macros&quot;, &quot;net&quot;] }
-toy-rpc = { version = &quot;0.7.1&quot;, features = [&quot;tokio_runtime&quot;, &quot;server&quot;] }
+toy-rpc = { version = &quot;0.7.2&quot;, features = [&quot;tokio_runtime&quot;, &quot;server&quot;] }
 </code></pre>
 <p>The next step is then to build the service instances and register the service instances onto a server which will be demonstrated below.</p>
 <p>You can definitely register services that are defined with <code>#[export_impl]</code> and <code>#[export_trait]</code> on the same server. However, for simplicity and consistency with the <a href="https://minghuaw.github.io/toy-rpc/03_define_service.html">service definition chapter</a>, in the discussions below, we are going to have separate examples. If you need an example where services defined with <code>#[export_impl]</code> and <code>#[export_trait]</code> are all registered on the same server, please refer to <a href="https://github.com/minghuaw/toy-rpc/tree/main/examples/example-server">this</a>.</p>
@@ -519,7 +519,7 @@ async fn main() {
 <pre><code class="language-toml">[dependencies]
 async-trait = &quot;0.1.50&quot;
 tokio = { version = &quot;1&quot;, features = [&quot;rt-multi-thread&quot;, &quot;macros&quot;, &quot;net&quot;] }
-toy-rpc = { version = &quot;0.7.1&quot;, features = [&quot;tokio_runtime&quot;, &quot;server&quot;] }
+toy-rpc = { version = &quot;0.7.2&quot;, features = [&quot;tokio_runtime&quot;, &quot;server&quot;] }
 
 # our service definition 
 example-service = { version = &quot;0.1.0&quot;, path = &quot;../example-service&quot; }
@@ -583,7 +583,7 @@ async fn main() {
 <pre><code class="language-toml">[dependencies]
 async-trait = &quot;0.1.50&quot;
 async-std = { version = &quot;1.9.0&quot;, features = [&quot;attributes&quot;] }
-toy-rpc = { version = &quot;0.7.1&quot;, features = [&quot;async_std_runtime&quot;, &quot;server&quot;] }
+toy-rpc = { version = &quot;0.7.2&quot;, features = [&quot;async_std_runtime&quot;, &quot;server&quot;] }
 
 # our service definition 
 example-service = { version = &quot;0.1.0&quot;, path = &quot;../example-service&quot; }
@@ -640,7 +640,7 @@ async fn main() {
 <pre><code class="language-toml">[dependencies]
 async-trait = &quot;0.1.50&quot;
 tokio = { version = &quot;1&quot;, features = [&quot;rt-multi-thread&quot;, &quot;macros&quot;, &quot;net&quot;] }
-toy-rpc = { version = &quot;0.7.1&quot;, features = [&quot;tokio_runtime&quot;, &quot;server&quot;] }
+toy-rpc = { version = &quot;0.7.2&quot;, features = [&quot;tokio_runtime&quot;, &quot;server&quot;] }
 
 # our service definition 
 example-service = { version = &quot;0.1.0&quot;, path = &quot;../example-service&quot; }
@@ -705,7 +705,7 @@ async fn main() {
 <p>We will demonstrate the usage with a new example.</p>
 <pre><code class="language-toml">[dependencies]
 actix-web = &quot;3.3.2&quot;
-toy-rpc = { version = &quot;0.7.1&quot;, features = [&quot;http_actix_web&quot;, &quot;server&quot;] }
+toy-rpc = { version = &quot;0.7.2&quot;, features = [&quot;http_actix_web&quot;, &quot;server&quot;] }
 </code></pre>
 <pre><code class="language-rust noplaypen">use std::sync::Arc;
 use toy_rpc::macros::export_impl;
@@ -760,7 +760,7 @@ async fn main() {
 <pre><code class="language-toml">[dependencies]
 tide = &quot;0.16.0&quot;
 async-std = { version = &quot;1&quot;, features = [ &quot;attributes&quot;, ] }  
-toy-rpc = { version = &quot;0.7.1&quot;, features = [&quot;http_tide&quot;, &quot;server&quot;] }
+toy-rpc = { version = &quot;0.7.2&quot;, features = [&quot;http_tide&quot;, &quot;server&quot;] }
 </code></pre>
 <pre><code class="language-rust noplaypen">use std::sync::Arc;
 use toy_rpc::macros::export_impl;
@@ -804,7 +804,7 @@ async fn main() {
 <pre><code class="language-toml">[dependencies]
 warp = &quot;0.3.0&quot;
 tokio = { version = &quot;1.4.0&quot;, features = [&quot;rt-multi-thread&quot;, &quot;macros&quot;] }
-toy-rpc = { version = &quot;0.7.1&quot;, features = [&quot;http_warp&quot;, &quot;server&quot;] }
+toy-rpc = { version = &quot;0.7.2&quot;, features = [&quot;http_warp&quot;, &quot;server&quot;] }
 </code></pre>
 <pre><code class="language-rust noplaypen">use std::sync::Arc;
 use toy_rpc::macros::export_impl;
@@ -847,7 +847,7 @@ you can then use the <code>call_blocking</code> and <code>call</code> methods to
 <p>For the examples below, we will assume running with the <code>tokio</code> runtime.</p>
 <pre><code class="language-toml">[dependencies]
 tokio = { version = &quot;1&quot;, features = [&quot;rt-multi-thread&quot;, &quot;macros&quot;] }
-toy-rpc = { version = &quot;0.7.1&quot;, features = [&quot;tokio_runtime&quot;, &quot;client&quot;] }
+toy-rpc = { version = &quot;0.7.2&quot;, features = [&quot;tokio_runtime&quot;, &quot;client&quot;] }
 </code></pre>
 <p>The example below shows how to connect to a TCP server</p>
 <pre><code class="language-rust noplaypen">use toy_rpc::Client;
@@ -927,7 +927,7 @@ async fn main() {
 <p>Because the service definition resides in a separate crate, we will need to import that crate as well.</p>
 <pre><code class="language-toml">[dependencies]
 tokio = { version = &quot;1&quot;, features = [&quot;rt-multi-thread&quot;, &quot;macros&quot;] }
-toy-rpc = { version = &quot;0.7.1&quot;, features = [&quot;tokio_runtime&quot;, &quot;client&quot;] }
+toy-rpc = { version = &quot;0.7.2&quot;, features = [&quot;tokio_runtime&quot;, &quot;client&quot;] }
 
 # import our service definition, assuming we have this definition at &quot;../example-service&quot;
 example-service = { version = &quot;0.1.0&quot;, path = &quot;../example-service&quot; }
@@ -977,7 +977,7 @@ async fn main() {
 <p>Add dependencies:</p>
 <pre><code class="language-toml">[dependencies]
 tokio = { version = &quot;1&quot;, features = [&quot;rt-multi-thread&quot;, &quot;macros&quot;, &quot;time&quot;] }
-toy-rpc = { version = &quot;0.7.1&quot;, features = [&quot;tokio_runtime&quot;, &quot;server&quot;, &quot;client&quot;] }
+toy-rpc = { version = &quot;0.7.2&quot;, features = [&quot;tokio_runtime&quot;, &quot;server&quot;, &quot;client&quot;] }
 </code></pre>
 <p>Service definition and implementation placed in <code>src/lib.rs</code>:</p>
 <pre><code class="language-rust noplaypen">use std::time::Duration;
@@ -1068,7 +1068,7 @@ async fn main() {
 <p>Add dependencies:</p>
 <pre><code class="language-toml">[dependencies]
 tokio = { version = &quot;1&quot;, features = [&quot;rt-multi-thread&quot;, &quot;macros&quot;, &quot;time&quot;] }
-toy-rpc = { version = &quot;0.7.1&quot;, features = [&quot;tokio_runtime&quot;, &quot;server&quot;, &quot;client&quot;] }
+toy-rpc = { version = &quot;0.7.2&quot;, features = [&quot;tokio_runtime&quot;, &quot;server&quot;, &quot;client&quot;] }
 </code></pre>
 <p>Service definition and implementation placed in <code>src/lib.rs</code>:</p>
 <pre><code class="language-rust noplaypen">use std::time::Duration;
