@@ -34,6 +34,7 @@ cfg_if! {
         use ::tokio::net::{TcpListener, TcpStream};
         use futures::{StreamExt};
         use ::tokio::task::{self};
+        use tokio::io::{AsyncRead, AsyncWrite};
         use async_tungstenite::tokio::TokioAdapter;
 
         #[cfg(feature = "tls")]
@@ -168,6 +169,14 @@ cfg_if! {
             pub async fn serve_conn(&self, stream: TcpStream) -> Result<(), Error> {
                 serve_tcp_connection(stream, self.services.clone()).await
             }
+            
+            /// Serves a stream that implements `AsyncRead` and `AsyncWrite`
+            pub async fn serve_stream<T>(&self, stream: T) -> Result<(), Error> 
+            where 
+                T: AsyncRead + AsyncWrite + Send + Unpin + 'static
+            {
+                serve_readwrite_stream(stream, self.services.clone()).await
+            }
 
             /// This is like serve_conn except that it uses a specified codec
             ///
@@ -198,9 +207,16 @@ cfg_if! {
         ) -> Result<(), Error> {
             let peer_addr = stream.peer_addr()?;
             let tls_stream = acceptor.accept(stream).await?;
-            let codec = DefaultCodec::new(tls_stream);
-            let ret = serve_codec_setup(codec, services).await;
+            let ret = serve_readwrite_stream(tls_stream, services).await;
             log::info!("Client disconnected from {}", peer_addr);
+            ret
+        }
+
+        /// Serves a single connection
+        async fn serve_tcp_connection(stream: TcpStream, services: Arc<AsyncServiceMap>) -> Result<(), Error> {
+            let _peer_addr = stream.peer_addr()?;
+            let ret = serve_readwrite_stream(stream, services).await;
+            log::info!("Client disconnected from {}", _peer_addr);
             ret
         }
 
@@ -213,21 +229,6 @@ cfg_if! {
                 .unwrap_or_else(|e| log::error!("{}", e));
         }
 
-        /// Serves a single connection
-        async fn serve_tcp_connection(stream: TcpStream, services: Arc<AsyncServiceMap>) -> Result<(), Error> {
-            // let _stream = stream;
-            let _peer_addr = stream.peer_addr()?;
-
-            // using feature flag controlled default codec
-            let codec = DefaultCodec::new(stream);
-
-            // let fut = task::spawn_blocking(|| Self::_serve_codec(codec, services)).await;
-            // let fut = Self::serve_codec_loop(codec, services);
-            let ret = super::serve_codec_setup(codec, services).await;
-            log::info!("Client disconnected from {}", _peer_addr);
-            ret
-        }
-
         async fn serve_ws_connection(
             ws_stream: async_tungstenite::WebSocketStream<TokioAdapter<tokio::net::TcpStream>>,
             services: Arc<AsyncServiceMap>,
@@ -238,6 +239,15 @@ cfg_if! {
             let ret = super::serve_codec_setup(codec, services).await;
             log::info!("Client disconnected from WebSocket connection");
             ret
+        }
+
+        #[inline]
+        async fn serve_readwrite_stream<T>(stream: T, services: Arc<AsyncServiceMap>) -> Result<(), Error> 
+        where 
+            T: AsyncRead + AsyncWrite + Send + Unpin + 'static,
+        {
+            let codec = DefaultCodec::new(stream);
+            super::serve_codec_setup(codec, services).await
         }
     }
 }

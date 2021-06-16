@@ -35,6 +35,7 @@ cfg_if! {
         use ::async_std::net::{TcpListener, TcpStream};
         use ::async_std::task::{self};
         use futures::{StreamExt};
+        use futures::io::{AsyncRead, AsyncWrite};
 
         #[cfg(feature = "tls")]
         use async_rustls::{TlsAcceptor};
@@ -169,6 +170,14 @@ cfg_if! {
                 serve_tcp_connection(stream, self.services.clone()).await
             }
 
+            /// Serves a stream that implements `AsyncRead` and `AsyncWrite`
+            pub async fn serve_stream<T>(&self, stream: T) -> Result<(), Error> 
+            where 
+                T: AsyncRead + AsyncWrite + Send + Unpin + 'static
+            {
+                serve_readwrite_stream(stream, self.services.clone()).await
+            }
+
             /// This is like serve_conn except that it uses a specified codec
             ///
             /// Example
@@ -198,8 +207,7 @@ cfg_if! {
         ) -> Result<(), Error> {
             let peer_addr = stream.peer_addr()?;
             let tls_stream = acceptor.accept(stream).await?;
-            let codec = DefaultCodec::new(tls_stream);
-            let ret = serve_codec_setup(codec, services).await;
+            let ret = serve_readwrite_stream(tls_stream, services).await;
             log::info!("Client disconnected from {}", peer_addr);
             ret
         }
@@ -207,11 +215,7 @@ cfg_if! {
         /// Serves a single connection
         async fn serve_tcp_connection(stream: TcpStream, services: Arc<AsyncServiceMap>) -> Result<(), Error> {
             let _peer_addr = stream.peer_addr()?;
-
-            // using feature flag controlled default codec
-            let codec = DefaultCodec::new(stream);
-
-            let ret = super::serve_codec_setup(codec, services).await;
+            let ret = serve_readwrite_stream(stream, services).await;
             log::info!("Client disconnected from {}", _peer_addr);
             ret
         }
@@ -235,6 +239,15 @@ cfg_if! {
             let ret = super::serve_codec_setup(codec, services).await;
             log::info!("Client disconnected from WebSocket connection");
             ret
+        }
+
+        #[inline]
+        async fn serve_readwrite_stream<T>(stream: T, services: Arc<AsyncServiceMap>) -> Result<(), Error> 
+        where 
+            T: AsyncRead + AsyncWrite + Send + Unpin + 'static,
+        {
+            let codec = DefaultCodec::new(stream);
+            super::serve_codec_setup(codec, services).await
         }
     }
 }
