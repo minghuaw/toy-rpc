@@ -188,7 +188,7 @@ pub(crate) struct ConnTypePayload {}
             feature = "serde_cbor",
             feature = "serde_rmp",
         )
-    )), 
+    )),
     allow(dead_code)
 )]
 pub struct Codec<R, W, C> {
@@ -208,8 +208,8 @@ where
     S: Stream<Item = Result<WsMessage, E>> + Sink<WsMessage> + Send + Sync + Unpin,
     E: std::error::Error + 'static,
 {
-    /// Creates a `Codec` with a WebSocket connection. 
-    /// 
+    /// Creates a `Codec` with a WebSocket connection.
+    ///
     /// This works with the `WebSocketConn` types implemented in `async_tungstenite` and `tokio_tungstenite`
     pub fn with_websocket(ws: WebSocketConn<S, CanSink>) -> Self {
         let (writer, reader) = WebSocketConn::<S, CanSink>::split(ws);
@@ -231,8 +231,8 @@ impl
         ConnTypePayload,
     >
 {
-    /// Creates a `Codec` with a WebSocket connection implemented in the `tide` HTTP server. 
-    #[cfg_attr(feature = "docs", doc(cfg(feature="http_tide")))]
+    /// Creates a `Codec` with a WebSocket connection implemented in the `tide` HTTP server.
+    #[cfg_attr(feature = "docs", doc(cfg(feature = "http_tide")))]
     pub fn with_tide_websocket(
         ws: WebSocketConn<tide_ws::WebSocketConnection, CannotSink>,
     ) -> Self {
@@ -254,7 +254,7 @@ where
     E: std::error::Error,
 {
     /// Creates a `Codec` with a WebSocket connection implemented in the `warp` HTTP server.
-    #[cfg_attr(feature = "docs", doc(cfg(feature="http_warp")))]
+    #[cfg_attr(feature = "docs", doc(cfg(feature = "http_warp")))]
     pub fn with_warp_websocket(ws: S) -> Self {
         use futures::StreamExt;
         let (writer, reader) = ws.split();
@@ -515,7 +515,7 @@ pub trait Unmarshal {
     fn unmarshal<'de, D: serde::Deserialize<'de>>(buf: &'de [u8]) -> Result<D, Error>;
 }
 
-/// This trait should be implemented by a codec to allow creating a `erased_serde::Deserilizer` from 
+/// This trait should be implemented by a codec to allow creating a `erased_serde::Deserilizer` from
 /// bytes
 pub trait EraseDeserializer {
     /// Creates an `erased_serde::Deserializer` from bytes

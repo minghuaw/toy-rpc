@@ -26,44 +26,44 @@
 //! </a>
 //! </div>
 //!
-//! `toy-rpc` aims to be an easy-to-use async RPC tool that is inspired by golang's `net/rpc`'s API. 
-//! It supports both `async_std` and `tokio` runtimes over either TCP or TLS. Integration with 
+//! `toy-rpc` aims to be an easy-to-use async RPC tool that is inspired by golang's `net/rpc`'s API.
+//! It supports both `async_std` and `tokio` runtimes over either TCP or TLS. Integration with
 //! common HTTP server frameworks such as `actix_web`, `warp` and `tide` are provided.
-//! 
-//! The overall usage and API should feel similar to that of the golang's `net/rpc` package. Some of the names are changed 
+//!
+//! The overall usage and API should feel similar to that of the golang's `net/rpc` package. Some of the names are changed
 //! to make them sound more "rusty". Because rust does not come with runtime reflection, attribute macros `#[export_impl]`
-//! and `#[export_trait]` / `#[export_trait_impl]`, and attribute `#[export_method]` are used to mark functions "exported" in golang's 
-//! `net/rpc` perspective. 
+//! and `#[export_trait]` / `#[export_trait_impl]`, and attribute `#[export_method]` are used to mark functions "exported" in golang's
+//! `net/rpc` perspective.
 //!
 //! More detailed usage can be found in the book and documentation.
-//! 
+//!
 //! - [Book](https://minghuaw.github.io/toy-rpc/01_introduction.html)
 //! - [Quickstart](https://minghuaw.github.io/toy-rpc/02_quickstart.html)
 //! - [Documentation](https://docs.rs/toy-rpc/0.7.0-alpha.0/toy_rpc/)
 //! - [GitHub repository](https://github.com/minghuaw/toy-rpc)
 //! - [crate.io](https://crates.io/crates/toy-rpc)
-//! 
+//!
 //! This crate uses `#![forbid(unsafe_code)]` to ensure no usage of `unsafe` in the crate.
-//! 
+//!
 //! # Feature flags
-//! 
+//!
 //! The feature flags can be put into three categories.
-//! 
+//!
 //! Choice of runtime and HTTP framework integration
-//! 
+//!
 //! - `async_std_runtime`: supports usage with `async-std`
 //! - `tokio_runtime`: supports usage with `tokio`
 //! - `http_tide`: enables `tide` integration on the server side. This also enables `async_std_runtime`
 //! - `http_actix_web`: enables `actix-web` integration on the server side. This also enables `tokio_runtime`
 //! - `http_warp`: enables integration with `warp` on the server side. This also enables `tokio_runtime`
-//! 
+//!
 //! Choice of RPC server or client (both can be enabled at the same time)
-//! 
+//!
 //! - `server`: enables RPC server
-//! - `client`: enables RPC client 
-//! 
+//! - `client`: enables RPC client
+//!
 //! Choice of serialization/deserialzation (only one should be enabled at a time)
-//! 
+//!
 //! - `serde_bincode`: (default) the default codec will use `bincode`
 //!     for serialization/deserialization
 //! - `serde_json`: the default codec will use `serde_json`
@@ -72,30 +72,30 @@
 //!     for serialization/deserialization
 //! - `serde_rmp`: the default codec will use `rmp-serde`
 //!     for serialization/deserialization
-//! 
+//!
 //! Other trivial feature flags are listed below, and they are likely of no actual usage for you.
 //! - `docs`
 //! - `std`: `serde/std`. There is no actual usage right now.
-//! 
-//! By default, only `serde_bincode` feature is enabled. 
+//!
+//! By default, only `serde_bincode` feature is enabled.
 //! You must enable at least one runtime feature flag and the `server` and/or `client` to have something usable.
-//! 
+//!
 //! ## Default features
-//! 
+//!
 //! ```toml
 //! default = ["serde_bincode"]
 //! ```
-//! 
+//!
 //! # Integration
-//! 
+//!
 //! HTTP integration is provided for `actix-web`, `tide`, and `warp`. More details can be found
-//! in the [Book/Integrations](https://minghuaw.github.io/toy-rpc/05_integration.html) and in 
+//! in the [Book/Integrations](https://minghuaw.github.io/toy-rpc/05_integration.html) and in
 //! [examples](https://github.com/minghuaw/toy-rpc/tree/main/examples).
-//! 
+//!
 //! # Quickstart Example
-//! 
+//!
 //! A quickstart example with `tokio` runtime is provided in the [Book/Quickstart](https://minghuaw.github.io/toy-rpc/02_quickstart.html).
-//! 
+//!
 
 pub mod codec;
 pub mod error;
@@ -105,7 +105,7 @@ pub mod service;
 pub mod transport;
 pub mod util;
 
-/// The default path added to the HTTP url 
+/// The default path added to the HTTP url
 #[cfg(any(
     feature = "http_actix_web",
     feature = "http_warp",
@@ -122,7 +122,7 @@ pub use client::Client;
 #[cfg(feature = "server")]
 pub mod server;
 #[cfg(feature = "server")]
-pub use server::{Server, builder::ServerBuilder};
+pub use server::{builder::ServerBuilder, Server};
 
 pub use error::Error;
 

@@ -35,8 +35,7 @@ pub(crate) trait Conclude {
 #[cfg(feature = "async_std_runtime")]
 impl Conclude for async_std::task::JoinHandle<Result<(), Error>> {
     fn conclude(&mut self) {
-        async_std::task::block_on(self) 
-            .unwrap_or_else(|err| log::error!("{}", err));
+        async_std::task::block_on(self).unwrap_or_else(|err| log::error!("{}", err));
     }
 }
 
@@ -45,7 +44,7 @@ impl Conclude for tokio::task::JoinHandle<Result<(), Error>> {
     fn conclude(&mut self) {
         match tokio::task::block_in_place(|| tokio::runtime::Handle::current().block_on(self)) {
             Ok(res) => res.unwrap_or_else(|err| log::error!("{}", err)),
-            Err(err) => log::error!("{}", err)
+            Err(err) => log::error!("{}", err),
         }
     }
 }
@@ -71,5 +70,3 @@ impl<T: Send> Terminate for tokio::task::JoinHandle<T> {
         self.abort();
     }
 }
-
-

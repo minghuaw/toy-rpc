@@ -1,6 +1,6 @@
+use actix_web::{web, App, HttpServer};
 use anyhow::Result;
-use actix_web::{App, web, HttpServer};
-use flume::{Sender, Receiver};
+use flume::{Receiver, Sender};
 use std::sync::Arc;
 use toy_rpc::{Client, Server};
 
@@ -37,16 +37,13 @@ async fn start_server(base: &'static str) -> Result<()> {
     let server = Server::builder().register(common_test_service).build();
     let app_data = web::Data::new(server);
 
-    HttpServer::new(
-        move || {
-            App::new()
-                .service(
-                    web::scope("/rpc/")
-                    .app_data(app_data.clone())
-                    .configure(Server::scope_config)
-                )
-        }
-    )
+    HttpServer::new(move || {
+        App::new().service(
+            web::scope("/rpc/")
+                .app_data(app_data.clone())
+                .configure(Server::scope_config),
+        )
+    })
     .bind(&base)?
     .run()
     .await?;
@@ -56,19 +53,23 @@ async fn start_server(base: &'static str) -> Result<()> {
 
 async fn run(base: &'static str, server_is_ready: Sender<()>, rx: Receiver<()>) -> Result<()> {
     actix_rt::spawn(async move {
-        start_server(base).await
+        start_server(base)
+            .await
             .expect("Error starting test server");
     });
 
     println!("server started");
-    server_is_ready.send_async(()).await.expect("Error sending ready");
+    server_is_ready
+        .send_async(())
+        .await
+        .expect("Error sending ready");
 
     let _ = rx.recv_async().await.expect("Error receiving ready");
     Ok(())
 }
 
-// `#[actix_rt::test]` is needed to 
-#[actix_rt::test] 
+// `#[actix_rt::test]` is needed to
+#[actix_rt::test]
 async fn http_actix_web_integration() {
     let rt = tokio::runtime::Runtime::new().unwrap();
 
@@ -77,14 +78,14 @@ async fn http_actix_web_integration() {
 
     let handle = rt.spawn(async move {
         tokio::time::sleep(std::time::Duration::from_millis(500)).await;
-        let _: () = is_server_ready.recv_async().await.expect("Error receiving ready");
-        test_client(rpc::ADDR).await
-            .unwrap();
-        tx.send_async(()).await
-            .unwrap();
+        let _: () = is_server_ready
+            .recv_async()
+            .await
+            .expect("Error receiving ready");
+        test_client(rpc::ADDR).await.unwrap();
+        tx.send_async(()).await.unwrap();
     });
-    
-    run(rpc::ADDR, server_is_ready, rx).await 
-        .unwrap();
+
+    run(rpc::ADDR, server_is_ready, rx).await.unwrap();
     handle.await.unwrap();
 }

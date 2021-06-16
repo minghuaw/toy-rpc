@@ -68,22 +68,12 @@ cfg_if! {
             /// # Example
             ///
             /// ```rust
-            /// use async_std::net::TcpListener;
-            ///
-            /// async fn main() {
-            ///     // assume `ExampleService` exist
-            ///     let example_service = ExampleService {};
-            ///     let server = Server::builder()
-            ///         .register(example_service)
-            ///         .build();
-            ///
-            ///     let listener = TcpListener::bind(addr).await.unwrap();
-            ///
-            ///     let handle = task::spawn(async move {
-            ///         server.accept(listener).await.unwrap();
-            ///     });
-            ///     handle.await;
-            /// }
+            /// let example_service = Arc::new(ExampleService {});
+            /// let server = Server::builder()
+            ///     .register(example_service)
+            ///     .build();
+            /// let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
+            /// server.accept(listener).await.unwrap();
             /// ```
             ///
             /// See `toy-rpc/examples/tokio_tcp/` for the example
@@ -102,8 +92,8 @@ cfg_if! {
             }
 
             /// Accepts connections with TLS
-            /// 
-            /// TLS is handled using `rustls`. A more detailed example with 
+            ///
+            /// TLS is handled using `rustls`. A more detailed example with
             /// `tokio` runtime can be found in the [GitHub repo](https://github.com/minghuaw/toy-rpc/blob/9793bf53909bd7ffa74967fae6267f973e03ec8a/examples/tokio_tls/src/bin/server.rs#L43)
             #[cfg(feature = "tls")]
             #[cfg_attr(feature = "docs",doc(cfg(all(feature ="tls", feature = "tokio_runtime"))))]
@@ -134,22 +124,12 @@ cfg_if! {
             /// # Example
             ///
             /// ```rust
-            /// use async_std::net::TcpListener;
-            ///
-            /// async fn main() {
-            ///     // assume `ExampleService` exist
-            ///     let example_service = ExampleService {};
-            ///     let server = Server::builder()
-            ///         .register(example_service)
-            ///         .build();
-            ///
-            ///     let listener = TcpListener::bind(addr).await.unwrap();
-            ///
-            ///     let handle = task::spawn(async move {
-            ///         server.accept_websocket(listener).await.unwrap();
-            ///     });
-            ///     handle.await;
-            /// }
+            /// let example_service = Arc::new(ExampleService {});
+            /// let server = Server::builder()
+            ///     .register(example_service)
+            ///     .build();
+            /// let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
+            /// server.accept_websocket(listener).await.unwrap();
             /// ```
             #[cfg_attr(feature = "docs", doc(cfg(feature = "tokio_runtime")))]
             pub async fn accept_websocket(&self, listener: TcpListener) -> Result<(), Error> {
@@ -177,22 +157,12 @@ cfg_if! {
             /// Example
             ///
             /// ```rust
-            /// use async_std::net::TcpStream;
-            ///
-            /// async fn main() {
-            ///     // assume `ExampleService` exist
-            ///     let example_service = ExampleService {};
-            ///     let server = Server::builder()
-            ///         .register(example_service)
-            ///         .build();
-            ///
-            ///     let conn = TcpStream::connect(addr).await.unwrap();
-            ///
-            ///     let handle = task::spawn(async move {
-            ///         server.serve_conn(conn).await.unwrap();
-            ///     });
-            ///     handle.await;
-            /// }
+            /// let example_service = ExampleService {};
+            /// let server = Server::builder()
+            ///     .register(example_service)
+            ///     .build();
+            /// let conn = tokio::net::TcpStream::connect(addr).await.unwrap();
+            /// server.serve_conn(conn).await.unwrap();
             /// ```
             #[cfg_attr(feature = "docs", doc(cfg(feature = "tokio_runtime")))]
             pub async fn serve_conn(&self, stream: TcpStream) -> Result<(), Error> {
@@ -205,16 +175,11 @@ cfg_if! {
             ///
             /// ```rust
             /// let stream = TcpStream::connect("127.0.0.1:8080").await.unwrap();
-            /// let codec = Codec::new(stream);
-            /// 
+            /// let codec = toy_rpc::codec::Codec::new(stream);
             /// let server = Server::builder()
             ///     .register(example_service)
             ///     .build();
-            /// // assume `ExampleService` exist
-            /// let handle = task::spawn(async move {
-            ///     server.serve_codec(codec).await.unwrap();
-            /// })    
-            /// handle.await;
+            /// server.serve_codec(codec).await.unwrap();
             /// ```
             #[cfg_attr(feature = "docs", doc(cfg(feature = "tokio_runtime")))]
             pub async fn serve_codec<C>(&self, codec: C) -> Result<(), Error>

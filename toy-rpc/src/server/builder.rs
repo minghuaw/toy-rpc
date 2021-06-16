@@ -1,18 +1,13 @@
 //! Builder of the Server
 
-use std::{
-    sync::Arc,
-    collections::HashMap
-};
 use erased_serde as erased;
+use std::{collections::HashMap, sync::Arc};
 
+use super::Server;
 use crate::{
-    service::{
-        build_service, HandleService, HandlerResultFut, Service, AsyncServiceMap
-    },
+    service::{build_service, AsyncServiceMap, HandleService, HandlerResultFut, Service},
     util::RegisterService,
 };
-use super::Server;
 
 /// Server builder
 pub struct ServerBuilder {

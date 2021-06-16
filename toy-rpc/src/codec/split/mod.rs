@@ -248,10 +248,10 @@ cfg_if! {
 
         #[async_trait]
         impl<W, C, Conn> GracefulShutdown for CodecWriteHalf<W, C, Conn>
-        where 
+        where
             W: GracefulShutdown + Send,
             C: Send,
-            Conn: Send, 
+            Conn: Send,
         {
             async fn close(&mut self) {
                 self.writer.close().await;

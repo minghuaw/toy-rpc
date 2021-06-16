@@ -56,7 +56,7 @@ cfg_if! {
             /// - `serde_json`
             /// - `serde_cbor`
             /// - `serde_rmp`
-            /// 
+            ///
             /// # Example
             ///
             /// ```rust
@@ -74,8 +74,8 @@ cfg_if! {
             #[cfg(feature = "tls")]
             #[cfg_attr(feature = "docs",doc(cfg(feature ="tls")))]
             pub async fn dial_with_tls_config(
-                addr: impl ToSocketAddrs, 
-                domain: &str, 
+                addr: impl ToSocketAddrs,
+                domain: &str,
                 config: ClientConfig
             ) -> Result<Client<Connected>, Error> {
                 super::tcp_client_with_tls_config(addr, domain, config).await

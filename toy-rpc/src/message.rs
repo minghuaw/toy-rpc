@@ -19,15 +19,15 @@ pub trait Metadata {
 /// Header of a request
 #[derive(Serialize, Deserialize, Debug, Default)]
 pub struct RequestHeader {
-    /// The id number of a request. 
-    /// 
+    /// The id number of a request.
+    ///
     /// The id number is tracked by the client and monotonically increases.
     pub id: MessageId,
 
-    /// A string that represents the requested service and method 
-    /// 
-    /// The format should follow "{service}.{method}" where {service} should be 
-    /// replaced by the service name and {method} should be replaced by the method name. 
+    /// A string that represents the requested service and method
+    ///
+    /// The format should follow "{service}.{method}" where {service} should be
+    /// replaced by the service name and {method} should be replaced by the method name.
     /// Both the service name and method name are case sensitive.
     pub service_method: String,
 }
@@ -41,8 +41,8 @@ impl Metadata for RequestHeader {
 /// Header of a response
 #[derive(Serialize, Deserialize, Debug, Default)]
 pub struct ResponseHeader {
-    /// The id of an RPC response. 
-    /// 
+    /// The id of an RPC response.
+    ///
     /// The response will have the same id as the request
     pub id: MessageId,
 
@@ -79,7 +79,7 @@ impl TimeoutRequestBody {
     }
 }
 
-/// Client request needs to be serialzed while the request on the server needs to be 
+/// Client request needs to be serialzed while the request on the server needs to be
 /// deserialized
 #[cfg(feature = "client")]
 pub(crate) type ClientRequestBody = Box<dyn erased_serde::Serialize + Send + Sync>;
@@ -93,7 +93,7 @@ cfg_if! {
     if #[cfg(any(
         feature = "async_std_runtime",
         feature = "tokio_runtime"
-    ))] {       
+    ))] {
         #[cfg(any(feature = "server", feature = "client"))]
         pub(crate) const CANCELLATION_TOKEN: &str = "RPC_TASK_CANCELLATION";
         #[cfg(any(feature = "server", feature = "client"))]
@@ -101,14 +101,14 @@ cfg_if! {
 
         #[cfg(any(feature = "server", feature = "client"))]
         pub(crate) const TIMEOUT_TOKEN: &str = "RPC_TASK_TIMEOUT";
-        
+
         #[cfg(feature = "server")]
         use crate::{
             error::Error,
             codec::RequestDeserializer,
             service::{ArcAsyncServiceCall, HandlerResult},
         };
-        
+
         #[cfg(feature = "server")]
         impl ErrorMessage {
             pub(crate) fn from_err(err: Error) -> Result<Self, Error> {
@@ -125,7 +125,7 @@ cfg_if! {
                 }
             }
         }
-        
+
         #[cfg(feature = "server")]
         #[cfg_attr(feature = "http_actix_web", derive(actix::Message))]
         #[cfg_attr(feature = "http_actix_web", rtype(result = "()"))]
@@ -141,7 +141,7 @@ cfg_if! {
             Cancel(MessageId),
             Stop,
         }
-        
+
         #[cfg(feature = "server")]
         #[cfg_attr(feature = "http_actix_web", derive(actix::Message))]
         #[cfg_attr(feature = "http_actix_web", rtype(result = "()"))]
@@ -154,7 +154,7 @@ cfg_if! {
         pub(crate) enum RequestType {
             Timeout(MessageId),
             Request {
-                id: MessageId, 
+                id: MessageId,
                 service: String,
                 method: String,
             },
@@ -162,9 +162,9 @@ cfg_if! {
         }
     }
 }
-    
+
 #[cfg_attr(
-    not(any(feature = "async_std_runtime", feature = "tokio_runtime")), 
+    not(any(feature = "async_std_runtime", feature = "tokio_runtime")),
     allow(dead_code)
 )]
 #[cfg(feature = "client")]
@@ -174,4 +174,3 @@ pub(crate) enum ClientMessage {
     Cancel(MessageId),
     Stop,
 }
-    

@@ -2,7 +2,7 @@
 
 use super::*;
 /// A server codec that can split into a reader half and a writer half
-/// 
+///
 /// This trait replaces `ServerCodec`
 pub trait SplittableServerCodec {
     /// Type of the reader half

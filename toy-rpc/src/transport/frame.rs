@@ -177,12 +177,10 @@ impl<R: AsyncRead + Unpin + Send + Sync> FrameRead for R {
 
         // determine if end frame is received
         if let PayloadType::Trailer = header.payload_type.into() {
-            if header.frame_id == END_FRAME_ID
-                    && header.message_id == 0
-                    && header.payload_len == 0
-                {
-                    return None
-                }
+            if header.frame_id == END_FRAME_ID && header.message_id == 0 && header.payload_len == 0
+            {
+                return None;
+            }
         }
 
         // read frame payload
@@ -277,7 +275,8 @@ where
     async fn close(&mut self) {
         // send a trailer frame with message id 0 and END_FRAME_ID and empty payload
         let end_frame = Frame::new(0, END_FRAME_ID, PayloadType::Trailer, Vec::with_capacity(0));
-        self.write_frame(end_frame).await                                    
+        self.write_frame(end_frame)
+            .await
             .unwrap_or_else(|e| log::error!("{}", e));
     }
 }

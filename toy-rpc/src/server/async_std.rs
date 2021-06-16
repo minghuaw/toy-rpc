@@ -68,22 +68,12 @@ cfg_if! {
             /// # Example
             ///
             /// ```rust
-            /// use async_std::net::TcpListener;
-            ///
-            /// async fn main() {
-            ///     // assume `ExampleService` exist
-            ///     let example_service = ExampleService {};
-            ///     let server = Server::builder()
-            ///         .register(example_service)
-            ///         .build();
-            ///
-            ///     let listener = TcpListener::bind(addr).await.unwrap();
-            ///
-            ///     let handle = task::spawn(async move {
-            ///         server.accept(listener).await.unwrap();
-            ///     });
-            ///     handle.await;
-            /// }
+            /// let example_service = Arc::new(ExampleService {});
+            /// let server = Server::builder()
+            ///     .register(example_service)
+            ///     .build();
+            /// let listener = async_std::net::TcpListener::bind(addr).await.unwrap();
+            /// server.accept(listener).await.unwrap();
             /// ```
             ///
             /// See `toy-rpc/examples/rap_tcp/` for the example
@@ -102,15 +92,15 @@ cfg_if! {
             }
 
             /// Accepts connections with TLS
-            /// 
-            /// TLS is handled using `rustls`. A more detailed example with 
+            ///
+            /// TLS is handled using `rustls`. A more detailed example with
             /// `tokio` runtime can be found in the [GitHub repo](https://github.com/minghuaw/toy-rpc/blob/9793bf53909bd7ffa74967fae6267f973e03ec8a/examples/async_std_tls/src/bin/server.rs#L43)
             #[cfg(feature = "tls")]
             #[cfg_attr(feature = "docs",doc(cfg(all(feature ="tls", feature = "async_std_runtime"))))]
             pub async fn accept_with_tls_config(&self, listener: TcpListener, config: ServerConfig) -> Result<(), Error> {
                 let mut incoming = listener.incoming();
                 let acceptor = TlsAcceptor::from(Arc::new(config));
-                
+
                 while let Some(conn) = incoming.next().await {
                     let stream = conn?;
                     let acceptor = acceptor.clone();
@@ -134,22 +124,12 @@ cfg_if! {
             /// # Example
             ///
             /// ```rust
-            /// use async_std::net::TcpListener;
-            ///
-            /// async fn main() {
-            ///     // assume `ExampleService` exist
-            ///     let example_service = ExampleService {};
-            ///     let server = Server::builder()
-            ///         .register(example_service)
-            ///         .build();
-            ///
-            ///     let listener = TcpListener::bind(addr).await.unwrap();
-            ///
-            ///     let handle = task::spawn(async move {
-            ///         server.accept_websocket(listener).await.unwrap();
-            ///     });
-            ///     handle.await;
-            /// }
+            /// let example_service = Arc::new(ExampleService {});
+            /// let server = Server::builder()
+            ///     .register(example_service)
+            ///     .build();
+            /// let listener = async_std::net::TcpListener::bind(addr).await.unwrap();
+            /// server.accept_websocket(listener).await.unwrap();
             /// ```
             #[cfg_attr(feature = "docs", doc(cfg(feature = "async_std_runtime")))]
             pub async fn accept_websocket(&self, listener: TcpListener) -> Result<(), Error> {
@@ -177,22 +157,12 @@ cfg_if! {
             /// Example
             ///
             /// ```rust
-            /// use async_std::net::TcpStream;
-            ///
-            /// async fn main() {
-            ///     // assume `ExampleService` exist
-            ///     let example_service = ExampleService {};
-            ///     let server = Server::builder()
-            ///         .register(example_service)
-            ///         .build();
-            ///
-            ///     let conn = TcpStream::connect(addr).await.unwrap();
-            ///
-            ///     let handle = task::spawn(async move {
-            ///         server.serve_conn(conn).await.unwrap();
-            ///     });
-            ///     handle.await;
-            /// }
+            /// let example_service = ExampleService {};
+            /// let server = Server::builder()
+            ///     .register(example_service)
+            ///     .build();
+            /// let conn = async_std::net::TcpStream::connect(addr).await.unwrap();
+            /// server.serve_conn(conn).await.unwrap();
             /// ```
             #[cfg_attr(feature = "docs", doc(cfg(feature = "async_std_runtime")))]
             pub async fn serve_conn(&self, stream: TcpStream) -> Result<(), Error> {
@@ -205,16 +175,11 @@ cfg_if! {
             ///
             /// ```rust
             /// let stream = TcpStream::connect("127.0.0.1:8080").await.unwrap();
-            /// let codec = Codec::new(stream);
-            /// 
+            /// let codec = toy_rpc::codec::Codec::new(stream);
             /// let server = Server::builder()
             ///     .register(example_service)
             ///     .build();
-            /// // assume `ExampleService` exist
-            /// let handle = task::spawn(async move {
-            ///     server.serve_codec(codec).await.unwrap();
-            /// })    
-            /// handle.await;
+            /// server.serve_codec(codec).await.unwrap();
             /// ```
             #[cfg_attr(feature = "docs", doc(cfg(feature = "async_std_runtime")))]
             pub async fn serve_codec<C>(&self, codec: C) -> Result<(), Error>
@@ -227,8 +192,8 @@ cfg_if! {
 
         #[cfg(feature = "tls")]
         async fn serve_tls_connection(
-            stream: TcpStream, 
-            acceptor: TlsAcceptor, 
+            stream: TcpStream,
+            acceptor: TlsAcceptor,
             services: Arc<AsyncServiceMap>
         ) -> Result<(), Error> {
             let peer_addr = stream.peer_addr()?;
@@ -259,7 +224,7 @@ cfg_if! {
                     .expect("Error during the websocket handshake occurred");
                 log::debug!("Established WebSocket connection.");
 
-            serve_ws_connection(ws_stream, services).await 
+            serve_ws_connection(ws_stream, services).await
                 .unwrap_or_else(|e| log::error!("{}", e));
         }
 

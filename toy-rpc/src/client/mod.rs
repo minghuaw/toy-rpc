@@ -1,16 +1,23 @@
 //! RPC Client impementation
 
 use cfg_if::cfg_if;
-use flume::{Sender};
-use futures::{Future, channel::oneshot, lock::Mutex};
-use std::{collections::HashMap, marker::PhantomData, pin::Pin, sync::Arc, task::{Context, Poll}, time::Duration};
 use crossbeam::atomic::AtomicCell;
+use flume::Sender;
+use futures::{channel::oneshot, lock::Mutex, Future};
+use std::{
+    collections::HashMap,
+    marker::PhantomData,
+    pin::Pin,
+    sync::Arc,
+    task::{Context, Poll},
+    time::Duration,
+};
 
-use crate::{Error, message::{
-        AtomicMessageId, ClientResponseResult, MessageId,
-        ClientMessage,
-    }, };
 use crate::util::Conclude;
+use crate::{
+    message::{AtomicMessageId, ClientMessage, ClientResponseResult, MessageId},
+    Error,
+};
 
 cfg_if! {
     if #[cfg(any(
@@ -98,12 +105,12 @@ cfg_if! {
             )
         ))]
         use async_tungstenite::client_async;
-        
+
         #[cfg(feature = "tls")]
         async fn tcp_client_with_tls_config(
-            addr: impl ToSocketAddrs, 
-            domain: &str, 
-            config: ClientConfig        
+            addr: impl ToSocketAddrs,
+            domain: &str,
+            config: ClientConfig
         ) -> Result<Client<Connected>, Error> {
             let stream = TcpStream::connect(addr).await?;
             let connector = TlsConnector::from(Arc::new(config));
@@ -158,7 +165,7 @@ cfg_if! {
 ///
 /// # Example
 ///
-/// ```rust 
+/// ```rust
 /// // `.await` to wait for the response
 /// let call: Call<i32> = client.call("Arith.add", (1i32, 6i32));
 /// let result = call.await;
@@ -184,7 +191,7 @@ where
     Res: serde::de::DeserializeOwned,
 {
     /// Cancel the RPC call
-    /// 
+    ///
     pub fn cancel(&self) {
         match self.cancel.send(self.id) {
             Ok(_) => {
@@ -245,7 +252,10 @@ type ResponseMap = HashMap<MessageId, oneshot::Sender<ClientResponseResult>>;
 
 /// RPC client
 ///
-#[cfg_attr(not(any(feature = "async_std_runtime", feature = "tokio_runtime")), allow(dead_code))]
+#[cfg_attr(
+    not(any(feature = "async_std_runtime", feature = "tokio_runtime")),
+    allow(dead_code)
+)]
 pub struct Client<Mode> {
     count: AtomicMessageId,
     pending: Arc<Mutex<ResponseMap>>,
@@ -277,7 +287,7 @@ impl<Mode> Drop for Client<Mode> {
 // Public functions
 // =============================================================================
 
-cfg_if!{
+cfg_if! {
     if #[cfg(any(
         all(feature = "async_std_runtime", not(feature = "tokio_runtime")),
         all(feature = "tokio_runtime", not(feature = "async_std_runtime"))
@@ -311,7 +321,7 @@ cfg_if!{
                 let (writer_tx, writer_rx) = flume::unbounded();
                 let pending = Arc::new(Mutex::new(HashMap::new()));
                 let (reader_stop, stop) = flume::bounded(1);
-                
+
                 #[cfg(all(
                     feature = "async_std_runtime",
                     not(feature = "tokio_runtime")
@@ -320,7 +330,7 @@ cfg_if!{
                     ::async_std::task::spawn(reader_loop(reader, pending.clone(), stop));
                     ::async_std::task::spawn(writer_loop(writer, writer_rx));
                 }
-        
+
                 #[cfg(all(
                     feature = "tokio_runtime",
                     not(feature = "async_std_runtime")
@@ -329,14 +339,14 @@ cfg_if!{
                     ::tokio::task::spawn(reader_loop(reader, pending.clone(), stop));
                     ::tokio::task::spawn(writer_loop(writer, writer_rx));
                 }
-        
+
                 Client::<Connected> {
                     count: AtomicMessageId::new(0),
                     pending,
                     timeout: AtomicCell::new(None),
                     reader_stop,
                     writer_tx,
-        
+
                     marker: PhantomData,
                 }
             }
@@ -346,15 +356,15 @@ cfg_if!{
             /// Sets the timeout duration **ONLY** for the next RPC request
             ///
             /// Example
-            /// 
-            /// ```rust 
+            ///
+            /// ```rust
             ///
             /// ```
             pub fn timeout(&self, duration: Duration) -> &Self {
                 self.timeout.store(Some(duration));
                 &self
             }
-        
+
             /// Invokes the named function and wait synchronously in a blocking manner.
             ///
             /// This function internally calls `task::block_on` to wait for the response.
@@ -381,14 +391,14 @@ cfg_if!{
                 Res: serde::de::DeserializeOwned + Send + 'static,
             {
                 let call = self.call(service_method, args);
-        
+
                 #[cfg(all(
                     feature = "async_std_runtime",
                     not(feature = "tokio_runtime")
                 ))]
                 let res = ::async_std::task::block_on(call);
-        
-        
+
+
                 #[cfg(all(
                     feature = "tokio_runtime",
                     not(feature = "async_std_runtime")
@@ -396,29 +406,29 @@ cfg_if!{
                 let res = ::tokio::task::block_in_place(|| {
                     futures::executor::block_on(call)
                 });
-        
+
                 res
             }
-        
+
             /// Invokes the named RPC function call asynchronously and returns a cancellation `Call`
-            /// 
+            ///
             /// The `Call<Res>` type takes one type argument `Res` which is the type of successful RPC execution.
             /// The result can be obtained by `.await`ing on the `Call`, which returns type `Result<Res, toy_rpc::Error>`
-            /// `Call` can be cancelled by calling the `cancel()` function. 
-            /// The request will be sent in a background task. 
-            /// 
-            /// Example 
-            /// 
+            /// `Call` can be cancelled by calling the `cancel()` function.
+            /// The request will be sent in a background task.
+            ///
+            /// Example
+            ///
             /// ```rust
             /// // Get the result by `.await`ing on the `Call`
             /// let call: Call<i32> = client.call("SomeService.echo_i32", 7i32);
             /// let reply: Result<i32, toy_rpc::Error> = call.await;
-            /// 
+            ///
             /// // Cancel the call
             /// let call: Call<()> = client.call("SomeService.infinite_loop", ());
             /// // cancel takes a reference
             /// // .await on a canceled `Call` will return `Err(Error::Canceled(Some(id)))`
-            /// call.cancel(); 
+            /// call.cancel();
             /// let reply = call.await;
             /// println!("This should be a Err(Error::Canceled) {:?}", reply);
             /// ```
@@ -438,13 +448,13 @@ cfg_if!{
                 let header = RequestHeader { id, service_method };
                 let body = Box::new(args) as ClientRequestBody;
                 let timeout = self.timeout.take();
-        
+
                 // Prepare response handler
                 let (done_tx, done_rx) = oneshot::channel();
                 let (cancel_tx, cancel_rx) = flume::bounded(1);
                 let pending = self.pending.clone();
                 let writer_tx = self.writer_tx.clone();
-        
+
                 #[cfg(all(
                     feature = "async_std_runtime",
                     not(feature = "tokio_runtime")
@@ -452,7 +462,7 @@ cfg_if!{
                 let handle = ::async_std::task::spawn(
                     handle_call(pending, header, body, writer_tx, cancel_rx, done_tx, timeout)
                 );
-        
+
                 #[cfg(all(
                     feature = "tokio_runtime",
                     not(feature = "async_std_runtime")
@@ -460,7 +470,7 @@ cfg_if!{
                 let handle = ::tokio::task::spawn(
                     handle_call(pending, header, body, writer_tx, cancel_rx, done_tx, timeout)
                 );
-        
+
                 // Creates Call
                 Call::<Res> {
                     id,
@@ -469,9 +479,9 @@ cfg_if!{
                     handle: Box::new(handle)
                 }
             }
-        
-            /// Closes connection with the server 
-            /// 
+
+            /// Closes connection with the server
+            ///
             /// Dropping the client will close the connection as well
             pub async fn close(self) {
                 self.writer_tx.send_async(
@@ -494,11 +504,11 @@ cfg_if! {
     ))] {
         use flume::Receiver;
         use futures::{FutureExt, select};
-        
+
         use crate::codec::split::{ClientCodecRead, ClientCodecWrite};
-        use crate::message::{ResponseHeader, CANCELLATION_TOKEN, CANCELLATION_TOKEN_DELIM, 
+        use crate::message::{ResponseHeader, CANCELLATION_TOKEN, CANCELLATION_TOKEN_DELIM,
             Metadata, TIMEOUT_TOKEN, TimeoutRequestBody};
-    
+
         pub(crate) async fn reader_loop(
             mut reader: impl ClientCodecRead,
             pending: Arc<Mutex<ResponseMap>>,
@@ -507,17 +517,17 @@ cfg_if! {
             loop {
                 select! {
                     _ = stop.recv_async().fuse() => {
-                        return 
+                        return
                     },
                     res = read_once(&mut reader, &pending).fuse() => {
-                        res.unwrap_or_else(|err| 
+                        res.unwrap_or_else(|err|
                             log::error!("{}", err)
                         )
                     }
                 }
             }
         }
-        
+
         async fn read_once(
             reader: &mut impl ClientCodecRead,
             pending: &Arc<Mutex<ResponseMap>>,
@@ -535,12 +545,12 @@ cfg_if! {
                             "Unexpected EOF reading response body",
                         )))?;
                 let deserializer = deserialzer?;
-        
+
                 let res = match is_error {
                     false => Ok(deserializer),
                     true => Err(deserializer),
                 };
-        
+
                 // [3] send back response
                 {
                     let mut _pending = pending.lock().await;
@@ -555,7 +565,7 @@ cfg_if! {
             }
             Ok(())
         }
-        
+
         pub(crate) async fn writer_loop(
             mut writer: impl ClientCodecWrite,
             msgs: Receiver<ClientMessage>,
@@ -573,7 +583,7 @@ cfg_if! {
                         writer.write_request(timeout_header, &timeout_body).await
                     },
                     ClientMessage::Request(header, body) => {
-                        writer.write_request(header, &body).await  
+                        writer.write_request(header, &body).await
                     },
                     ClientMessage::Cancel(id) => {
                         let header = RequestHeader {
@@ -583,19 +593,19 @@ cfg_if! {
                         let body: String =
                             format!("{}{}{}", CANCELLATION_TOKEN, CANCELLATION_TOKEN_DELIM, id);
                         let body = Box::new(body) as ClientRequestBody;
-                        writer.write_request(header, &body).await  
+                        writer.write_request(header, &body).await
                     },
                     ClientMessage::Stop => {
                         writer.close().await;
                         return
-                    }     
+                    }
                 }
                 .unwrap_or_else(|err| {
                     log::error!("{}", err)
                 })
-            }            
+            }
         }
-        
+
         async fn handle_call<Res>(
             pending: Arc<Mutex<ResponseMap>>,
             header: RequestHeader,
@@ -620,7 +630,7 @@ cfg_if! {
             writer_tx.send_async(
                 ClientMessage::Request(header, body)
             ).await?;
-        
+
             // Done channels that .await for response
             let (resp_tx, resp_rx) = oneshot::channel();
             // insert done channel to ResponseMap
@@ -628,7 +638,7 @@ cfg_if! {
                 let mut _pending = pending.lock().await;
                 _pending.insert(id, resp_tx);
             }
-        
+
             // .await both the cancellation and RPC response
             select! {
                 res = cancel.recv_async().fuse() => {
@@ -645,7 +655,7 @@ cfg_if! {
                         log::error!("Failed to send result over done channel")
                     });
                 },
-                res = handle_response::<Res>(id, resp_rx, timeout).fuse() => { 
+                res = handle_response::<Res>(id, resp_rx, timeout).fuse() => {
                     // In case of timeout, the response may not be received by the reader loop
                     // and thus need to remove the response sender from the HashMap
                     if let Err(Error::Timeout(_)) = res {
@@ -658,10 +668,10 @@ cfg_if! {
                         });
                 }
             };
-        
+
             Ok(())
         }
-        
+
         async fn handle_response<Res>(
             id: MessageId,
             response: oneshot::Receiver<ClientResponseResult>,
@@ -693,7 +703,7 @@ cfg_if! {
                         response.await
                             .map_err(|err| Error::Internal(Box::new(err)))
                     }).await;
-                    
+
                     match result {
                         Ok(res) => res?,
                         Err(_) => {
@@ -712,9 +722,8 @@ cfg_if! {
                     |msg| Err(Error::from_err_msg(msg)),
                 ), // handles error msg sent from server
             };
-        
+
             res
         }
     }
 }
-

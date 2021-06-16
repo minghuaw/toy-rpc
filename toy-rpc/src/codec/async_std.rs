@@ -1,6 +1,8 @@
 //! Codec implementation with tokio runtime
 
-use futures::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt, BufReader, BufWriter, ReadHalf, WriteHalf};
+use futures::io::{
+    AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt, BufReader, BufWriter, ReadHalf, WriteHalf,
+};
 
 use crate::util::GracefulShutdown;
 
@@ -12,7 +14,7 @@ where
     W: AsyncWrite + Send + Sync + Unpin,
 {
     /// Creates a `Codec` with a reader and a writer
-    /// 
+    ///
     /// The reader must implements the `AsyncRead` trait, and the writer
     /// must implements the `AsyncWrite` trait
     pub fn with_reader_writer(reader: R, writer: W) -> Self {
@@ -28,7 +30,7 @@ impl<T> Codec<BufReader<ReadHalf<T>>, BufWriter<WriteHalf<T>>, ConnTypeReadWrite
 where
     T: AsyncRead + AsyncWrite + Send + Sync + Unpin,
 {
-    /// Creates a `Codec` with a stream that implements both `AsyncRead` and `AsyncWrite`. 
+    /// Creates a `Codec` with a stream that implements both `AsyncRead` and `AsyncWrite`.
     pub fn new(stream: T) -> Self {
         let (reader, writer) = stream.split();
         let reader = BufReader::new(reader);

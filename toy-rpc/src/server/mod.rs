@@ -20,20 +20,16 @@ mod http_tide;
 mod http_warp;
 
 #[cfg(any(
-    feature = "docs", doc,
-    all(
-        feature = "async_std_runtime",
-        not(feature = "tokio_runtime"),
-    )
+    feature = "docs",
+    doc,
+    all(feature = "async_std_runtime", not(feature = "tokio_runtime"),)
 ))]
 mod async_std;
 
 #[cfg(any(
-    feature = "docs", doc,
-    all(
-        feature = "tokio_runtime",
-        not(feature = "async_std_runtime")
-    )
+    feature = "docs",
+    doc,
+    all(feature = "tokio_runtime", not(feature = "async_std_runtime"))
 ))]
 mod tokio;
 
@@ -76,7 +72,7 @@ cfg_if! {
         use std::future::Future;
         use std::time::Duration;
         use std::collections::HashMap;
-        
+
         use crate::message::{ErrorMessage, RequestHeader, ResponseHeader};
         use crate::service::{HandlerResult};
         use crate::{
@@ -162,7 +158,7 @@ cfg_if! {
                     ::async_std::task::spawn(async move {
                         let result = execute_call(id, fut).await;
                         let result = ExecutionResult { id, result };
-                        broker.send_async(ExecutionMessage::Result(result)).await                                    
+                        broker.send_async(ExecutionMessage::Result(result)).await
                             .unwrap_or_else(|e| log::error!("{}", e));
                     })
                 }
@@ -192,13 +188,13 @@ cfg_if! {
                     ::tokio::task::spawn(async move {
                         let result = execute_call(id, fut).await;
                         let result = ExecutionResult { id, result };
-                        broker.send_async(ExecutionMessage::Result(result)).await                                    
+                        broker.send_async(ExecutionMessage::Result(result)).await
                             .unwrap_or_else(|e| log::error!("{}", e));
                     })
                 }
             }
         }
-        
+
         async fn reader_loop(
             mut codec_reader: impl ServerCodecRead,
             services: Arc<AsyncServiceMap>,
@@ -215,7 +211,7 @@ cfg_if! {
                 match preprocess_header(&header) {
                     Ok(req_type) => {
                         match preprocess_request(&services, req_type, deserializer) {
-                            Ok(msg) => { 
+                            Ok(msg) => {
                                 executor.send_async(msg).await?;
                             },
                             Err(err) => {
@@ -242,13 +238,13 @@ cfg_if! {
                     }
                 }
             }
-        
+
             // Stop the executor loop when client connection is gone
             executor.send_async(ExecutionMessage::Stop).await?;
-        
+
             Ok(())
         }
-        
+
         async fn execute_call(
             id: MessageId,
             fut: impl Future<Output = HandlerResult>,
@@ -281,7 +277,7 @@ cfg_if! {
                 not(feature = "tokio_runtime")
             ))]
             match ::async_std::future::timeout(
-                duration, 
+                duration,
                 execute_call(id, fut)
             ).await {
                 Ok(res) => res,
@@ -293,14 +289,14 @@ cfg_if! {
                 not(feature = "async_std_runtime"),
             ))]
             match ::tokio::time::timeout(
-                duration, 
+                duration,
                 execute_call(id, fut)
             ).await {
                 Ok(res) => res,
                 Err(_) => Err(Error::Timeout(Some(id)))
             }
         }
-        
+
         async fn writer_loop(
             mut codec_writer: impl ServerCodecWrite,
             results: Receiver<ExecutionResult>,
@@ -311,13 +307,13 @@ cfg_if! {
             }
             Ok(())
         }
-        
+
         async fn writer_once(
             writer: &mut impl ServerCodecWrite,
             result: ExecutionResult,
         ) -> Result<(), Error> {
             let ExecutionResult { id, result } = result;
-        
+
             match result {
                 Ok(b) => {
                     log::trace!("Message {} Success", &id);
@@ -336,7 +332,7 @@ cfg_if! {
             };
             Ok(())
         }
-        
+
         async fn get_request_deserializer(
             codec_reader: &mut impl ServerCodecRead,
         ) -> Result<RequestDeserializer, Error> {
@@ -352,7 +348,7 @@ cfg_if! {
                 }
             }
         }
-        
+
 
         fn preprocess_header(header: &RequestHeader) -> Result<RequestType, Error> {
             match header.service_method.rfind('.') {
@@ -383,7 +379,7 @@ cfg_if! {
 
         fn preprocess_request<'a> (
             services: &AsyncServiceMap,
-            req_type: RequestType, 
+            req_type: RequestType,
             mut deserializer: RequestDeserializer
         ) -> Result<ExecutionMessage, Error> {
             match req_type {
@@ -401,8 +397,8 @@ cfg_if! {
                     }
                 },
                 RequestType::Request{
-                    id, 
-                    service, 
+                    id,
+                    service,
                     method
                 } => {
                     log::trace!("Message id: {}, service: {}, method: {}", id, service, method);
@@ -426,7 +422,7 @@ cfg_if! {
                 }
             }
         }
-        
+
         fn is_correct_cancellation_token(id: MessageId, token: &str) -> bool {
             match token.find(CANCELLATION_TOKEN_DELIM) {
                 Some(ind) => {
@@ -436,7 +432,7 @@ cfg_if! {
                         Ok(num) => num,
                         Err(_) => return false,
                     };
-                    base == CANCELLATION_TOKEN && _id == id 
+                    base == CANCELLATION_TOKEN && _id == id
                 }
                 None => false,
             }

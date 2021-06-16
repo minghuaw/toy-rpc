@@ -170,10 +170,7 @@ where
     }
 
     /// Register a hashmap of RPC handlers
-    pub fn register_handlers(
-        self,
-        map: HashMap<&'static str, AsyncHandler<State>>,
-    ) -> Self {
+    pub fn register_handlers(self, map: HashMap<&'static str, AsyncHandler<State>>) -> Self {
         let mut builder = self;
         // for (key, val) in map.iter() {
         //     builder = builder.register_handler(key, *val);

@@ -1,15 +1,24 @@
 //! Implements integration with `actix_web`
 
-use cfg_if::cfg_if;
 use actix::{Actor, ActorContext, AsyncContext, Context, Recipient, Running, StreamHandler};
 use actix_web::{web, HttpRequest, HttpResponse};
 use actix_web_actors::ws;
-use futures::{FutureExt};
-use std::{collections::HashMap, marker::PhantomData, sync::Arc, time::Duration, pin::Pin, future::Future};
+use cfg_if::cfg_if;
+use futures::FutureExt;
+use std::{
+    collections::HashMap, future::Future, marker::PhantomData, pin::Pin, sync::Arc, time::Duration,
+};
 
-use crate::{codec::{EraseDeserializer, Marshal, Unmarshal}, error::Error, message::{ErrorMessage, ExecutionMessage, ExecutionResult, MessageId, RequestHeader, ResponseHeader}, service::{AsyncServiceMap, HandlerResult}};
+use crate::{
+    codec::{EraseDeserializer, Marshal, Unmarshal},
+    error::Error,
+    message::{
+        ErrorMessage, ExecutionMessage, ExecutionResult, MessageId, RequestHeader, ResponseHeader,
+    },
+    service::{AsyncServiceMap, HandlerResult},
+};
 
-use super::{preprocess_header, preprocess_request, execute_call};
+use super::{execute_call, preprocess_header, preprocess_request};
 
 // =============================================================================
 // `WsMessageActor`
@@ -18,7 +27,7 @@ use super::{preprocess_header, preprocess_request, execute_call};
 /// Parse incoming and outgoing websocket messages and look up services
 ///
 /// In the "Started" state, it will start a new `ExecutionManager`
-/// actor. Upon reception of a request, the 
+/// actor. Upon reception of a request, the
 pub struct WsMessageActor<C> {
     services: Arc<AsyncServiceMap>,
     manager: Option<Recipient<ExecutionMessage>>,
@@ -35,7 +44,7 @@ where
     /// Start a new `ExecutionManager`
     fn started(&mut self, ctx: &mut Self::Context) {
         let responder: Recipient<ExecutionResult> = ctx.address().recipient();
-        let manager = ExecutionManager{ 
+        let manager = ExecutionManager {
             responder,
             durations: HashMap::new(),
             executions: HashMap::new(),
@@ -47,7 +56,8 @@ where
 
     fn stopping(&mut self, _: &mut Self::Context) -> Running {
         if let Some(ref manager) = self.manager {
-            manager.do_send(ExecutionMessage::Stop)
+            manager
+                .do_send(ExecutionMessage::Stop)
                 .unwrap_or_else(|err| log::error!("{}", err));
         }
 
@@ -56,35 +66,31 @@ where
 }
 
 impl<C> StreamHandler<Result<ws::Message, ws::ProtocolError>> for WsMessageActor<C>
-where 
+where
     C: Marshal + Unmarshal + EraseDeserializer + Unpin + 'static,
 {
-    fn handle(
-        &mut self, 
-        item: Result<ws::Message, ws::ProtocolError>, 
-        ctx: &mut Self::Context
-    ) {
+    fn handle(&mut self, item: Result<ws::Message, ws::ProtocolError>, ctx: &mut Self::Context) {
         match item {
             Ok(ws::Message::Ping(msg)) => ctx.pong(&msg),
-            Ok(ws::Message::Pong(_)) => { }
+            Ok(ws::Message::Pong(_)) => {}
             Ok(ws::Message::Text(text)) => {
                 log::error!(
                     "Received Text message: {} while expecting a binary message",
                     text
                 );
-            },
-            Ok(ws::Message::Continuation(_)) => { },
-            Ok(ws::Message::Nop) => { },
+            }
+            Ok(ws::Message::Continuation(_)) => {}
+            Ok(ws::Message::Nop) => {}
             Ok(ws::Message::Close(_)) => {
                 log::debug!("Received closing message");
                 ctx.stop();
-            },
+            }
             Ok(ws::Message::Binary(buf)) => {
                 match self.req_header.take() {
                     None => match C::unmarshal(&buf) {
                         Ok(h) => {
                             self.req_header.get_or_insert(h);
-                        },
+                        }
                         Err(err) => {
                             log::error!("Failed to unmarshal request header: {}", err);
                         }
@@ -98,10 +104,11 @@ where
                                 match preprocess_request(&self.services, req_type, deserializer) {
                                     Ok(msg) => {
                                         if let Some(ref manager) = self.manager {
-                                            manager.do_send(msg)
+                                            manager
+                                                .do_send(msg)
                                                 .unwrap_or_else(|e| log::error!("{}", e));
                                         }
-                                    },
+                                    }
                                     Err(err) => {
                                         log::error!("{}", err);
                                         match err {
@@ -109,22 +116,23 @@ where
                                                 Self::send_response_via_context(
                                                     ExecutionResult {
                                                         id: header.id,
-                                                        result: Err(Error::ServiceNotFound)
-                                                    }, 
-                                                    ctx
-                                                ).unwrap_or_else(|e| log::error!("{}", e));
-                                            },
-                                            _ => { }
+                                                        result: Err(Error::ServiceNotFound),
+                                                    },
+                                                    ctx,
+                                                )
+                                                .unwrap_or_else(|e| log::error!("{}", e));
+                                            }
+                                            _ => {}
                                         }
                                     }
                                 }
-                            },
+                            }
                             Err(err) => {
                                 // the only error returned is MethodNotFound,
                                 // which should be sent back to client
                                 let err = ExecutionResult {
                                     id: header.id,
-                                    result: Err(err)
+                                    result: Err(err),
                                 };
                                 Self::send_response_via_context(err, ctx)
                                     .unwrap_or_else(|e| log::error!("{}", e));
@@ -132,7 +140,7 @@ where
                         }
                     }
                 }
-            },
+            }
             Err(err) => {
                 log::error!("{}", err);
             }
@@ -141,16 +149,13 @@ where
 }
 
 impl<C> actix::Handler<ExecutionResult> for WsMessageActor<C>
-where 
+where
     C: Marshal + Unmarshal + Unpin + 'static,
 {
     type Result = ();
 
     fn handle(&mut self, msg: ExecutionResult, ctx: &mut Self::Context) -> Self::Result {
-        Self::send_response_via_context(msg, ctx)
-            .unwrap_or_else(|err|                 
-                log::error!("{}", err)
-            );
+        Self::send_response_via_context(msg, ctx).unwrap_or_else(|err| log::error!("{}", err));
     }
 }
 
@@ -168,7 +173,7 @@ where
                 log::trace!("Message {} Success", &id);
                 let header = ResponseHeader {
                     id,
-                    is_error: false
+                    is_error: false,
                 };
                 let buf = C::marshal(&header)?;
                 ctx.binary(buf);
@@ -199,8 +204,8 @@ where
 
 struct Cancel(MessageId);
 
-/// The `ExecutionManager` will manage spawning and stopping of new 
-/// `ExecutionActor` 
+/// The `ExecutionManager` will manage spawning and stopping of new
+/// `ExecutionActor`
 struct ExecutionManager {
     responder: Recipient<ExecutionResult>,
     durations: HashMap<MessageId, Duration>,
@@ -215,7 +220,7 @@ impl Actor for ExecutionManager {
 
     fn stopping(&mut self, _: &mut Self::Context) -> Running {
         for (id, exec) in self.executions.drain() {
-            exec.send(Cancel(id)) 
+            exec.send(Cancel(id))
                 .unwrap_or_else(|e| log::error!("{}", e));
         }
 
@@ -230,44 +235,38 @@ impl actix::Handler<ExecutionMessage> for ExecutionManager {
         match msg {
             ExecutionMessage::TimeoutInfo(id, duration) => {
                 self.durations.insert(id, duration);
-            },
-            ExecutionMessage::Request{
+            }
+            ExecutionMessage::Request {
                 call,
                 id,
                 method,
-                deserializer
+                deserializer,
             } => {
                 let call_fut = call(method, deserializer);
                 let broker = ctx.address().recipient();
 
-                let fut: Pin<Box<dyn Future<Output=()>>> = match self.durations.remove(&id) {
-                    Some(duration) => {
-                        Box::pin(
-                            async move {
-                                let result = Self::execute_timed_call(id, duration, call_fut).await;
-                                let result = ExecutionResult{ id, result };
-                                broker.do_send(ExecutionMessage::Result(result))
-                                    .unwrap_or_else(|e| log::error!("{}", e));
-                            }
-                        )
-                    },
-                    None => {
-                        Box::pin(
-                            async move {
-                                let result = execute_call(id, call_fut).await;
-                                let result = ExecutionResult { id, result };
-                                broker.do_send(ExecutionMessage::Result(result))
-                                    .unwrap_or_else(|e| log::error!("{}", e));
-                            }
-                        )
-                    }
+                let fut: Pin<Box<dyn Future<Output = ()>>> = match self.durations.remove(&id) {
+                    Some(duration) => Box::pin(async move {
+                        let result = Self::execute_timed_call(id, duration, call_fut).await;
+                        let result = ExecutionResult { id, result };
+                        broker
+                            .do_send(ExecutionMessage::Result(result))
+                            .unwrap_or_else(|e| log::error!("{}", e));
+                    }),
+                    None => Box::pin(async move {
+                        let result = execute_call(id, call_fut).await;
+                        let result = ExecutionResult { id, result };
+                        broker
+                            .do_send(ExecutionMessage::Result(result))
+                            .unwrap_or_else(|e| log::error!("{}", e));
+                    }),
                 };
                 let (tx, rx) = flume::bounded(1);
                 self.executions.insert(id, tx);
-                
+
                 actix::spawn(async move {
                     futures::select! {
-                        _ = rx.recv_async().fuse() => { 
+                        _ = rx.recv_async().fuse() => {
                             // log::debug!("Future is canceled")
                         },
                         _ = fut.fuse() => {
@@ -275,20 +274,20 @@ impl actix::Handler<ExecutionMessage> for ExecutionManager {
                         }
                     }
                 });
-            },
+            }
             ExecutionMessage::Result(msg) => {
                 self.executions.remove(&msg.id);
-                self.responder.do_send(msg)
+                self.responder
+                    .do_send(msg)
                     .unwrap_or_else(|e| log::error!("{}", e));
-
-            },
+            }
             ExecutionMessage::Cancel(id) => {
                 log::debug!("Sending Cancel({})", &id);
                 if let Some(exec) = self.executions.remove(&id) {
                     exec.send(Cancel(id))
                         .unwrap_or_else(|e| log::error!("{}", e));
                 }
-            },
+            }
             ExecutionMessage::Stop => {
                 ctx.stop();
             }
@@ -302,14 +301,11 @@ impl ExecutionManager {
     async fn execute_timed_call(
         id: MessageId,
         duration: Duration,
-        fut: impl Future<Output = HandlerResult>
+        fut: impl Future<Output = HandlerResult>,
     ) -> HandlerResult {
-        match actix_rt::time::timeout(
-            duration, 
-            execute_call(id, fut)
-        ).await {
+        match actix_rt::time::timeout(duration, execute_call(id, fut)).await {
             Ok(res) => res,
-            Err(_) => Err(Error::Timeout(Some(id)))
+            Err(_) => Err(Error::Timeout(Some(id))),
         }
     }
 }
@@ -347,7 +343,7 @@ cfg_if! {
     ))] {
         use crate::codec::{DefaultCodec, ConnTypePayload};
         use super::Server;
-        
+
         async fn index(
             state: web::Data<Server>,
             req: HttpRequest,
