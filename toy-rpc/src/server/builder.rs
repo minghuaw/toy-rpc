@@ -29,39 +29,12 @@ impl ServerBuilder {
     ///
     /// # Example
     ///
-    /// ```
-    /// use std::sync::Arc;
-    /// use async_std::net::TcpListener;
-    /// use toy_rpc_macros::{export_impl};
-    /// use toy_rpc::server::Server;
-    ///
-    /// struct EchoService { }
-    ///
-    /// #[export_impl]
-    /// impl EchoService {
-    ///     #[export_method]
-    ///     async fn echo(&self, req: String) -> Result<String, String> {
-    ///         Ok(req)
-    ///     }
-    /// }
-    ///
-    /// #[async_std::main]
-    /// async fn main() {
-    ///     let addr = "127.0.0.1:8080";
-    ///     
-    ///     let echo_service = Arc::new(EchoService { });
-    ///     let server = Server::builder()
-    ///         .register(echo_service)
-    ///         .build();
-    ///     
-    ///     let listener = TcpListener::bind(addr).await.unwrap();
-    ///
-    ///     let handle = task::spawn(async move {
-    ///         server.accept(listener).await.unwrap();
-    ///     });
-    ///
-    ///     handle.await;
-    /// }
+    /// ```rust
+    /// let foo = Arc::new(Foo { });
+    /// // construct server
+    /// let server = Server::builder()
+    ///     .register(foo) // this will register `foo` with the default service name `Foo`
+    ///     .build();
     /// ```
     pub fn register<S>(self, service: Arc<S>) -> Self
     where
@@ -73,44 +46,16 @@ impl ServerBuilder {
     /// Register a a service with a name. This allows registering multiple instances
     /// of the same type on the server.
     ///
-    /// Example
+    /// # Example
     ///
     /// ```rust
-    /// use std::sync::Arc;
-    /// use async_std::net::TcpListener;
-    /// use toy_rpc::macros::export_impl;
-    /// use toy_rpc::service::Service;
-    /// use toy_rpc::Server;
-    /// pub struct Foo { }
-    ///
-    /// #[export_impl]
-    /// impl Foo {
-    ///     #[export_method]
-    ///     pub async fn increment(&self, arg: i32) -> Result<i32, String> {
-    ///         Ok(arg + 1)
-    ///     }
-    /// }
-    ///
-    /// #[async_std::main]
-    /// async fn main() {
-    ///     let foo1 = Arc::new(Foo { });
-    ///     let foo2 = Arc::new(Foo { });
-    ///
-    ///     // construct server
-    ///     let server = Server::builder()
-    ///         .register(foo1) // this will register `foo1` with the default name `Foo`
-    ///         .register_with_name("Foo2", foo2) // this will register `foo2` with the name `Foo2`
-    ///         .build();
-    ///
-    ///     let addr = "127.0.0.1:8080";
-    ///     let listener = TcpListener::bind(addr).await.unwrap();
-    ///
-    ///     let handle = task::spawn(async move {
-    ///         server.accept(listener).await.unwrap();
-    ///     });
-    ///
-    ///     handle.await;
-    /// }
+    /// let foo1 = Arc::new(Foo { });
+    /// let foo2 = Arc::new(Foo { });
+    /// // construct server
+    /// let server = Server::builder()
+    ///     .register(foo1) // this will register `foo1` with the default service name `Foo`
+    ///     .register_with_name("Foo2", foo2) // this will register `foo2` with the service name `Foo2`
+    ///     .build();
     /// ```
     pub fn register_with_name<S>(self, name: &'static str, service: Arc<S>) -> Self
     where
@@ -122,7 +67,20 @@ impl ServerBuilder {
 
     /// Register a `Service` instance. This allows registering multiple instances
     /// of the same type on the server.
-    pub fn register_service<S>(self, name: &'static str, service: Service<S>) -> Self
+    /// 
+    /// # Example
+    ///
+    /// ```rust
+    /// let foo1 = Arc::new(Foo { });
+    /// let foo2 = Arc::new(Foo { });
+    ///
+    /// // construct server
+    /// let server = Server::builder()
+    ///     .register(foo1) // this will register `foo1` with the default service name `Foo`
+    ///     .register_service("Foo2", foo2) // this will register `foo2` with the service name `Foo2`
+    ///     .build();
+    /// ```
+    fn register_service<S>(self, name: &'static str, service: Service<S>) -> Self
     where
         S: Send + Sync + 'static,
     {
@@ -136,7 +94,16 @@ impl ServerBuilder {
         builder
     }
 
-    /// Creates an RPC `Server`
+    /// Builds an RPC `Server`
+    /// 
+    /// # Example
+    ///
+    /// ```
+    /// let echo_service = Arc::new(EchoService { });
+    /// let builder: ServerBuilder = Server::builder()
+    ///     .register(echo_service);
+    /// let server: Server = builder.build();        
+    /// ```
     pub fn build(self) -> Server {
         Server {
             services: Arc::new(self.services),

@@ -61,40 +61,18 @@ cfg_if! {
             /// - `serde_rmp`
             ///
             /// # Example
+            /// 
             /// ```
-            /// use toy_rpc::server::Server;
-            /// use toy_rpc::macros::{export_impl, service};
-            /// use async_std::sync::Arc;
+            /// let foo_service = Arc::new(FooService { });
+            /// let server = Server::builder()
+            ///     .register(foo_service)
+            ///     .build();
+            /// let mut app = tide::new();
             ///
-            /// struct FooService { }
-            ///
-            /// #[export_impl]
-            /// impl FooService {
-            ///     // define some "exported" functions
-            /// }
-            ///
-            /// #[async_std::main]
-            /// async fn main() -> tide::Result<()> {
-            ///     let addr = "127.0.0.1:8080";
-            ///     let foo_service = Arc::new(FooService { });
-            ///
-            ///     let server = Server::builder()
-            ///         .register(foo_service)
-            ///         .build();
-            ///
-            ///     let mut app = tide::new();
-            ///
-            ///     // If a network path were to be supplied,
-            ///     // the network path must end with a slash "/"
-            ///     app.at("/rpc/").nest(server.into_endpoint());
-            ///
-            ///     // `handle_http` is a conenient function that calls `into_endpoint`
-            ///     // with the `tide` feature turned on
-            ///     //app.at("/rpc/").nest(server.handle_http());
-            ///
-            ///     app.listen(addr).await?;
-            ///     Ok(())
-            /// }
+            /// // If a network path were to be supplied,
+            /// // the network path must end with a slash "/"
+            /// app.at("/rpc/").nest(server.into_endpoint());
+            /// app.listen("127.0.0.1:8080").await?;
             /// ```
             ///
             pub fn into_endpoint(self) -> tide::Server<Server> {
@@ -153,38 +131,18 @@ cfg_if! {
             /// - `serde_rmp`
             ///
             /// # Example
+            /// 
             /// ```
-            /// use toy_rpc::server::Server;
-            /// use toy_rpc::macros::{export_impl, service};
-            /// use async_std::sync::Arc;
+            /// let foo_service = Arc::new(FooService { });
+            /// let server = Server::builder()
+            ///     .register(foo_service)
+            ///     .build();
+            /// let mut app = tide::new();
             ///
-            /// struct FooService { }
-            ///
-            /// #[export_impl]
-            /// impl FooService {
-            ///     // define some "exported" functions
-            /// }
-            ///
-            /// #[async_std::main]
-            /// async fn main() -> tide::Result<()> {
-            ///     let addr = "127.0.0.1:8080";
-            ///     let foo_service = Arc::new(FooService { });
-            ///
-            ///     let server = Server::builder()
-            ///         .register(foo_service)
-            ///         .build();
-            ///
-            ///     let mut app = tide::new();
-            ///
-            ///     // If a network path were to be supplied,
-            ///     // the network path must end with a slash "/"
-            ///     // `handle_http` is a conenience function that calls `into_endpoint`
-            ///     // with the `tide` feature turned on
-            ///     app.at("/rpc/").nest(server.handle_http());
-            ///
-            ///     app.listen(addr).await?;
-            ///     Ok(())
-            /// }
+            /// // If a network path were to be supplied,
+            /// // the network path must end with a slash "/"
+            /// app.at("/rpc/").nest(server.handle_http());
+            /// app.listen("127.0.0.1:8080").await?;
             /// ```
             pub fn handle_http(self) -> tide::Server<Server> {
                 self.into_endpoint()

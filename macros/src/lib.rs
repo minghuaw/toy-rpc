@@ -254,7 +254,7 @@ pub fn impl_inner_deserializer(_: proc_macro::TokenStream) -> proc_macro::TokenS
 /// ```rust
 /// struct Abacus { }
 /// 
-/// #[export_impl]
+/// #[export_impl] // This will give a default service name of "Abacus"
 /// impl Abacus {
 ///     #[export_method]
 ///     async fn subtract(&self, args(i32, i32)) -> Result<i32, String> {
@@ -370,7 +370,7 @@ pub fn export_impl(_attr: proc_macro::TokenStream, item: proc_macro::TokenStream
 /// 
 /// ```rust 
 /// #[async_trait]
-/// #[export_trait]
+/// #[export_trait] // This will give a default service name of "Arith"
 /// pub trait Arith {
 ///     // Mark method(s) to be "exported" with `#[export_method]` 
 ///     // in the definition.
@@ -470,7 +470,7 @@ pub fn export_trait(_attr: proc_macro::TokenStream, item: proc_macro::TokenStrea
 /// struct Abacus { }
 /// 
 /// #[async_trait]
-/// #[export_trait_impl]
+/// #[export_trait_impl] // The default name will follow the name of the trait (ie. "Arith")
 /// impl Arith  for Abacus {
 ///     // Notice that you do NOT mark the method with `#[export_method]`
 ///     // again

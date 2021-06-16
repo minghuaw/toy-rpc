@@ -63,34 +63,16 @@ cfg_if! {
             /// which can be chained with `warp` filters
             ///
             /// # Example
+            ///
             /// ```rust
-            /// use toy_rpc::Server;
-            /// use toy_rpc::macros::{export_impl, service};
-            /// use std::sync::Arc;
-            ///
-            /// struct FooService { }
-            ///
-            /// #[export_impl]
-            /// impl FooService {
-            ///     // define some "exported" functions here
-            /// }
-            ///
-            /// #[tokio::main]
-            /// async fn main() {
-            ///     env_logger::init();
-            ///
-            ///     let foo_service = Arc::new(FooService { });
-            ///
-            ///     let server = Server::builder()
-            ///         .register(foo_service)
-            ///         .build();
-            ///
-            ///     let routes = warp::path("rpc")
-            ///         .and(server.handle_http());
-            ///
-            ///     // RPC will be served at "ws://127.0.0.1/rpc/_rpc_"
-            ///     warp::serve(routes).run(([127, 0, 0, 1], 8080)).await;
-            /// }
+            /// let foo_service = Arc::new(FooService { });
+            /// let server = Server::builder()
+            ///     .register(foo_service)
+            ///     .build();
+            /// let routes = warp::path("rpc")
+            ///     .and(server.into_boxed_filter());
+            /// // RPC will be served at "ws://127.0.0.1/rpc/_rpc_"
+            /// warp::serve(routes).run(([127, 0, 0, 1], 8080)).await;
             /// ```
             pub fn into_boxed_filter(self) -> BoxedFilter<(impl Reply,)> {
                 let state = Arc::new(self);
@@ -138,34 +120,16 @@ cfg_if! {
             /// - `serde_rmp`
             ///
             /// # Example
+            ///
             /// ```rust
-            /// use toy_rpc::Server;
-            /// use toy_rpc::macros::{export_impl, service};
-            /// use std::sync::Arc;
-            ///
-            /// struct FooService { }
-            ///
-            /// #[export_impl]
-            /// impl FooService {
-            ///     // define some "exported" functions here
-            /// }
-            ///
-            /// #[tokio::main]
-            /// async fn main() {
-            ///     env_logger::init();
-            ///
-            ///     let foo_service = Arc::new(FooService { });
-            ///
-            ///     let server = Server::builder()
-            ///         .register(foo_service)
-            ///         .build();
-            ///
-            ///     let routes = warp::path("rpc")
-            ///         .and(server.handle_http());
-            ///
-            ///     // RPC will be served at "ws://127.0.0.1/rpc/_rpc_"
-            ///     warp::serve(routes).run(([127, 0, 0, 1], 8080)).await;
-            /// }
+            /// let foo_service = Arc::new(FooService { });
+            /// let server = Server::builder()
+            ///     .register(foo_service)
+            ///     .build();
+            /// let routes = warp::path("rpc")
+            ///     .and(server.handle_http());
+            /// // RPC will be served at "ws://127.0.0.1/rpc/_rpc_"
+            /// warp::serve(routes).run(([127, 0, 0, 1], 8080)).await;
             /// ```
             pub fn handle_http(self) -> BoxedFilter<(impl Reply,)> {
                 self.into_boxed_filter()

@@ -373,6 +373,27 @@ cfg_if! {
             /// - `serde_json`
             /// - `serde_cbor`
             /// - `serde_rmp`
+            ///
+            /// # Example 
+            ///
+            /// ```
+            /// let example_service = Arc::new(Example { });
+            /// let server = Server::builder()
+            ///     .register(example_service)
+            ///     .build();
+            /// let app_data = web::Data::new(server);
+            /// 
+            /// HttpServer::new(
+            ///     move || {
+            ///         App::new()
+            ///             .service(
+            ///                 web::scope("/rpc/")
+            ///                     .app_data(app_data.clone())
+            ///                     .configure(toy_rpc::Server::scope_config)
+            ///             )
+            ///     }
+            /// )
+            /// ```
             #[cfg(any(feature = "http_actix_web", feature = "docs"))]
             #[cfg_attr(feature = "docs", doc(cfg(feature = "http_actix_web")))]
             pub fn scope_config(cfg: &mut web::ServiceConfig) {
@@ -400,6 +421,27 @@ cfg_if! {
             /// - `serde_json`
             /// - `serde_cbor`
             /// - `serde_rmp`
+            ///
+            /// # Example 
+            ///
+            /// ```
+            /// let example_service = Arc::new(Example { });
+            /// let server = Server::builder()
+            ///     .register(example_service)
+            ///     .build();
+            /// let app_data = web::Data::new(server);
+            /// 
+            /// HttpServer::new(
+            ///     move || {
+            ///         App::new()
+            ///             .service(
+            ///                 web::scope("/rpc/")
+            ///                     .app_data(app_data.clone())
+            ///                     .configure(toy_rpc::Server::handle_http())
+            ///             )
+            ///     }
+            /// )
+            /// ```
             #[cfg(any(all(feature = "http_actix_web", not(feature = "http_tide"),), feature = "docs"))]
             #[cfg_attr(
                 feature = "docs",

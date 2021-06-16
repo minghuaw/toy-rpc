@@ -126,22 +126,16 @@ cfg_if! {
             domain: &str,
             config: ClientConfig,
         ) -> Result<Client<Connected>, Error> {
-            log::debug!("{:?}", &url);
             let host = url.host_str()
                 .ok_or(Error::Internal("Invalid host address".into()))?;
-            log::debug!("{}", &host);
             let port = url.port_or_known_default()
                 .ok_or(Error::Internal("Invalid port".into()))?;
-            log::debug!("{}", &port);
             let addr = (host, port);
             let stream = TcpStream::connect(addr).await?;
-            log::debug!("TcpStream connected");
             let connector = TlsConnector::from(Arc::new(config));
             let domain = DNSNameRef::try_from_ascii_str(domain)?;
             let tls_stream = connector.connect(domain, stream).await?;
-            log::debug!("TLS stream connected");
             let (ws_stream, _) = client_async(url, tls_stream).await?;
-            log::debug!("WebSocket stream connected");
             let ws_stream = WebSocketConn::new(ws_stream);
             let codec = DefaultCodec::with_websocket(ws_stream);
             Ok(Client::with_codec(codec))
@@ -283,12 +277,25 @@ impl<Mode> Drop for Client<Mode> {
     }
 }
 
+impl Client<Connected> {
+    /// Closes connection with the server
+    ///
+    /// Dropping the client will close the connection as well
+    pub async fn close(self) {
+        self.writer_tx.send_async(
+            ClientMessage::Stop
+        ).await
+        .unwrap_or_else(|err| log::error!("{}", err));
+    }
+}
+
 // =============================================================================
 // Public functions
 // =============================================================================
 
 cfg_if! {
     if #[cfg(any(
+        feature = "docs",
         all(feature = "async_std_runtime", not(feature = "tokio_runtime")),
         all(feature = "tokio_runtime", not(feature = "async_std_runtime"))
     ))] {
@@ -313,6 +320,8 @@ cfg_if! {
             //     all(feature = "async_std_runtime", not(feature = "tokio_runtime")),
             //     all(feature = "tokio_runtime", not(feature = "async_std_runtime"))
             // ))]
+            #[cfg_attr(feature = "docs", doc(cfg(all(feature = "async_std_runtime", not(feature = "tokio_runtime")))))]
+            #[cfg_attr(feature = "docs", doc(cfg(all(feature = "tokio_runtime", not(feature = "async_std_runtime")))))]
             pub fn with_codec<C>(codec: C) -> Client<Connected>
             where
                 C: SplittableClientCodec + Send + Sync + 'static,
@@ -358,8 +367,14 @@ cfg_if! {
             /// Example
             ///
             /// ```rust
-            ///
+            /// let call: Call<()> = client
+            ///     .timeout(std::time::Duration::from_secs(2)) // the RPC Call will timeout after 2 seconds
+            ///     .call("Service.wait_for_10secs", ()); // request a RPC call that waits for 10 seconds
+            /// let result = call.await; 
+            /// println!("{:?}", result); // Err(Error::Timeout(Some(call_id)))
             /// ```
+            #[cfg_attr(feature = "docs", doc(cfg(all(feature = "async_std_runtime", not(feature = "tokio_runtime")))))]
+            #[cfg_attr(feature = "docs", doc(cfg(all(feature = "tokio_runtime", not(feature = "async_std_runtime")))))]
             pub fn timeout(&self, duration: Duration) -> &Self {
                 self.timeout.store(Some(duration));
                 &self
@@ -374,13 +389,12 @@ cfg_if! {
             ///
             /// ```rust
             /// let args = "arguments";
-            /// let reply: Result<String, Error> = client.call("EchoService.echo", &args);
+            /// let reply: Result<String, Error> = client
+            ///     .call_blocking("EchoService.echo", &args); // This is a blocking call and you dont need to .await
             /// println!("{:?}", reply);
             /// ```
-            #[cfg(any(
-                all(feature = "async_std_runtime", not(feature = "tokio_runtime")),
-                all(feature = "tokio_runtime", not(feature = "async_std_runtime"))
-            ))]
+            #[cfg_attr(feature = "docs", doc(cfg(all(feature = "async_std_runtime", not(feature = "tokio_runtime")))))]
+            #[cfg_attr(feature = "docs", doc(cfg(all(feature = "tokio_runtime", not(feature = "async_std_runtime")))))]
             pub fn call_blocking<Req, Res>(
                 &self,
                 service_method: impl ToString,
@@ -432,11 +446,8 @@ cfg_if! {
             /// let reply = call.await;
             /// println!("This should be a Err(Error::Canceled) {:?}", reply);
             /// ```
-            #[cfg(any(
-                feature = "docs",
-                all(feature = "async_std_runtime", not(feature = "tokio_runtime")),
-                all(feature = "tokio_runtime", not(feature = "async_std_runtime"))
-            ))]
+            #[cfg_attr(feature = "docs", doc(cfg(all(feature = "async_std_runtime", not(feature = "tokio_runtime")))))]
+            #[cfg_attr(feature = "docs", doc(cfg(all(feature = "tokio_runtime", not(feature = "async_std_runtime")))))]
             pub fn call<Req, Res>(&self, service_method: impl ToString, args: Req) -> Call<Res>
             where
                 Req: serde::Serialize + Send + Sync + 'static,
@@ -478,16 +489,6 @@ cfg_if! {
                     done: done_rx,
                     handle: Box::new(handle)
                 }
-            }
-
-            /// Closes connection with the server
-            ///
-            /// Dropping the client will close the connection as well
-            pub async fn close(self) {
-                self.writer_tx.send_async(
-                    ClientMessage::Stop
-                ).await
-                .unwrap_or_else(|err| log::error!("{}", err));
             }
         }
     }

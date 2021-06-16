@@ -63,6 +63,7 @@ cfg_if! {
             /// let addr = "127.0.0.1:8080";
             /// let client = Client::dial(addr).await.unwrap();
             /// ```
+            #[cfg_attr(feature = "docs", doc(cfg(feature = "tokio_runtime")))]
             pub async fn dial(addr: impl ToSocketAddrs)
                 -> Result<Client<Connected>, Error>
             {
@@ -71,8 +72,11 @@ cfg_if! {
             }
 
             /// Connects to an RPC server with TLS enabled
+            ///
+            /// A more detailed example can be found in the 
+            /// [GitHub repo](https://github.com/minghuaw/toy-rpc/blob/9793bf53909bd7ffa74967fae6267f973e03ec8a/examples/tokio_tls/src/bin/client.rs#L22)
             #[cfg(feature = "tls")]
-            #[cfg_attr(feature = "docs",doc(cfg(feature ="tls")))]
+            #[cfg_attr(feature = "docs",doc(cfg(all(feature ="tls", feature = "tokio_runtime"))))]
             pub async fn dial_with_tls_config(
                 addr: impl ToSocketAddrs,
                 domain: &str,
@@ -107,6 +111,7 @@ cfg_if! {
             /// let client = Client::dial_http(addr).await.unwrap();
             /// ```
             ///
+            #[cfg_attr(feature = "docs", doc(cfg(feature = "tokio_runtime")))]
             pub async fn dial_http(addr: &str) -> Result<Client<Connected>, Error> {
                 let mut url = url::Url::parse(addr)?.join(DEFAULT_RPC_PATH)?;
                 url.set_scheme("ws").expect("Failed to change scheme to ws");
@@ -116,9 +121,10 @@ cfg_if! {
 
             /// Connects to an HTTP RPC server with TLS enabled
             ///
-            /// An example with self-signed certificate can be found in the GitHub repo
+            /// An example with self-signed certificate can be found in the 
+            /// [GitHub repo](https://github.com/minghuaw/toy-rpc/blob/9793bf53909bd7ffa74967fae6267f973e03ec8a/examples/warp_tls/src/bin/client.rs#L25)
             #[cfg(feature = "tls")]
-            #[cfg_attr(feature = "docs",doc(cfg(feature ="tls")))]
+            #[cfg_attr(feature = "docs",doc(cfg(all(feature ="tls", feature = "tokio_runtime"))))]
             pub async fn dial_http_with_tls_config(
                 addr: &str,
                 domain: &str,
@@ -132,6 +138,9 @@ cfg_if! {
 
             /// Similar to `dial`, this connects to an WebSocket RPC server at the specified network address using the defatul codec
             ///
+            /// The difference between `dial_websocket` and `dial_http` is that, `dial_websocket` does not 
+            /// append `DEFAULT_RPC_PATH="_rpc"` to the end of the addr.
+            ///
             /// This is enabled
             /// if and only if **exactly one** of the the following feature flag is turned on
             /// - `serde_bincode`
@@ -143,9 +152,10 @@ cfg_if! {
             ///
             /// ```rust
             /// let addr = "ws://127.0.0.1:8080";
-            /// let client = Client::dial_http(addr).await.unwrap();
+            /// let client = Client::dial_websocket(addr).await.unwrap();
             /// ```
             ///
+            #[cfg_attr(feature = "docs", doc(cfg(feature = "tokio_runtime")))]
             pub async fn dial_websocket(addr: &str) -> Result<Client<Connected>, Error> {
                 let url = url::Url::parse(addr)?;
                 Self::dial_websocket_url(url).await
@@ -160,7 +170,7 @@ cfg_if! {
 
             /// Similar to `dial_websocket` but with TLS enabled
             #[cfg(feature = "tls")]
-            #[cfg_attr(feature = "docs",doc(cfg(feature ="tls")))]
+            #[cfg_attr(feature = "docs",doc(cfg(all(feature ="tls", feature = "tokio_runtime"))))]
             pub async fn dial_websocket_with_tls_config(
                 addr: &str,
                 domain: &str,
@@ -184,6 +194,7 @@ cfg_if! {
             /// let stream = TcpStream::connect("127.0.0.1:8080").await.unwrap();
             /// let client = Client::with_stream(stream);
             /// ```
+            #[cfg_attr(feature = "docs", doc(cfg(feature = "tokio_runtime")))]
             pub fn with_stream<T>(stream: T) -> Client<Connected>
             where
                 T: AsyncRead + AsyncWrite + Send + Sync + Unpin + 'static,
