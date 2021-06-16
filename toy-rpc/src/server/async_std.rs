@@ -186,7 +186,7 @@ cfg_if! {
             where
                 C: SplittableServerCodec + Send + 'static,
             {
-                serve_codec_setup(codec, self.services.clone()).await
+                super::serve_codec_setup(codec, self.services.clone()).await
             }
         }
 
@@ -206,15 +206,12 @@ cfg_if! {
 
         /// Serves a single connection
         async fn serve_tcp_connection(stream: TcpStream, services: Arc<AsyncServiceMap>) -> Result<(), Error> {
-            // let _stream = stream;
             let _peer_addr = stream.peer_addr()?;
 
             // using feature flag controlled default codec
             let codec = DefaultCodec::new(stream);
 
-            // let fut = task::spawn_blocking(|| Self::_serve_codec(codec, services)).await;
-            // let ret = Self::serve_codec_loop(codec, services).await;
-            let ret = serve_codec_setup(codec, services).await;
+            let ret = super::serve_codec_setup(codec, services).await;
             log::info!("Client disconnected from {}", _peer_addr);
             ret
         }
@@ -235,36 +232,9 @@ cfg_if! {
             let ws_stream = WebSocketConn::new(ws_stream);
             let codec = DefaultCodec::with_websocket(ws_stream);
 
-            let ret = serve_codec_setup(codec, services).await;
+            let ret = super::serve_codec_setup(codec, services).await;
             log::info!("Client disconnected from WebSocket connection");
             ret
-        }
-
-        // Spawn tasks for the reader/broker/writer loops
-        pub(crate) async fn serve_codec_setup(
-            codec: impl SplittableServerCodec + 'static,
-            services: Arc<AsyncServiceMap>
-        ) -> Result<(), Error> {
-            let (exec_sender, exec_recver) = flume::unbounded();
-            let (resp_sender, resp_recver) = flume::unbounded();
-            let (codec_writer, codec_reader) = codec.split();
-
-            let reader_handle = task::spawn(
-                super::reader_loop(codec_reader, services, exec_sender.clone(), resp_sender.clone())
-            );
-
-            let writer_handle = task::spawn(
-                super::writer_loop(codec_writer, resp_recver)
-            );
-
-            let executor_handle = task::spawn(
-                super::broker_loop(exec_sender, exec_recver, resp_sender)
-            );
-
-            reader_handle.await?;
-            executor_handle.await?;
-            writer_handle.await?;
-            Ok(())
         }
     }
 }

@@ -77,7 +77,7 @@ cfg_if! {
         use crate::service::{HandlerResult};
         use crate::{
             codec::{
-                split::{ServerCodecRead, ServerCodecWrite},
+                split::{ServerCodecRead, ServerCodecWrite, SplittableServerCodec},
                 RequestDeserializer,
             },
             message::{
@@ -87,6 +87,56 @@ cfg_if! {
         };
         use crate::error::Error;
         use crate::util;
+
+        // Spawn tasks for the reader/broker/writer loops
+        pub(crate) async fn serve_codec_setup(
+            codec: impl SplittableServerCodec + 'static,
+            services: Arc<AsyncServiceMap>
+        ) -> Result<(), Error> {
+            let (exec_sender, exec_recver) = flume::unbounded();
+            let (resp_sender, resp_recver) = flume::unbounded();
+            let (codec_writer, codec_reader) = codec.split();
+
+            #[cfg(all(feature = "async_std_runtime",not(feature = "tokio_runtime")))]
+            {
+                let reader_handle = ::async_std::task::spawn(
+                    reader_loop(codec_reader, services, exec_sender.clone(), resp_sender.clone())
+                );
+    
+                let writer_handle = ::async_std::task::spawn(
+                    writer_loop(codec_writer, resp_recver)
+                );
+    
+                let executor_handle = ::async_std::task::spawn(
+                    broker_loop(exec_sender, exec_recver, resp_sender)
+                );
+
+                reader_handle.await?;
+                executor_handle.await?;
+                writer_handle.await?;
+            }
+
+            #[cfg(all(feature = "tokio_runtime",not(feature = "async_std_runtime")))]
+            {
+                let reader_handle = ::tokio::task::spawn(
+                    reader_loop(codec_reader, services, exec_sender.clone(), resp_sender.clone())
+                );
+    
+                let writer_handle = ::tokio::task::spawn(
+                    writer_loop(codec_writer, resp_recver)
+                );
+    
+                let executor_handle = ::tokio::task::spawn(
+                    broker_loop(exec_sender, exec_recver, resp_sender)
+                );
+
+                reader_handle.await??;
+                executor_handle.await??;
+                writer_handle.await??;
+            }
+
+            Ok(())
+        }
 
         async fn broker_loop(
             broker: Sender<ExecutionMessage>,

@@ -34,7 +34,7 @@ cfg_if! {
     ))] {
         use warp::{Filter, Reply, filters::BoxedFilter};
         use crate::codec::DefaultCodec;
-        use super::tokio::serve_codec_setup;
+        use super::serve_codec_setup;
 
         /// The following impl block is controlled by feature flag. It is enabled
         /// if and only if **exactly one** of the the following feature flag is turned on

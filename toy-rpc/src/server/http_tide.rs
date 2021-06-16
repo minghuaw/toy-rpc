@@ -35,7 +35,7 @@ cfg_if! {
     ))] {
         use crate::codec::DefaultCodec;
         use crate::DEFAULT_RPC_PATH;
-        use super::async_std::serve_codec_setup;
+        use super::serve_codec_setup;
 
         /// The following impl block is controlled by feature flag. It is enabled
         /// if and only if **exactly one** of the the following feature flag is turned on
