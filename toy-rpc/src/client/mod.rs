@@ -119,16 +119,22 @@ cfg_if! {
             domain: &str,
             config: ClientConfig,
         ) -> Result<Client<Connected>, Error> {
+            log::debug!("{:?}", &url);
             let host = url.host_str()
                 .ok_or(Error::Internal("Invalid host address".into()))?;
+            log::debug!("{}", &host);
             let port = url.port_or_known_default()
                 .ok_or(Error::Internal("Invalid port".into()))?;
+            log::debug!("{}", &port);
             let addr = (host, port);
             let stream = TcpStream::connect(addr).await?;
+            log::debug!("TcpStream connected");
             let connector = TlsConnector::from(Arc::new(config));
             let domain = DNSNameRef::try_from_ascii_str(domain)?;
             let tls_stream = connector.connect(domain, stream).await?;
+            log::debug!("TLS stream connected");
             let (ws_stream, _) = client_async(url, tls_stream).await?;
+            log::debug!("WebSocket stream connected");
             let ws_stream = WebSocketConn::new(ws_stream);
             let codec = DefaultCodec::with_websocket(ws_stream);
             Ok(Client::with_codec(codec))

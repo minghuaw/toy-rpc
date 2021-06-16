@@ -122,7 +122,7 @@ cfg_if! {
                 domain: &str,
                 config: ClientConfig,
             ) -> Result<Client<Connected>, Error> {
-                let mut url = url::Url::parse(addr)?;
+                let mut url = url::Url::parse(addr)?.join(DEFAULT_RPC_PATH)?;
                 url.set_scheme("ws").expect("Failed to change scheme to ws");
 
                 super::websocket_client_with_tls_config(url, domain, config).await
