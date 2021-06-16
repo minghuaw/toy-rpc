@@ -178,7 +178,7 @@
 <p>Add dependencies:</p>
 <pre><code class="language-toml">[dependencies]
 tokio = { version = &quot;1&quot;, features = [&quot;rt-multi-thread&quot;, &quot;macros&quot;, &quot;time&quot;] }
-toy-rpc = { version = &quot;0.7.0-alpha.2&quot;, features = [&quot;tokio_runtime&quot;, &quot;server&quot;, &quot;client&quot;] }
+toy-rpc = { version = &quot;0.7.0&quot;, features = [&quot;tokio_runtime&quot;, &quot;server&quot;, &quot;client&quot;] }
 </code></pre>
 <p>Service definition and implementation placed in <code>src/lib.rs</code>:</p>
 <pre><code class="language-rust noplaypen">use std::time::Duration;

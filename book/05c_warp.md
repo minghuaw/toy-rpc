@@ -10,7 +10,7 @@ We will demonstrate the usage with a new example.
 [dependencies]
 warp = "0.3.0"
 tokio = { version = "1.4.0", features = ["rt-multi-thread", "macros"] }
-toy-rpc = { version = "0.7.0-alpha.2", features = ["http_warp", "server"] }
+toy-rpc = { version = "0.7.0", features = ["http_warp", "server"] }
 ```
 
 ```rust,noplaypen 

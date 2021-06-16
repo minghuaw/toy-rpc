@@ -19,7 +19,7 @@ Add dependencies:
 ```toml
 [dependencies]
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "time"] }
-toy-rpc = { version = "0.7.0-alpha.2", features = ["tokio_runtime", "server", "client"] }
+toy-rpc = { version = "0.7.0", features = ["tokio_runtime", "server", "client"] }
 ```
 
 Service definition and implementation placed in `src/lib.rs`:
