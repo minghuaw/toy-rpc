@@ -19,4 +19,4 @@ anyhow = "1.0.41"
 async-std = { version = "1.9.0", features = ["attributes"] }
 env_logger = "0.8.4"
 rustls = "0.19.1"
-toy-rpc = {version = "0.7.0", path = "../../toy-rpc", features = ["async_std_runtime", "tls", "server", "client"]}
+toy-rpc = {version = "0.7.1", path = "../../toy-rpc", features = ["async_std_runtime", "tls", "server", "client"]}

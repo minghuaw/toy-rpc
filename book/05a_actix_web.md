@@ -9,7 +9,7 @@ We will demonstrate the usage with a new example.
 ```toml
 [dependencies]
 actix-web = "3.3.2"
-toy-rpc = { version = "0.7.0", features = ["http_actix_web", "server"] }
+toy-rpc = { version = "0.7.1", features = ["http_actix_web", "server"] }
 ```
 
 ```rust,noplaypen 

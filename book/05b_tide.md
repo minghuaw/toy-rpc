@@ -10,7 +10,7 @@ We will demonstrate the usage with a new example.
 [dependencies]
 tide = "0.16.0"
 async-std = { version = "1", features = [ "attributes", ] }  
-toy-rpc = { version = "0.7.0", features = ["http_tide", "server"] }
+toy-rpc = { version = "0.7.1", features = ["http_tide", "server"] }
 ```
 
 ```rust,noplaypen 

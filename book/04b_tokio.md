@@ -6,7 +6,7 @@ This is just going to be an identical copy of the previous [`#[export_trait]` an
 [dependencies]
 async-trait = "0.1.50"
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "net"] }
-toy-rpc = { version = "0.7.0", features = ["tokio_runtime", "server"] }
+toy-rpc = { version = "0.7.1", features = ["tokio_runtime", "server"] }
 
 # our service definition 
 example-service = { version = "0.1.0", path = "../example-service" }
