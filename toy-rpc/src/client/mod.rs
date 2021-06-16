@@ -41,6 +41,98 @@ cfg_if! {
     ))] {
         #[cfg(any(feature = "async_std_runtime", feature = "tokio_runtime"))]
         use crate::codec::DefaultCodec;
+
+        #[cfg(feature = "tls")]
+        use rustls::{ClientConfig};
+        #[cfg(feature = "tls")]
+        use webpki::DNSNameRef;
+        #[cfg(feature = "tls")]
+        use crate::transport::ws::WebSocketConn;
+
+        #[cfg(all(
+            feature = "tls",
+            all(
+                feature = "tokio_runtime",
+                not(feature = "async_std_runtime")
+            )
+        ))]
+        use ::tokio::net::{TcpStream, ToSocketAddrs};
+        #[cfg(all(
+            feature = "tls",
+            all(
+                feature = "tokio_runtime",
+                not(feature = "async_std_runtime")
+            )
+        ))]
+        use tokio_rustls::TlsConnector;
+        #[cfg(all(
+            feature = "tls",
+            all(
+                feature = "tokio_runtime",
+                not(feature = "async_std_runtime")
+            )
+        ))]
+        use async_tungstenite::tokio::client_async;
+
+        #[cfg(all(
+            feature = "tls",
+            all(
+                feature = "async_std_runtime",
+                not(feature = "tokio_runtime")
+            )
+        ))]
+        use ::async_std::net::{TcpStream, ToSocketAddrs};
+        #[cfg(all(
+            feature = "tls",
+            all(
+                feature = "async_std_runtime",
+                not(feature = "tokio_runtime")
+            )
+        ))]
+        use async_rustls::TlsConnector;
+        #[cfg(all(
+            feature = "tls",
+            all(
+                feature = "async_std_runtime",
+                not(feature = "tokio_runtime")
+            )
+        ))]
+        use async_tungstenite::client_async;
+        
+        #[cfg(feature = "tls")]
+        async fn tcp_client_with_tls_config(
+            addr: impl ToSocketAddrs, 
+            domain: &str, 
+            config: ClientConfig        
+        ) -> Result<Client<Connected>, Error> {
+            let stream = TcpStream::connect(addr).await?;
+            let connector = TlsConnector::from(Arc::new(config));
+            let domain = DNSNameRef::try_from_ascii_str(domain)?;
+            let tls_stream = connector.connect(domain, stream).await?;
+
+            Ok(Client::with_stream(tls_stream))
+        }
+
+        #[cfg(feature = "tls")]
+        async fn websocket_client_with_tls_config(
+            url: url::Url,
+            domain: &str,
+            config: ClientConfig,
+        ) -> Result<Client<Connected>, Error> {
+            let host = url.host_str()
+                .ok_or(Error::Internal("Invalid host address".into()))?;
+            let port = url.port_or_known_default()
+                .ok_or(Error::Internal("Invalid port".into()))?;
+            let addr = (host, port);
+            let stream = TcpStream::connect(addr).await?;
+            let connector = TlsConnector::from(Arc::new(config));
+            let domain = DNSNameRef::try_from_ascii_str(domain)?;
+            let tls_stream = connector.connect(domain, stream).await?;
+            let (ws_stream, _) = client_async(url, tls_stream).await?;
+            let ws_stream = WebSocketConn::new(ws_stream);
+            let codec = DefaultCodec::with_websocket(ws_stream);
+            Ok(Client::with_codec(codec))
+        }
     }
 }
 

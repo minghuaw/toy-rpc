@@ -35,13 +35,8 @@ cfg_if! {
         use ::async_std::net::{TcpStream, ToSocketAddrs};
         use async_tungstenite::async_std::connect_async;
 
-
         #[cfg(feature = "tls")]
-        use rustls::ClientConfig;
-        #[cfg(feature = "tls")]
-        use async_rustls::TlsConnector;
-        #[cfg(feature = "tls")]
-        use webpki::DNSNameRef;
+        use rustls::{ClientConfig};
 
         use crate::DEFAULT_RPC_PATH;
         use crate::transport::ws::WebSocketConn;
@@ -82,12 +77,7 @@ cfg_if! {
                 domain: &str, 
                 config: ClientConfig
             ) -> Result<Client<Connected>, Error> {
-                let stream = TcpStream::connect(addr).await?;
-                let connector = TlsConnector::from(Arc::new(config));
-                let domain = DNSNameRef::try_from_ascii_str(domain)?;
-                let tls_stream = connector.connect(domain, stream).await?;
-
-                Ok(Self::with_stream(tls_stream))
+                super::tcp_client_with_tls_config(addr, domain, config).await
             }
 
             /// Connects to an HTTP RPC server at the specified network address using WebSocket and the defatul codec.
@@ -121,6 +111,21 @@ cfg_if! {
                 url.set_scheme("ws").expect("Failed to change scheme to ws");
 
                 Self::dial_websocket_url(url).await
+            }
+
+            /// Connects to an HTTP RPC server with TLS enabled
+            ///
+            /// An example with self-signed certificate can be found in the GitHub repo
+            #[cfg(feature = "tls")]
+            pub async fn dial_http_with_tls_config(
+                addr: &str,
+                domain: &str,
+                config: ClientConfig,
+            ) -> Result<Client<Connected>, Error> {
+                let mut url = url::Url::parse(addr)?;
+                url.set_scheme("ws").expect("Failed to change scheme to ws");
+
+                super::websocket_client_with_tls_config(url, domain, config).await
             }
 
             /// Similar to `dial`, this connects to an WebSocket RPC server at the specified network address using the defatul codec

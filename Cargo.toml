@@ -19,4 +19,5 @@ exclude = [
     "examples/example-client",
     "examples/tokio_tls",
     "examples/async_std_tls",
+    "examples/warp_tls",
 ]
