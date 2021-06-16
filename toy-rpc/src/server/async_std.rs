@@ -184,7 +184,7 @@ cfg_if! {
             #[cfg_attr(feature = "docs", doc(cfg(feature = "async_std_runtime")))]
             pub async fn serve_codec<C>(&self, codec: C) -> Result<(), Error>
             where
-                C: SplittableServerCodec + Send + Sync + 'static,
+                C: SplittableServerCodec + Send + 'static,
             {
                 serve_codec_setup(codec, self.services.clone()).await
             }
