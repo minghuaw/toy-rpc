@@ -72,6 +72,7 @@ cfg_if! {
 
             /// Connects to an RPC server with TLS enabled
             #[cfg(feature = "tls")]
+            #[cfg_attr(feature = "docs",doc(cfg(feature ="tls")))]
             pub async fn dial_with_tls_config(
                 addr: impl ToSocketAddrs, 
                 domain: &str, 
@@ -117,6 +118,7 @@ cfg_if! {
             ///
             /// An example with self-signed certificate can be found in the GitHub repo
             #[cfg(feature = "tls")]
+            #[cfg_attr(feature = "docs",doc(cfg(feature ="tls")))]
             pub async fn dial_http_with_tls_config(
                 addr: &str,
                 domain: &str,
@@ -154,6 +156,18 @@ cfg_if! {
                 let ws_stream = WebSocketConn::new(ws_stream);
                 let codec = DefaultCodec::with_websocket(ws_stream);
                 Ok(Self::with_codec(codec))
+            }
+
+            /// Similar to `dial_websocket` but with TLS enabled
+            #[cfg(feature = "tls")]
+            #[cfg_attr(feature = "docs",doc(cfg(feature ="tls")))]
+            pub async fn dial_websocket_with_tls_config(
+                addr: &str,
+                domain: &str,
+                config: ClientConfig,
+            ) -> Result<Client<Connected>, Error> {
+                let url = url::Url::parse(addr)?;
+                super::websocket_client_with_tls_config(url, domain, config).await
             }
 
             /// Creates an RPC `Client` over socket with a specified `async_std::net::TcpStream` and the default codec

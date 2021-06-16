@@ -9,15 +9,15 @@ use crate::service::AsyncServiceMap;
 
 #[cfg(all(feature = "http_actix_web"))]
 #[cfg_attr(doc, doc(cfg(feature = "http_actix_web")))]
-pub mod http_actix_web;
+mod http_actix_web;
 
 #[cfg(feature = "http_tide")]
 #[cfg_attr(doc, doc(cfg(feature = "http_tide")))]
-pub mod http_tide;
+mod http_tide;
 
 #[cfg(all(feature = "http_warp"))]
 #[cfg_attr(doc, doc(cfg(feature = "http_warp")))]
-pub mod http_warp;
+mod http_warp;
 
 #[cfg(any(
     feature = "docs", doc,
@@ -26,7 +26,7 @@ pub mod http_warp;
         not(feature = "tokio_runtime"),
     )
 ))]
-pub mod async_std;
+mod async_std;
 
 #[cfg(any(
     feature = "docs", doc,
@@ -35,7 +35,7 @@ pub mod async_std;
         not(feature = "async_std_runtime")
     )
 ))]
-pub mod tokio;
+mod tokio;
 
 pub mod builder;
 use builder::ServerBuilder;

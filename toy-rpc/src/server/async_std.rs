@@ -87,6 +87,7 @@ cfg_if! {
             /// ```
             ///
             /// See `toy-rpc/examples/rap_tcp/` for the example
+            #[cfg_attr(feature = "docs", doc(cfg(feature = "async_std_runtime")))]
             pub async fn accept(&self, listener: TcpListener) -> Result<(), Error> {
                 let mut incoming = listener.incoming();
 
@@ -102,7 +103,10 @@ cfg_if! {
 
             /// Accepts connections with TLS
             /// 
+            /// TLS is handled using `rustls`. A more detailed example with 
+            /// `tokio` runtime can be found in the [GitHub repo](https://github.com/minghuaw/toy-rpc/blob/9793bf53909bd7ffa74967fae6267f973e03ec8a/examples/async_std_tls/src/bin/server.rs#L43)
             #[cfg(feature = "tls")]
+            #[cfg_attr(feature = "docs",doc(cfg(all(feature ="tls", feature = "async_std_runtime"))))]
             pub async fn accept_with_tls_config(&self, listener: TcpListener, config: ServerConfig) -> Result<(), Error> {
                 let mut incoming = listener.incoming();
                 let acceptor = TlsAcceptor::from(Arc::new(config));
@@ -147,6 +151,7 @@ cfg_if! {
             ///     handle.await;
             /// }
             /// ```
+            #[cfg_attr(feature = "docs", doc(cfg(feature = "async_std_runtime")))]
             pub async fn accept_websocket(&self, listener: TcpListener) -> Result<(), Error> {
                 let mut incoming = listener.incoming();
 
@@ -189,6 +194,7 @@ cfg_if! {
             ///     handle.await;
             /// }
             /// ```
+            #[cfg_attr(feature = "docs", doc(cfg(feature = "async_std_runtime")))]
             pub async fn serve_conn(&self, stream: TcpStream) -> Result<(), Error> {
                 serve_tcp_connection(stream, self.services.clone()).await
             }
@@ -210,6 +216,7 @@ cfg_if! {
             /// })    
             /// handle.await;
             /// ```
+            #[cfg_attr(feature = "docs", doc(cfg(feature = "async_std_runtime")))]
             pub async fn serve_codec<C>(&self, codec: C) -> Result<(), Error>
             where
                 C: SplittableServerCodec + Send + Sync + 'static,

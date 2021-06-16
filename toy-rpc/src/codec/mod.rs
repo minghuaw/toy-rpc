@@ -34,10 +34,10 @@ cfg_if! {
     ))] {
         #[cfg_attr(
             feature = "docs",
-            doc(any(
+            doc(cfg(any(
                 all(feature = "async_std_runtime", not(feature = "tokio_runtime")),
                 all(feature = "http_tide", not(feature="http_actix_web"), not(feature = "http_warp"))
-            ))
+            )))
         )]
         mod async_std;
     } else if #[cfg(any(

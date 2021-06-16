@@ -72,6 +72,7 @@ cfg_if! {
 
             /// Connects to an RPC server with TLS enabled
             #[cfg(feature = "tls")]
+            #[cfg_attr(feature = "docs",doc(cfg(feature ="tls")))]
             pub async fn dial_with_tls_config(
                 addr: impl ToSocketAddrs, 
                 domain: &str, 
@@ -117,6 +118,7 @@ cfg_if! {
             ///
             /// An example with self-signed certificate can be found in the GitHub repo
             #[cfg(feature = "tls")]
+            #[cfg_attr(feature = "docs",doc(cfg(feature ="tls")))]
             pub async fn dial_http_with_tls_config(
                 addr: &str,
                 domain: &str,
@@ -158,6 +160,7 @@ cfg_if! {
 
             /// Similar to `dial_websocket` but with TLS enabled
             #[cfg(feature = "tls")]
+            #[cfg_attr(feature = "docs",doc(cfg(feature ="tls")))]
             pub async fn dial_websocket_with_tls_config(
                 addr: &str,
                 domain: &str,
