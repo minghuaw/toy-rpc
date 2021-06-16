@@ -6,7 +6,7 @@ use super::*;
 
 cfg_if! {
     if #[cfg(any(
-        any(feature = "docs", doc),
+        feature = "docs",
         all(
             feature = "serde_bincode",
             not(feature = "serde_json"),

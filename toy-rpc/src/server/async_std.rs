@@ -165,17 +165,24 @@ cfg_if! {
             /// let conn = async_std::net::TcpStream::connect(addr).await.unwrap();
             /// server.serve_conn(conn).await.unwrap();
             /// ```
+            #[deprecated(
+                since = "0.7.2",
+                note = "Please use the serve_stream function instead"
+            )]
             #[cfg_attr(feature = "docs", doc(cfg(feature = "async_std_runtime")))]
             pub async fn serve_conn(&self, stream: TcpStream) -> Result<(), Error> {
                 serve_tcp_connection(stream, self.services.clone()).await
             }
 
-            /// Serves a stream that implements `AsyncRead` and `AsyncWrite`
+            /// Serves a stream that implements `futures::io::AsyncRead` and `futures::io::AsyncWrite`
+            #[cfg_attr(feature = "docs", doc(cfg(feature = "async_std_runtime")))]
             pub async fn serve_stream<T>(&self, stream: T) -> Result<(), Error> 
             where 
                 T: AsyncRead + AsyncWrite + Send + Unpin + 'static
             {
-                serve_readwrite_stream(stream, self.services.clone()).await
+                let ret = serve_readwrite_stream(stream, self.services.clone()).await;
+                log::info!("Client disconnected from stream");
+                ret
             }
 
             /// This is like serve_conn except that it uses a specified codec

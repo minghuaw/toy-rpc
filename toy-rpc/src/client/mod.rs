@@ -143,13 +143,21 @@ cfg_if! {
     }
 }
 
-cfg_if! {
-    if #[cfg(feature = "async_std_runtime")] {
-        mod async_std;
-    } else if #[cfg(feature = "tokio_runtime")] {
-        mod tokio;
-    }
-}
+#[cfg(any(
+    feature = "docs",
+    all(
+        feature = "async_std_runtime",
+        not(feature = "tokio_runtime")
+    )
+))]
+mod async_std;
+#[cfg(any(
+    feature = "docs",
+    all(
+        feature = "tokio_runtime",
+        not(feature = "async_std_runtime")
+    )
+))]mod tokio;
 
 /// Call of a RPC request. The result can be obtained by `.await`ing the `Call`.
 /// The call can be cancelled with `cancel()` method.
