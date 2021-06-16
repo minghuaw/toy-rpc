@@ -1,0 +1,28 @@
+[package]
+name = "tide_tls"
+version = "0.1.0"
+authors = ["Minghua Wu <michael.wu1107@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+serde = { version = "1.0.117", features = ["derive"] }
+async-trait = "0.1.42"
+async-std = { version = "1", features = [ "attributes"] }  
+
+# toy-rpc = {version = "0.6.0", path = "../../toy-rpc", default-features = false, features = [ "serde_json", "http_tide"]}
+toy-rpc = { version = "0.7.0-alpha.3", path = "../../toy-rpc", features = ["http_tide", "server", "client", "tls"] }
+log = "0.4.14"
+env_logger = "0.8.2"
+tide = "0.16.0"
+tide-rustls = "0.3.0"
+rustls = "0.19.1"
+
+[[bin]]
+name = "server"
+path = "src/bin/server.rs"
+
+[[bin]]
+name = "client"
+path = "src/bin/client.rs" 

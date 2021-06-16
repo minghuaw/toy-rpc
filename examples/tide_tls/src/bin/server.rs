@@ -1,16 +1,18 @@
-use warp::Filter;
-use std::sync::Arc;
-use tokio::sync::Mutex;
+use async_std::sync::{Arc, Mutex};
 use async_trait::async_trait;
+use tide::prelude::*;
+use tide::Request;
+use tide_rustls::TlsListener;
 
 use toy_rpc::macros::{export_impl};
-use toy_rpc::Server;
+use toy_rpc::server::Server;
 
-use warp_tls::rpc::{BarService, FooRequest, FooResponse, Rpc};
+use tide_tls::rpc::{BarService, FooRequest, FooResponse, Rpc};
 
 // This is for demonstration purpose only
 const SERVER_CERT_PATH: &str = "certs/service.pem";
 const SERVER_KEY_PATH: &str = "certs/service.key";
+
 pub struct FooService {
     counter: Mutex<u32>,
 }
@@ -24,6 +26,7 @@ impl Rpc for FooService {
         *counter += 1;
 
         let res = FooResponse { a: req.a, b: req.b };
+
         Ok(res)
         // Err("echo error".into())
     }
@@ -37,6 +40,7 @@ impl Rpc for FooService {
             a: req.a + 1,
             b: req.b,
         };
+
         Ok(res)
         // Err("increment_a error".into())
     }
@@ -63,10 +67,17 @@ impl Rpc for FooService {
     }
 }
 
-#[tokio::main]
-async fn main() {
-    pretty_env_logger::init();
+#[derive(Debug, Deserialize)]
+struct Animal {
+    name: String,
+    legs: u8,
+}
 
+#[async_std::main]
+async fn main() -> tide::Result<()> {
+    env_logger::init();
+
+    let addr = "127.0.0.1:23333";
     let foo_service = Arc::new(FooService {
         counter: Mutex::new(0),
     });
@@ -77,13 +88,24 @@ async fn main() {
         .register(bar_service)
         .build();
 
-    let routes = warp::path("rpc")
-        .and(server.handle_http());
+    let mut app = tide::new();
+    app.at("/orders/shoes").post(order_shoes);
+    // app.at("/rpc/").nest(server.into_endpoint());
+    app.at("/rpc/").nest(server.handle_http());
 
-    // RPC will be served at "ws://127.0.0.1/rpc/_rpc_"
-    warp::serve(routes)
-        .tls()
-        .cert_path(SERVER_CERT_PATH)
-        .key_path(SERVER_KEY_PATH)
-        .run(([127, 0, 0, 1], 23333)).await;
+    app.listen(
+        TlsListener::build()
+            .addrs(addr)
+            .cert(SERVER_CERT_PATH)
+            .key(SERVER_KEY_PATH)
+    ).await?;
+    Ok(())
+}
+
+async fn order_shoes(mut req: Request<()>) -> tide::Result {
+    let body = req.body_string().await?;
+    println!("{}", body);
+
+    let Animal { name, legs } = req.body_json().await?;
+    Ok(format!("Hello, {}! I've put in an order for {} shoes", name, legs).into())
 }

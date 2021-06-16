@@ -20,4 +20,5 @@ exclude = [
     "examples/tokio_tls",
     "examples/async_std_tls",
     "examples/warp_tls",
+    "examples/tide_tls",
 ]
