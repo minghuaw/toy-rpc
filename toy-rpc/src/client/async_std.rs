@@ -196,7 +196,7 @@ cfg_if! {
             #[cfg_attr(feature = "docs", doc(cfg(feature = "async_std_runtime")))]
             pub fn with_stream<T>(stream: T) -> Client<Connected>
             where
-                T: AsyncRead + AsyncWrite + Send + Sync + Unpin + 'static,
+                T: AsyncRead + AsyncWrite + Send + Unpin + 'static,
             {
                 let codec = DefaultCodec::new(stream);
                 Self::with_codec(codec)

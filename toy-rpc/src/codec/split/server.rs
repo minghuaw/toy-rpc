@@ -64,8 +64,8 @@ cfg_if! {
     ))] {
         impl<R, W> SplittableServerCodec for Codec<R, W, ConnTypeReadWrite>
         where
-            R: FrameRead + Send + Sync + Unpin,
-            W: FrameWrite + Send + Sync + Unpin,
+            R: FrameRead + Send + Unpin,
+            W: FrameWrite + Send + Unpin,
         {
             type Reader = CodecReadHalf::<R, Self, ConnTypeReadWrite>;
             type Writer = CodecWriteHalf::<W, Self, ConnTypeReadWrite>;

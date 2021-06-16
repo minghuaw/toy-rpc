@@ -10,8 +10,8 @@ use super::*;
 
 impl<R, W> Codec<R, W, ConnTypeReadWrite>
 where
-    R: AsyncRead + Send + Sync + Unpin,
-    W: AsyncWrite + Send + Sync + Unpin,
+    R: AsyncRead + Send + Unpin,
+    W: AsyncWrite + Send + Unpin,
 {
     /// Creates a `Codec` with a reader and a writer
     ///
@@ -28,7 +28,7 @@ where
 
 impl<T> Codec<BufReader<ReadHalf<T>>, BufWriter<WriteHalf<T>>, ConnTypeReadWrite>
 where
-    T: AsyncRead + AsyncWrite + Send + Sync + Unpin,
+    T: AsyncRead + AsyncWrite + Send + Unpin,
 {
     /// Creates a `Codec` with a stream that implements both `AsyncRead` and `AsyncWrite`.
     pub fn new(stream: T) -> Self {

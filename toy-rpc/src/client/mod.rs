@@ -324,7 +324,7 @@ cfg_if! {
             #[cfg_attr(feature = "docs", doc(cfg(all(feature = "tokio_runtime", not(feature = "async_std_runtime")))))]
             pub fn with_codec<C>(codec: C) -> Client<Connected>
             where
-                C: SplittableClientCodec + Send + Sync + 'static,
+                C: SplittableClientCodec + Send + 'static,
             {
                 let (writer, reader) = codec.split();
                 let (writer_tx, writer_rx) = flume::unbounded();

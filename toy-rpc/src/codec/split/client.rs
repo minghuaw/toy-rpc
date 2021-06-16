@@ -66,8 +66,8 @@ cfg_if! {
     ))] {
         impl<R, W> SplittableClientCodec for Codec<R, W, ConnTypeReadWrite>
         where
-            R: FrameRead + Send + Sync + Unpin,
-            W: FrameWrite + GracefulShutdown + Send + Sync + Unpin,
+            R: FrameRead + Send + Unpin,
+            W: FrameWrite + GracefulShutdown + Send + Unpin,
         {
             type Reader = CodecReadHalf::<R, Self, ConnTypeReadWrite>;
             type Writer = CodecWriteHalf::<W, Self, ConnTypeReadWrite>;

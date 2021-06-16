@@ -155,7 +155,7 @@ impl Frame {
 }
 
 #[async_trait]
-impl<R: AsyncRead + Unpin + Send + Sync> FrameRead for R {
+impl<R: AsyncRead + Unpin + Send> FrameRead for R {
     async fn read_frame(&mut self) -> Option<Result<Frame, Error>> {
         // read magic first
         let magic = &mut [0];
@@ -197,7 +197,7 @@ impl<R: AsyncRead + Unpin + Send + Sync> FrameRead for R {
 }
 
 #[async_trait]
-impl<W: AsyncWrite + Unpin + Send + Sync> FrameWrite for W {
+impl<W: AsyncWrite + Unpin + Send> FrameWrite for W {
     async fn write_frame(&mut self, frame: Frame) -> Result<(), Error> {
         let Frame {
             message_id,

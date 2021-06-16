@@ -81,7 +81,7 @@ cfg_if! {
         #[async_trait]
         impl<R, C> CodecRead for CodecReadHalf<R, C, ConnTypeReadWrite>
         where
-            R: FrameRead + Send + Sync + Unpin,
+            R: FrameRead + Send + Unpin,
             C: Unmarshal + EraseDeserializer + Send
         {
             async fn read_header<H>(&mut self) -> Option<Result<H, Error>>
@@ -116,7 +116,7 @@ cfg_if! {
         #[async_trait]
         impl<W, C> CodecWrite for CodecWriteHalf<W, C, ConnTypeReadWrite>
         where
-            W: FrameWrite + Send + Sync + Unpin,
+            W: FrameWrite + Send + Unpin,
             C: Marshal + Send,
         {
             async fn write_header<H>(&mut self, header: H) -> Result<(), Error>
