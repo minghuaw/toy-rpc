@@ -12,8 +12,8 @@ pretty_env_logger = "0.4.0"
 tokio = { version = "1.4.0", features = ["rt-multi-thread", "macros"] }
 warp = { version = "0.3.0", features = ["tls"] }
 
-toy-rpc = {version = "0.7.3", path = "../../toy-rpc", features = [ "http_warp", "server", "client", "tls"]}
-# toy-rpc = { version = "0.7.3", features = ["http_warp", "server", "client"] }
+toy-rpc = {version = "0.7.4", path = "../../toy-rpc", features = [ "http_warp", "server", "client", "tls"]}
+# toy-rpc = { version = "0.7.4", features = ["http_warp", "server", "client"] }
 async-trait = "0.1.42"
 serde = { version = "1.0.123", features = ["derive"] }
 rustls = "0.19.1"

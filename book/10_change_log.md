@@ -1,6 +1,6 @@
 # Change Log
 
-## 0.7.3
+## 0.7.4
 
 - Fixed wrong documentation for `Client::with_stream<T>(stream: T)`
 

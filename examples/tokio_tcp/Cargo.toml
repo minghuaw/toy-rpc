@@ -22,6 +22,6 @@ env_logger = "0.8.3"
 
 [dependencies.toy-rpc]
 path = "../../toy-rpc/"
-version = "0.7.3"
+version = "0.7.4"
 default-features = false
 features = [ "serde_json", "tokio_runtime", "server", "client"]
