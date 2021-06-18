@@ -35,8 +35,8 @@ cfg_if! {
         impl<R, W, C> Marshal for Codec<R, W, C> {
             fn marshal<S: serde::Serialize>(val: &S) -> Result<Vec<u8>, Error> {
                 DefaultOptions::new()
-                    .with_fixint_encoding()
-                    // .with_varint_encoding() // FIXME: varint has problem with i16
+                    // .with_fixint_encoding()
+                    .with_varint_encoding() // FIXME: varint has problem with i16
                     .serialize(&val)
                     .map_err(|err| err.into())
             }
@@ -45,8 +45,8 @@ cfg_if! {
         impl<R, W, C> Unmarshal for Codec<R, W, C> {
             fn unmarshal<'de, D: serde::Deserialize<'de>>(buf: &'de [u8]) -> Result<D, Error> {
                 DefaultOptions::new()
-                    .with_fixint_encoding()
-                    // .with_varint_encoding() // FIXME: varint has problem with i16
+                    // .with_fixint_encoding()
+                    .with_varint_encoding() // FIXME: varint has problem with i16
                     .deserialize(buf)
                     .map_err(|err| err.into())
             }
@@ -57,8 +57,8 @@ cfg_if! {
                 let de = bincode::Deserializer::with_reader(
                     Cursor::new(buf),
                     bincode::DefaultOptions::new()
-                        .with_fixint_encoding()
-                        // .with_varint_encoding() // FIXME: varint has problem with i16
+                        // .with_fixint_encoding()
+                        .with_varint_encoding() // FIXME: varint has problem with i16
                 );
 
                 let de_owned = DeserializerOwned::new(de);

@@ -35,6 +35,7 @@ const MAGIC: u8 = 13;
 // const HEADER_LEN: usize = 8; // header length in bytes
 lazy_static! {
     static ref HEADER_LEN: usize =
+        // default uses fixint size
         bincode::serialized_size(&FrameHeader::default()).unwrap() as usize;
 }
 
