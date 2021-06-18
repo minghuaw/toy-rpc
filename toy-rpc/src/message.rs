@@ -174,8 +174,3 @@ pub(crate) enum ClientWriterMessage {
     Cancel(MessageId),
     Stop,
 }
-
-#[cfg(feature = "client")]
-pub(crate) enum ClientReaderMessage {
-    Subscriber()
-}

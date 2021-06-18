@@ -166,7 +166,7 @@ cfg_if! {
             /// server.serve_conn(conn).await.unwrap();
             /// ```
             #[deprecated(
-                since = "0.7.2",
+                since = "0.7.3",
                 note = "Please use the serve_stream function instead"
             )]
             #[cfg_attr(feature = "docs", doc(cfg(feature = "tokio_runtime")))]

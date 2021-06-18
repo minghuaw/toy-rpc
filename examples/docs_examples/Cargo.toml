@@ -18,7 +18,7 @@ path = "src/bin/client.rs"
 
 [dependencies]
 # you may need to change feature flags for different examples
-toy-rpc = { version = "0.7.2", path = "../../toy-rpc", default-features = false, features = ["serde_bincode", "tokio_runtime", "server", "client"]}
+toy-rpc = { version = "0.7.3", path = "../../toy-rpc", default-features = false, features = ["serde_bincode", "tokio_runtime", "server", "client"]}
 
 # optional depending on the choice of runtime or http framework for different examples
 async-std = { version = "1.9.0", features = ["attributes"] } 
