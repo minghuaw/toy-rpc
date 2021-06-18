@@ -166,8 +166,21 @@
                 <div id="content" class="content">
                     <main>
                         <h1 id="change-log"><a class="header" href="#change-log">Change Log</a></h1>
+<h2 id="073"><a class="header" href="#073">0.7.3</a></h2>
+<ul>
+<li>Fixed wrong documentation for <code>Client::with_stream&lt;T&gt;(stream: T)</code></li>
+</ul>
+<h2 id="072"><a class="header" href="#072">0.7.2</a></h2>
+<ul>
+<li>Relaxed trait bounds on generic type <code>T</code> in <code>Client::with_stream&lt;T&gt;(stream: T)</code></li>
+</ul>
+<h2 id="071"><a class="header" href="#071">0.7.1</a></h2>
+<h3 id="bug-fix"><a class="header" href="#bug-fix">Bug fix</a></h3>
+<ul>
+<li>Fixed a bug where large payload is not written entirely with <code>tokio</code> runtime</li>
+</ul>
 <h2 id="070"><a class="header" href="#070">0.7.0</a></h2>
-<p><strong>Breaking Changes</strong></p>
+<h3 id="breaking-changes"><a class="header" href="#breaking-changes">Breaking Changes</a></h3>
 <ul>
 <li>The blocking RPC call on the client side is renamed to <code>call_blocking</code></li>
 <li>The asynchronous RPC call on the client side is renamed to <code>call</code></li>
@@ -175,7 +188,7 @@
 result. The request is sent by a background task and thus the new <code>call</code> method is 
 similar to the old <code>spawn_task</code> in terms of usage.</li>
 </ul>
-<p><strong>New Features</strong></p>
+<h3 id="new-features"><a class="header" href="#new-features">New Features</a></h3>
 <ul>
 <li>Cancellation. The <code>Call&lt;Res&gt;</code> type returned by the <code>call</code> method can be canceled by 
 using the <code>cancel()</code> method.</li>
@@ -190,7 +203,7 @@ use the <code>ServerBuilder::register_with_name</code> method as opposed to the 
 More details can be found in <code>ServerBuilder::register_with_name</code>'s documentation.</li>
 </ul>
 <h2 id="060"><a class="header" href="#060">0.6.0</a></h2>
-<p><strong>Breaking Changes</strong></p>
+<h3 id="breaking-changes-1"><a class="header" href="#breaking-changes-1">Breaking Changes</a></h3>
 <ul>
 <li>In short, this update makes the crate resemble closer to the usage of <code>go</code>'s <code>net/rpc</code> package</li>
 <li>Service registration is simplified to <code>Server::builder().register(foo_service).build()</code>. The examples will be
@@ -207,7 +220,7 @@ can be registered on the same server. Multiple servers are needed to have multip
 </li>
 <li>Re-defined the custom <code>Error</code> type</li>
 </ul>
-<p>Non-breaking changes</p>
+<h3 id="non-breaking-changes"><a class="header" href="#non-breaking-changes">Non-breaking changes</a></h3>
 <ul>
 <li>Fixed bug where client does not interpret error message correctly</li>
 <li>Fixed bug with <code>accept_websocket</code> crashes with incorrect protocol</li>
