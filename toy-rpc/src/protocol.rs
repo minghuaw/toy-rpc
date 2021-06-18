@@ -115,7 +115,9 @@ mod tests {
     fn bincode_i16() {
         let opt = bincode::DefaultOptions::new()
             .with_varint_encoding();
-        let num = 200i16;
+        let num = 10;
+        type Out = i16;
+        let num = num as Out;
         let buf = opt.serialize(&num).unwrap();
 
         // serde::deserialize will yield the correct result
@@ -123,7 +125,7 @@ mod tests {
             Cursor::new(buf.clone()), 
             opt
             );
-        let out: i16 = serde::Deserialize::deserialize(&mut de).unwrap();
+        let out: Out = serde::Deserialize::deserialize(&mut de).unwrap();
         println!("serde::Deserialize::deserialize: {:?}", out);
 
         // erased serde somehow always multiplies the result by 2
@@ -132,7 +134,7 @@ mod tests {
             opt
             );
         let mut de = Box::new(<dyn erased_serde::Deserializer>::erase(&mut de)) as Box<dyn erased_serde::Deserializer>;
-        let out: i16 = erased_serde::deserialize(&mut de).unwrap();
+        let out: Out = erased_serde::deserialize(&mut de).unwrap();
         println!("erased_serde::deserialize: {:?}", out);
     }
 }
