@@ -168,9 +168,14 @@ cfg_if! {
     allow(dead_code)
 )]
 #[cfg(feature = "client")]
-pub(crate) enum ClientMessage {
+pub(crate) enum ClientWriterMessage {
     Timeout(MessageId, Duration), // the timeout will only be applied to the next request
     Request(RequestHeader, ClientRequestBody),
     Cancel(MessageId),
     Stop,
+}
+
+#[cfg(feature = "client")]
+pub(crate) enum ClientReaderMessage {
+    Subscriber()
 }

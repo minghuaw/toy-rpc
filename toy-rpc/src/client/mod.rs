@@ -15,7 +15,7 @@ use std::{
 
 use crate::util::Conclude;
 use crate::{
-    message::{AtomicMessageId, ClientMessage, ClientResponseResult, MessageId},
+    message::{AtomicMessageId, ClientWriterMessage, ClientResponseResult, MessageId},
     Error,
 };
 
@@ -266,7 +266,7 @@ pub struct Client<Mode> {
     // both reader and writer tasks should return nothing cliente handles will be used to drop the tasks
     // The Drop trait should be impled when tokio or async_std runtime is enabled
     reader_stop: Sender<()>,
-    writer_tx: Sender<ClientMessage>,
+    writer_tx: Sender<ClientWriterMessage>,
 
     marker: PhantomData<Mode>,
 }
@@ -279,7 +279,7 @@ impl<Mode> Drop for Client<Mode> {
         if self.reader_stop.send(()).is_err() {
             log::error!("Failed to send stop signal to reader loop")
         }
-        if self.writer_tx.send(ClientMessage::Stop).is_err() {
+        if self.writer_tx.send(ClientWriterMessage::Stop).is_err() {
             log::error!("Failed to send stop signal to writer loop")
         }
     }
@@ -291,7 +291,7 @@ impl Client<Connected> {
     /// Dropping the client will close the connection as well
     pub async fn close(self) {
         self.writer_tx.send_async(
-            ClientMessage::Stop
+            ClientWriterMessage::Stop
         ).await
         .unwrap_or_else(|err| log::error!("{}", err));
     }
@@ -577,11 +577,11 @@ cfg_if! {
 
         pub(crate) async fn writer_loop(
             mut writer: impl ClientCodecWrite,
-            msgs: Receiver<ClientMessage>,
+            msgs: Receiver<ClientWriterMessage>,
         ) {
             while let Ok(msg) = msgs.recv_async().await {
                 match msg {
-                    ClientMessage::Timeout(id, dur) => {
+                    ClientWriterMessage::Timeout(id, dur) => {
                         let timeout_header = RequestHeader {
                             id,
                             service_method: TIMEOUT_TOKEN.into()
@@ -591,10 +591,10 @@ cfg_if! {
                         ) as ClientRequestBody;
                         writer.write_request(timeout_header, &timeout_body).await
                     },
-                    ClientMessage::Request(header, body) => {
+                    ClientWriterMessage::Request(header, body) => {
                         writer.write_request(header, &body).await
                     },
-                    ClientMessage::Cancel(id) => {
+                    ClientWriterMessage::Cancel(id) => {
                         let header = RequestHeader {
                             id,
                             service_method: CANCELLATION_TOKEN.into(),
@@ -604,7 +604,7 @@ cfg_if! {
                         let body = Box::new(body) as ClientRequestBody;
                         writer.write_request(header, &body).await
                     },
-                    ClientMessage::Stop => {
+                    ClientWriterMessage::Stop => {
                         writer.close().await;
                         return
                     }
@@ -619,7 +619,7 @@ cfg_if! {
             pending: Arc<Mutex<ResponseMap>>,
             header: RequestHeader,
             body: ClientRequestBody,
-            writer_tx: Sender<ClientMessage>,
+            writer_tx: Sender<ClientWriterMessage>,
             cancel: Receiver<MessageId>,
             done: oneshot::Sender<Result<Res, Error>>,
             timeout: Option<Duration>,
@@ -632,12 +632,12 @@ cfg_if! {
             // Send a timeout request first if timeout is set
             if let Some(duration) = &timeout {
                 writer_tx.send_async(
-                    ClientMessage::Timeout(id, duration.clone())
+                    ClientWriterMessage::Timeout(id, duration.clone())
                 ).await?;
             }
             // Then send out the RPC request itself
             writer_tx.send_async(
-                ClientMessage::Request(header, body)
+                ClientWriterMessage::Request(header, body)
             ).await?;
 
             // Done channels that .await for response
@@ -654,7 +654,7 @@ cfg_if! {
                     // Send a cancellation request to the server
                     if let Ok(id) = res {
                         writer_tx.send_async(
-                            ClientMessage::Cancel(id)
+                            ClientWriterMessage::Cancel(id)
                         ).await?;
                     }
 

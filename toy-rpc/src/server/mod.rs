@@ -93,22 +93,20 @@ cfg_if! {
             codec: impl SplittableServerCodec + 'static,
             services: Arc<AsyncServiceMap>
         ) -> Result<(), Error> {
-            let (exec_sender, exec_recver) = flume::unbounded();
+            let (broker_sender, broker_recver) = flume::unbounded();
             let (resp_sender, resp_recver) = flume::unbounded();
             let (codec_writer, codec_reader) = codec.split();
 
             #[cfg(all(feature = "async_std_runtime",not(feature = "tokio_runtime")))]
             {
                 let reader_handle = ::async_std::task::spawn(
-                    reader_loop(codec_reader, services, exec_sender.clone(), resp_sender.clone())
+                    reader_loop(codec_reader, services, broker_sender.clone())
                 );
-    
                 let writer_handle = ::async_std::task::spawn(
                     writer_loop(codec_writer, resp_recver)
                 );
-    
                 let executor_handle = ::async_std::task::spawn(
-                    broker_loop(exec_sender, exec_recver, resp_sender)
+                    broker_loop(broker_sender, broker_recver, resp_sender)
                 );
 
                 reader_handle.await?;
@@ -119,25 +117,24 @@ cfg_if! {
             #[cfg(all(feature = "tokio_runtime",not(feature = "async_std_runtime")))]
             {
                 let reader_handle = ::tokio::task::spawn(
-                    reader_loop(codec_reader, services, exec_sender.clone(), resp_sender.clone())
+                    reader_loop(codec_reader, services, broker_sender.clone())
                 );
-    
                 let writer_handle = ::tokio::task::spawn(
                     writer_loop(codec_writer, resp_recver)
                 );
-    
-                let executor_handle = ::tokio::task::spawn(
-                    broker_loop(exec_sender, exec_recver, resp_sender)
+                let broker_handle = ::tokio::task::spawn(
+                    broker_loop(broker_sender, broker_recver, resp_sender)
                 );
 
                 reader_handle.await??;
-                executor_handle.await??;
+                broker_handle.await??;
                 writer_handle.await??;
             }
 
             Ok(())
         }
 
+        /// Central broker
         async fn broker_loop(
             broker: Sender<ExecutionMessage>,
             reader: Receiver<ExecutionMessage>,
@@ -159,7 +156,7 @@ cfg_if! {
                     } => {
                         let fut = call(method, deserializer);
                         let _broker = broker.clone();
-                        let handle = handle_request(_broker, &mut durations, id, fut).await;
+                        let handle = handle_request(_broker, &mut durations, id, fut);
                         executions.insert(id, handle);
                     },
                     ExecutionMessage::Result(result) => {
@@ -185,11 +182,81 @@ cfg_if! {
             Ok(())
         }
 
+         /// Handles incoming requests
+         async fn reader_loop(
+            mut codec_reader: impl ServerCodecRead,
+            services: Arc<AsyncServiceMap>,
+            broker: Sender<ExecutionMessage>,
+            // writer: Sender<ExecutionResult>,
+        ) -> Result<(), Error> {
+            // Keep reading until no header can be read
+            while let Some(header) = codec_reader.read_request_header().await {
+                let header = header?;
+                // This should be performed before processing because even if an
+                // invalid request body should be consumed from the IO
+                let deserializer = get_request_deserializer(&mut codec_reader).await?;
+
+                match preprocess_header(&header) {
+                    Ok(req_type) => {
+                        match preprocess_request(&services, req_type, deserializer) {
+                            Ok(msg) => {
+                                broker.send_async(msg).await?;
+                            },
+                            Err(err) => {
+                                log::error!("{}", err);
+                                match err {
+                                    Error::ServiceNotFound => {
+                                        let result = ExecutionResult {
+                                            id: header.id,
+                                            result: Err(Error::ServiceNotFound)
+                                        };
+                                        broker.send_async(
+                                            ExecutionMessage::Result(result)
+                                        ).await?;
+                                    },
+                                    _ => { }
+                                }
+                            }
+                        }
+                    },
+                    Err(err) => {
+                        // the only error returned is MethodNotFound,
+                        // which should be sent back to client
+                        let result = ExecutionResult {
+                            id: header.id,
+                            result: Err(err),
+                        };
+                        broker.send_async(
+                            ExecutionMessage::Result(result)
+                        ).await?;
+                    }
+                }
+            }
+
+            // Stop the executor loop when client connection is gone
+            broker.send_async(ExecutionMessage::Stop).await?;
+
+            Ok(())
+        }
+
+        /// Write messages to the client
+        async fn writer_loop(
+            mut codec_writer: impl ServerCodecWrite,
+            results: Receiver<ExecutionResult>,
+        ) -> Result<(), Error> {
+            while let Ok(msg) = results.recv_async().await {
+                writer_once(&mut codec_writer, msg).await
+                    .unwrap_or_else(|e| log::error!("{}", e));
+            }
+            Ok(())
+        }
+
+        /// Spawn the execution in a task and return the JoinHandle
         #[cfg(all(
             feature = "async_std_runtime",
             not(feature = "tokio_runtime")
         ))]
-        async fn handle_request(
+        fn handle_request(
             broker: Sender<ExecutionMessage>,
             durations: &mut HashMap<MessageId, Duration>,
             id: MessageId,
@@ -215,11 +282,12 @@ cfg_if! {
             }
         }
 
+        /// Spawn the execution in a task and return the JoinHandle
         #[cfg(all(
             feature = "tokio_runtime",
             not(feature = "async_std_runtime")
         ))]
-        async fn handle_request(
+        fn handle_request(
             broker: Sender<ExecutionMessage>,
             durations: &mut HashMap<MessageId, Duration>,
             id: MessageId,
@@ -243,56 +311,6 @@ cfg_if! {
                     })
                 }
             }
-        }
-
-        async fn reader_loop(
-            mut codec_reader: impl ServerCodecRead,
-            services: Arc<AsyncServiceMap>,
-            executor: Sender<ExecutionMessage>,
-            writer: Sender<ExecutionResult>,
-        ) -> Result<(), Error> {
-            // Keep reading until no header can be read
-            while let Some(header) = codec_reader.read_request_header().await {
-                let header = header?;
-                // This should be performed before processing because even if an
-                // invalid request body should be consumed from the IO
-                let deserializer = get_request_deserializer(&mut codec_reader).await?;
-
-                match preprocess_header(&header) {
-                    Ok(req_type) => {
-                        match preprocess_request(&services, req_type, deserializer) {
-                            Ok(msg) => {
-                                executor.send_async(msg).await?;
-                            },
-                            Err(err) => {
-                                log::error!("{}", err);
-                                match err {
-                                    Error::ServiceNotFound => {
-                                        writer.send_async(ExecutionResult {
-                                            id: header.id,
-                                            result: Err(Error::ServiceNotFound)
-                                        }).await?;
-                                    },
-                                    _ => { }
-                                }
-                            }
-                        }
-                    },
-                    Err(err) => {
-                        // the only error returned is MethodNotFound,
-                        // which should be sent back to client
-                        writer.send_async(ExecutionResult {
-                            id: header.id,
-                            result: Err(err),
-                        }).await?;
-                    }
-                }
-            }
-
-            // Stop the executor loop when client connection is gone
-            executor.send_async(ExecutionMessage::Stop).await?;
-
-            Ok(())
         }
 
         async fn execute_call(
@@ -345,17 +363,6 @@ cfg_if! {
                 Ok(res) => res,
                 Err(_) => Err(Error::Timeout(Some(id)))
             }
-        }
-
-        async fn writer_loop(
-            mut codec_writer: impl ServerCodecWrite,
-            results: Receiver<ExecutionResult>,
-        ) -> Result<(), Error> {
-            while let Ok(msg) = results.recv_async().await {
-                writer_once(&mut codec_writer, msg).await
-                    .unwrap_or_else(|e| log::error!("{}", e));
-            }
-            Ok(())
         }
 
         async fn writer_once(

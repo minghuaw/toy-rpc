@@ -128,6 +128,8 @@ pub mod server;
 #[cfg(feature = "server")]
 pub use server::{builder::ServerBuilder, Server};
 
+pub mod pubsub;
+
 pub use error::Error;
 
 // re-export
