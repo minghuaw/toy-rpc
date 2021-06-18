@@ -1,8 +1,20 @@
 # Change Log
 
+## 0.7.2
+
+### Non-breaking Changes
+
+- Relaxed trait bounds on generic type `T` in `Client::with_stream<T>(stream: T)`
+
+## 0.7.1
+
+### Bug fix
+
+- Fixed a bug where large payload is not written entirely with `tokio` runtime
+
 ## 0.7.0
 
-**Breaking Changes**
+### Breaking Changes
 
 - The blocking RPC call on the client side is renamed to `call_blocking`
 - The asynchronous RPC call on the client side is renamed to `call`
@@ -10,7 +22,7 @@
 result. The request is sent by a background task and thus the new `call` method is 
 similar to the old `spawn_task` in terms of usage.
 
-**New Features**
+### New Features
 
 - Cancellation. The `Call<Res>` type returned by the `call` method can be canceled by 
 using the `cancel()` method.
@@ -26,7 +38,7 @@ More details can be found in `ServerBuilder::register_with_name`'s documentation
 
 ## 0.6.0
 
-**Breaking Changes**
+### Breaking Changes
 
 - In short, this update makes the crate resemble closer to the usage of `go`'s `net/rpc` package
 - Service registration is simplified to `Server::builder().register(foo_service).build()`. The examples will be
@@ -40,7 +52,7 @@ updated accordingly. Thus
         can be registered on the same server. Multiple servers are needed to have multiple objects of the same type.
 - Re-defined the custom `Error` type
 
-Non-breaking changes
+### Non-breaking changes
 
 - Fixed bug where client does not interpret error message correctly
 - Fixed bug with `accept_websocket` crashes with incorrect protocol
