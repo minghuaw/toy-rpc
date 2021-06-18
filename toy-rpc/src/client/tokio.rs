@@ -180,8 +180,8 @@ cfg_if! {
                 super::websocket_client_with_tls_config(url, domain, config).await
             }
 
-            /// Creates an RPC `Client` using a stream that implements `tokio::io::AsyncRead` 
-            /// and `tokio::io::AsyncWrite` and the default codec
+            /// Creates an RPC `Client` over a stream that implements `tokio::io::AsyncRead`
+            /// and `tokio::io::AsyncWrite`
             ///
             /// This is enabled
             /// if and only if **exactly one** of the the following feature flag is turned on
