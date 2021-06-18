@@ -158,6 +158,7 @@ cfg_if::cfg_if! {
                 .await
                 .expect("Unexpected error executing RPC");
             assert_eq!(COMMON_TEST_MAGIC_U16, reply);
+            println!("test_get_magic_u16() Passed")
         }
 
         pub async fn test_get_magic_u32(client: &Client<Connected>) {
@@ -167,6 +168,7 @@ cfg_if::cfg_if! {
                 .await
                 .expect("Unexpected error executing RPC");
             assert_eq!(COMMON_TEST_MAGIC_U32, reply);
+            println!("test_get_magic_u32() Passed")
         }
 
         pub async fn test_get_magic_u64(client: &Client<Connected>) {
@@ -176,6 +178,7 @@ cfg_if::cfg_if! {
                 .await
                 .expect("Unexpected error executing RPC");
             assert_eq!(COMMON_TEST_MAGIC_U64, reply);
+            println!("test_get_magic_u64() Passed")
         }
 
         pub async fn test_get_magic_i8(client: &Client<Connected>) {
@@ -185,6 +188,7 @@ cfg_if::cfg_if! {
                 .await
                 .expect("Unexpected error executing RPC");
             assert_eq!(COMMON_TEST_MAGIC_I8, reply);
+            println!("test_get_magic_i8() Passed")
         }
 
         pub async fn test_get_magic_i16(client: &Client<Connected>) {
@@ -194,6 +198,7 @@ cfg_if::cfg_if! {
                 .await
                 .expect("Unexpected error executing RPC");
             assert_eq!(COMMON_TEST_MAGIC_I16, reply);
+            println!("test_get_magic_i16() Passed")
         }
 
         pub async fn test_get_magic_i32(client: &Client<Connected>) {
@@ -203,6 +208,7 @@ cfg_if::cfg_if! {
                 .await
                 .expect("Unexpected error executing RPC");
             assert_eq!(COMMON_TEST_MAGIC_I32, reply);
+            println!("test_get_magic_i32() Passed")
         }
 
         pub async fn test_get_magic_i64(client: &Client<Connected>) {
@@ -212,6 +218,7 @@ cfg_if::cfg_if! {
                 .await
                 .expect("Unexpected error executing RPC");
             assert_eq!(COMMON_TEST_MAGIC_I64, reply);
+            println!("test_get_magic_i64() Passed")
         }
 
         pub async fn test_get_magic_bool(client: &Client<Connected>) {
@@ -221,6 +228,7 @@ cfg_if::cfg_if! {
                 .await
                 .expect("Unexpected error executing RPC");
             assert_eq!(COMMON_TEST_MAGIC_BOOL, reply);
+            println!("test_get_magic_bool() Passed")
         }
 
         pub async fn test_get_magic_str(client: &Client<Connected>) {
@@ -231,6 +239,7 @@ cfg_if::cfg_if! {
                 .expect("Unexpected error executing RPC");
             let reply = &reply[..];
             assert_eq!(COMMON_TEST_MAGIC_STR, reply);
+            println!("test_get_magic_str() Passed")
         }
 
         pub async fn test_service_not_found(client: &Client<Connected>) {
@@ -242,6 +251,7 @@ cfg_if::cfg_if! {
                     assert_eq!(err.to_string(), expected.to_string())
                 }
             };
+            println!("test_service_not_found() Passed")
         }
 
         pub async fn test_method_not_found(client: &Client<Connected>) {
@@ -254,6 +264,7 @@ cfg_if::cfg_if! {
                     assert_eq!(err.to_string(), expected.to_string())
                 }
             };
+            println!("test_method_not_found() Passed")
         }
 
         pub async fn test_imcomplete_service_method(client: &Client<Connected>) {
@@ -266,6 +277,7 @@ cfg_if::cfg_if! {
                     assert_eq!(err.to_string(), expected.to_string())
                 }
             };
+            println!("test_imcomplete_service_method() Passed")
         }
 
         pub async fn test_execution_error(client: &Client<Connected>) {
@@ -278,6 +290,7 @@ cfg_if::cfg_if! {
                     assert_eq!(err.to_string(), expected.to_string())
                 }
             };
+            println!("test_execution_error() Passed")
         }
 
         pub fn simply_panic() {

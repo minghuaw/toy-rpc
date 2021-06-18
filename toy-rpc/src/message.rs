@@ -174,3 +174,26 @@ pub(crate) enum ClientWriterMessage {
     Cancel(MessageId),
     Stop,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    
+    #[derive(Debug, Serialize, Deserialize)]
+    enum Header {
+        Req(RequestHeader),
+        Res(ResponseHeader)
+    }
+
+    #[test]
+    fn size_of_header() {
+        let header = Header::Req(RequestHeader::default());
+        let size = bincode::serialized_size(&header).unwrap();
+        println!("Req Header size {:?}", size);
+
+        let header = Header::Res(ResponseHeader::default());
+        let size = bincode::serialized_size(&header).unwrap();
+        println!("Res Header size {:?}", size);
+    }
+}
