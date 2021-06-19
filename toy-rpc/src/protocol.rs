@@ -37,6 +37,7 @@ pub enum Header {
     },
 
     /// Header of a subscribe message
+    /// Message will be pushed to the subscriber
     Subscribe {
         /// Message id
         id: MessageId,
@@ -49,7 +50,40 @@ pub enum Header {
     /// - Publish
     /// - Subscribe
     Ack(MessageId),
+
+    /// Reserved for a potential message queue like design
+    /// Produce a message to be consumed
+    Produce {
+        /// Message id
+        id: MessageId,
+        /// Topic of the queue
+        topic: String,
+        /// Number of times this message can be consumed
+        ticket: u32,
+    },
+
+    /// Reserved for a potential message queue like design
+    /// Consumes a message by pulling message from broker/server
+    Consume {
+        /// Message id
+        id: MessageId,
+        /// Topic of the queue
+        topic: String,
+    },
+
+    /// Reserved for further extension to the message protocol
+    Ext {
+        /// Message id
+        id: MessageId,
+        /// Reserved for content of extension
+        content: String,
+        /// Reserved for some numerical/enum content
+        marker: u32,
+    }
 }
+
+pub(crate) type OutboundBody = Box<dyn erased_serde::Serialize + Send + Sync>;
+pub(crate) type InboundBody = Box<dyn erased_serde::Deserializer<'static> + Send>;
 
 #[cfg(test)]
 mod tests {

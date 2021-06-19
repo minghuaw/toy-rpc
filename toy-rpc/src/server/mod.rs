@@ -182,8 +182,8 @@ cfg_if! {
             Ok(())
         }
 
-         /// Handles incoming requests
-         async fn reader_loop(
+        /// Handles incoming requests
+        async fn reader_loop(
             mut codec_reader: impl ServerCodecRead,
             services: Arc<AsyncServiceMap>,
             broker: Sender<ExecutionMessage>,
