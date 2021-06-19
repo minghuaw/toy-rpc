@@ -4,7 +4,7 @@
 
 - Fixed wrong documentation for `Client::with_stream<T>(stream: T)`
 
-## 0.7.3 (yanked)
+## ~~0.7.3 (yanked)~~
 
 ## 0.7.2
 
