@@ -729,7 +729,7 @@ impl Broker for ServerBroker {
                     #[cfg(all(feature = "tokio_runtime", not(feature = "async_std_runtime")))]
                     handle.abort();
                     #[cfg(all(feature = "async_std_runtime", not(feature = "tokio_runtime")))]
-                    handle.cancel();
+                    handle.cancel().await;
                 }
 
                 Running::Continue(Ok(()))
@@ -740,7 +740,7 @@ impl Broker for ServerBroker {
                     #[cfg(all(feature = "tokio_runtime", not(feature = "async_std_runtime")))]
                     handle.abort();
                     #[cfg(all(feature = "async_std_runtime", not(feature = "tokio_runtime")))]
-                    handle.cancel();
+                    handle.cancel().await;
                 }
                 log::debug!("Client connection is closed");
                 Running::Stop
