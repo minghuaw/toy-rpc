@@ -29,6 +29,8 @@ rustdoc-args = ["--cfg", "feature=\"docs\""]
 [features]
 default = [
     "serde_bincode",
+    "tokio_runtime",
+    "server",
 ]
 
 docs = []
@@ -44,8 +46,8 @@ serde_bincode = []
 serde_rmp = ["rmp-serde"]
 
 # feature flags for runtime
-tokio_runtime = ["tokio", "async-tungstenite/tokio-runtime", "tokio-stream", "toy-rpc-macros/runtime"]
-async_std_runtime = ["async-std", "async-tungstenite/async-std-runtime", "toy-rpc-macros/runtime"]
+tokio_runtime = ["tokio", "async-tungstenite/tokio-runtime", "tokio-stream", "toy-rpc-macros/runtime", "brw/tokio"]
+async_std_runtime = ["async-std", "async-tungstenite/async-std-runtime", "toy-rpc-macros/runtime", "brw/async-std"]
 http_tide = ["tide", "tide-websockets", "async_std_runtime", "server"]
 http_actix_web = ["actix-web", "actix", "actix-rt", "actix-web-actors", "actix-http", "tokio_runtime", "server"]
 http_warp = ["warp", "tokio_runtime", "server"]
@@ -98,6 +100,7 @@ thiserror = "1.0"
 flume = "0.10"
 pin-project = "1.0"
 crossbeam = "0.8"
+brw = { version = "0.1.0", path = "../../brw" }
 
 [[test]]
 name = "async_std_tcp"

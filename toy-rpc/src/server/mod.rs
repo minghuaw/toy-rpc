@@ -5,7 +5,7 @@
 use cfg_if::cfg_if;
 use std::sync::Arc;
 
-use crate::service::AsyncServiceMap;
+use crate::{message, service::AsyncServiceMap};
 
 #[cfg(all(feature = "http_actix_web"))]
 #[cfg_attr(doc, doc(cfg(feature = "http_actix_web")))]
@@ -67,7 +67,7 @@ cfg_if! {
         all(feature = "async_std_runtime", not(feature = "tokio_runtime")),
         all(feature = "tokio_runtime", not(feature = "async_std_runtime")),
     ))] {
-        use flume::{Receiver, Sender};
+        use flume::{Sender};
         use std::io::ErrorKind;
         use std::future::Future;
         use std::time::Duration;
@@ -86,170 +86,163 @@ cfg_if! {
             },
         };
         use crate::error::Error;
-        use crate::util;
+        // use crate::util;
 
         // Spawn tasks for the reader/broker/writer loops
         pub(crate) async fn serve_codec_setup(
             codec: impl SplittableServerCodec + 'static,
             services: Arc<AsyncServiceMap>
         ) -> Result<(), Error> {
-            let (broker_sender, broker_recver) = flume::unbounded();
-            let (resp_sender, resp_recver) = flume::unbounded();
-            let (codec_writer, codec_reader) = codec.split();
+            // let (broker_sender, broker_recver) = flume::unbounded();
+            // let (resp_sender, resp_recver) = flume::unbounded();
+            let (writer, reader) = codec.split();
 
-            #[cfg(all(feature = "async_std_runtime",not(feature = "tokio_runtime")))]
-            {
-                let reader_handle = ::async_std::task::spawn(
-                    reader_loop(codec_reader, services, broker_sender.clone())
-                );
-                let writer_handle = ::async_std::task::spawn(
-                    writer_loop(codec_writer, resp_recver)
-                );
-                let executor_handle = ::async_std::task::spawn(
-                    broker_loop(broker_sender, broker_recver, resp_sender)
-                );
+            // #[cfg(all(feature = "async_std_runtime",not(feature = "tokio_runtime")))]
+            // {
+            //     let reader_handle = ::async_std::task::spawn(
+            //         reader_loop(codec_reader, services, broker_sender.clone())
+            //     );
+            //     let writer_handle = ::async_std::task::spawn(
+            //         writer_loop(codec_writer, resp_recver)
+            //     );
+            //     let executor_handle = ::async_std::task::spawn(
+            //         broker_loop(broker_sender, broker_recver, resp_sender)
+            //     );
 
-                reader_handle.await?;
-                executor_handle.await?;
-                writer_handle.await?;
-            }
+            //     reader_handle.await?;
+            //     executor_handle.await?;
+            //     writer_handle.await?;
+            // }
 
-            #[cfg(all(feature = "tokio_runtime",not(feature = "async_std_runtime")))]
-            {
-                let reader_handle = ::tokio::task::spawn(
-                    reader_loop(codec_reader, services, broker_sender.clone())
-                );
-                let writer_handle = ::tokio::task::spawn(
-                    writer_loop(codec_writer, resp_recver)
-                );
-                let broker_handle = ::tokio::task::spawn(
-                    broker_loop(broker_sender, broker_recver, resp_sender)
-                );
+            let reader = ServerReader { reader, services };
+            let writer = ServerWriter { writer };
+            let broker = ServerBroker {
+                executions: HashMap::new(),
+                durations: HashMap::new()   
+            };
 
-                reader_handle.await??;
-                broker_handle.await??;
-                writer_handle.await??;
-            }
-
+            log::debug!("Spawning brw");
+            let (mut broker_handle, _) = brw::spawn(broker, reader, writer);
+            broker_handle.await;
             Ok(())
         }
 
-        /// Central broker
-        async fn broker_loop(
-            broker: Sender<ExecutionMessage>,
-            reader: Receiver<ExecutionMessage>,
-            writer: Sender<ExecutionResult>,
-        ) -> Result<(), Error> {
-            let mut executions = HashMap::new();
-            let mut durations = HashMap::new();
+        // /// Central broker
+        // async fn broker_loop(
+        //     broker: Sender<ExecutionMessage>,
+        //     reader: Receiver<ExecutionMessage>,
+        //     writer: Sender<ExecutionResult>,
+        // ) -> Result<(), Error> {
+        //     let mut executions = HashMap::new();
+        //     let mut durations = HashMap::new();
 
-            while let Ok(msg) = reader.recv_async().await {
-                match msg {
-                    ExecutionMessage::TimeoutInfo(id, duration) => {
-                        durations.insert(id, duration);
-                    },
-                    ExecutionMessage::Request{
-                        call,
-                        id,
-                        method,
-                        deserializer
-                    } => {
-                        let fut = call(method, deserializer);
-                        let _broker = broker.clone();
-                        let handle = handle_request(_broker, &mut durations, id, fut);
-                        executions.insert(id, handle);
-                    },
-                    ExecutionMessage::Result(result) => {
-                        executions.remove(&result.id);
-                        writer.send_async(result).await?;
-                    },
-                    ExecutionMessage::Cancel(id) => {
-                        if let Some(handle) = executions.remove(&id) {
-                            util::Terminate::terminate(handle).await;
-                        }
-                    },
-                    ExecutionMessage::Stop => {
-                        for (_, handle) in executions.drain() {
-                            log::debug!("Stopping execution as client is disconnected");
-                            util::Terminate::terminate(handle).await;
-                        }
-                        log::debug!("Client connection is closed");
-                        break;
-                    }
-                }
-            }
+        //     while let Ok(msg) = reader.recv_async().await {
+        //         match msg {
+        //             ExecutionMessage::TimeoutInfo(id, duration) => {
+        //                 durations.insert(id, duration);
+        //             },
+        //             ExecutionMessage::Request{
+        //                 call,
+        //                 id,
+        //                 method,
+        //                 deserializer
+        //             } => {
+        //                 let fut = call(method, deserializer);
+        //                 let _broker = broker.clone();
+        //                 let handle = handle_request(_broker, &mut durations, id, fut);
+        //                 executions.insert(id, handle);
+        //             },
+        //             ExecutionMessage::Result(result) => {
+        //                 executions.remove(&result.id);
+        //                 writer.send_async(result).await?;
+        //             },
+        //             ExecutionMessage::Cancel(id) => {
+        //                 if let Some(handle) = executions.remove(&id) {
+        //                     util::Terminate::terminate(handle).await;
+        //                 }
+        //             },
+        //             ExecutionMessage::Stop => {
+        //                 for (_, handle) in executions.drain() {
+        //                     log::debug!("Stopping execution as client is disconnected");
+        //                     util::Terminate::terminate(handle).await;
+        //                 }
+        //                 log::debug!("Client connection is closed");
+        //                 break;
+        //             }
+        //         }
+        //     }
 
-            Ok(())
-        }
+        //     Ok(())
+        // }
 
-         /// Handles incoming requests
-         async fn reader_loop(
-            mut codec_reader: impl ServerCodecRead,
-            services: Arc<AsyncServiceMap>,
-            broker: Sender<ExecutionMessage>,
-            // writer: Sender<ExecutionResult>,
-        ) -> Result<(), Error> {
-            // Keep reading until no header can be read
-            while let Some(header) = codec_reader.read_request_header().await {
-                let header = header?;
-                // This should be performed before processing because even if an
-                // invalid request body should be consumed from the IO
-                let deserializer = get_request_deserializer(&mut codec_reader).await?;
+        // /// Handles incoming requests
+        // async fn reader_loop(
+        //     mut codec_reader: impl ServerCodecRead,
+        //     services: Arc<AsyncServiceMap>,
+        //     broker: Sender<ExecutionMessage>,
+        //     // writer: Sender<ExecutionResult>,
+        // ) -> Result<(), Error> {
+        //     // Keep reading until no header can be read
+        //     while let Some(header) = codec_reader.read_request_header().await {
+        //         let header = header?;
+        //         // This should be performed before processing because even if an
+        //         // invalid request body should be consumed from the IO
+        //         let deserializer = get_request_deserializer(&mut codec_reader).await?;
 
-                match preprocess_header(&header) {
-                    Ok(req_type) => {
-                        match preprocess_request(&services, req_type, deserializer) {
-                            Ok(msg) => {
-                                broker.send_async(msg).await?;
-                            },
-                            Err(err) => {
-                                log::error!("{}", err);
-                                match err {
-                                    Error::ServiceNotFound => {
-                                        let result = ExecutionResult {
-                                            id: header.id,
-                                            result: Err(Error::ServiceNotFound)
-                                        };
-                                        broker.send_async(
-                                            ExecutionMessage::Result(result)
-                                        ).await?;
-                                    },
-                                    _ => { }
-                                }
-                            }
-                        }
-                    },
-                    Err(err) => {
-                        // the only error returned is MethodNotFound,
-                        // which should be sent back to client
-                        let result = ExecutionResult {
-                            id: header.id,
-                            result: Err(err),
-                        };
-                        broker.send_async(
-                            ExecutionMessage::Result(result)
-                        ).await?;
-                    }
-                }
-            }
+        //         match preprocess_header(&header) {
+        //             Ok(req_type) => {
+        //                 match preprocess_request(&services, req_type, deserializer) {
+        //                     Ok(msg) => {
+        //                         broker.send_async(msg).await?;
+        //                     },
+        //                     Err(err) => {
+        //                         log::error!("{}", err);
+        //                         match err {
+        //                             Error::ServiceNotFound => {
+        //                                 let result = ExecutionResult {
+        //                                     id: header.id,
+        //                                     result: Err(Error::ServiceNotFound)
+        //                                 };
+        //                                 broker.send_async(
+        //                                     ExecutionMessage::Result(result)
+        //                                 ).await?;
+        //                             },
+        //                             _ => { }
+        //                         }
+        //                     }
+        //                 }
+        //             },
+        //             Err(err) => {
+        //                 // the only error returned is MethodNotFound,
+        //                 // which should be sent back to client
+        //                 let result = ExecutionResult {
+        //                     id: header.id,
+        //                     result: Err(err),
+        //                 };
+        //                 broker.send_async(
+        //                     ExecutionMessage::Result(result)
+        //                 ).await?;
+        //             }
+        //         }
+        //     }
 
-            // Stop the executor loop when client connection is gone
-            broker.send_async(ExecutionMessage::Stop).await?;
+        //     // Stop the executor loop when client connection is gone
+        //     broker.send_async(ExecutionMessage::Stop).await?;
 
-            Ok(())
-        }
+        //     Ok(())
+        // }
 
-        /// Write messages to the client
-        async fn writer_loop(
-            mut codec_writer: impl ServerCodecWrite,
-            results: Receiver<ExecutionResult>,
-        ) -> Result<(), Error> {
-            while let Ok(msg) = results.recv_async().await {
-                writer_once(&mut codec_writer, msg).await
-                    .unwrap_or_else(|e| log::error!("{}", e));
-            }
-            Ok(())
-        }
+        // /// Write messages to the client
+        // async fn writer_loop(
+        //     mut codec_writer: impl ServerCodecWrite,
+        //     results: Receiver<ExecutionResult>,
+        // ) -> Result<(), Error> {
+        //     while let Ok(msg) = results.recv_async().await {
+        //         writer_once(&mut codec_writer, msg).await
+        //             .unwrap_or_else(|e| log::error!("{}", e));
+        //     }
+        //     Ok(())
+        // }
 
         /// Spawn the execution in a task and return the JoinHandle
         #[cfg(all(
@@ -365,46 +358,46 @@ cfg_if! {
             }
         }
 
-        async fn writer_once(
-            writer: &mut impl ServerCodecWrite,
-            result: ExecutionResult,
-        ) -> Result<(), Error> {
-            let ExecutionResult { id, result } = result;
+        // async fn writer_once(
+        //     writer: &mut impl ServerCodecWrite,
+        //     result: ExecutionResult,
+        // ) -> Result<(), Error> {
+        //     let ExecutionResult { id, result } = result;
 
-            match result {
-                Ok(b) => {
-                    log::trace!("Message {} Success", &id);
-                    let header = ResponseHeader {
-                        id,
-                        is_error: false,
-                    };
-                    writer.write_response(header, &b).await?;
-                }
-                Err(err) => {
-                    log::trace!("Message {} Error", &id);
-                    let header = ResponseHeader { id, is_error: true };
-                    let msg = ErrorMessage::from_err(err)?;
-                    writer.write_response(header, &msg).await?;
-                }
-            };
-            Ok(())
-        }
+        //     match result {
+        //         Ok(b) => {
+        //             log::trace!("Message {} Success", &id);
+        //             let header = ResponseHeader {
+        //                 id,
+        //                 is_error: false,
+        //             };
+        //             writer.write_response(header, &b).await?;
+        //         }
+        //         Err(err) => {
+        //             log::trace!("Message {} Error", &id);
+        //             let header = ResponseHeader { id, is_error: true };
+        //             let msg = ErrorMessage::from_err(err)?;
+        //             writer.write_response(header, &msg).await?;
+        //         }
+        //     };
+        //     Ok(())
+        // }
 
-        async fn get_request_deserializer(
-            codec_reader: &mut impl ServerCodecRead,
-        ) -> Result<RequestDeserializer, Error> {
-            match codec_reader.read_request_body().await {
-                Some(r) => r,
-                None => {
-                    let err = Error::IoError(std::io::Error::new(
-                        ErrorKind::UnexpectedEof,
-                        "Failed to read message body",
-                    ));
-                    log::error!("{}", &err);
-                    return Err(err);
-                }
-            }
-        }
+        // async fn get_request_deserializer(
+        //     codec_reader: &mut impl ServerCodecRead,
+        // ) -> Result<RequestDeserializer, Error> {
+        //     match codec_reader.read_request_body().await {
+        //         Some(r) => r,
+        //         None => {
+        //             let err = Error::IoError(std::io::Error::new(
+        //                 ErrorKind::UnexpectedEof,
+        //                 "Failed to read message body",
+        //             ));
+        //             log::error!("{}", &err);
+        //             return Err(err);
+        //         }
+        //     }
+        // }
 
 
         fn preprocess_header(header: &RequestHeader) -> Result<RequestType, Error> {
@@ -496,3 +489,192 @@ cfg_if! {
         }
     }
 }
+
+use brw::{Broker, Reader, Running, Writer, util::Conclude};
+use futures::{
+    sink::{Sink, SinkExt}
+};
+
+struct ServerReader<T: ServerCodecRead>{
+    reader: T,
+    services: Arc<AsyncServiceMap>,
+}
+
+impl<T:ServerCodecRead> ServerReader<T> {
+    async fn read_one_message<B>(&mut self, mut broker: B) -> Result<(), Error> 
+    where 
+        B: Sink<ExecutionMessage, Error = flume::SendError<ExecutionMessage>> + Unpin
+    {
+        if let Some(header) = self.reader.read_request_header().await {
+            let header = header?;
+            let deserializer = self.reader.read_request_body().await
+                .ok_or(Error::IoError(std::io::Error::new(
+                    ErrorKind::UnexpectedEof,
+                    "Failed to read message body",
+                )))??;
+
+            match preprocess_header(&header) {
+                Ok(req_type) => {
+                    match preprocess_request(&self.services, req_type, deserializer) {
+                        Ok(msg) => broker.send(msg).await?,
+                        Err(err) => {
+                            log::error!("{}", err);
+                            match err {
+                                Error::ServiceNotFound => {
+                                    let result = ExecutionResult {
+                                        id: header.id,
+                                        result: Err(Error::ServiceNotFound)
+                                    };
+                                    broker.send(
+                                        ExecutionMessage::Result(result)
+                                    ).await?;
+                                },
+                                _ => { }
+                            }
+                        }
+                    }
+                },
+                Err(err) => {
+                        // the only error returned is MethodNotFound,
+                        // which should be sent back to client
+                        let result = ExecutionResult {
+                            id: header.id,
+                            result: Err(err),
+                        };
+                        broker.send(
+                            ExecutionMessage::Result(result)
+                        ).await?;
+                }
+            }
+        }
+
+        // Stop the executor loop when client connection is gone
+        broker.send(ExecutionMessage::Stop).await?;
+
+        Ok(())
+    }
+}
+
+#[async_trait::async_trait]
+impl<T: ServerCodecRead> Reader for ServerReader<T> {
+    type BrokerItem = ExecutionMessage;
+    type Ok = ();
+    type Error = Error;
+
+    async fn op<B>(&mut self, mut broker: B) -> Running<Result<Self::Ok, Self::Error>>
+    where B: Sink<Self::BrokerItem, Error = flume::SendError<Self::BrokerItem>> + Send + Unpin {
+        let res = self.read_one_message(&mut broker).await;
+        Running::Continue(res)
+    }
+
+    async fn handle_result(res: Result<Self::Ok, Self::Error>) -> Running<()> {
+        if let Err(err) = res {
+            log::error!("{:?}", err);
+        }
+        Running::Continue(())
+    }
+}
+
+struct ServerWriter<W> {
+    writer: W,
+}
+impl<W: ServerCodecWrite> ServerWriter<W> {
+    async fn write_one_message(&mut self, result: ExecutionResult) -> Result<(), Error> {
+        let ExecutionResult { id, result } = result;
+
+        match result {
+            Ok(body) => {
+                log::trace!("Message {} Success", &id);
+                let header = ResponseHeader {
+                    id,
+                    is_error: false,
+                };
+                self.writer.write_response(header, &body).await?;
+            }
+            Err(err) => {
+                log::trace!("Message {} Error", &id);
+                let header = ResponseHeader { id, is_error: true };
+                let msg = ErrorMessage::from_err(err)?;
+                self.writer.write_response(header, &msg).await?;
+            }
+        };
+        Ok(())
+    }
+}
+
+#[async_trait::async_trait]
+impl<W: ServerCodecWrite> Writer for ServerWriter<W> {
+    type Item = ExecutionResult;
+    type Ok = ();
+    type Error = Error;
+
+    async fn op(&mut self, item: Self::Item) -> Running<Result<Self::Ok, Self::Error>> {
+        let res = self.write_one_message(item).await;
+        Running::Continue(res)
+    }
+
+    async fn handle_result(res: Result<Self::Ok, Self::Error>) -> Running<()> {
+        if let Err(err) = res {
+            log::error!("{:?}", err);
+        }
+        Running::Continue(())
+    }
+}
+
+struct ServerBroker { 
+    executions: HashMap<MessageId, Box<dyn brw::util::Terminate + Send>>,
+    durations: HashMap<MessageId, Duration>
+}
+
+#[async_trait::async_trait]
+impl Broker for ServerBroker {
+    type Item = ExecutionMessage;
+    type WriterItem = ExecutionResult;
+    type Ok = ();
+    type Error = Error;
+
+    async fn op<W>(&mut self, ctx: &mut brw::Context<Self::Item>, item: Self::Item, mut writer: W) -> Running<Result<Self::Ok, Self::Error>>
+    where W: Sink<Self::WriterItem, Error = flume::SendError<Self::WriterItem>> + Send + Unpin {
+        match item {
+            ExecutionMessage::TimeoutInfo(id, duration) => {
+                self.durations.insert(id, duration);
+                Running::Continue(Ok(()))
+            },
+            ExecutionMessage::Request{
+                call,
+                id,
+                method,
+                deserializer
+            } => {
+                let fut = call(method, deserializer);
+                let _broker = ctx.broker.clone();
+                let handle = handle_request(_broker, &mut self.durations, id, fut);
+                self.executions.insert(id, Box::new(handle));
+                Running::Continue(Ok(()))
+            },
+            ExecutionMessage::Result(result) => {
+                self.executions.remove(&result.id);
+                let res: Result<(), Error> = writer.send(result).await
+                    .map_err(|err| err.into());
+                Running::Continue(res)
+            },
+            ExecutionMessage::Cancel(id) => {
+                if let Some(handle) = self.executions.remove(&id) {
+                    // handle.terminate().await;
+                    brw::util::Terminate::terminate(handle).await;
+                }
+
+                Running::Continue(Ok(()))
+            },
+            ExecutionMessage::Stop => {
+                for (_, handle) in self.executions.drain() {
+                    log::debug!("Stopping execution as client is disconnected");
+                    brw::util::Terminate::terminate(handle).await;
+                }
+                log::debug!("Client connection is closed");
+                Running::Stop
+            }
+        }
+    }
+}
+
