@@ -174,14 +174,16 @@ mod async_std;
 /// // You can still .await on the canceled `Call` but will get an error
 /// let result = call.await; // Err(Error::Canceled(Some(id)))
 /// ```
-#[pin_project::pin_project(PinnedDrop)]
+// #[pin_project::pin_project(PinnedDrop)]
+#[pin_project::pin_project]
 pub struct Call<Res> {
     id: MessageId,
     // cancel: oneshot::Sender<MessageId>,
     cancel: Sender<broker::ClientBrokerItem>,
     #[pin]
-    done: oneshot::Receiver<Result<Res, Error>>,
-    handle: Box<dyn Conclude + Send + Sync>,
+    done: oneshot::Receiver<Result<ClientResponseResult, Error>>,
+    // handle: Box<dyn Conclude + Send + Sync>,
+    marker: PhantomData<Res>,
 }
 
 impl<Res> Call<Res>
@@ -209,14 +211,14 @@ where
     }
 }
 
-#[pin_project::pinned_drop]
-impl<Res> PinnedDrop for Call<Res> {
-    fn drop(self: Pin<&mut Self>) {
-        let this = self.project();
-        let handle = this.handle;
-        handle.conclude();
-    }
-}
+// #[pin_project::pinned_drop]
+// impl<Res> PinnedDrop for Call<Res> {
+//     fn drop(self: Pin<&mut Self>) {
+//         let this = self.project();
+//         let handle = this.handle;
+//         handle.conclude();
+//     }
+// }
 
 impl<Res> Future for Call<Res>
 where
@@ -226,13 +228,30 @@ where
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         let this = self.project();
-        let done: Pin<&mut oneshot::Receiver<Result<Res, Error>>> = this.done;
+        let done: Pin<&mut oneshot::Receiver<Result<ClientResponseResult, Error>>> = this.done;
 
         match done.poll(cx) {
             Poll::Pending => Poll::Pending,
-            Poll::Ready(res) => match res {
-                Ok(r) => Poll::Ready(r),
-                Err(_canceled) => Poll::Ready(Err(Error::Canceled(Some(*this.id)))),
+            Poll::Ready(res) => {
+                let res = match res {
+                    Ok(val) => val,
+                    Err(_canceled) => return Poll::Ready(Err(Error::Canceled(Some(*this.id)))),
+                };
+
+                let res = match res {
+                    Ok(val) => val,
+                    Err(err) => return Poll::Ready(Err(err))
+                };
+
+                let res = match res {
+                    Ok(mut resp_body) => erased_serde::deserialize(&mut resp_body)
+                        .map_err(|err| Error::ParseError(Box::new(err))),
+                    Err(mut err_body) => erased_serde::deserialize(&mut err_body).map_or_else(
+                        |err| Err(Error::ParseError(Box::new(err))),
+                        |msg| Err(Error::from_err_msg(msg)),
+                    ),
+                };
+                Poll::Ready(res)
             },
         }
     }
@@ -253,7 +272,7 @@ type ResponseMap = HashMap<MessageId, oneshot::Sender<ClientResponseResult>>;
 )]
 pub struct Client<Mode> {
     count: AtomicMessageId,
-    timeout: AtomicCell<Option<Duration>>,
+    // timeout: AtomicCell<Option<Duration>>,
     broker: Sender<ClientBrokerItem>,
     marker: PhantomData<Mode>,
 }
@@ -324,35 +343,15 @@ cfg_if! {
                 let broker = ClientBroker{
                     // counter: 0,
                     pending: HashMap::new(),
-                    // next_timeout: None
+                    timingouts: HashMap::new(),
+                    next_timeout: None
                 };           
                 let (_, broker) = brw::spawn(broker, reader, writer);
-                // let (writer_tx, writer_rx) = flume::unbounded();
-                // let pending = Arc::new(Mutex::new(HashMap::new()));
-                // let (reader_stop, stop) = flume::bounded(1);
-
-                // #[cfg(all(
-                //     feature = "async_std_runtime",
-                //     not(feature = "tokio_runtime")
-                // ))]
-                // {
-                //     ::async_std::task::spawn(reader_loop(reader, pending.clone(), stop));
-                //     ::async_std::task::spawn(writer_loop(writer, writer_rx));
-                // }
-
-                // #[cfg(all(
-                //     feature = "tokio_runtime",
-                //     not(feature = "async_std_runtime")
-                // ))]
-                // {
-                //     ::tokio::task::spawn(reader_loop(reader, pending.clone(), stop));
-                //     ::tokio::task::spawn(writer_loop(writer, writer_rx));
-                // }
 
                 Client::<Connected> {
                     count: AtomicMessageId::new(0),
                     // pending,
-                    timeout: AtomicCell::new(None),
+                    // timeout: AtomicCell::new(None),
                     // reader_stop,
                     // writer_tx,
                     broker,
@@ -376,8 +375,8 @@ cfg_if! {
             #[cfg_attr(feature = "docs", doc(cfg(all(feature = "async_std_runtime", not(feature = "tokio_runtime")))))]
             #[cfg_attr(feature = "docs", doc(cfg(all(feature = "tokio_runtime", not(feature = "async_std_runtime")))))]
             pub fn timeout(&self, duration: Duration) -> &Self {
-                // self.broker.send(ClientBrokerItem::Timeout(duration));
-                self.timeout.store(Some(duration));
+                self.broker.send(ClientBrokerItem::SetTimeout(duration));
+                // self.timeout.store(Some(duration));
                 &self
             }
 
@@ -459,39 +458,40 @@ cfg_if! {
                 let service_method = service_method.to_string();
                 let header = RequestHeader { id, service_method };
                 let body = Box::new(args) as ClientRequestBody;
-                let timeout = self.timeout.take();
+                // let timeout = self.timeout.take();
 
                 // Prepare response handler
                 let (resp_tx, resp_rx) = oneshot::channel();
-                let (done_tx, done_rx) = oneshot::channel();
+                // let (done_tx, done_rx) = oneshot::channel();
 
                 if let Err(err) = self.broker.send(
                     ClientBrokerItem::Request{
                         header,
                         body,
                         resp_tx,
-                        timeout: timeout.clone()
+                        // timeout: timeout.clone()
                     }
                 ) {
                     log::error!("{:?}", err);
                 }
 
-                #[cfg(all(feature = "async_std_runtime", not(feature = "tokio_runtime")))]
-                let handle = ::async_std::task::spawn(
-                    handle_response(id, timeout, resp_rx,done_tx)
-                );
+                // #[cfg(all(feature = "async_std_runtime", not(feature = "tokio_runtime")))]
+                // let handle = ::async_std::task::spawn(
+                //     handle_response(id, timeout, resp_rx,done_tx)
+                // );
 
-                #[cfg(all(feature = "tokio_runtime", not(feature = "async_std_runtime")))]
-                let handle = ::tokio::task::spawn(
-                    handle_response(id, timeout, resp_rx,done_tx)
-                );
+                // #[cfg(all(feature = "tokio_runtime", not(feature = "async_std_runtime")))]
+                // let handle = ::tokio::task::spawn(
+                //     handle_response(id, timeout, resp_rx,done_tx)
+                // );
 
                 // Creates Call
                 Call::<Res> {
                     id,
                     cancel: self.broker.clone(),
-                    done: done_rx,
-                    handle: Box::new(handle)
+                    done: resp_rx,
+                    // handle: Box::new(handle)
+                    marker: PhantomData
                 }
             }
         }
