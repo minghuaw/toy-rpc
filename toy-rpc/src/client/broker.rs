@@ -1,6 +1,7 @@
 use std::{sync::Arc, time::Duration};
 use std::collections::HashMap;
 use async_trait::async_trait;
+use brw::util::Conclude;
 use brw::{Context, Running};
 use futures::{Sink, SinkExt, channel::oneshot};
 
@@ -114,8 +115,8 @@ impl brw::Broker for ClientBroker {
                         return Running::Continue(Err(err))
                     }
                 }
-                if let Some(handle) = self.timingouts.remove(&id) {
-                    handle.await;
+                if let Some(mut handle) = self.timingouts.remove(&id) {
+                    handle.conclude();
                 }
                 Ok(())
             },
