@@ -123,7 +123,7 @@ cfg_if! {
 
             log::debug!("Spawning brw");
             let (mut broker_handle, _) = brw::spawn(broker, reader, writer);
-            broker_handle.await;
+            broker_handle.conclude();
             Ok(())
         }
 
@@ -500,60 +500,60 @@ struct ServerReader<T: ServerCodecRead>{
     services: Arc<AsyncServiceMap>,
 }
 
-impl<T:ServerCodecRead> ServerReader<T> {
-    async fn read_one_message<B>(&mut self, mut broker: B) -> Result<(), Error> 
-    where 
-        B: Sink<ExecutionMessage, Error = flume::SendError<ExecutionMessage>> + Unpin
-    {
-        if let Some(header) = self.reader.read_request_header().await {
-            let header = header?;
-            let deserializer = self.reader.read_request_body().await
-                .ok_or(Error::IoError(std::io::Error::new(
-                    ErrorKind::UnexpectedEof,
-                    "Failed to read message body",
-                )))??;
+// impl<T:ServerCodecRead> ServerReader<T> {
+//     async fn read_one_message<B>(&mut self, mut broker: B) -> Result<(), Error> 
+//     where 
+//         B: Sink<ExecutionMessage, Error = flume::SendError<ExecutionMessage>> + Unpin
+//     {
+//         if let Some(header) = self.reader.read_request_header().await {
+//             let header = header?;
+//             let deserializer = self.reader.read_request_body().await
+//                 .ok_or(Error::IoError(std::io::Error::new(
+//                     ErrorKind::UnexpectedEof,
+//                     "Failed to read message body",
+//                 )))??;
 
-            match preprocess_header(&header) {
-                Ok(req_type) => {
-                    match preprocess_request(&self.services, req_type, deserializer) {
-                        Ok(msg) => broker.send(msg).await?,
-                        Err(err) => {
-                            log::error!("{}", err);
-                            match err {
-                                Error::ServiceNotFound => {
-                                    let result = ExecutionResult {
-                                        id: header.id,
-                                        result: Err(Error::ServiceNotFound)
-                                    };
-                                    broker.send(
-                                        ExecutionMessage::Result(result)
-                                    ).await?;
-                                },
-                                _ => { }
-                            }
-                        }
-                    }
-                },
-                Err(err) => {
-                        // the only error returned is MethodNotFound,
-                        // which should be sent back to client
-                        let result = ExecutionResult {
-                            id: header.id,
-                            result: Err(err),
-                        };
-                        broker.send(
-                            ExecutionMessage::Result(result)
-                        ).await?;
-                }
-            }
-        }
+//             match preprocess_header(&header) {
+//                 Ok(req_type) => {
+//                     match preprocess_request(&self.services, req_type, deserializer) {
+//                         Ok(msg) => broker.send(msg).await?,
+//                         Err(err) => {
+//                             log::error!("{}", err);
+//                             match err {
+//                                 Error::ServiceNotFound => {
+//                                     let result = ExecutionResult {
+//                                         id: header.id,
+//                                         result: Err(Error::ServiceNotFound)
+//                                     };
+//                                     broker.send(
+//                                         ExecutionMessage::Result(result)
+//                                     ).await?;
+//                                 },
+//                                 _ => { }
+//                             }
+//                         }
+//                     }
+//                 },
+//                 Err(err) => {
+//                     // the only error returned is MethodNotFound,
+//                     // which should be sent back to client
+//                     let result = ExecutionResult {
+//                         id: header.id,
+//                         result: Err(err),
+//                     };
+//                     broker.send(
+//                         ExecutionMessage::Result(result)
+//                     ).await?;
+//                 }
+//             }
+//         }
 
-        // Stop the executor loop when client connection is gone
-        broker.send(ExecutionMessage::Stop).await?;
+//         // Stop the executor loop when client connection is gone
+//         broker.send(ExecutionMessage::Stop).await?;
 
-        Ok(())
-    }
-}
+//         Ok(())
+//     }
+// }
 
 #[async_trait::async_trait]
 impl<T: ServerCodecRead> Reader for ServerReader<T> {
@@ -563,8 +563,69 @@ impl<T: ServerCodecRead> Reader for ServerReader<T> {
 
     async fn op<B>(&mut self, mut broker: B) -> Running<Result<Self::Ok, Self::Error>>
     where B: Sink<Self::BrokerItem, Error = flume::SendError<Self::BrokerItem>> + Send + Unpin {
-        let res = self.read_one_message(&mut broker).await;
-        Running::Continue(res)
+        if let Some(header) = self.reader.read_request_header().await {
+            let header = match header {
+                Ok(header) => header,
+                Err(err) => return Running::Continue(Err(err))
+            };
+            let deserializer = match self.reader.read_request_body().await {
+                Some(res) => {
+                    match res {
+                        Ok(de) => de,
+                        Err(err) => return Running::Continue(Err(err))
+                    }
+                },
+                None => return Running::Stop
+            };
+
+            match preprocess_header(&header) {
+                Ok(req_type) => {
+                    match preprocess_request(&self.services, req_type, deserializer) {
+                        Ok(msg) => {
+                            match broker.send(msg).await {
+                                Ok(_) => { },
+                                Err(err) => return Running::Continue(Err(err.into()))
+                            }
+                        },
+                        Err(err) => {
+                            log::error!("{}", err);
+                            match err {
+                                Error::ServiceNotFound => {
+                                    let result = ExecutionResult {
+                                        id: header.id,
+                                        result: Err(Error::ServiceNotFound)
+                                    };
+                                    match broker.send(
+                                        ExecutionMessage::Result(result)
+                                    ).await{
+                                        Ok(_) => { },
+                                        Err(err) => return Running::Continue(Err(err.into()))
+                                    };
+                                },
+                                _ => { }
+                            }
+                        }
+                    }
+                },
+                Err(err) => {
+                    // the only error returned should be MethodNotFound,
+                    // which should be sent back to client
+                    let result = ExecutionResult {
+                        id: header.id,
+                        result: Err(err),
+                    };
+                    match broker.send(
+                        ExecutionMessage::Result(result)
+                    ).await {
+                        Ok(_) => { },
+                        Err(err) => return Running::Continue(Err(err.into()))
+                    }
+                }
+            }
+            Running::Continue(Ok(()))
+        } else {
+            Running::Stop
+        }
     }
 
     async fn handle_result(res: Result<Self::Ok, Self::Error>) -> Running<()> {
@@ -621,8 +682,13 @@ impl<W: ServerCodecWrite> Writer for ServerWriter<W> {
     }
 }
 
+#[cfg(all(feature = "tokio_runtime", not(feature = "async_std_runtime")))]
+use ::tokio::task::JoinHandle;
+#[cfg(all(feature = "async_std_runtime", not(feature = "tokio_runtime")))]
+use ::async_std::task::JoinHandle;
+
 struct ServerBroker { 
-    executions: HashMap<MessageId, Box<dyn brw::util::Terminate + Send>>,
+    executions: HashMap<MessageId, JoinHandle<()>>,
     durations: HashMap<MessageId, Duration>
 }
 
@@ -633,7 +699,7 @@ impl Broker for ServerBroker {
     type Ok = ();
     type Error = Error;
 
-    async fn op<W>(&mut self, ctx: &mut brw::Context<Self::Item>, item: Self::Item, mut writer: W) -> Running<Result<Self::Ok, Self::Error>>
+    async fn op<W>(&mut self, ctx: & Arc<brw::Context<Self::Item>>, item: Self::Item, mut writer: W) -> Running<Result<Self::Ok, Self::Error>>
     where W: Sink<Self::WriterItem, Error = flume::SendError<Self::WriterItem>> + Send + Unpin {
         match item {
             ExecutionMessage::TimeoutInfo(id, duration) => {
@@ -649,7 +715,7 @@ impl Broker for ServerBroker {
                 let fut = call(method, deserializer);
                 let _broker = ctx.broker.clone();
                 let handle = handle_request(_broker, &mut self.durations, id, fut);
-                self.executions.insert(id, Box::new(handle));
+                self.executions.insert(id, handle);
                 Running::Continue(Ok(()))
             },
             ExecutionMessage::Result(result) => {
@@ -660,8 +726,10 @@ impl Broker for ServerBroker {
             },
             ExecutionMessage::Cancel(id) => {
                 if let Some(handle) = self.executions.remove(&id) {
-                    // handle.terminate().await;
-                    brw::util::Terminate::terminate(handle).await;
+                    #[cfg(all(feature = "tokio_runtime", not(feature = "async_std_runtime")))]
+                    handle.abort();
+                    #[cfg(all(feature = "async_std_runtime", not(feature = "tokio_runtime")))]
+                    handle.cancel();
                 }
 
                 Running::Continue(Ok(()))
@@ -669,7 +737,10 @@ impl Broker for ServerBroker {
             ExecutionMessage::Stop => {
                 for (_, handle) in self.executions.drain() {
                     log::debug!("Stopping execution as client is disconnected");
-                    brw::util::Terminate::terminate(handle).await;
+                    #[cfg(all(feature = "tokio_runtime", not(feature = "async_std_runtime")))]
+                    handle.abort();
+                    #[cfg(all(feature = "async_std_runtime", not(feature = "tokio_runtime")))]
+                    handle.cancel();
                 }
                 log::debug!("Client connection is closed");
                 Running::Stop
