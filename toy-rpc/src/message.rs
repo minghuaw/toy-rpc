@@ -162,15 +162,3 @@ cfg_if! {
         }
     }
 }
-
-#[cfg_attr(
-    not(any(feature = "async_std_runtime", feature = "tokio_runtime")),
-    allow(dead_code)
-)]
-#[cfg(feature = "client")]
-pub(crate) enum ClientWriterMessage {
-    Timeout(MessageId, Duration), // the timeout will only be applied to the next request
-    Request(RequestHeader, ClientRequestBody),
-    Cancel(MessageId),
-    Stop,
-}

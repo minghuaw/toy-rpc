@@ -3,19 +3,18 @@
 use cfg_if::cfg_if;
 use crossbeam::atomic::AtomicCell;
 use flume::Sender;
-use futures::{channel::oneshot, lock::Mutex, Future, Sink, SinkExt};
+use futures::{channel::oneshot, Future};
 use std::{
     collections::HashMap,
     marker::PhantomData,
     pin::Pin,
-    sync::Arc,
     task::{Context, Poll},
     time::Duration,
 };
 
 use crate::util::Conclude;
 use crate::{
-    message::{AtomicMessageId, ClientWriterMessage, ClientResponseResult, MessageId},
+    message::{AtomicMessageId, ClientResponseResult, MessageId},
     Error,
 };
 
@@ -23,9 +22,16 @@ mod broker;
 mod reader;
 mod writer;
 
-use broker::{ClientBroker, ClientBrokerItem};
-use reader::ClientReader;
-use writer::ClientWriter;
+use broker::*;
+
+cfg_if! {
+    if #[cfg(any(
+        all(feature = "async_std_runtime", not(feature = "tokio_runtime")),
+        all(feature = "tokio_runtime", not(feature = "async_std_runtime"))
+    ))] {
+    }
+}
+
 
 cfg_if! {
     if #[cfg(any(
@@ -66,51 +72,33 @@ cfg_if! {
 
         #[cfg(all(
             feature = "tls",
-            all(
-                feature = "tokio_runtime",
-                not(feature = "async_std_runtime")
-            )
+            all(feature = "tokio_runtime", not(feature = "async_std_runtime"))
         ))]
         use ::tokio::net::{TcpStream, ToSocketAddrs};
         #[cfg(all(
             feature = "tls",
-            all(
-                feature = "tokio_runtime",
-                not(feature = "async_std_runtime")
-            )
+            all(feature = "tokio_runtime", not(feature = "async_std_runtime"))
         ))]
         use tokio_rustls::TlsConnector;
         #[cfg(all(
             feature = "tls",
-            all(
-                feature = "tokio_runtime",
-                not(feature = "async_std_runtime")
-            )
+            all(feature = "tokio_runtime", not(feature = "async_std_runtime"))
         ))]
         use async_tungstenite::tokio::client_async;
 
         #[cfg(all(
             feature = "tls",
-            all(
-                feature = "async_std_runtime",
-                not(feature = "tokio_runtime")
-            )
+            all(feature = "async_std_runtime", not(feature = "tokio_runtime"))
         ))]
         use ::async_std::net::{TcpStream, ToSocketAddrs};
         #[cfg(all(
             feature = "tls",
-            all(
-                feature = "async_std_runtime",
-                not(feature = "tokio_runtime")
-            )
+            all(feature = "async_std_runtime", not(feature = "tokio_runtime"))
         ))]
         use async_rustls::TlsConnector;
         #[cfg(all(
             feature = "tls",
-            all(
-                feature = "async_std_runtime",
-                not(feature = "tokio_runtime")
-            )
+            all(feature = "async_std_runtime", not(feature = "tokio_runtime"))
         ))]
         use async_tungstenite::client_async;
 
@@ -255,15 +243,7 @@ pub struct NotConnected {}
 /// Type state for creating `Client`
 pub struct Connected {}
 
-// There will be a dedicated task for reading and writing, so there should be no
-// contention across tasks or threads
-// type Codec = Box<dyn ClientCodec>;
 type ResponseMap = HashMap<MessageId, oneshot::Sender<ClientResponseResult>>;
-
-// #[cfg(all(feature = "tokio_runtime", not(feature = "async_std_runtime")))]
-// use ::tokio::task::JoinHandle;
-// #[cfg(all(feature = "async_std_runtime", not(feature = "tokio_runtime")))]
-// use ::async_std::task::JoinHandle;
 
 /// RPC client
 ///
@@ -273,13 +253,7 @@ type ResponseMap = HashMap<MessageId, oneshot::Sender<ClientResponseResult>>;
 )]
 pub struct Client<Mode> {
     count: AtomicMessageId,
-    // pending: Arc<Mutex<ResponseMap>>,
     timeout: AtomicCell<Option<Duration>>,
-
-    // both reader and writer tasks should return nothing cliente handles will be used to drop the tasks
-    // The Drop trait should be impled when tokio or async_std runtime is enabled
-    // reader_stop: Sender<()>,
-    // writer_tx: Sender<ClientWriterMessage>,
     broker: Sender<ClientBrokerItem>,
     marker: PhantomData<Mode>,
 }
@@ -287,14 +261,6 @@ pub struct Client<Mode> {
 // seems like it still works even without this impl
 impl<Mode> Drop for Client<Mode> {
     fn drop(&mut self) {
-        // log::debug!("Dropping client");
-
-        // if self.reader_stop.send(()).is_err() {
-        //     log::error!("Failed to send stop signal to reader loop")
-        // }
-        // if self.writer_tx.send(ClientWriterMessage::Stop).is_err() {
-        //     log::error!("Failed to send stop signal to writer loop")
-        // }
         if self.broker.send(broker::ClientBrokerItem::Stop).is_err() {
             log::error!("Failed to send stop signal to writer loop")
         }
@@ -328,6 +294,8 @@ cfg_if! {
             codec::split::SplittableClientCodec,
             message::{ClientRequestBody, RequestHeader},
         };
+        use reader::*;
+        use writer::*;
 
         impl Client<NotConnected> {
             /// Creates an RPC 'Client` over socket with a specified codec
@@ -496,20 +464,20 @@ cfg_if! {
                 // Prepare response handler
                 let (resp_tx, resp_rx) = oneshot::channel();
                 let (done_tx, done_rx) = oneshot::channel();
-                // let (cancel_tx, cancel_rx) = flume::bounded(1);
-                // let pending = self.pending.clone();
-                // let writer_tx = self.writer_tx.clone();
 
-                self.broker.send(ClientBrokerItem::Request{
-                    header,
-                    body,
-                    resp_tx,
-                    timeout: timeout.clone(),
-                });
+                if let Err(err) = self.broker.send(
+                    ClientBrokerItem::Request{
+                        header,
+                        body,
+                        resp_tx,
+                        timeout: timeout.clone()
+                    }
+                ) {
+                    log::error!("{:?}", err);
+                }
 
                 #[cfg(all(feature = "async_std_runtime", not(feature = "tokio_runtime")))]
                 let handle = ::async_std::task::spawn(
-                    // handle_call(pending, header, body, writer_tx, cancel_rx, done_tx, timeout)
                     handle_response(id, timeout, resp_rx,done_tx)
                 );
 
@@ -539,176 +507,6 @@ cfg_if! {
         all(feature = "async_std_runtime", not(feature = "tokio_runtime")),
         all(feature = "tokio_runtime", not(feature = "async_std_runtime"))
     ))] {
-        use flume::Receiver;
-        use futures::{FutureExt, select};
-
-        use crate::codec::split::{ClientCodecRead, ClientCodecWrite};
-        use crate::message::{ResponseHeader, CANCELLATION_TOKEN, CANCELLATION_TOKEN_DELIM,
-            Metadata, TIMEOUT_TOKEN, TimeoutRequestBody};
-
-        // pub(crate) async fn reader_loop(
-        //     mut reader: impl ClientCodecRead,
-        //     pending: Arc<Mutex<ResponseMap>>,
-        //     stop: Receiver<()>,
-        // ) {
-        //     loop {
-        //         select! {
-        //             _ = stop.recv_async().fuse() => {
-        //                 return
-        //             },
-        //             res = read_once(&mut reader, &pending).fuse() => {
-        //                 res.unwrap_or_else(|err|
-        //                     log::error!("{}", err)
-        //                 )
-        //             }
-        //         }
-        //     }
-        // }
-
-        // async fn read_once(
-        //     reader: &mut impl ClientCodecRead,
-        //     pending: &Arc<Mutex<ResponseMap>>,
-        // ) -> Result<(), Error> {
-        //     if let Some(header) = reader.read_response_header().await {
-        //         // [1] destructure header
-        //         let ResponseHeader { id, is_error } = header?;
-        //         // [2] get resposne body
-        //         let deserialzer =
-        //             reader
-        //                 .read_response_body()
-        //                 .await
-        //                 .ok_or_else(|| Error::IoError(std::io::Error::new(
-        //                     std::io::ErrorKind::UnexpectedEof,
-        //                     "Unexpected EOF reading response body",
-        //                 )))?;
-        //         let deserializer = deserialzer?;
-
-        //         let res = match is_error {
-        //             false => Ok(deserializer),
-        //             true => Err(deserializer),
-        //         };
-
-        //         // [3] send back response
-        //         {
-        //             let mut _pending = pending.lock().await;
-        //             if let Some(done_sender) = _pending.remove(&id) {
-        //                 done_sender.send(res).map_err(|_| {
-        //                     Error::Internal(
-        //                         "InternalError: client failed to send response over channel".into(),
-        //                     )
-        //                 })?;
-        //             }
-        //         }
-        //     }
-        //     Ok(())
-        // }
-
-        // pub(crate) async fn writer_loop(
-        //     mut writer: impl ClientCodecWrite,
-        //     msgs: Receiver<ClientWriterMessage>,
-        // ) {
-        //     while let Ok(msg) = msgs.recv_async().await {
-        //         match msg {
-        //             ClientWriterMessage::Timeout(id, dur) => {
-        //                 let timeout_header = RequestHeader {
-        //                     id,
-        //                     service_method: TIMEOUT_TOKEN.into()
-        //                 };
-        //                 let timeout_body = Box::new(
-        //                     TimeoutRequestBody::new(dur)
-        //                 ) as ClientRequestBody;
-        //                 writer.write_request(timeout_header, &timeout_body).await
-        //             },
-        //             ClientWriterMessage::Request(header, body) => {
-        //                 writer.write_request(header, &body).await
-        //             },
-        //             ClientWriterMessage::Cancel(id) => {
-        //                 let header = RequestHeader {
-        //                     id,
-        //                     service_method: CANCELLATION_TOKEN.into(),
-        //                 };
-        //                 let body: String =
-        //                     format!("{}{}{}", CANCELLATION_TOKEN, CANCELLATION_TOKEN_DELIM, id);
-        //                 let body = Box::new(body) as ClientRequestBody;
-        //                 writer.write_request(header, &body).await
-        //             },
-        //             ClientWriterMessage::Stop => {
-        //                 writer.close().await;
-        //                 return
-        //             }
-        //         }
-        //         .unwrap_or_else(|err| {
-        //             log::error!("{}", err)
-        //         })
-        //     }
-        // }
-
-        // async fn handle_call<Res>(
-        //     pending: Arc<Mutex<ResponseMap>>,
-        //     header: RequestHeader,
-        //     body: ClientRequestBody,
-        //     writer_tx: Sender<ClientWriterMessage>,
-        //     cancel: Receiver<MessageId>,
-        //     done: oneshot::Sender<Result<Res, Error>>,
-        //     timeout: Option<Duration>,
-        // ) -> Result<(), Error>
-        // where
-        //     Res: serde::de::DeserializeOwned + Send,
-        // {
-        //     let id = header.get_id();
-
-        //     // Send a timeout request first if timeout is set
-        //     if let Some(duration) = &timeout {
-        //         writer_tx.send_async(
-        //             ClientWriterMessage::Timeout(id, duration.clone())
-        //         ).await?;
-        //     }
-        //     // Then send out the RPC request itself
-        //     writer_tx.send_async(
-        //         ClientWriterMessage::Request(header, body)
-        //     ).await?;
-
-        //     // Done channels that .await for response
-        //     let (resp_tx, resp_rx) = oneshot::channel();
-        //     // insert done channel to ResponseMap
-        //     {
-        //         let mut _pending = pending.lock().await;
-        //         _pending.insert(id, resp_tx);
-        //     }
-
-        //     // .await both the cancellation and RPC response
-        //     select! {
-        //         res = cancel.recv_async().fuse() => {
-        //             // Send a cancellation request to the server
-        //             if let Ok(id) = res {
-        //                 writer_tx.send_async(
-        //                     ClientWriterMessage::Cancel(id)
-        //                 ).await?;
-        //             }
-
-        //             done.send(
-        //                 Err(Error::Canceled(Some(id)))
-        //             ).unwrap_or_else(|_| {
-        //                 log::error!("Failed to send result over done channel")
-        //             });
-        //         },
-        //         res = handle_response::<Res>(id, resp_rx, timeout).fuse() => {
-        //             // In case of timeout, the response may not be received by the reader loop
-        //             // and thus need to remove the response sender from the HashMap
-        //             if let Err(Error::Timeout(_)) = res {
-        //                 let mut _pending = pending.lock().await;
-        //                 _pending.remove(&id);
-        //             }
-        //             done.send(res)
-        //                 .unwrap_or_else(|_| {
-        //                     log::error!("Failed to send result over done channel")
-        //                 });
-        //         }
-        //     };
-
-        //     Ok(())
-        // }
-
         async fn handle_response<Res>(
             id: MessageId,
             timeout: Option<Duration>,
@@ -764,7 +562,6 @@ cfg_if! {
             done.send(res)
                 .map_err(|_| Error::Internal("Cannot send over done channel".into()))?;
             
-            println!("Exiting handle_response");
             Ok(())
         }
     }

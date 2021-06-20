@@ -29,8 +29,6 @@ rustdoc-args = ["--cfg", "feature=\"docs\""]
 [features]
 default = [
     "serde_bincode",
-    "tokio_runtime",
-    "client"
 ]
 
 docs = []
@@ -100,7 +98,7 @@ thiserror = "1.0"
 flume = "0.10"
 pin-project = "1.0"
 crossbeam = "0.8"
-brw = { version = "0.1.3", path = "../../brw" }
+brw = { version = "0.1.4" }
 
 [[test]]
 name = "async_std_tcp"

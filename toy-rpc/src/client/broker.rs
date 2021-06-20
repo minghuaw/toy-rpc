@@ -7,6 +7,7 @@ use crate::{Error, message::{ClientRequestBody, ClientResponseResult, MessageId,
 
 use super::{ResponseMap, writer::ClientWriterItem};
 
+#[cfg_attr(all(not(feature = "tokio_runtime"), not(feature = "async_std_runtime")), allow(dead_code))]
 pub enum ClientBrokerItem {
     // Timeout(Duration),
     Request{
