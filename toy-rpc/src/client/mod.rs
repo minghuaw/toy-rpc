@@ -174,11 +174,9 @@ mod async_std;
 #[pin_project::pin_project]
 pub struct Call<Res> {
     id: MessageId,
-    // cancel: oneshot::Sender<MessageId>,
     cancel: Sender<broker::ClientBrokerItem>,
     #[pin]
     done: oneshot::Receiver<Result<ClientResponseResult, Error>>,
-    // handle: Box<dyn Conclude + Send + Sync>,
     marker: PhantomData<Res>,
 }
 
@@ -206,15 +204,6 @@ where
         self.id
     }
 }
-
-// #[pin_project::pinned_drop]
-// impl<Res> PinnedDrop for Call<Res> {
-//     fn drop(self: Pin<&mut Self>) {
-//         let this = self.project();
-//         let handle = this.handle;
-//         handle.conclude();
-//     }
-// }
 
 impl<Res> Future for Call<Res>
 where
@@ -450,11 +439,7 @@ cfg_if! {
                 let service_method = service_method.to_string();
                 let header = RequestHeader { id, service_method };
                 let body = Box::new(args) as ClientRequestBody;
-                // let timeout = self.timeout.take();
-
-                // Prepare response handler
                 let (resp_tx, resp_rx) = oneshot::channel();
-                // let (done_tx, done_rx) = oneshot::channel();
 
                 if let Err(err) = self.broker.send(
                     ClientBrokerItem::Request{
