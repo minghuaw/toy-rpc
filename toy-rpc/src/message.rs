@@ -162,38 +162,3 @@ cfg_if! {
         }
     }
 }
-
-#[cfg_attr(
-    not(any(feature = "async_std_runtime", feature = "tokio_runtime")),
-    allow(dead_code)
-)]
-#[cfg(feature = "client")]
-pub(crate) enum ClientWriterMessage {
-    Timeout(MessageId, Duration), // the timeout will only be applied to the next request
-    Request(RequestHeader, ClientRequestBody),
-    Cancel(MessageId),
-    Stop,
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    
-    #[derive(Debug, Serialize, Deserialize)]
-    enum Header {
-        Req(RequestHeader),
-        Res(ResponseHeader)
-    }
-
-    #[test]
-    fn size_of_header() {
-        let header = Header::Req(RequestHeader::default());
-        let size = bincode::serialized_size(&header).unwrap();
-        println!("Req Header size {:?}", size);
-
-        let header = Header::Res(ResponseHeader::default());
-        let size = bincode::serialized_size(&header).unwrap();
-        println!("Res Header size {:?}", size);
-    }
-}
