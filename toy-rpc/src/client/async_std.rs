@@ -1,7 +1,5 @@
 //! Client implementation with `async_std` runtime
 
-use futures::{AsyncRead, AsyncWrite};
-
 use super::*;
 
 cfg_if! {
@@ -32,6 +30,7 @@ cfg_if! {
             not(feature = "serde_bincode"),
         )
     ))] {
+        use futures::{AsyncRead, AsyncWrite};
         use ::async_std::net::{TcpStream, ToSocketAddrs};
         use async_tungstenite::async_std::connect_async;
 
