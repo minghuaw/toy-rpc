@@ -4,11 +4,9 @@ use cfg_if::cfg_if;
 use flume::Sender;
 use futures::{channel::oneshot, Future};
 use std::{
-    collections::HashMap,
     marker::PhantomData,
     pin::Pin,
     task::{Context, Poll},
-    time::Duration,
 };
 
 use crate::{
@@ -304,6 +302,9 @@ cfg_if! {
         all(feature = "tokio_runtime", not(feature = "async_std_runtime"))
     ))] {
         use std::sync::atomic::Ordering;
+        use std::collections::HashMap;
+        use std::time::Duration;
+
         use crate::{
             codec::split::SplittableClientCodec,
             message::{ClientRequestBody, RequestHeader},
@@ -336,7 +337,6 @@ cfg_if! {
                 let reader = ClientReader { reader };     
                 let writer = ClientWriter { writer };
                 let broker = ClientBroker{
-                    // counter: 0,
                     pending: HashMap::new(),
                     timingouts: HashMap::new(),
                     next_timeout: None
@@ -345,10 +345,6 @@ cfg_if! {
 
                 Client::<Connected> {
                     count: AtomicMessageId::new(0),
-                    // pending,
-                    // timeout: AtomicCell::new(None),
-                    // reader_stop,
-                    // writer_tx,
                     broker,
                     marker: PhantomData,
                 }
@@ -465,100 +461,19 @@ cfg_if! {
                         header,
                         body,
                         resp_tx,
-                        // timeout: timeout.clone()
                     }
                 ) {
                     log::error!("{:?}", err);
                 }
-
-                // #[cfg(all(feature = "async_std_runtime", not(feature = "tokio_runtime")))]
-                // let handle = ::async_std::task::spawn(
-                //     handle_response(id, timeout, resp_rx,done_tx)
-                // );
-
-                // #[cfg(all(feature = "tokio_runtime", not(feature = "async_std_runtime")))]
-                // let handle = ::tokio::task::spawn(
-                //     handle_response(id, timeout, resp_rx,done_tx)
-                // );
 
                 // Creates Call
                 Call::<Res> {
                     id,
                     cancel: self.broker.clone(),
                     done: resp_rx,
-                    // handle: Box::new(handle)
                     marker: PhantomData
                 }
             }
         }
-    }
-}
-
-// =============================================================================
-// Private functions
-// =============================================================================
-
-cfg_if! {
-    if #[cfg(any(
-        all(feature = "async_std_runtime", not(feature = "tokio_runtime")),
-        all(feature = "tokio_runtime", not(feature = "async_std_runtime"))
-    ))] {
-        // async fn handle_response<Res>(
-        //     id: MessageId,
-        //     timeout: Option<Duration>,
-        //     response: oneshot::Receiver<ClientResponseResult>,
-        //     done: oneshot::Sender<Result<Res, Error>>,
-        // ) -> Result<(), Error>
-        // where
-        //     Res: serde::de::DeserializeOwned + Send,
-        // {
-        //     let val = match timeout {
-        //         None => {
-        //             response.await
-        //                 .map_err(|err| Error::Internal(Box::new(err)))?
-        //         }
-        //         Some(duration) => {
-        //             #[cfg(all(
-        //                 feature = "async_std_runtime",
-        //                 not(feature = "tokio_runtime")
-        //             ))]
-        //             let result = ::async_std::future::timeout(duration, async {
-        //                 response.await
-        //                     .map_err(|err| Error::Internal(Box::new(err)))
-        //             }).await;
-
-        //             #[cfg(all(
-        //                 feature = "tokio_runtime",
-        //                 not(feature = "async_std_runtime")
-        //             ))]
-        //             let result = ::tokio::time::timeout(duration, async {
-        //                 response.await
-        //                     .map_err(|err| Error::Internal(Box::new(err)))
-        //             }).await;
-
-        //             match result {
-        //                 Ok(res) => res?,
-        //                 Err(_) => {
-        //                     // No need to deserialize if already timed out
-        //                     return Err(Error::Timeout(Some(id)))
-        //                 }
-        //             }
-        //         }
-        //     };
-
-        //     let res = match val {
-        //         Ok(mut resp_body) => erased_serde::deserialize(&mut resp_body)
-        //             .map_err(|err| Error::ParseError(Box::new(err))),
-        //         Err(mut err_body) => erased_serde::deserialize(&mut err_body).map_or_else(
-        //             |err| Err(Error::ParseError(Box::new(err))),
-        //             |msg| Err(Error::from_err_msg(msg)),
-        //         ), // handles error msg sent from server
-        //     };
-
-        //     done.send(res)
-        //         .map_err(|_| Error::Internal("Cannot send over done channel".into()))?;
-            
-        //     Ok(())
-        // }
     }
 }

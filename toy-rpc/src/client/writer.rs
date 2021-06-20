@@ -1,26 +1,22 @@
-use std::time::Duration;
 use cfg_if::cfg_if;
-
-use crate::{
-    message::{
-        ClientRequestBody, MessageId, RequestHeader,
-    }
-};
-
-pub enum ClientWriterItem {
-    Timeout(MessageId, Duration),
-    Request(RequestHeader, ClientRequestBody),
-    Cancel(MessageId),
-    Stop,
-}
 
 cfg_if!{
     if #[cfg(any(
         all(feature = "async_std_runtime", not(feature = "tokio_runtime")),
         all(feature = "tokio_runtime", not(feature = "async_std_runtime"))
     ))] {
+        use std::time::Duration;
         use async_trait::async_trait;
         use brw::Running;
+
+        use crate::message::{ClientRequestBody, MessageId, RequestHeader};
+
+        pub enum ClientWriterItem {
+            Timeout(MessageId, Duration),
+            Request(RequestHeader, ClientRequestBody),
+            Cancel(MessageId),
+            Stop,
+        }
 
         use crate::{
             Error, codec::split::ClientCodecWrite, 

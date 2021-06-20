@@ -71,12 +71,16 @@ cfg_if! {
         use std::future::Future;
         use std::time::Duration;
         use std::collections::HashMap;
+        use brw::{Broker, Reader, Running, Writer};
+        use futures::{
+            sink::{Sink, SinkExt}
+        };
 
         use crate::message::{ErrorMessage, RequestHeader, ResponseHeader};
         use crate::service::{HandlerResult};
         use crate::{
             codec::{
-                split::{ServerCodecRead, ServerCodecWrite, SplittableServerCodec},
+                split::{ServerCodecRead, ServerCodecWrite},
                 RequestDeserializer,
             },
             message::{
@@ -87,8 +91,14 @@ cfg_if! {
         use crate::error::Error;
 
         // Spawn tasks for the reader/broker/writer loops
+        #[cfg(any(
+            feature = "serde_bincode", 
+            feature = "serde_json",
+            feature = "serde_cbor",
+            feature = "serde_rmp",
+        ))]
         pub(crate) async fn serve_codec_setup(
-            codec: impl SplittableServerCodec + 'static,
+            codec: impl crate::codec::split::SplittableServerCodec + 'static,
             services: Arc<AsyncServiceMap>
         ) -> Result<(), Error> {
             let (writer, reader) = codec.split();
@@ -102,14 +112,11 @@ cfg_if! {
 
             log::debug!("Spawning brw");
             let (mut broker_handle, _) = brw::spawn(broker, reader, writer);
-            broker_handle.conclude();
+            // broker_handle.conclude();
+            brw::util::Conclude::conclude(&mut broker_handle);
             Ok(())
         }
 
-        use brw::{Broker, Reader, Running, Writer, util::Conclude};
-        use futures::{
-            sink::{Sink, SinkExt}
-        };
 
         struct ServerReader<T: ServerCodecRead>{
             reader: T,

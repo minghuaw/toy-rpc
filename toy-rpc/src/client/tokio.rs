@@ -1,7 +1,5 @@
 //! Client implementation with `tokio` runtime
 
-use ::tokio::io::{AsyncRead, AsyncWrite};
-
 use super::*;
 
 cfg_if! {
@@ -32,6 +30,7 @@ cfg_if! {
             not(feature = "serde_bincode"),
         )
     ))] {
+        use ::tokio::io::{AsyncRead, AsyncWrite};
         use ::tokio::net::{TcpStream, ToSocketAddrs};
         use async_tungstenite::tokio::connect_async;
 
