@@ -327,7 +327,7 @@ cfg_if! {
                 let writer = ClientWriter { writer };
                 let broker = ClientBroker{
                     pending: HashMap::new(),
-                    timingouts: HashMap::new(),
+                    // timingouts: HashMap::new(),
                     next_timeout: None
                 };           
                 let (_, broker) = brw::spawn(broker, reader, writer);

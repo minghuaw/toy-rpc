@@ -9,7 +9,7 @@ cfg_if!{
         all(feature = "async_std_runtime", not(feature = "tokio_runtime"))
     ))] {
         use std::{sync::Arc, collections::HashMap};
-        use brw::{util::Conclude, Context, Running};
+        use brw::{Context, Running};
         use futures::{Sink, SinkExt};
         
         use super::{writer::ClientWriterItem};
@@ -28,15 +28,14 @@ pub enum ClientBrokerItem {
         resp_tx: oneshot::Sender<Result<ClientResponseResult, Error>>,
     },
     Response(MessageId, ClientResponseResult),
-    IsTimedout(MessageId),
     Cancel(MessageId),
     Stop,
 }
 
 #[cfg(all(feature = "tokio_runtime", not(feature = "async_std_runtime")))]
-use ::tokio::{time::sleep, task::{self, JoinHandle}};
+use ::tokio::{task::{self}};
 #[cfg(all(feature = "async_std_runtime", not(feature = "tokio_runtime")))]
-use ::async_std::task::{self, JoinHandle, sleep};
+use ::async_std::task::{self};
 
 #[cfg(any(
     all(feature = "tokio_runtime", not(feature = "async_std_runtime")),
@@ -44,7 +43,6 @@ use ::async_std::task::{self, JoinHandle, sleep};
 ))]
 pub struct ClientBroker {
     pub pending: HashMap<MessageId, oneshot::Sender<Result<ClientResponseResult, Error>>>,
-    pub timingouts: HashMap<MessageId, JoinHandle<()>>,
     pub next_timeout: Option<Duration>
 }
 
@@ -59,7 +57,7 @@ impl brw::Broker for ClientBroker {
     type Ok = ();
     type Error = Error;
 
-    async fn op<W>(&mut self, ctx: &Arc<Context<Self::Item>>, item: Self::Item, mut writer: W) -> Running<Result<Self::Ok, Self::Error>>
+    async fn op<W>(&mut self, _: &Arc<Context<Self::Item>>, item: Self::Item, mut writer: W) -> Running<Result<Self::Ok, Self::Error>>
     where W: Sink<Self::WriterItem, Error = flume::SendError<Self::WriterItem>> + Send + Unpin {
         let res = match item {
             ClientBrokerItem::SetTimeout(dur) => {
@@ -72,59 +70,63 @@ impl brw::Broker for ClientBroker {
                 resp_tx,
             } => {
                 let id = header.id;
+                let (tx, rx) = oneshot::channel();
+                let fut = async move {
+                    // Takes care of receiving/cancel error
+                    match rx.await {
+                        Ok(res) => res,
+                        Err(_) => Err(Error::Canceled(Some(id)))
+                    }
+                };
                 if let Some(dur) = self.next_timeout.take() {
                     if let Err(err) = writer.send(ClientWriterItem::Timeout(id, dur)).await {
                         return Running::Continue(Err(err.into()))
                     }
 
-                    let broker = ctx.broker.clone();
-                    let handle = task::spawn(async move {
-                        sleep(dur).await;
-                        broker.send_async(ClientBrokerItem::IsTimedout(id)).await
-                            .unwrap_or_else(|err| log::error!("{:?}", err));
+                    task::spawn(async move {
+                        #[cfg(all(feature = "tokio_runtime", not(feature = "async_std_runtime")))]
+                        let res = ::tokio::time::timeout(dur, fut).await;
+                        #[cfg(all(feature = "async_std_runtime", not(feature = "tokio_runtime")))]
+                        let res = ::async_std::future::timeout(dur, fut).await;
+
+                        let res = match res {
+                            Ok(res) => res,
+                            Err(_) => {
+                                resp_tx.send(Err(Error::Timeout(Some(id))))
+                                    .unwrap_or_else(|_| log::error!("Error sending over response sender"));
+                                return
+                            }
+                        };
+                        resp_tx.send(res)
+                            .unwrap_or_else(|_| log::error!("Error sending over response sender"));
                     });
-                    self.timingouts.insert(id, handle);
+                } else {
+                    task::spawn(async move {
+                        let res = fut.await;
+                        resp_tx.send(res)
+                            .unwrap_or_else(|_| log::error!("Error sending over response sender"));
+                    });
                 }
                 let res = writer.send(ClientWriterItem::Request(header, body)).await;
-                self.pending.insert(id, resp_tx);
+                self.pending.insert(id, tx);
 
                 res.map_err(|err| err.into())
             },
             ClientBrokerItem::Response(id , res) => {
-                if let Some(handle) = self.timingouts.remove(&id) {
-                    #[cfg(all(feature = "tokio_runtime", not(feature = "async_std_runtime")))]
-                    handle.abort();
-                    #[cfg(all(feature = "async_std_runtime", not(feature = "tokio_runtime")))]
-                    handle.cancel().await;
-                }
-
-                if let Some(resp_tx) = self.pending.remove(&id) {
-                    resp_tx.send(Ok(res)) 
+                if let Some(tx) = self.pending.remove(&id) {
+                    tx.send(Ok(res)) 
                         .map_err(|_| {
                             Error::Internal("InternalError: client failed to send response over channel".into())
                         })
                 } else {
                     Err(Error::Internal("Done channel not found".into()))
+                        
                 }
-            },
-            ClientBrokerItem::IsTimedout(id) => {
-                if let Some(resp_tx) = self.pending.remove(&id) {
-                    if let Err(err) = resp_tx.send(Err(Error::Timeout(Some(id))))
-                        .map_err(|_| {
-                            Error::Internal("InternalError: client failed to send response over channel".into())
-                        }) 
-                    {
-                        return Running::Continue(Err(err))
-                    }
-                }
-                if let Some(mut handle) = self.timingouts.remove(&id) {
-                    handle.conclude();
-                }
-                Ok(())
             },
             ClientBrokerItem::Cancel(id) => {
-                if let Some(resp_tx) = self.pending.remove(&id) {
-                    drop(resp_tx);
+                if let Some(tx) = self.pending.remove(&id) {
+                    tx.send(Err(Error::Canceled(Some(id))))
+                        .unwrap_or_else(|_| log::error!("Error sending over response sender"));
                 }
                 writer.send(ClientWriterItem::Cancel(id)).await
                     .map_err(|err| err.into())
