@@ -91,7 +91,13 @@ impl brw::Broker for ClientBroker {
                 res.map_err(|err| err.into())
             },
             ClientBrokerItem::Response(id , res) => {
-                self.timingouts.remove(&id);
+                if let Some(handle) = self.timingouts.remove(&id) {
+                    #[cfg(all(feature = "tokio_runtime", not(feature = "async_std_runtime")))]
+                    handle.abort();
+                    #[cfg(all(feature = "async_std_runtime", not(feature = "tokio_runtime")))]
+                    handle.cancel().await;
+                }
+
                 if let Some(resp_tx) = self.pending.remove(&id) {
                     resp_tx.send(Ok(res)) 
                         .map_err(|_| {
