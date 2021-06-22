@@ -1,6 +1,6 @@
 [package]
 name = "toy-rpc"
-version = "0.7.4"
+version = "0.7.5"
 authors = ["Minghua Wu <michael.wu1107@gmail.com>"]
 edition = "2018"
 description = "An async RPC that mimics golang net/rpc's usage and supports both async-std and tokio"
@@ -35,17 +35,26 @@ docs = []
 
 std = ["serde/std"]
 
-server = ["toy-rpc-macros/server"]
-client = ["toy-rpc-macros/client"]
-tls = ["rustls", "tokio-rustls", "async-rustls", "webpki"]
+server = ["toy-rpc-macros/server", "toy-rpc-core/server"]
+client = ["toy-rpc-macros/client", "toy-rpc-core/client"]
+tls = ["rustls", "tokio-rustls", "async-rustls", "webpki", "toy-rpc-core/tls"]
 
 # feature flags for codec
 serde_bincode = []
-serde_rmp = ["rmp-serde"]
+serde_json = ["toy-rpc-core/serde_json"]
+serde_cbor = ["toy-rpc-core/serde_cbor"]
+serde_rmp = ["toy-rpc-core/serde_rmp"]
+# serde_rmp = ["rmp-serde"]
 
 # feature flags for runtime
-tokio_runtime = ["tokio", "async-tungstenite/tokio-runtime", "tokio-stream", "toy-rpc-macros/runtime", "brw/tokio"]
-async_std_runtime = ["async-std", "async-tungstenite/async-std-runtime", "toy-rpc-macros/runtime", "brw/async-std"]
+tokio_runtime = [
+    "tokio", "async-tungstenite/tokio-runtime", "tokio-stream", 
+    "toy-rpc-macros/runtime", "brw/tokio", "toy-rpc-core/tokio_runtime"
+]
+async_std_runtime = [
+    "async-std", "async-tungstenite/async-std-runtime", "toy-rpc-macros/runtime", 
+    "brw/async-std", "toy-rpc-core/async_std_runtime"
+]
 http_tide = ["tide", "tide-websockets", "async_std_runtime", "server"]
 http_actix_web = ["actix-web", "actix", "actix-rt", "actix-web-actors", "actix-http", "tokio_runtime", "server"]
 http_warp = ["warp", "tokio_runtime", "server"]
@@ -64,9 +73,9 @@ actix-web = "3.3"
 toy-rpc-macros = "0.5.0"
 
 # feature gated optional dependecies
-serde_json = { version = "1.0", optional = true }
-serde_cbor = { version = "0.11", optional = true }
-rmp-serde = { version = "0.15", optional = true }
+# serde_json = { version = "1.0", optional = true }
+# serde_cbor = { version = "0.11", optional = true }
+# rmp-serde = { version = "0.15", optional = true }
 tide = { version = "0.16", optional = true }
 tide-websockets =  { version = "0.3", optional = true }
 actix-web = { version = "3.3", optional = true }
@@ -84,7 +93,7 @@ async-rustls = { version = "0.2", optional = true }
 rustls = { version = "0.19", optional = true }
 webpki = { version = "0.21", optional = true }
 
-bincode = { version = "1.3" }
+# bincode = { version = "1.3" }
 serde = { version = "1.0", features = ["derive"] }
 erased-serde = "^0.3.16"
 futures = "0.3"
@@ -97,8 +106,9 @@ tungstenite = "0.13"
 thiserror = "1.0"
 flume = "0.10"
 pin-project = "1.0"
-crossbeam = "0.8"
 brw = { version = "0.1.4" }
+
+toy-rpc-core = { version = "0.7.5", path = "../toy-rpc-core" }
 
 [[test]]
 name = "async_std_tcp"

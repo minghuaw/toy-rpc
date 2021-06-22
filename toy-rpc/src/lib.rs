@@ -101,13 +101,23 @@
 //! A quickstart example with `tokio` runtime is provided in the [Book/Quickstart](https://minghuaw.github.io/toy-rpc/02_quickstart.html).
 //!
 
-pub mod codec;
-pub mod error;
+// pub mod codec;
+// pub mod error;
+// pub mod message;
+// pub mod service;
+// pub mod transport;
+// pub mod util;
+
+pub use toy_rpc_core::{
+    codec,
+    error,
+    message,
+    service,
+    transport,
+    util
+};
+
 pub mod macros;
-pub mod message;
-pub mod service;
-pub mod transport;
-pub mod util;
 
 /// The default path added to the HTTP url
 #[cfg(any(

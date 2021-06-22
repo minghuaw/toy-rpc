@@ -1,0 +1,31 @@
+[package]
+name = "toy-rpc-client"
+version = "0.7.5"
+edition = "2018"
+description = "An async RPC that mimics golang net/rpc's usage and supports both async-std and tokio"
+license = "MIT/Apache-2.0"
+documentation = "https://docs.rs/toy-rpc/0.7.4/toy_rpc/"
+homepage = "https://github.com/minghuaw/toy-rpc"
+repository = "https://github.com/minghuaw/toy-rpc"
+keywords = ["async", "rpc", "go", "async-std", "tokio"]
+categories = ["network-programming", "asynchronous"]
+readme = "Readme.md"
+
+[package.metadata.docs.rs]
+all-features = true
+features = ["docs"]
+rustdoc-args = ["--cfg", "feature=\"docs\""]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[features]
+
+default = [ ]
+
+docs = [ ]
+tls = [ ]
+
+tokio_runtime = [ ]
+async_std_runtime = [ ]
+
+[dependencies]
