@@ -105,7 +105,7 @@ cfg_if! {
             config: ClientConfig
         ) -> Result<Client<Connected>, Error> {
             let stream = TcpStream::connect(addr).await?;
-            let connector = TlsConnector::from(Arc::new(config));
+            let connector = TlsConnector::from(std::sync::Arc::new(config));
             let domain = DNSNameRef::try_from_ascii_str(domain)?;
             let tls_stream = connector.connect(domain, stream).await?;
 
@@ -124,7 +124,7 @@ cfg_if! {
                 .ok_or(Error::Internal("Invalid port".into()))?;
             let addr = (host, port);
             let stream = TcpStream::connect(addr).await?;
-            let connector = TlsConnector::from(Arc::new(config));
+            let connector = TlsConnector::from(std::sync::Arc::new(config));
             let domain = DNSNameRef::try_from_ascii_str(domain)?;
             let tls_stream = connector.connect(domain, stream).await?;
             let (ws_stream, _) = client_async(url, tls_stream).await?;
