@@ -37,8 +37,9 @@ cfg_if! {
         #[cfg(feature = "tls")]
         use rustls::{ClientConfig};
 
-        use crate::transport::ws::WebSocketConn;
-        use crate::DEFAULT_RPC_PATH;
+        use toy_rpc_core::{
+            transport::ws::WebSocketConn, DEFAULT_RPC_PATH,
+        };
 
         /// The following impl block is controlled by feature flag. It is enabled
         /// if and only if **exactly one** of the the following feature flag is turned on

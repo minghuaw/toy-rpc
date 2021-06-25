@@ -7,7 +7,6 @@ use std::{
     marker::PhantomData,
     pin::Pin,
     task::{Context, Poll},
-    sync::Arc,
 };
 
 use crate::{
@@ -59,7 +58,9 @@ cfg_if! {
     ))] {
         #[cfg(any(feature = "async_std_runtime", feature = "tokio_runtime"))]
         use crate::codec::DefaultCodec;
-        // use toy_rpc_core::codec::DefaultCodec;
+        
+        #[cfg(feature = "tls")]
+        use std::sync::Arc;
 
         #[cfg(feature = "tls")]
         use rustls::{ClientConfig};

@@ -23,9 +23,37 @@ rustdoc-args = ["--cfg", "feature=\"docs\""]
 default = [ ]
 
 docs = [ ]
-tls = [ ]
+tls = ["rustls", "tokio-rustls", "async-rustls", "webpki", "toy-rpc-core/tls"]
 
-tokio_runtime = [ ]
-async_std_runtime = [ ]
+tokio_runtime = [ "tokio", "async-tungstenite/tokio-runtime" ]
+async_std_runtime = [ "async-std", "async-tungstenite/async-std-runtime", ]
+
+serde_bincode = ["toy-rpc-core/serde_bincode"]
+serde_json = ["toy-rpc-core/serde_json"]
+serde_cbor = ["toy-rpc-core/serde_cbor"]
+serde_rmp = ["toy-rpc-core/serde_rmp"]
 
 [dependencies]
+tokio = { version = "1", optional = true }
+async-std = { version = "1", optional = true }
+async-tungstenite = { version = "0.13", optional = true }
+
+# TLS
+rustls = { version = "0.19", optional = true }
+tokio-rustls = { version = "0.22", optional = true }
+async-rustls = { version = "0.2", optional = true }
+webpki = { version = "0.21", optional = true }
+
+cfg-if = "1.0"
+tungstenite = "0.13"
+flume = "0.10"
+brw = { version = "0.1.4" }
+log = "0.4"
+futures = "0.3"
+erased-serde = "^0.3.16"
+pin-project = "1.0"
+serde = { version = "1.0" }
+async-trait = "0.1"
+url = "2.2"
+
+toy-rpc-core = { version = "0.7.5", path = "../toy-rpc-core", features = ["client"] }

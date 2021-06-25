@@ -9,8 +9,6 @@ cfg_if!{
         use async_trait::async_trait;
         use brw::Running;
 
-        use crate::message::{ClientRequestBody, MessageId, RequestHeader};
-
         pub enum ClientWriterItem {
             Timeout(MessageId, Duration),
             Request(RequestHeader, ClientRequestBody),
@@ -18,9 +16,10 @@ cfg_if!{
             Stop,
         }
 
-        use crate::{
-            Error, codec::split::ClientCodecWrite, 
+        use toy_rpc_core::{
+            error::Error, codec::split::ClientCodecWrite, 
             message::{
+                ClientRequestBody, MessageId, RequestHeader,
                 TIMEOUT_TOKEN, CANCELLATION_TOKEN, CANCELLATION_TOKEN_DELIM, TimeoutRequestBody
             }
         };

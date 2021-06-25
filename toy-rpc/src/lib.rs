@@ -128,10 +128,14 @@ pub mod macros;
 ))]
 pub const DEFAULT_RPC_PATH: &str = "_rpc_";
 
+// #[cfg(feature = "client")]
+// pub mod client;
+// pub use client::Client;
 #[cfg(feature = "client")]
-pub mod client;
-#[cfg(feature = "client")]
-pub use client::Client;
+pub use toy_rpc_client::{
+    self as client,
+    Client
+};
 
 // #[cfg(feature = "server")]
 // pub mod server;

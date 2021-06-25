@@ -1140,8 +1140,30 @@ dependencies = [
  "pin-project",
  "serde",
  "thiserror",
+ "toy-rpc-client",
  "toy-rpc-core",
  "toy-rpc-macros",
+ "toy-rpc-server",
+ "tungstenite",
+ "url",
+]
+
+[[package]]
+name = "toy-rpc-client"
+version = "0.7.5"
+dependencies = [
+ "async-std",
+ "async-trait",
+ "async-tungstenite",
+ "brw",
+ "cfg-if",
+ "erased-serde",
+ "flume",
+ "futures",
+ "log",
+ "pin-project",
+ "serde",
+ "toy-rpc-core",
  "tungstenite",
  "url",
 ]
@@ -1175,6 +1197,22 @@ checksum = "78878e5a7e1de67ca1c410c1e4ae9bebf79dd49c72af207254b17a6b71be9ed4"
 dependencies = [
  "quote",
  "syn",
+]
+
+[[package]]
+name = "toy-rpc-server"
+version = "0.7.5"
+dependencies = [
+ "async-std",
+ "async-trait",
+ "async-tungstenite",
+ "brw",
+ "cfg-if",
+ "erased-serde",
+ "flume",
+ "futures",
+ "log",
+ "toy-rpc-core",
 ]
 
 [[package]]

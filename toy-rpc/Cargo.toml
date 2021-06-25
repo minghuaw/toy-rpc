@@ -36,25 +36,28 @@ docs = []
 std = ["serde/std"]
 
 server = ["toy-rpc-macros/server", "toy-rpc-core/server", "toy-rpc-server"]
-client = ["toy-rpc-macros/client", "toy-rpc-core/client"]
-tls = ["rustls", "tokio-rustls", "async-rustls", "webpki", "toy-rpc-core/tls", "toy-rpc-server/tls"]
+client = ["toy-rpc-macros/client", "toy-rpc-core/client", "toy-rpc-client"]
+tls = [
+    "rustls", "tokio-rustls", "async-rustls", "webpki", 
+    "toy-rpc-core/tls", "toy-rpc-server/tls", "toy-rpc-client/tls"
+]
 
 # feature flags for codec
-serde_bincode = ["toy-rpc-server/serde_bincode"]
-serde_json = ["toy-rpc-server/serde_json"]
-serde_cbor = ["toy-rpc-server/serde_cbor"]
-serde_rmp = ["toy-rpc-server/serde_rmp"]
+serde_bincode = ["toy-rpc-server/serde_bincode", "toy-rpc-client/serde_bincode"]
+serde_json = ["toy-rpc-server/serde_json",  "toy-rpc-client/serde_json"]
+serde_cbor = ["toy-rpc-server/serde_cbor", "toy-rpc-client/serde_cbor"]
+serde_rmp = ["toy-rpc-server/serde_rmp", "toy-rpc-client/serde_rmp"]
 
 # feature flags for runtime
 tokio_runtime = [
     "tokio", "async-tungstenite/tokio-runtime", "tokio-stream", 
     "toy-rpc-macros/runtime", "brw/tokio", 
-    "toy-rpc-core/tokio", "toy-rpc-server/tokio_runtime"
+    "toy-rpc-core/tokio", "toy-rpc-server/tokio_runtime", "toy-rpc-client/tokio_runtime"
 ]
 async_std_runtime = [
     "async-std", "async-tungstenite/async-std-runtime", "toy-rpc-macros/runtime", 
     "brw/async-std", 
-    "toy-rpc-core/async-std", "toy-rpc-server/async_std_runtime"
+    "toy-rpc-core/async-std", "toy-rpc-server/async_std_runtime", "toy-rpc-client/async_std_runtime"
 ]
 http_tide = [
     "tide", "tide-websockets", "async_std_runtime", "server",
@@ -117,6 +120,7 @@ brw = { version = "0.1.4" }
 
 toy-rpc-core = { version = "0.7.5", path = "../toy-rpc-core" }
 toy-rpc-server = { version = "0.7.5", path = "../toy-rpc-server", optional = true }
+toy-rpc-client = { version = "0.7.5", path = "../toy-rpc-client", optional = true }
 
 [[test]]
 name = "async_std_tcp"

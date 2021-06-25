@@ -9,9 +9,9 @@ use std::{
     task::{Context, Poll},
 };
 
-use crate::{
+use toy_rpc_core::{
     message::{AtomicMessageId, ClientResponseResult, MessageId},
-    Error,
+    error::Error,
 };
 
 mod broker;
@@ -57,15 +57,18 @@ cfg_if! {
         )
     ))] {
         #[cfg(any(feature = "async_std_runtime", feature = "tokio_runtime"))]
-        use crate::codec::DefaultCodec;
+        use toy_rpc_core::codec::DefaultCodec;
         // use toy_rpc_core::codec::DefaultCodec;
+
+        #[cfg(feature = "tls")]
+        use std::sync::Arc;
 
         #[cfg(feature = "tls")]
         use rustls::{ClientConfig};
         #[cfg(feature = "tls")]
         use webpki::DNSNameRef;
         #[cfg(feature = "tls")]
-        use crate::transport::ws::WebSocketConn;
+        use toy_rpc_core::transport::ws::WebSocketConn;
 
         #[cfg(all(
             feature = "tls",
@@ -273,10 +276,10 @@ impl Client<Connected> {
     /// Closes connection with the server
     ///
     /// Dropping the client will close the connection as well
-    pub async fn close(self) {
-        self.broker.send_async(
+    pub fn close(self) {
+        self.broker.send(
             broker::ClientBrokerItem::Stop
-        ).await
+        )
         .unwrap_or_else(|err| log::error!("{}", err));
     }
 }
@@ -295,7 +298,7 @@ cfg_if! {
         use std::collections::HashMap;
         use std::time::Duration;
 
-        use crate::{
+        use toy_rpc_core::{
             codec::split::SplittableClientCodec,
             message::{ClientRequestBody, RequestHeader},
         };
