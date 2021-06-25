@@ -38,6 +38,7 @@ lazy_static! {
 ///
 #[async_trait]
 pub trait FrameRead {
+    /// Reads a frame
     async fn read_frame(&mut self) -> Option<Result<Frame, Error>>;
 }
 
@@ -48,9 +49,11 @@ pub trait FrameRead {
 ///
 #[async_trait]
 pub trait FrameWrite {
+    /// Writes a frame
     async fn write_frame(&mut self, frame: Frame) -> Result<(), Error>;
 }
 
+/// Header of a frame
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct FrameHeader {
     message_id: MessageId,
@@ -60,6 +63,7 @@ pub struct FrameHeader {
 }
 
 impl FrameHeader {
+    /// Constructs a new frame header
     pub fn new(
         message_id: MessageId,
         frame_id: FrameId,
@@ -74,6 +78,7 @@ impl FrameHeader {
         }
     }
 
+    /// Constructs a new frame header from bytes
     pub fn from_slice(buf: &[u8]) -> Result<Self, Error> {
         DefaultOptions::new()
             .with_fixint_encoding()
@@ -81,6 +86,7 @@ impl FrameHeader {
             .map_err(|err| Error::ParseError(err))
     }
 
+    /// Convert a frame header to bytes
     pub fn to_vec(&self) -> Result<Vec<u8>, Error> {
         DefaultOptions::new()
             .with_fixint_encoding()
@@ -89,10 +95,14 @@ impl FrameHeader {
     }
 }
 
+/// Type of payload carried by a frame
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum PayloadType {
+    /// Message header
     Header,
+    /// Message body
     Data,
+    /// Message trailer
     Trailer,
 }
 
@@ -123,15 +133,21 @@ impl From<PayloadType> for u8 {
     }
 }
 
+/// Frame 
 #[derive(Debug)]
 pub struct Frame {
+    /// Message id
     pub message_id: MessageId,
+    /// (RESERVED) Frame id, this is a separate id reserved for multi-frame transport
     pub frame_id: FrameId,
+    /// Type of the payload
     pub payload_type: PayloadType,
+    /// Payload
     pub payload: Vec<u8>,
 }
 
 impl Frame {
+    /// Constructs a new frame
     pub fn new(
         message_id: MessageId,
         frame_id: FrameId,

@@ -35,8 +35,8 @@ docs = ["toy-rpc-core/docs", "toy-rpc-client/docs", "toy-rpc-server/docs"]
 
 std = ["serde/std"]
 
-server = ["toy-rpc-macros/server", "toy-rpc-core/server", "toy-rpc-server"]
-client = ["toy-rpc-macros/client", "toy-rpc-core/client", "toy-rpc-client"]
+server = ["toy-rpc-macros/server", "toy-rpc-server"]
+client = ["toy-rpc-macros/client", "toy-rpc-client"]
 tls = [
     "rustls", "tokio-rustls", "async-rustls", "webpki", 
     "toy-rpc-core/tls", "toy-rpc-server/tls", "toy-rpc-client/tls"

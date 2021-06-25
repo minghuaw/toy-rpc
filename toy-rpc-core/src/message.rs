@@ -79,6 +79,7 @@ pub struct TimeoutRequestBody(pub Duration);
 ))]
 #[cfg(any(feature = "client"))]
 impl TimeoutRequestBody {
+    /// Constructs a new TimeoutRequestBody
     pub fn new(dur: Duration) -> Self {
         Self(dur)
     }
@@ -100,11 +101,13 @@ cfg_if! {
         feature = "async-std",
         feature = "tokio"
     ))] {
+        /// Token indicating a cancellation request
         #[cfg(any(feature = "server", feature = "client"))]
         pub const CANCELLATION_TOKEN: &str = "RPC_TASK_CANCELLATION";
+        /// Delimiter separating cancellation request token and message id
         #[cfg(any(feature = "server", feature = "client"))]
         pub const CANCELLATION_TOKEN_DELIM: &str = ".";
-
+        /// Token indicating a timeout request
         #[cfg(any(feature = "server", feature = "client"))]
         pub const TIMEOUT_TOKEN: &str = "RPC_TASK_TIMEOUT";
 
@@ -117,6 +120,7 @@ cfg_if! {
 
         #[cfg(feature = "server")]
         impl ErrorMessage {
+            /// Construct `ErrorMessage` from a internal error
             pub fn from_err(err: Error) -> Result<Self, Error> {
                 match err {
                     Error::InvalidArgument => Ok(Self::InvalidArgument),
@@ -132,38 +136,58 @@ cfg_if! {
             }
         }
 
+        /// The internal execution message
         #[cfg(feature = "server")]
         #[cfg_attr(feature = "actix", derive(actix::Message))]
         #[cfg_attr(feature = "actix", rtype(result = "()"))]
         pub enum ExecutionMessage {
+            /// Timeout information
             TimeoutInfo(MessageId, Duration),
+            /// Request for execution
             Request {
+                /// The fn pointer to the RPC service handler
                 call: ArcAsyncServiceCall,
+                /// Request id
                 id: MessageId,
+                /// Requested method
                 method: String,
+                /// Marshalled request message body
                 deserializer: RequestDeserializer,
             },
+            /// Result of execution
             Result(ExecutionResult),
+            /// Cancelling an execution
             Cancel(MessageId),
+            /// Stop the broker
             Stop,
         }
 
+        /// The internal execution result
         #[cfg(feature = "server")]
         #[cfg_attr(feature = "actix", derive(actix::Message))]
         #[cfg_attr(feature = "actix", rtype(result = "()"))]
         pub struct ExecutionResult {
+            /// Message id
             pub id: MessageId,
+            /// Result of execution
             pub result: HandlerResult,
         }
 
+        /// Type of request for internal messaging
         #[cfg(feature = "server")]
         pub enum RequestType {
+            /// Timeout 
             Timeout(MessageId),
+            /// Request
             Request {
+                /// Request message id
                 id: MessageId,
+                /// Service name
                 service: String,
+                /// Method name
                 method: String,
             },
+            /// Cancellation
             Cancel(MessageId),
         }
     }
