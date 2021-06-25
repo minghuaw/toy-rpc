@@ -23,4 +23,4 @@ env_logger = "0.8.3"
 path = "../../toy-rpc/"
 version = "0.7.4"
 default-features = false
-features = [ "serde_json", "async_std_runtime", "server", "client"]
+features = [ "serde_bincode", "async_std_runtime", "server", "client"]

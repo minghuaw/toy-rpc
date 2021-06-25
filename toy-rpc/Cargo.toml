@@ -40,7 +40,7 @@ client = ["toy-rpc-macros/client", "toy-rpc-core/client"]
 tls = ["rustls", "tokio-rustls", "async-rustls", "webpki", "toy-rpc-core/tls"]
 
 # feature flags for codec
-serde_bincode = []
+serde_bincode = ["toy-rpc-core/serde_bincode"]
 serde_json = ["toy-rpc-core/serde_json"]
 serde_cbor = ["toy-rpc-core/serde_cbor"]
 serde_rmp = ["toy-rpc-core/serde_rmp"]
@@ -55,9 +55,18 @@ async_std_runtime = [
     "async-std", "async-tungstenite/async-std-runtime", "toy-rpc-macros/runtime", 
     "brw/async-std", "toy-rpc-core/async_std_runtime"
 ]
-http_tide = ["tide", "tide-websockets", "async_std_runtime", "server"]
-http_actix_web = ["actix-web", "actix", "actix-rt", "actix-web-actors", "actix-http", "tokio_runtime", "server"]
-http_warp = ["warp", "tokio_runtime", "server"]
+http_tide = [
+    "tide", "tide-websockets", "async_std_runtime", "server",
+    "toy-rpc-core/http_tide"
+]
+http_actix_web = [
+    "actix-web", "actix", "actix-rt", "actix-web-actors", "actix-http", "tokio_runtime", "server",
+    "toy-rpc-core/http_actix_web",
+]
+http_warp = [
+    "warp", "tokio_runtime", "server",
+    "toy-rpc-core/http_warp"
+]
 
 [dev-dependencies]
 async-std = "1.9.0"

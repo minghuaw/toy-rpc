@@ -16,7 +16,7 @@ type WsStreamHalf<S> = StreamHalf<SplitStream<S>, CanSink>;
 
 cfg_if! {
     if #[cfg(feature = "http_tide")] {
-        pub(crate) struct CannotSink {}
+        pub struct CannotSink {}
         mod tide_ws;
     } else if #[cfg(feature = "http_warp")] {
         mod warp_ws;
