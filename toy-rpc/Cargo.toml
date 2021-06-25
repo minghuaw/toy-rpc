@@ -57,7 +57,7 @@ async_std_runtime = [
 ]
 http_tide = [
     "tide", "tide-websockets", "async_std_runtime", "server",
-    "toy-rpc-core/http_tide"
+    "toy-rpc-core/tide-websockets"
 ]
 http_actix_web = [
     "actix-web", "actix", "actix-rt", "actix-web-actors", "actix-http", "tokio_runtime", "server",
@@ -65,7 +65,7 @@ http_actix_web = [
 ]
 http_warp = [
     "warp", "tokio_runtime", "server",
-    "toy-rpc-core/http_warp"
+    "toy-rpc-core/warp"
 ]
 
 [dev-dependencies]

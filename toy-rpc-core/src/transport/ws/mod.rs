@@ -15,10 +15,10 @@ type WsSinkHalf<S> = SinkHalf<SplitSink<S, WsMessage>, CanSink>;
 type WsStreamHalf<S> = StreamHalf<SplitStream<S>, CanSink>;
 
 cfg_if! {
-    if #[cfg(feature = "http_tide")] {
+    if #[cfg(feature = "tide-websockets")] {
         pub struct CannotSink {}
         mod tide_ws;
-    } else if #[cfg(feature = "http_warp")] {
+    } else if #[cfg(feature = "warp")] {
         mod warp_ws;
     }
 }

@@ -21,7 +21,7 @@ pub mod split;
 pub type RequestDeserializer = Box<dyn erased::Deserializer<'static> + Send + 'static>;
 
 cfg_if! {
-    if #[cfg(feature = "http_tide")] {
+    if #[cfg(feature = "tide-websockets")] {
         use tide_websockets as tide_ws;
         use crate::transport::ws::CannotSink;
     }
@@ -206,7 +206,7 @@ where
     }
 }
 
-#[cfg(all(feature = "http_tide"))]
+#[cfg(all(feature = "tide-websockets"))]
 /// WebSocket integration with `tide`
 impl
     Codec<
@@ -216,7 +216,7 @@ impl
     >
 {
     /// Creates a `Codec` with a WebSocket connection implemented in the `tide` HTTP server.
-    #[cfg_attr(feature = "docs", doc(cfg(feature = "http_tide")))]
+    #[cfg_attr(feature = "docs", doc(cfg(feature = "tide-websockets")))]
     pub fn with_tide_websocket(
         ws: WebSocketConn<tide_ws::WebSocketConnection, CannotSink>,
     ) -> Self {
@@ -230,7 +230,7 @@ impl
     }
 }
 
-#[cfg(all(feature = "http_warp"))]
+#[cfg(all(feature = "warp"))]
 // warp websocket
 impl<S, E> Codec<SplitStream<S>, SplitSink<S, warp::ws::Message>, ConnTypePayload>
 where
@@ -238,7 +238,7 @@ where
     E: std::error::Error,
 {
     /// Creates a `Codec` with a WebSocket connection implemented in the `warp` HTTP server.
-    #[cfg_attr(feature = "docs", doc(cfg(feature = "http_warp")))]
+    #[cfg_attr(feature = "docs", doc(cfg(feature = "warp")))]
     pub fn with_warp_websocket(ws: S) -> Self {
         use futures::StreamExt;
         let (writer, reader) = ws.split();
