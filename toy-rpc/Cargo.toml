@@ -35,54 +35,20 @@ docs = []
 
 std = ["serde/std"]
 
-<<<<<<< HEAD
-server = ["toy-rpc-macros/server", "toy-rpc-server"]
-client = ["toy-rpc-macros/client", "toy-rpc-client"]
-tls = [
-    "rustls", "tokio-rustls", "async-rustls", "webpki", 
-    "toy-rpc-core/tls", "toy-rpc-server/tls", "toy-rpc-client/tls"
-]
-=======
 server = ["toy-rpc-macros/server"]
 client = ["toy-rpc-macros/client"]
 tls = ["rustls", "tokio-rustls", "async-rustls", "webpki"]
->>>>>>> main
 
 # feature flags for codec
 serde_bincode = []
 serde_rmp = ["rmp-serde"]
 
 # feature flags for runtime
-<<<<<<< HEAD
-tokio_runtime = [
-    "async-tungstenite/tokio-runtime", "tokio-stream", 
-    "toy-rpc-macros/runtime", "brw/tokio", 
-    "toy-rpc-server/tokio_runtime", "toy-rpc-client/tokio_runtime"
-]
-async_std_runtime = [
-    "async-std", "async-tungstenite/async-std-runtime", "toy-rpc-macros/runtime", 
-    "brw/async-std", 
-    "toy-rpc-server/async_std_runtime", "toy-rpc-client/async_std_runtime"
-]
-http_tide = [
-    "tide", "tide-websockets", "async_std_runtime", "server",
-    "toy-rpc-server/http_tide"
-]
-http_actix_web = [
-    "actix-web", "actix", "actix-rt", "actix-web-actors", "actix-http", "tokio_runtime", "server",
-    "toy-rpc-server/http_actix_web"
-]
-http_warp = [
-    "warp", "tokio_runtime", "server",
-    "toy-rpc-server/http_warp"
-]
-=======
 tokio_runtime = ["tokio", "async-tungstenite/tokio-runtime", "tokio-stream", "toy-rpc-macros/runtime", "brw/tokio"]
 async_std_runtime = ["async-std", "async-tungstenite/async-std-runtime", "toy-rpc-macros/runtime", "brw/async-std"]
 http_tide = ["tide", "tide-websockets", "async_std_runtime", "server"]
 http_actix_web = ["actix-web", "actix", "actix-rt", "actix-web-actors", "actix-http", "tokio_runtime", "server"]
 http_warp = ["warp", "tokio_runtime", "server"]
->>>>>>> main
 
 [dev-dependencies]
 async-std = "1.9.0"
