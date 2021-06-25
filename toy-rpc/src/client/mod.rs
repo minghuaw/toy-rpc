@@ -7,6 +7,7 @@ use std::{
     marker::PhantomData,
     pin::Pin,
     task::{Context, Poll},
+    sync::Arc,
 };
 
 use crate::{

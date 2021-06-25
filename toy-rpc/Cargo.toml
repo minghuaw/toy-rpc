@@ -37,7 +37,7 @@ std = ["serde/std"]
 
 server = ["toy-rpc-macros/server", "toy-rpc-core/server", "toy-rpc-server"]
 client = ["toy-rpc-macros/client", "toy-rpc-core/client"]
-tls = ["rustls", "tokio-rustls", "async-rustls", "webpki", "toy-rpc-core/tls"]
+tls = ["rustls", "tokio-rustls", "async-rustls", "webpki", "toy-rpc-core/tls", "toy-rpc-server/tls"]
 
 # feature flags for codec
 serde_bincode = ["toy-rpc-server/serde_bincode"]
