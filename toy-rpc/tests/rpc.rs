@@ -26,7 +26,7 @@ cfg_if::cfg_if! {
 
         pub const COMMON_TEST_SERVICE_NAME: &str = "CommonTest";
 
-        pub const ADDR: &str = "127.0.0.1:23334";
+        pub const ADDR: &str = "127.0.0.1:8080";
 
         #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialOrd, Ord, PartialEq, Eq)]
         pub struct CustomStruct {

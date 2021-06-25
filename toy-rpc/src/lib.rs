@@ -101,28 +101,32 @@
 //! A quickstart example with `tokio` runtime is provided in the [Book/Quickstart](https://minghuaw.github.io/toy-rpc/02_quickstart.html).
 //!
 
-pub use toy_rpc_core::{
-    codec,
-    error,
-    message,
-    service,
-    transport,
-    util
-};
-
+pub mod codec;
+pub mod error;
 pub mod macros;
+pub mod message;
+pub mod service;
+pub mod transport;
+pub mod util;
+
+/// The default path added to the HTTP url
+#[cfg(any(
+    feature = "http_actix_web",
+    feature = "http_warp",
+    feature = "http_tide",
+    feature = "client"
+))]
+pub const DEFAULT_RPC_PATH: &str = "_rpc_";
 
 #[cfg(feature = "client")]
-pub use toy_rpc_client::{
-    self as client,
-    Client
-};
+pub mod client;
+#[cfg(feature = "client")]
+pub use client::Client;
 
 #[cfg(feature = "server")]
-pub use toy_rpc_server::{
-    self as server,
-    builder::ServerBuilder, Server
-};
+pub mod server;
+#[cfg(feature = "server")]
+pub use server::{builder::ServerBuilder, Server};
 
 pub use error::Error;
 
