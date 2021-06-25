@@ -35,36 +35,38 @@ docs = []
 
 std = ["serde/std"]
 
-server = ["toy-rpc-macros/server", "toy-rpc-core/server"]
+server = ["toy-rpc-macros/server", "toy-rpc-core/server", "toy-rpc-server"]
 client = ["toy-rpc-macros/client", "toy-rpc-core/client"]
 tls = ["rustls", "tokio-rustls", "async-rustls", "webpki", "toy-rpc-core/tls"]
 
 # feature flags for codec
-serde_bincode = ["toy-rpc-core/serde_bincode"]
-serde_json = ["toy-rpc-core/serde_json"]
-serde_cbor = ["toy-rpc-core/serde_cbor"]
-serde_rmp = ["toy-rpc-core/serde_rmp"]
+serde_bincode = ["toy-rpc-server/serde_bincode"]
+serde_json = ["toy-rpc-server/serde_json"]
+serde_cbor = ["toy-rpc-server/serde_cbor"]
+serde_rmp = ["toy-rpc-server/serde_rmp"]
 
 # feature flags for runtime
 tokio_runtime = [
     "tokio", "async-tungstenite/tokio-runtime", "tokio-stream", 
-    "toy-rpc-macros/runtime", "brw/tokio", "toy-rpc-core/tokio"
+    "toy-rpc-macros/runtime", "brw/tokio", 
+    "toy-rpc-core/tokio", "toy-rpc-server/tokio_runtime"
 ]
 async_std_runtime = [
     "async-std", "async-tungstenite/async-std-runtime", "toy-rpc-macros/runtime", 
-    "brw/async-std", "toy-rpc-core/async-std"
+    "brw/async-std", 
+    "toy-rpc-core/async-std", "toy-rpc-server/async_std_runtime"
 ]
 http_tide = [
     "tide", "tide-websockets", "async_std_runtime", "server",
-    "toy-rpc-core/tide-websockets"
+    "toy-rpc-core/tide-websockets", "toy-rpc-server/http_tide"
 ]
 http_actix_web = [
     "actix-web", "actix", "actix-rt", "actix-web-actors", "actix-http", "tokio_runtime", "server",
-    "toy-rpc-core/actix",
+    "toy-rpc-core/actix", "toy-rpc-server/http_actix_web"
 ]
 http_warp = [
     "warp", "tokio_runtime", "server",
-    "toy-rpc-core/warp"
+    "toy-rpc-core/warp", "toy-rpc-server/http_warp"
 ]
 
 [dev-dependencies]
@@ -114,6 +116,7 @@ pin-project = "1.0"
 brw = { version = "0.1.4" }
 
 toy-rpc-core = { version = "0.7.5", path = "../toy-rpc-core" }
+toy-rpc-server = { version = "0.7.5", path = "../toy-rpc-server", optional = true }
 
 [[test]]
 name = "async_std_tcp"

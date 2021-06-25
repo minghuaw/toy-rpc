@@ -133,10 +133,16 @@ pub mod client;
 #[cfg(feature = "client")]
 pub use client::Client;
 
+// #[cfg(feature = "server")]
+// pub mod server;
+// #[cfg(feature = "server")]
+// pub use server::{builder::ServerBuilder, Server};
+
 #[cfg(feature = "server")]
-pub mod server;
-#[cfg(feature = "server")]
-pub use server::{builder::ServerBuilder, Server};
+pub use toy_rpc_server::{
+    self as server,
+    builder::ServerBuilder, Server
+};
 
 pub use error::Error;
 
