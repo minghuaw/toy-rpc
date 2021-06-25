@@ -22,18 +22,24 @@ cfg_if! {
         mod warp_ws;
     }
 }
+
+/// The WebSocket type implements `Sink` trait
 pub struct CanSink {}
 
+/// A wrapper over other WebSocket types
 pub struct WebSocketConn<S, N> {
+    /// The wrapped WebSocket connections
     pub inner: S,
     can_sink: PhantomData<N>,
 }
 
+/// The streaming half of a WebSocket connection
 pub struct StreamHalf<S, Mode> {
     inner: S,
     can_sink: PhantomData<Mode>,
 }
 
+/// The `Sink` half of a WebSocket connection
 pub struct SinkHalf<S, Mode> {
     inner: S,
     can_sink: PhantomData<Mode>,
@@ -44,6 +50,7 @@ where
     S: Stream<Item = Result<WsMessage, E>> + Sink<WsMessage> + Send + Sync + Unpin,
     E: std::error::Error + 'static,
 {
+    /// Construct a new WebSocket wrapper
     pub fn new(inner: S) -> Self {
         Self {
             inner,
@@ -51,6 +58,7 @@ where
         }
     }
 
+    /// Splits the WebSocket wrapper into a `Stream` half and a `Sink` half
     pub fn split(self) -> (WsSinkHalf<S>, WsStreamHalf<S>) {
         let (writer, reader) = self.inner.split();
 

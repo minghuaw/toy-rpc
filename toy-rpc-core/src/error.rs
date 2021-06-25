@@ -50,6 +50,7 @@ pub enum Error {
 }
 
 impl Error {
+    /// Construct an error from an internal `ErrorMessage`
     pub fn from_err_msg(msg: ErrorMessage) -> Self {
         match msg {
             ErrorMessage::InvalidArgument => Self::InvalidArgument,

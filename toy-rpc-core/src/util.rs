@@ -29,6 +29,7 @@ pub trait GracefulShutdown {
 
 /// .await until the end of the task in a blocking manner
 pub trait Conclude {
+    /// Wait until the end of the task. Calls `block_on` internally
     fn conclude(&mut self);
 }
 
@@ -48,27 +49,5 @@ impl Conclude for tokio::task::JoinHandle<Result<(), Error>> {
             },
             Err(err) => log::error!("{}", err),
         }
-    }
-}
-
-/// This trait simply cancel/abort the task during execution
-#[async_trait]
-pub trait Terminate {
-    async fn terminate(self);
-}
-
-#[cfg(feature = "async-std")]
-#[async_trait]
-impl<T: Send> Terminate for async_std::task::JoinHandle<T> {
-    async fn terminate(self) {
-        self.cancel().await;
-    }
-}
-
-#[cfg(feature = "tokio")]
-#[async_trait]
-impl<T: Send> Terminate for tokio::task::JoinHandle<T> {
-    async fn terminate(self) {
-        self.abort();
     }
 }

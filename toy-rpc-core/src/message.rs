@@ -59,12 +59,17 @@ impl Metadata for ResponseHeader {
 /// The Error message that will be sent over for a error response
 #[derive(Serialize, Deserialize)]
 pub enum ErrorMessage {
+    /// An invalid argument
     InvalidArgument,
+    /// The requested service is not found
     ServiceNotFound,
+    /// The requested method is not found
     MethodNotFound,
+    /// An error returned by the RPC method
     ExecutionError(String),
 }
 
+/// Timeout request body for internal message
 #[derive(Serialize, Deserialize, Debug)]
 pub struct TimeoutRequestBody(pub Duration);
 
@@ -83,6 +88,7 @@ impl TimeoutRequestBody {
 /// deserialized
 #[cfg(feature = "client")]
 pub type ClientRequestBody = Box<dyn erased_serde::Serialize + Send + Sync>;
+/// Client response body used for internal message
 #[cfg(feature = "client")]
 pub type ClientResponseBody = Box<dyn erased_serde::Deserializer<'static> + Send>;
 /// The serialized representation of the response body

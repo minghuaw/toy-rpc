@@ -18,6 +18,7 @@ use crate::transport::ws::{CanSink, SinkHalf, StreamHalf, WebSocketConn};
 
 pub mod split;
 
+/// Request body type alias used for internal messaging
 pub type RequestDeserializer = Box<dyn erased::Deserializer<'static> + Send + 'static>;
 
 cfg_if! {

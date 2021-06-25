@@ -11,17 +11,24 @@ pub use server::*;
 mod client;
 pub use client::*;
 
-#[allow(dead_code)]
+/// Read half of the codec
 pub struct CodecReadHalf<R, C, CT> {
+    /// The wrapped reader
     pub reader: R,
+    /// Marker of the Codec type
     pub marker: PhantomData<C>,
+    /// Type of the connection
     pub conn_type: PhantomData<CT>,
 }
 
+/// Write half of the codec
 #[allow(dead_code)]
 pub struct CodecWriteHalf<W, C, CT> {
+    /// The wrapped writer
     pub writer: W,
+    /// Marker of the Codec type
     pub marker: PhantomData<C>,
+    /// Type of the connection
     pub conn_type: PhantomData<CT>,
 }
 
