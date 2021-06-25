@@ -61,7 +61,7 @@ http_tide = [
 ]
 http_actix_web = [
     "actix-web", "actix", "actix-rt", "actix-web-actors", "actix-http", "tokio_runtime", "server",
-    "toy-rpc-core/http_actix_web",
+    "toy-rpc-core/actix",
 ]
 http_warp = [
     "warp", "tokio_runtime", "server",

@@ -9,8 +9,6 @@ edition = "2018"
 
 default = [ ]
 
-http_actix_web = [ "actix", "tokio", "server" ]
-
 client = [ ]
 server = [ ]
 

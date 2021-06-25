@@ -127,8 +127,8 @@ cfg_if! {
         }
 
         #[cfg(feature = "server")]
-        #[cfg_attr(feature = "http_actix_web", derive(actix::Message))]
-        #[cfg_attr(feature = "http_actix_web", rtype(result = "()"))]
+        #[cfg_attr(feature = "actix", derive(actix::Message))]
+        #[cfg_attr(feature = "actix", rtype(result = "()"))]
         pub enum ExecutionMessage {
             TimeoutInfo(MessageId, Duration),
             Request {
@@ -143,8 +143,8 @@ cfg_if! {
         }
 
         #[cfg(feature = "server")]
-        #[cfg_attr(feature = "http_actix_web", derive(actix::Message))]
-        #[cfg_attr(feature = "http_actix_web", rtype(result = "()"))]
+        #[cfg_attr(feature = "actix", derive(actix::Message))]
+        #[cfg_attr(feature = "actix", rtype(result = "()"))]
         pub struct ExecutionResult {
             pub id: MessageId,
             pub result: HandlerResult,
