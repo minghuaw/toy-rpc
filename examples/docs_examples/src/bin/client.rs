@@ -12,5 +12,5 @@ async fn main() {
     let reply: Result<rpc::ExampleResponse, Error> = client.call("example.echo", &args);
     println!("{:?}", reply);
  
-    client.close();
+    client.close().await;
 }

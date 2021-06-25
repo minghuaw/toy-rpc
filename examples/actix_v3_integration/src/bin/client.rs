@@ -52,5 +52,5 @@ async fn main() {
     let call: Call<u32> = client.call("FooService.get_counter", args);
     let reply: u32 = call.await.unwrap();
     println!("{:?}", reply);
-    // client.close();
+    // client.close().await;
 }

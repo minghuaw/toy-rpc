@@ -39,5 +39,5 @@ async fn main() {
     let reply: u32 = call.await.unwrap();
     println!("{:?}", reply);
 
-    // client.close();
+    // client.close().await;
 }

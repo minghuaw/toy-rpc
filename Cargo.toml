@@ -1,9 +1,6 @@
 [workspace]
 members = [
-    "toy-rpc-core",
-    "toy-rpc-client",
-    "toy-rpc-server",
-    "toy-rpc-macros",
+    "macros",
     "toy-rpc",
 ]
 
