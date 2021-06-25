@@ -44,7 +44,6 @@ serde_bincode = ["toy-rpc-core/serde_bincode"]
 serde_json = ["toy-rpc-core/serde_json"]
 serde_cbor = ["toy-rpc-core/serde_cbor"]
 serde_rmp = ["toy-rpc-core/serde_rmp"]
-# serde_rmp = ["rmp-serde"]
 
 # feature flags for runtime
 tokio_runtime = [
@@ -82,9 +81,6 @@ actix-web = "3.3"
 toy-rpc-macros = "0.5.0"
 
 # feature gated optional dependecies
-# serde_json = { version = "1.0", optional = true }
-# serde_cbor = { version = "0.11", optional = true }
-# rmp-serde = { version = "0.15", optional = true }
 tide = { version = "0.16", optional = true }
 tide-websockets =  { version = "0.3", optional = true }
 actix-web = { version = "3.3", optional = true }
