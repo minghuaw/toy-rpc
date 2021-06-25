@@ -50,7 +50,7 @@ serde_rmp = ["toy-rpc-server/serde_rmp", "toy-rpc-client/serde_rmp"]
 
 # feature flags for runtime
 tokio_runtime = [
-    "tokio", "async-tungstenite/tokio-runtime", "tokio-stream", 
+    "async-tungstenite/tokio-runtime", "tokio-stream", 
     "toy-rpc-macros/runtime", "brw/tokio", 
     "toy-rpc-server/tokio_runtime", "toy-rpc-client/tokio_runtime"
 ]
@@ -95,7 +95,7 @@ actix-web-actors = { version = "3.0", optional = true }
 actix-http = { version = "2.2", optional = true }
 warp = { version = "0.3", optional = true }
 async-std = { version = "1", optional = true }
-tokio = { version = "1", features = ["rt-multi-thread", "sync", "io-util", "net", "time"], optional = true }
+# tokio = { version = "1", features = ["rt-multi-thread", "io-util", "net", "time"], optional = true }
 tokio-stream = {  version = "0.1", features = ["net"], optional = true }
 async-tungstenite = { version = "0.13", optional = true }
 tokio-rustls = { version = "0.22", optional = true }

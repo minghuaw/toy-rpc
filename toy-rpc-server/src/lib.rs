@@ -352,7 +352,10 @@ cfg_if! {
             }
         }
 
-        #[cfg(all(feature = "tokio_runtime", not(feature = "async_std_runtime")))]
+        #[cfg(any(
+            feature = "docs",
+            all(feature = "tokio_runtime", not(feature = "async_std_runtime"))
+        ))]
         use ::tokio::task::JoinHandle;
         #[cfg(all(feature = "async_std_runtime", not(feature = "tokio_runtime")))]
         use ::async_std::task::JoinHandle;
