@@ -42,7 +42,7 @@ pub trait ClientCodecWrite: Send + GracefulShutdown {
 
 cfg_if! {
     if #[cfg(all(
-        any(feature = "async_std_runtime", feature = "tokio_runtime"),
+        any(feature = "async_std_runtime", feature = "tokio"),
         any(
             all(
                 feature = "serde_bincode",
@@ -94,10 +94,7 @@ cfg_if! {
     if #[cfg(all(
         any(
             feature = "async_std_runtime",
-            feature = "tokio_runtime",
-            feature = "http_tide",
-            feature = "http_warp",
-            feature = "http_actix_web"
+            feature = "tokio",
         ),
         any(
             all(

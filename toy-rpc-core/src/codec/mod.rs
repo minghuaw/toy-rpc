@@ -28,32 +28,16 @@ cfg_if! {
 }
 
 cfg_if! {
-    if #[cfg(any(
-        feature = "async_std_runtime",
-        feature = "http_tide"
-    ))] {
+    if #[cfg(feature = "async_std_runtime")] {
         #[cfg_attr(
             feature = "docs",
-            doc(cfg(any(
-                all(feature = "async_std_runtime", not(feature = "tokio_runtime")),
-                all(feature = "http_tide", not(feature="http_actix_web"), not(feature = "http_warp"))
-            )))
+            doc(cfg(all(feature = "async_std_runtime", not(feature = "tokio"))))
         )]
         mod async_std;
-    } else if #[cfg(any(
-        feature = "tokio_runtime",
-        feature = "http_warp",
-        feature = "http_actix_web"
-    ))] {
+    } else if #[cfg(feature = "tokio")] {
         #[cfg_attr(
             feature = "docs",
-            doc(any(
-                all(feature = "tokio_runtime", not(feature = "async_std_runtime")),
-                all(
-                    any(feature = "http_warp", feature = "http_actix_web"),
-                    not(feature = "http_tide")
-                )
-            ))
+            doc(cfg(all(feature = "tokio", not(feature = "async_std_runtime"))))
         )]
         mod tokio;
     }
@@ -94,7 +78,7 @@ cfg_if! {
 cfg_if! {
     if #[cfg(any(
         feature = "async_std_runtime",
-        feature = "tokio_runtime",
+        feature = "tokio",
         feature = "docs",
     ))] {
         #[cfg(all(
@@ -167,7 +151,7 @@ cfg_if! {
     }
 }
 
-#[cfg(any(feature = "async_std_runtime", feature = "tokio_runtime"))]
+#[cfg(any(feature = "async_std_runtime", feature = "tokio"))]
 /// type state for AsyncRead and AsyncWrite connections (ie. raw TCP)
 pub struct ConnTypeReadWrite {}
 
@@ -180,7 +164,7 @@ pub struct ConnTypePayload {}
     not(all(
         any( // there has to be a runtime
             feature = "async_std_runtime", 
-            feature = "tokio_runtime",
+            feature = "tokio",
         ),
         any( // there has to be a codec
             feature = "serde_bincode",
@@ -299,10 +283,7 @@ cfg_if! {
     if #[cfg(all(
         any(
             feature = "async_std_runtime",
-            feature = "tokio_runtime",
-            feature = "http_tide",
-            feature = "http_warp",
-            feature = "http_actix_web"
+            feature = "tokio",
         ),
         any(
             all(

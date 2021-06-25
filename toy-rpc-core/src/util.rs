@@ -5,7 +5,7 @@ use std::collections::HashMap;
 
 use crate::service::AsyncHandler;
 
-#[cfg(any(feature = "async_std_runtime", feature = "tokio_runtime"))]
+#[cfg(any(feature = "async_std_runtime", feature = "tokio"))]
 use crate::error::Error;
 
 /// Helper trait for service registration
@@ -39,7 +39,7 @@ impl Conclude for async_std::task::JoinHandle<Result<(), Error>> {
     }
 }
 
-#[cfg(feature = "tokio_runtime")]
+#[cfg(feature = "tokio")]
 impl Conclude for tokio::task::JoinHandle<Result<(), Error>> {
     fn conclude(&mut self) {
         match tokio::task::block_in_place(|| tokio::runtime::Handle::current().block_on(self)) {
@@ -65,7 +65,7 @@ impl<T: Send> Terminate for async_std::task::JoinHandle<T> {
     }
 }
 
-#[cfg(feature = "tokio_runtime")]
+#[cfg(feature = "tokio")]
 #[async_trait]
 impl<T: Send> Terminate for tokio::task::JoinHandle<T> {
     async fn terminate(self) {

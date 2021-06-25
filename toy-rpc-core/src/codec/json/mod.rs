@@ -3,16 +3,9 @@
 use cfg_if::cfg_if;
 
 cfg_if! {
-    if #[cfg(any(
-        feature = "async_std_runtime",
-        feature = "http_tide"
-    ))] {
+    if #[cfg(feature = "async_std_runtime")] {
         mod async_std;
-    } else if #[cfg(any(
-        feature = "tokio_runtime",
-        feature = "http_warp",
-        feature = "http_actix_web"
-    ))] {
+    } else if #[cfg(feature = "tokio")] {
         mod tokio;
     }
 }

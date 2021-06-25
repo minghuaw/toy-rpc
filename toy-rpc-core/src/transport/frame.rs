@@ -14,16 +14,9 @@ const INVALID_PROTOCOL: &str = "Magic byte mismatch.\rClient may be using a diff
 const END_FRAME_ID: FrameId = 131;
 
 cfg_if! {
-    if #[cfg(any(
-        feature = "async_std_runtime",
-        feature = "http_tide"
-    ))] {
+    if #[cfg(feature = "async_std_runtime")] {
         use futures::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
-    } else if #[cfg(any(
-        feature = "tokio_runtime",
-        feature = "http_warp",
-        feature = "http_actix_web"
-    ))] {
+    } else if #[cfg(feature = "tokio")] {
         use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
     }
 }
