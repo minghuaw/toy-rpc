@@ -69,8 +69,8 @@ pub enum ErrorMessage {
 pub struct TimeoutRequestBody(pub Duration);
 
 #[cfg(any(
-    all(feature = "async_std_runtime", not(feature = "tokio")),
-    all(feature = "tokio", not(feature = "async_std_runtime"))
+    all(feature = "async-std", not(feature = "tokio")),
+    all(feature = "tokio", not(feature = "async-std"))
 ))]
 #[cfg(any(feature = "client"))]
 impl TimeoutRequestBody {
@@ -91,7 +91,7 @@ pub type ClientResponseResult = Result<ClientResponseBody, ClientResponseBody>;
 
 cfg_if! {
     if #[cfg(any(
-        feature = "async_std_runtime",
+        feature = "async-std",
         feature = "tokio"
     ))] {
         #[cfg(any(feature = "server", feature = "client"))]

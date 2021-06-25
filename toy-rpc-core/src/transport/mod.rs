@@ -10,7 +10,7 @@ use crate::error::Error;
         feature = "serde_cbor",
         feature = "serde_rmp"
     ),
-    any(feature = "async_std_runtime", feature = "tokio",)
+    any(feature = "async-std", feature = "tokio",)
 ))]
 pub mod frame;
 

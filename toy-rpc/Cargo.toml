@@ -49,11 +49,11 @@ serde_rmp = ["toy-rpc-core/serde_rmp"]
 # feature flags for runtime
 tokio_runtime = [
     "tokio", "async-tungstenite/tokio-runtime", "tokio-stream", 
-    "toy-rpc-macros/runtime", "brw/tokio", "toy-rpc-core/tokio_runtime"
+    "toy-rpc-macros/runtime", "brw/tokio", "toy-rpc-core/tokio"
 ]
 async_std_runtime = [
     "async-std", "async-tungstenite/async-std-runtime", "toy-rpc-macros/runtime", 
-    "brw/async-std", "toy-rpc-core/async_std_runtime"
+    "brw/async-std", "toy-rpc-core/async-std"
 ]
 http_tide = [
     "tide", "tide-websockets", "async_std_runtime", "server",

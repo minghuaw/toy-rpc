@@ -5,7 +5,7 @@ use std::collections::HashMap;
 
 use crate::service::AsyncHandler;
 
-#[cfg(any(feature = "async_std_runtime", feature = "tokio"))]
+#[cfg(any(feature = "async-std", feature = "tokio"))]
 use crate::error::Error;
 
 /// Helper trait for service registration
@@ -32,7 +32,7 @@ pub trait Conclude {
     fn conclude(&mut self);
 }
 
-#[cfg(feature = "async_std_runtime")]
+#[cfg(feature = "async-std")]
 impl Conclude for async_std::task::JoinHandle<Result<(), Error>> {
     fn conclude(&mut self) {
         async_std::task::block_on(self).unwrap_or_else(|err| log::error!("{}", err));
@@ -57,7 +57,7 @@ pub trait Terminate {
     async fn terminate(self);
 }
 
-#[cfg(feature = "async_std_runtime")]
+#[cfg(feature = "async-std")]
 #[async_trait]
 impl<T: Send> Terminate for async_std::task::JoinHandle<T> {
     async fn terminate(self) {

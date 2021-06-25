@@ -54,7 +54,7 @@ where
 
 cfg_if! {
     if #[cfg(all(
-        any(feature = "async_std_runtime", feature = "tokio"),
+        any(feature = "async-std", feature = "tokio"),
         any(
             all(
                 feature = "serde_bincode",
@@ -149,7 +149,7 @@ cfg_if! {
 cfg_if! {
     if #[cfg(all(
         any(
-            feature = "async_std_runtime",
+            feature = "async-std",
             feature = "tokio",
         ),
         any(

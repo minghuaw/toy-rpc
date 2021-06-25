@@ -28,16 +28,16 @@ cfg_if! {
 }
 
 cfg_if! {
-    if #[cfg(feature = "async_std_runtime")] {
+    if #[cfg(feature = "async-std")] {
         #[cfg_attr(
             feature = "docs",
-            doc(cfg(all(feature = "async_std_runtime", not(feature = "tokio"))))
+            doc(cfg(all(feature = "async-std", not(feature = "tokio"))))
         )]
         mod async_std;
     } else if #[cfg(feature = "tokio")] {
         #[cfg_attr(
             feature = "docs",
-            doc(cfg(all(feature = "tokio", not(feature = "async_std_runtime"))))
+            doc(cfg(all(feature = "tokio", not(feature = "async-std"))))
         )]
         mod tokio;
     }
@@ -77,7 +77,7 @@ cfg_if! {
 
 cfg_if! {
     if #[cfg(any(
-        feature = "async_std_runtime",
+        feature = "async-std",
         feature = "tokio",
         feature = "docs",
     ))] {
@@ -151,7 +151,7 @@ cfg_if! {
     }
 }
 
-#[cfg(any(feature = "async_std_runtime", feature = "tokio"))]
+#[cfg(any(feature = "async-std", feature = "tokio"))]
 /// type state for AsyncRead and AsyncWrite connections (ie. raw TCP)
 pub struct ConnTypeReadWrite {}
 
@@ -163,7 +163,7 @@ pub struct ConnTypePayload {}
 #[cfg_attr(
     not(all(
         any( // there has to be a runtime
-            feature = "async_std_runtime", 
+            feature = "async-std", 
             feature = "tokio",
         ),
         any( // there has to be a codec
@@ -282,7 +282,7 @@ pub trait CodecWrite: Marshal {
 cfg_if! {
     if #[cfg(all(
         any(
-            feature = "async_std_runtime",
+            feature = "async-std",
             feature = "tokio",
         ),
         any(

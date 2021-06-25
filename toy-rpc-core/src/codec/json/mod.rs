@@ -3,7 +3,7 @@
 use cfg_if::cfg_if;
 
 cfg_if! {
-    if #[cfg(feature = "async_std_runtime")] {
+    if #[cfg(feature = "async-std")] {
         mod async_std;
     } else if #[cfg(feature = "tokio")] {
         mod tokio;

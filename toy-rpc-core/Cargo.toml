@@ -9,12 +9,9 @@ edition = "2018"
 
 default = [ ]
 
-async_std_runtime = [ "async-std" ]
-tokio_runtime = [ "tokio" ]
-
-http_tide = ["tide-websockets", "async_std_runtime", "server"]
-http_warp = ["warp", "tokio_runtime", "server"]
-http_actix_web = [ "actix", "tokio_runtime", "server" ]
+http_tide = ["tide-websockets", "async-std", "server"]
+http_warp = ["warp", "tokio", "server"]
+http_actix_web = [ "actix", "tokio", "server" ]
 
 client = [ ]
 server = [ ]
