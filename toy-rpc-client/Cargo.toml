@@ -26,8 +26,8 @@ default = [ ]
 docs = [ ]
 tls = ["rustls", "tokio-rustls", "async-rustls", "webpki", "toy-rpc-core/tls"]
 
-tokio_runtime = [ "tokio", "async-tungstenite/tokio-runtime" ]
-async_std_runtime = [ "async-std", "async-tungstenite/async-std-runtime", ]
+tokio_runtime = [ "tokio", "async-tungstenite/tokio-runtime", "toy-rpc-core/tokio" ]
+async_std_runtime = [ "async-std", "async-tungstenite/async-std-runtime", "toy-rpc-core/async-std" ]
 
 serde_bincode = ["toy-rpc-core/serde_bincode"]
 serde_json = ["toy-rpc-core/serde_json"]

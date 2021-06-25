@@ -22,10 +22,10 @@ rustdoc-args = ["--cfg", "feature=\"docs\""]
 [features]
 
 default = [ ]
-docs = [ ]
+docs = [ "toy-rpc-core/docs" ]
 
-tokio_runtime = [ "tokio", "async-tungstenite/tokio-runtime", "tokio-stream", ]
-async_std_runtime = [ "async-std", "async-tungstenite/async-std-runtime", ]
+tokio_runtime = [ "tokio", "async-tungstenite/tokio-runtime", "tokio-stream", "toy-rpc-core/tokio" ]
+async_std_runtime = [ "async-std", "async-tungstenite/async-std-runtime", "toy-rpc-core/async-std"]
 tls = ["rustls", "tokio-rustls", "async-rustls", "webpki", "toy-rpc-core/tls"]
 
 http_tide = [ "tide", "tide-websockets", "async_std_runtime", "toy-rpc-core/tide-websockets" ]

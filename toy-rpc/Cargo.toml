@@ -31,7 +31,7 @@ default = [
     "serde_bincode",
 ]
 
-docs = []
+docs = ["toy-rpc-core/docs", "toy-rpc-client/docs", "toy-rpc-server/docs"]
 
 std = ["serde/std"]
 
@@ -52,24 +52,24 @@ serde_rmp = ["toy-rpc-server/serde_rmp", "toy-rpc-client/serde_rmp"]
 tokio_runtime = [
     "tokio", "async-tungstenite/tokio-runtime", "tokio-stream", 
     "toy-rpc-macros/runtime", "brw/tokio", 
-    "toy-rpc-core/tokio", "toy-rpc-server/tokio_runtime", "toy-rpc-client/tokio_runtime"
+    "toy-rpc-server/tokio_runtime", "toy-rpc-client/tokio_runtime"
 ]
 async_std_runtime = [
     "async-std", "async-tungstenite/async-std-runtime", "toy-rpc-macros/runtime", 
     "brw/async-std", 
-    "toy-rpc-core/async-std", "toy-rpc-server/async_std_runtime", "toy-rpc-client/async_std_runtime"
+    "toy-rpc-server/async_std_runtime", "toy-rpc-client/async_std_runtime"
 ]
 http_tide = [
     "tide", "tide-websockets", "async_std_runtime", "server",
-    "toy-rpc-core/tide-websockets", "toy-rpc-server/http_tide"
+    "toy-rpc-server/http_tide"
 ]
 http_actix_web = [
     "actix-web", "actix", "actix-rt", "actix-web-actors", "actix-http", "tokio_runtime", "server",
-    "toy-rpc-core/actix", "toy-rpc-server/http_actix_web"
+    "toy-rpc-server/http_actix_web"
 ]
 http_warp = [
     "warp", "tokio_runtime", "server",
-    "toy-rpc-core/warp", "toy-rpc-server/http_warp"
+    "toy-rpc-server/http_warp"
 ]
 
 [dev-dependencies]
