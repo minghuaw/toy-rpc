@@ -29,13 +29,9 @@ rustdoc-args = ["--cfg", "feature=\"docs\""]
 [features]
 default = [
     "serde_bincode",
-    # "tokio_runtime",
-    # "server"
 ]
 
 docs = []
-
-std = ["serde/std"]
 
 server = ["toy-rpc-macros/server"]
 client = ["toy-rpc-macros/client"]
