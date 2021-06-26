@@ -9,6 +9,10 @@ use crate::{service::AsyncServiceMap};
 
 mod integration;
 
+mod broker;
+mod reader;
+mod writer;
+
 #[cfg(any(
     feature = "docs",
     doc,
@@ -61,21 +65,13 @@ cfg_if! {
         use std::future::Future;
         use std::time::Duration;
         use std::collections::HashMap;
-        use brw::{Broker, Reader, Running, Writer};
-        use futures::{
-            sink::{Sink, SinkExt}
-        };
 
-        use crate::message::{ErrorMessage, RequestHeader, ResponseHeader};
         use crate::service::{HandlerResult};
         use crate::{
-            codec::{
-                split::{ServerCodecRead, ServerCodecWrite},
-                RequestDeserializer,
-            },
+            codec::RequestDeserializer,
             message::{
                 ExecutionMessage, ExecutionResult, MessageId, CANCELLATION_TOKEN, CANCELLATION_TOKEN_DELIM,
-                RequestType, TIMEOUT_TOKEN, TimeoutRequestBody
+                RequestType, TIMEOUT_TOKEN, TimeoutRequestBody, RequestHeader
             },
         };
         use crate::error::Error;
@@ -93,224 +89,13 @@ cfg_if! {
         ) -> Result<(), Error> {
             let (writer, reader) = codec.split();
 
-            let reader = ServerReader { reader, services };
-            let writer = ServerWriter { writer };
-            let broker = ServerBroker {
-                executions: HashMap::new(),
-                durations: HashMap::new()   
-            };
+            let reader = reader::ServerReader::new(reader, services);
+            let writer = writer::ServerWriter::new(writer);
+            let broker = broker::ServerBroker::new();
 
-            log::debug!("Spawning brw");
             let (mut broker_handle, _) = brw::spawn(broker, reader, writer);
-            // broker_handle.conclude();
             brw::util::Conclude::conclude(&mut broker_handle);
             Ok(())
-        }
-
-
-        struct ServerReader<T: ServerCodecRead>{
-            reader: T,
-            services: Arc<AsyncServiceMap>,
-        }
-
-        #[async_trait::async_trait]
-        impl<T: ServerCodecRead> Reader for ServerReader<T> {
-            type BrokerItem = ExecutionMessage;
-            type Ok = ();
-            type Error = Error;
-
-            async fn op<B>(&mut self, mut broker: B) -> Running<Result<Self::Ok, Self::Error>>
-            where B: Sink<Self::BrokerItem, Error = flume::SendError<Self::BrokerItem>> + Send + Unpin {
-                if let Some(header) = self.reader.read_request_header().await {
-                    let header = match header {
-                        Ok(header) => header,
-                        Err(err) => return Running::Continue(Err(err))
-                    };
-                    let deserializer = match self.reader.read_request_body().await {
-                        Some(res) => {
-                            match res {
-                                Ok(de) => de,
-                                Err(err) => return Running::Continue(Err(err))
-                            }
-                        },
-                        None => return Running::Stop
-                    };
-
-                    match preprocess_header(&header) {
-                        Ok(req_type) => {
-                            match preprocess_request(&self.services, req_type, deserializer) {
-                                Ok(msg) => {
-                                    match broker.send(msg).await {
-                                        Ok(_) => { },
-                                        Err(err) => return Running::Continue(Err(err.into()))
-                                    }
-                                },
-                                Err(err) => {
-                                    log::error!("{}", err);
-                                    match err {
-                                        Error::ServiceNotFound => {
-                                            let result = ExecutionResult {
-                                                id: header.id,
-                                                result: Err(Error::ServiceNotFound)
-                                            };
-                                            match broker.send(
-                                                ExecutionMessage::Result(result)
-                                            ).await{
-                                                Ok(_) => { },
-                                                Err(err) => return Running::Continue(Err(err.into()))
-                                            };
-                                        },
-                                        _ => { }
-                                    }
-                                }
-                            }
-                        },
-                        Err(err) => {
-                            // the only error returned should be MethodNotFound,
-                            // which should be sent back to client
-                            let result = ExecutionResult {
-                                id: header.id,
-                                result: Err(err),
-                            };
-                            match broker.send(
-                                ExecutionMessage::Result(result)
-                            ).await {
-                                Ok(_) => { },
-                                Err(err) => return Running::Continue(Err(err.into()))
-                            }
-                        }
-                    }
-                    Running::Continue(Ok(()))
-                } else {
-                    if broker.send(
-                        ExecutionMessage::Stop
-                    ).await.is_ok() { }
-                    Running::Stop
-                }
-            }
-
-            async fn handle_result(res: Result<Self::Ok, Self::Error>) -> Running<()> {
-                if let Err(err) = res {
-                    log::error!("{:?}", err);
-                }
-                Running::Continue(())
-            }
-        }
-
-        struct ServerWriter<W> {
-            writer: W,
-        }
-        impl<W: ServerCodecWrite> ServerWriter<W> {
-            async fn write_one_message(&mut self, result: ExecutionResult) -> Result<(), Error> {
-                let ExecutionResult { id, result } = result;
-
-                match result {
-                    Ok(body) => {
-                        log::trace!("Message {} Success", &id);
-                        let header = ResponseHeader {
-                            id,
-                            is_error: false,
-                        };
-                        self.writer.write_response(header, &body).await?;
-                    }
-                    Err(err) => {
-                        log::trace!("Message {} Error", &id);
-                        let header = ResponseHeader { id, is_error: true };
-                        let msg = ErrorMessage::from_err(err)?;
-                        self.writer.write_response(header, &msg).await?;
-                    }
-                };
-                Ok(())
-            }
-        }
-
-        #[async_trait::async_trait]
-        impl<W: ServerCodecWrite> Writer for ServerWriter<W> {
-            type Item = ExecutionResult;
-            type Ok = ();
-            type Error = Error;
-
-            async fn op(&mut self, item: Self::Item) -> Running<Result<Self::Ok, Self::Error>> {
-                let res = self.write_one_message(item).await;
-                Running::Continue(res)
-            }
-
-            async fn handle_result(res: Result<Self::Ok, Self::Error>) -> Running<()> {
-                if let Err(err) = res {
-                    log::error!("{:?}", err);
-                }
-                Running::Continue(())
-            }
-        }
-
-        #[cfg(any(
-            feature = "docs",
-            all(feature = "tokio_runtime", not(feature = "async_std_runtime"))
-        ))]
-        use ::tokio::task::JoinHandle;
-        #[cfg(all(feature = "async_std_runtime", not(feature = "tokio_runtime")))]
-        use ::async_std::task::JoinHandle;
-
-        struct ServerBroker { 
-            executions: HashMap<MessageId, JoinHandle<()>>,
-            durations: HashMap<MessageId, Duration>
-        }
-
-        #[async_trait::async_trait]
-        impl Broker for ServerBroker {
-            type Item = ExecutionMessage;
-            type WriterItem = ExecutionResult;
-            type Ok = ();
-            type Error = Error;
-
-            async fn op<W>(&mut self, ctx: & Arc<brw::Context<Self::Item>>, item: Self::Item, mut writer: W) -> Running<Result<Self::Ok, Self::Error>>
-            where W: Sink<Self::WriterItem, Error = flume::SendError<Self::WriterItem>> + Send + Unpin {
-                match item {
-                    ExecutionMessage::TimeoutInfo(id, duration) => {
-                        self.durations.insert(id, duration);
-                        Running::Continue(Ok(()))
-                    },
-                    ExecutionMessage::Request{
-                        call,
-                        id,
-                        method,
-                        deserializer
-                    } => {
-                        let fut = call(method, deserializer);
-                        let _broker = ctx.broker.clone();
-                        let handle = handle_request(_broker, &mut self.durations, id, fut);
-                        self.executions.insert(id, handle);
-                        Running::Continue(Ok(()))
-                    },
-                    ExecutionMessage::Result(result) => {
-                        self.executions.remove(&result.id);
-                        let res: Result<(), Error> = writer.send(result).await
-                            .map_err(|err| err.into());
-                        Running::Continue(res)
-                    },
-                    ExecutionMessage::Cancel(id) => {
-                        if let Some(handle) = self.executions.remove(&id) {
-                            #[cfg(all(feature = "tokio_runtime", not(feature = "async_std_runtime")))]
-                            handle.abort();
-                            #[cfg(all(feature = "async_std_runtime", not(feature = "tokio_runtime")))]
-                            handle.cancel().await;
-                        }
-
-                        Running::Continue(Ok(()))
-                    },
-                    ExecutionMessage::Stop => {
-                        for (_, handle) in self.executions.drain() {
-                            log::debug!("Stopping execution as client is disconnected");
-                            #[cfg(all(feature = "tokio_runtime", not(feature = "async_std_runtime")))]
-                            handle.abort();
-                            #[cfg(all(feature = "async_std_runtime", not(feature = "tokio_runtime")))]
-                            handle.cancel().await;
-                        }
-                        log::debug!("Client connection is closed");
-                        Running::Stop
-                    }
-                }
-            }
         }
 
         /// Spawn the execution in a task and return the JoinHandle
