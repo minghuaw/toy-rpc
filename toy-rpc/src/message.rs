@@ -94,6 +94,7 @@ cfg_if! {
         feature = "async_std_runtime",
         feature = "tokio_runtime"
     ))] {
+        /// Token indicating a cancellation request
         #[cfg(any(feature = "server", feature = "client"))]
         pub(crate) const CANCELLATION_TOKEN: &str = "RPC_TASK_CANCELLATION";
         #[cfg(any(feature = "server", feature = "client"))]
@@ -126,38 +127,55 @@ cfg_if! {
             }
         }
 
+        /// The internal execution message
         #[cfg(feature = "server")]
         #[cfg_attr(feature = "http_actix_web", derive(actix::Message))]
         #[cfg_attr(feature = "http_actix_web", rtype(result = "()"))]
         pub(crate) enum ExecutionMessage {
             TimeoutInfo(MessageId, Duration),
+            /// Request for execution
             Request {
+                /// The fn pointer to the RPC service handler
                 call: ArcAsyncServiceCall,
+                /// Request id
                 id: MessageId,
+                /// Requested method
                 method: String,
+                /// Marshalled request message body
                 deserializer: RequestDeserializer,
             },
+            /// Result of execution
             Result(ExecutionResult),
+            /// Cancelling an execution
             Cancel(MessageId),
+            /// Stop the broker
             Stop,
         }
 
+        /// The internal execution result
         #[cfg(feature = "server")]
         #[cfg_attr(feature = "http_actix_web", derive(actix::Message))]
         #[cfg_attr(feature = "http_actix_web", rtype(result = "()"))]
         pub(crate) struct ExecutionResult {
             pub id: MessageId,
+            /// Result of execution
             pub result: HandlerResult,
         }
 
+        /// Type of request for internal messaging
         #[cfg(feature = "server")]
         pub(crate) enum RequestType {
             Timeout(MessageId),
+            /// Request
             Request {
+                /// Request message id
                 id: MessageId,
+                /// Service name
                 service: String,
+                /// Method name
                 method: String,
             },
+            /// Cancellation
             Cancel(MessageId),
         }
     }

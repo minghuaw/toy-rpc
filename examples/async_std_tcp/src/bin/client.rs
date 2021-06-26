@@ -27,10 +27,11 @@ async fn run() {
     task::sleep(Duration::from_secs(2)).await;
     println!("Calling cancellation");
     call.cancel();
-    // println!(".awaiting on call");
-    // let reply = call.await;
-    // task::sleep(Duration::from_secs(2)).await;
+    println!(".awaiting on canceled call");
+    let reply = call.await;
+    println!("{:?}", reply);
 
+    // task::sleep(Duration::from_secs(2)).await;
     let call: Call<i32> = client.call("Echo.echo_i32", 13i32);
     let reply = call.await;
     println!("{:?}", reply);

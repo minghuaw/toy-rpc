@@ -18,7 +18,7 @@ use crate::{
     service::{AsyncServiceMap, HandlerResult},
 };
 
-use super::{execute_call, preprocess_header, preprocess_request};
+use crate::server::{broker::execute_call, reader::{preprocess_header, preprocess_request}};
 
 // =============================================================================
 // `WsMessageActor`
@@ -342,7 +342,7 @@ cfg_if! {
         feature = "docs"
     ))] {
         use crate::codec::{DefaultCodec, ConnTypePayload};
-        use super::Server;
+        use crate::server::Server;
 
         async fn index(
             state: web::Data<Server>,
