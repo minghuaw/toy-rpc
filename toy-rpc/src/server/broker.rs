@@ -1,15 +1,23 @@
-use std::{
-    collections::HashMap, time::Duration, sync::Arc,
-};
+/// Broker on the server side
+
+use std::sync::Arc;
 use brw::{Running, Broker};
 use futures::sink::{Sink, SinkExt};
+use std::future::Future;
+use std::time::Duration;
+use std::collections::HashMap;
+use flume::Sender;
+
+use crate::service::HandlerResult;
+use crate::message::ExecutionResult;
 
 use crate::{
-    message::{MessageId, ExecutionMessage, ExecutionResult},
-    error::Error
+    message::{MessageId, ExecutionMessage},
+    error::Error,
 };
 
-use super::handle_request;
+
+
 
 #[cfg(any(
     feature = "docs",
@@ -87,5 +95,128 @@ impl Broker for ServerBroker {
                 Running::Stop
             }
         }
+    }
+}
+
+/// Spawn the execution in a task and return the JoinHandle
+#[cfg(all(
+    feature = "async_std_runtime",
+    not(feature = "tokio_runtime")
+))]
+fn handle_request(
+    broker: Sender<ExecutionMessage>,
+    durations: &mut HashMap<MessageId, Duration>,
+    id: MessageId,
+    fut: impl Future<Output=HandlerResult> + Send + 'static,
+) -> ::async_std::task::JoinHandle<()> {
+    match durations.remove(&id) {
+        Some(duration) => {
+            ::async_std::task::spawn(async move {
+                let result = execute_timed_call(id, duration, fut).await;
+                let result = ExecutionResult { id, result };
+                broker.send_async(ExecutionMessage::Result(result)).await
+                    .unwrap_or_else(|e| log::error!("{}", e));
+            })
+        },
+        None => {
+            ::async_std::task::spawn(async move {
+                let result = execute_call(id, fut).await;
+                let result = ExecutionResult { id, result };
+                broker.send_async(ExecutionMessage::Result(result)).await
+                    .unwrap_or_else(|e| log::error!("{}", e));
+            })
+        }
+    }
+}
+
+/// Spawn the execution in a task and return the JoinHandle
+#[cfg(all(
+    feature = "tokio_runtime",
+    not(feature = "async_std_runtime")
+))]
+fn handle_request(
+    broker: Sender<ExecutionMessage>,
+    durations: &mut HashMap<MessageId, Duration>,
+    id: MessageId,
+    fut: impl Future<Output=HandlerResult> + Send + 'static,
+) -> ::tokio::task::JoinHandle<()> {
+    match durations.remove(&id) {
+        Some(duration) => {
+            ::tokio::task::spawn(async move {
+                let result = execute_timed_call(id, duration, fut).await;
+                let result = ExecutionResult { id, result };
+                broker.send_async(ExecutionMessage::Result(result)).await
+                    .unwrap_or_else(|e| log::error!("{}", e));
+            })
+        },
+        None => {
+            ::tokio::task::spawn(async move {
+                let result = execute_call(id, fut).await;
+                let result = ExecutionResult { id, result };
+                broker.send_async(ExecutionMessage::Result(result)).await
+                    .unwrap_or_else(|e| log::error!("{}", e));
+            })
+        }
+    }
+}
+
+// #[cfg(any(
+//     feature = "docs",
+//     all(feature = "async_std_runtime", not(feature = "tokio_runtime")),
+//     all(feature = "tokio_runtime", not(feature = "async_std_runtime")),
+// ))] 
+pub(crate) async fn execute_call(
+    id: MessageId,
+    fut: impl Future<Output = HandlerResult>,
+) -> HandlerResult {
+    let result: HandlerResult = fut.await.map_err(|err| {
+        log::error!(
+            "Error found executing request id: {}, error msg: {}",
+            &id,
+            &err
+        );
+        match err {
+            // if serde cannot parse request, the argument is likely mistaken
+            Error::ParseError(e) => {
+                log::error!("ParseError {:?}", e);
+                Error::InvalidArgument
+            }
+            e => e,
+        }
+    });
+    result
+}
+
+// #[cfg(any(
+//     all(feature = "async_std_runtime", not(feature = "tokio_runtime")),
+//     all(feature = "tokio_runtime", not(feature = "async_std_runtime")),
+// ))] 
+pub(crate) async fn execute_timed_call(
+    id: MessageId,
+    duration: Duration,
+    fut: impl Future<Output = HandlerResult>
+) -> HandlerResult {
+    #[cfg(all(
+        feature = "async_std_runtime",
+        not(feature = "tokio_runtime")
+    ))]
+    match ::async_std::future::timeout(
+        duration,
+        execute_call(id, fut)
+    ).await {
+        Ok(res) => res,
+        Err(_) => Err(Error::Timeout(Some(id)))
+    }
+
+    #[cfg(all(
+        feature = "tokio_runtime",
+        not(feature = "async_std_runtime"),
+    ))]
+    match ::tokio::time::timeout(
+        duration,
+        execute_call(id, fut)
+    ).await {
+        Ok(res) => res,
+        Err(_) => Err(Error::Timeout(Some(id)))
     }
 }

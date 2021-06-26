@@ -34,7 +34,7 @@ cfg_if! {
     ))] {
         use warp::{Filter, Reply, filters::BoxedFilter};
         use crate::codec::DefaultCodec;
-        use crate::server::serve_codec_setup;
+        use crate::server::start_broker_reader_writer;
 
         /// The following impl block is controlled by feature flag. It is enabled
         /// if and only if **exactly one** of the the following feature flag is turned on
@@ -49,7 +49,7 @@ cfg_if! {
                     let codec = DefaultCodec::with_warp_websocket(websocket);
                     let services = state.services.clone();
 
-                    let fut = serve_codec_setup(codec, services);
+                    let fut = start_broker_reader_writer(codec, services);
                     fut.await.unwrap_or_else(|e| log::error!("{}", e));
                 })
             }

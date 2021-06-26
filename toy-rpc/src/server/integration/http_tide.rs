@@ -35,7 +35,7 @@ cfg_if! {
     ))] {
         use crate::codec::DefaultCodec;
         use crate::DEFAULT_RPC_PATH;
-        use crate::server::serve_codec_setup;
+        use crate::server::start_broker_reader_writer;
 
         /// The following impl block is controlled by feature flag. It is enabled
         /// if and only if **exactly one** of the the following feature flag is turned on
@@ -86,7 +86,7 @@ cfg_if! {
                             let codec = DefaultCodec::with_tide_websocket(ws_stream);
                             let services = req.state().services.clone();
 
-                            let fut = serve_codec_setup(codec, services);
+                            let fut = start_broker_reader_writer(codec, services);
 
                             log::trace!("Client disconnected.");
 
