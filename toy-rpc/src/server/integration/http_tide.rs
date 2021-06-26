@@ -2,7 +2,7 @@
 use cfg_if::cfg_if;
 use tide_websockets as tide_ws;
 
-use super::Server;
+use crate::server::Server;
 use crate::transport::ws::WebSocketConn;
 
 cfg_if! {
@@ -35,7 +35,7 @@ cfg_if! {
     ))] {
         use crate::codec::DefaultCodec;
         use crate::DEFAULT_RPC_PATH;
-        use super::serve_codec_setup;
+        use crate::server::serve_codec_setup;
 
         /// The following impl block is controlled by feature flag. It is enabled
         /// if and only if **exactly one** of the the following feature flag is turned on

@@ -2,7 +2,7 @@
 use cfg_if::cfg_if;
 use std::sync::Arc;
 
-use super::Server;
+use crate::server::Server;
 
 cfg_if! {
     if #[cfg(any(
@@ -34,7 +34,7 @@ cfg_if! {
     ))] {
         use warp::{Filter, Reply, filters::BoxedFilter};
         use crate::codec::DefaultCodec;
-        use super::serve_codec_setup;
+        use crate::server::serve_codec_setup;
 
         /// The following impl block is controlled by feature flag. It is enabled
         /// if and only if **exactly one** of the the following feature flag is turned on
