@@ -133,8 +133,6 @@ pub use server::{builder::ServerBuilder, Server};
 /// Type alias for `std::result::Result<T, toy_rpc::error::Error>`
 pub type Result<T, E=error::Error> = std::result::Result<T, E>;
 
-
-
 pub use error::Error;
 
 // re-export

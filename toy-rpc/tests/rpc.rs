@@ -12,6 +12,7 @@ cfg_if::cfg_if! {
         use serde::{Deserialize, Serialize};
 
         use toy_rpc::macros::export_impl;
+        use toy_rpc::Error;
 
         pub const COMMON_TEST_MAGIC_U8: u8 = 167;
         pub const COMMON_TEST_MAGIC_U16: u16 = 512;
@@ -79,7 +80,7 @@ cfg_if::cfg_if! {
         #[export_impl]
         impl CommonTest {
             #[export_method]
-            async fn get_magic_u8(&self, _: ()) -> Result<u8, String> {
+            async fn get_magic_u8(&self, _: ()) -> Result<u8, Error> {
                 Ok(self.magic_u8)
             }
 

@@ -1,6 +1,6 @@
 //! Custom errors
 
-use std::{fmt::{Debug, Display}, io::ErrorKind, any::TypeId};
+use std::{fmt::{Debug}, io::ErrorKind};
 
 use crate::message::{ErrorMessage, MessageId};
 
@@ -149,58 +149,75 @@ impl From<webpki::InvalidDNSNameError> for crate::error::Error {
     }
 }
 
+// /// Trait that convert `std::error::Error` to a 
+// /// `toy_rpc::error::Error::ExecutionError` 
+// pub trait IntoError {
+//     /// Format the error as a string
+//     fn into_error(self) -> Error;
+// }
 
-
-/// Temporary wrapper to wrap other errors before 
-/// converting to toy_rpc::Error
-pub struct ErrorWrapper<'e, E>(&'e E);
-
-/// Wrap other type into a temporary wrapper type
-pub trait WrapError: Display + Sized + 'static {
-    /// Wrap other type into a temporary wrapper type
-    fn wrap(&self) -> Option<ErrorWrapper<Self>> {
-        if TypeId::of::<Self>() == TypeId::of::<Error>() {
-            None
-        } else {
-            Some(ErrorWrapper(&self))
-        }
+impl From<String> for Error {
+    fn from(val: String) -> Self {
+        Self::ExecutionError(val)
     }
 }
 
-impl<E: Display + 'static> WrapError for E { }
-
-/// Trait that convert `std::error::Error` to a 
-/// `toy_rpc::error::Error::ExecutionError` 
-pub trait IntoError {
-    /// Format the error as a string
-    fn into_err(self) -> Error;
-}
-
-impl<'e, E: Display> IntoError for ErrorWrapper<'e, E> {
-    fn into_err(self) -> Error {
-        Error::ExecutionError(format!("{}", self.0))
+impl From<&str> for Error {
+    fn from(val: &str) -> Self {
+        Self::ExecutionError(val.to_string())
     }
 }
 
-impl<E: WrapError> IntoError for E {
-    fn into_err(self) -> Error {
-        match self.wrap() {
-            Some(wrapper) => IntoError::into_err(wrapper),
-            None => {
-                log::error!("Found ErrorWrapper that is designed not to work");
-                Error::ExecutionError(format!("{}", self)) // This should not really happen
-            }
-        }
+impl From<bool> for Error {
+    fn from(val: bool) -> Self {
+        Self::ExecutionError(val.to_string())
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use crate::error::WrapError;
+impl From<u8> for Error {
+    fn from(val: u8) -> Self {
+        Self::ExecutionError(val.to_string())
+    }
+}
 
-    #[test]
-    fn wrap_err() {
-        let err = super::Error::Canceled(None);
-        assert!(err.wrap().is_none());
+impl From<u16> for Error {
+    fn from(val: u16) -> Self {
+        Self::ExecutionError(val.to_string())
+    }
+}
+
+impl From<u32> for Error {
+    fn from(val: u32) -> Self {
+        Self::ExecutionError(val.to_string())
+    }
+}
+
+impl From<u64> for Error {
+    fn from(val: u64) -> Self {
+        Self::ExecutionError(val.to_string())
+    }
+}
+
+impl From<i8> for Error {
+    fn from(val: i8) -> Self {
+        Self::ExecutionError(val.to_string())
+    }
+}
+
+impl From<i16> for Error {
+    fn from(val: i16) -> Self {
+        Self::ExecutionError(val.to_string())
+    }
+}
+
+impl From<i32> for Error {
+    fn from(val: i32) -> Self {
+        Self::ExecutionError(val.to_string())
+    }
+}
+
+impl From<i64> for Error {
+    fn from(val: i64) -> Self {
+        Self::ExecutionError(val.to_string())
     }
 }
