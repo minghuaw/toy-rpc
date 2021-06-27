@@ -19,9 +19,10 @@ path = "src/bin/client.rs"
 tokio = { version = "1.6.0", features = ["rt-multi-thread", "macros", "net", "sync", "time", "io-util"]}
 log = "0.4.14"
 env_logger = "0.8.3"
+async-trait = "0.1.50"
 
 [dependencies.toy-rpc]
 path = "../../toy-rpc/"
-version = "0.7.5"
+version = "0.8.0-alpha"
 default-features = false
 features = [ "serde_json", "tokio_runtime", "server", "client"]

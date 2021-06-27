@@ -15,7 +15,7 @@ readme = "Readme.md"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [features]
-default = []
+default = ["client", "runtime"]
 
 server = []
 client = []
@@ -27,3 +27,4 @@ proc-macro = true
 [dependencies]
 syn = { version = "^1", features = ["full", "derive", "extra-traits"] }
 quote = { version = "^1" }
+darling = "0.13.0"

@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 
 use toy_rpc::macros::{export_impl, export_trait};
+use toy_rpc::Error;
 use async_trait::async_trait;
 
 // =============================================================================
@@ -11,9 +12,9 @@ use async_trait::async_trait;
 #[export_trait]
 pub trait AnotherExample {
     #[export_method]
-    async fn one(&self, args: i32) -> Result<i32, String>;
+    async fn one(&self, args: i32) -> Result<i32, Error>;
     #[export_method]
-    async fn two(&self, args: bool) -> Result<bool, String>;
+    async fn two(&self, req: bool) -> Result<bool, Error>;
     fn three();
 }
 
@@ -44,16 +45,16 @@ impl Example for Foo {
     }
 }
 
-// =============================================================================
+// // =============================================================================
+// // #[export_impl]
+// // =============================================================================
+
+// pub struct Bar { }
+
 // #[export_impl]
-// =============================================================================
-
-pub struct Bar { }
-
-#[export_impl]
-impl Bar {
-    #[export_method]
-    async fn bar(&self, args: i32) -> Result<i32, String> {
-        Ok(args)
-    }
-}
+// impl Bar {
+//     #[export_method]
+//     async fn bar(&self, args: i32) -> Result<i32, String> {
+//         Ok(args)
+//     }
+// }

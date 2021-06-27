@@ -1,6 +1,8 @@
 use std::time::Duration;
-use toy_rpc::macros::export_impl;
+use toy_rpc::macros::{export_impl, export_trait};
+use toy_rpc::Error;
 use tokio::time;
+use async_trait::async_trait;
 
 pub struct Echo { }
 
@@ -25,4 +27,14 @@ impl Echo {
 
         Ok(())
     }
+}
+
+#[async_trait]
+#[export_trait(impl_for_client)]
+pub trait Arith {
+    #[export_method]
+    async fn add(&self, args: (i32, i32)) -> Result<i32, Error>;
+
+    #[export_method]
+    async fn subtract(&self, args: (i32, i32)) -> Result<i32, Error>;
 }
