@@ -1,6 +1,6 @@
 //! Custom errors
 
-use std::io::ErrorKind;
+use std::{fmt::{Debug, Display}, io::ErrorKind};
 
 use crate::message::{ErrorMessage, MessageId};
 
@@ -146,5 +146,21 @@ impl From<erased_serde::Error> for crate::error::Error {
 impl From<webpki::InvalidDNSNameError> for crate::error::Error {
     fn from(err: webpki::InvalidDNSNameError) -> Self {
         Self::Internal(Box::new(err))
+    }
+}
+
+/// Trait that convert `std::error::Error` to a 
+/// `toy_rpc::error::Error::ExecutionError` 
+pub trait StdError {
+    /// Format the error as a string
+    fn fmt_into_err(self) -> Error;
+}
+
+impl<E> StdError for E 
+where 
+    E: Display + Send + 'static
+{
+    fn fmt_into_err(self) -> Error {
+        Error::ExecutionError(format!("{}", self))
     }
 }
