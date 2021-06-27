@@ -1,6 +1,6 @@
 //! Custom errors
 
-use std::{fmt::{Debug, Display}, io::ErrorKind};
+use std::{fmt::{Debug, Display}, io::ErrorKind, any::TypeId};
 
 use crate::message::{ErrorMessage, MessageId};
 
@@ -149,18 +149,58 @@ impl From<webpki::InvalidDNSNameError> for crate::error::Error {
     }
 }
 
-/// Trait that convert `std::error::Error` to a 
-/// `toy_rpc::error::Error::ExecutionError` 
-pub trait StdError {
-    /// Format the error as a string
-    fn fmt_into_err(self) -> Error;
+
+
+/// Temporary wrapper to wrap other errors before 
+/// converting to toy_rpc::Error
+pub struct ErrorWrapper<'e, E>(&'e E);
+
+/// Wrap other type into a temporary wrapper type
+pub trait WrapError: Display + Sized + 'static {
+    /// Wrap other type into a temporary wrapper type
+    fn wrap(&self) -> Option<ErrorWrapper<Self>> {
+        if TypeId::of::<Self>() == TypeId::of::<Error>() {
+            None
+        } else {
+            Some(ErrorWrapper(&self))
+        }
+    }
 }
 
-impl<E> StdError for E 
-where 
-    E: Display + Send + 'static
-{
-    fn fmt_into_err(self) -> Error {
-        Error::ExecutionError(format!("{}", self))
+impl<E: Display + 'static> WrapError for E { }
+
+/// Trait that convert `std::error::Error` to a 
+/// `toy_rpc::error::Error::ExecutionError` 
+pub trait IntoError {
+    /// Format the error as a string
+    fn into_err(self) -> Error;
+}
+
+impl<'e, E: Display> IntoError for ErrorWrapper<'e, E> {
+    fn into_err(self) -> Error {
+        Error::ExecutionError(format!("{}", self.0))
+    }
+}
+
+impl<E: WrapError> IntoError for E {
+    fn into_err(self) -> Error {
+        match self.wrap() {
+            Some(wrapper) => IntoError::into_err(wrapper),
+            None => {
+                log::error!("Found ErrorWrapper that is designed not to work");
+                Error::ExecutionError(format!("{}", self)) // This should not really happen
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::error::WrapError;
+
+    #[test]
+    fn wrap_err() {
+        let err = super::Error::Canceled(None);
+        assert!(err.wrap().is_none());
     }
 }

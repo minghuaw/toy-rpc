@@ -106,7 +106,10 @@ fn impl_transformed_trait(
                                 .map_err(|e| toy_rpc::error::Error::ParseError(Box::new(e)))?;
                             self.#orig_ident(req).await 
                                 .map(|r| Box::new(r) as Box<dyn toy_rpc::erased_serde::Serialize + Send + Sync + 'static>)
-                                .map_err(|e| toy_rpc::error::StdError::fmt_into_err(e))
+                                .map_err(|err| {
+                                    use toy_rpc::error::WrapError;
+                                    toy_rpc::error::IntoError::into_err(err)
+                                })
                         }
                     )
                 }
