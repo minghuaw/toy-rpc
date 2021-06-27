@@ -37,20 +37,6 @@ pub type ArcAsyncServiceCall = Arc<AsyncServiceCall>;
 /// The keys are service names and the values are function trait objects `ArcAsyncServiceCall`
 pub type AsyncServiceMap = HashMap<&'static str, ArcAsyncServiceCall>;
 
-// pub type BoxAsyncHandler<S> = Box<dyn Fn(Arc<S>, Box<dyn erased_serde::Deserializer<'static> + Send>) -> HandlerResult>;
-
-// pub trait Handler<F, A, S> {
-//     fn handler(this: &F) -> BoxAsyncHandler<S>;
-// }
-
-// impl<F, A, S> Handler<F, A, S> for F 
-// where
-//     A: serde::de::DeserializeOwned,
-//     for<'life0, 'async_trait> F: Fn(&'life0 S, A) -> Result<
-// {
-
-// }
-
 /// A RPC service that can hold an internal state
 pub struct Service<State>
 where
