@@ -18,30 +18,25 @@ pub trait AnotherExample {
 }
 
 // =============================================================================
+// #[async_trait]
 // #[export_impl]
 // =============================================================================
 
-pub struct FooBar { }
+pub struct Foo { }
 
 #[async_trait]
 pub trait Example {
     async fn foo(&self, args: i32) -> Result<i32, String>;
-    async fn bar(&self, args: bool) -> Result<bool, String>;
     async fn not_exported(&self);
 }
 
 #[async_trait]
 #[export_impl]
-impl Example for FooBar {
+impl Example for Foo {
 // impl Example {
     #[export_method]
     async fn foo(&self, args: i32) -> Result<i32, String> {
         Ok(args)
-    }
-
-    #[export_method]
-    async fn bar(&self, args: bool) -> Result<bool, String> {
-        Ok(!args)
     }
 
     async fn not_exported(&self) {
@@ -49,10 +44,16 @@ impl Example for FooBar {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {
-        assert_eq!(2 + 2, 4);
+// =============================================================================
+// #[export_impl]
+// =============================================================================
+
+pub struct Bar { }
+
+#[export_impl]
+impl Bar {
+    #[export_method]
+    async fn bar(&self, args: i32) -> Result<i32, String> {
+        Ok(args)
     }
 }
