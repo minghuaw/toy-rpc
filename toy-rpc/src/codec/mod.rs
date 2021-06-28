@@ -1,4 +1,4 @@
-//! `SplittibleServerCodec` and `SplittableClientCodec` are defined in this module, and they are implemented
+//! `SplittibleCodec` is defined in this module, and they are implemented
 //! for the `DefaultCodec`
 //! Default codec implementations are feature gated behind the following features
 //! `serde_bincode`, `serde_json`, `serde_cbor`, `serde_rmp`.

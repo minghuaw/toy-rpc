@@ -1,4 +1,4 @@
-//! Implements `SplittableServerCodec` and `SplittableClientCodec`
+//! Implements `SplittableCodec`
 
 use std::marker::PhantomData;
 #[cfg(any(feature = "tokio_runtime", feature = "async_std_runtime"))]
