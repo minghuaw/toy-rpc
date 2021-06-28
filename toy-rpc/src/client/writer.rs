@@ -59,7 +59,6 @@ cfg_if!{
                         let timeout_body = Box::new(
                             TimeoutRequestBody::new(dur)
                         ) as ClientRequestBody;
-                        // self.writer.write_request(timeout_header, &timeout_body).await
                         self.write_request(timeout_header, &timeout_body).await
                     },
                     ClientWriterItem::Request(header, body) => {
