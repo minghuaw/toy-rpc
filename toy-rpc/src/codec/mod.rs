@@ -12,7 +12,8 @@ use std::marker::PhantomData;
 use tungstenite::Message as WsMessage;
 
 use crate::error::Error;
-use crate::message::{MessageId, Metadata, RequestHeader, ResponseHeader};
+use crate::message::{MessageId, Metadata};
+
 use crate::transport::ws::{CanSink, SinkHalf, StreamHalf, WebSocketConn};
 
 pub mod split;

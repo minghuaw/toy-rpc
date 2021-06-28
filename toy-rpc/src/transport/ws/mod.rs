@@ -7,7 +7,6 @@ use futures::{Sink, SinkExt, Stream, StreamExt};
 use futures::io::{AsyncRead, AsyncWrite};
 use tungstenite::Message as WsMessage;
 use async_tungstenite::WebSocketStream;
-use pin_project::pin_project;
 
 use std::{io::ErrorKind, marker::PhantomData};
 

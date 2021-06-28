@@ -1,17 +1,12 @@
 //! Implements `SplittableServerCodec` and `SplittableClientCodec`
 
-use async_trait::async_trait;
 use std::marker::PhantomData;
+#[cfg(any(feature = "tokio_runtime", feature = "async_std_runtime"))]
+use async_trait::async_trait;
 
 use crate::util::GracefulShutdown;
 
 use super::*;
-
-// mod server;
-// pub use server::*;
-
-// mod client;
-// pub use client::*;
 
 #[allow(dead_code)]
 pub(crate) struct CodecReadHalf<R, C, CT> {
@@ -66,6 +61,9 @@ pub trait SplittableCodec {
     fn split(self) -> (Self::Writer, Self::Reader);
 }
 
+/* -------------------------------------------------------------------------- */
+/*                              // TCP Transport                              */
+/* -------------------------------------------------------------------------- */
 cfg_if! {
     if #[cfg(all(
         any(feature = "async_std_runtime", feature = "tokio_runtime"),
@@ -184,14 +182,15 @@ cfg_if! {
     }
 }
 
+
+/* -------------------------------------------------------------------------- */
+/*                           // WebSocket Transport                           */
+/* -------------------------------------------------------------------------- */
 cfg_if! {
     if #[cfg(all(
         any(
             feature = "async_std_runtime",
             feature = "tokio_runtime",
-            feature = "http_tide",
-            feature = "http_warp",
-            feature = "http_actix_web"
         ),
         any(
             all(

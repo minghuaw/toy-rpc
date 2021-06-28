@@ -29,9 +29,9 @@ rustdoc-args = ["--cfg", "feature=\"docs\""]
 [features]
 default = [
     "serde_bincode",
-    "http_warp",
-    "server",
-    "client"
+    # "http_warp",
+    # "server",
+    # "client"
 ]
 
 docs = []
@@ -79,7 +79,6 @@ warp = { version = "0.3", optional = true }
 async-std = { version = "1", optional = true }
 tokio = { version = "1", features = ["rt-multi-thread", "io-util", "net", "time"], optional = true }
 tokio-stream = {  version = "0.1", features = ["net"], optional = true }
-async-tungstenite = { version = "0.13", optional = true }
 tokio-rustls = { version = "0.22", optional = true }
 async-rustls = { version = "0.2", optional = true }
 rustls = { version = "0.19", optional = true }
@@ -95,6 +94,7 @@ lazy_static = "1.4"
 url = "2.2"
 cfg-if = "1.0"
 tungstenite = "0.13"
+async-tungstenite = { version = "0.13"}
 thiserror = "1.0"
 flume = "0.10"
 pin-project = "1.0"
