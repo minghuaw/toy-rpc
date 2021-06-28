@@ -1,10 +1,5 @@
 //! This module implements integration with `warp`.
 use cfg_if::cfg_if;
-use futures::stream::SplitSink;
-use std::sync::Arc;
-use async_trait::async_trait;
-
-use crate::{server::Server, transport::ws::{CanSink, SinkHalf}, util::GracefulShutdown};
 
 cfg_if! {
     if #[cfg(any(
@@ -34,7 +29,10 @@ cfg_if! {
             not(feature = "serde_bincode"),
         ),
     ))] {
+        use std::sync::Arc;
         use warp::{Filter, Reply, filters::BoxedFilter};
+
+        use crate::{server::Server};
         use crate::codec::DefaultCodec;
         use crate::server::start_broker_reader_writer;
 
