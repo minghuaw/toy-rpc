@@ -1,15 +1,12 @@
 //! WebSocket support for `warp`
+//! Separate implementation is required because `warp` has wrapped `tungstenite` types
 use warp::ws::{WebSocket, Message as WsMessage};
 use super::*;
 
 #[async_trait]
-impl PayloadRead for StreamHalf<SplitStream<WebSocket>, CanSink>
-// where
-//     S: Stream<Item = Result<warp::ws::Message, E>> + Send + Sync + Unpin,
-//     E: std::error::Error + 'static,
-{
+impl PayloadRead for StreamHalf<SplitStream<WebSocket>, CanSink> {
     async fn read_payload(&mut self) -> Option<Result<Vec<u8>, Error>> {
-        let msg = self.inner.next().await?;
+        let msg = self.next().await?;
         match msg {
             Err(e) => {
                 return Some(Err(Error::IoError(std::io::Error::new(
@@ -36,10 +33,9 @@ impl PayloadRead for StreamHalf<SplitStream<WebSocket>, CanSink>
 impl PayloadWrite for SinkHalf<SplitSink<WebSocket, WsMessage>, CanSink>
 {
     async fn write_payload(&mut self, payload: Vec<u8>) -> Result<(), Error> {
-        // let msg = WsMessage::Binary(payload.into());
         let msg = warp::ws::Message::binary(payload);
 
-        self.inner.send(msg)
+        self.send(msg)
             .await
             .map_err(|e| Error::Internal(Box::new(e)))
     }
@@ -51,7 +47,7 @@ impl GracefulShutdown for SinkHalf<SplitSink<WebSocket, WsMessage>, CanSink>
     async fn close(&mut self) {
         let msg = warp::ws::Message::close();
 
-        self.inner.send(msg)
+        self.send(msg)
             .await
             .map_err(|err| Error::Internal(Box::new(err)))
             .unwrap_or_else(|err| log::error!("{}", err))

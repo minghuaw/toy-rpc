@@ -7,6 +7,7 @@ use futures::{Sink, SinkExt, Stream, StreamExt};
 use futures::io::{AsyncRead, AsyncWrite};
 use tungstenite::Message as WsMessage;
 use async_tungstenite::WebSocketStream;
+use pin_project::pin_project;
 
 use std::{io::ErrorKind, marker::PhantomData};
 
@@ -32,15 +33,52 @@ pub struct WebSocketConn<S, N> {
 }
 
 /// A wrapper around a type that impls Stream
+#[pin_project]
 pub struct StreamHalf<S, Mode> {
+    #[pin]
     pub inner: S,
     pub can_sink: PhantomData<Mode>,
 }
 
+impl<S: Stream> Stream for StreamHalf<S, CanSink> {
+    type Item = S::Item;
+
+    fn poll_next(self: std::pin::Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> std::task::Poll<Option<Self::Item>> {
+        let this = self.project();
+        this.inner.poll_next(cx)
+    }
+}
+
 /// A wrapper around a type that impls Sink
+#[pin_project]
 pub struct SinkHalf<S, Mode> {
+    #[pin]
     pub inner: S,
     pub can_sink: PhantomData<Mode>,
+}
+
+impl<S: Sink<Item>, Item> Sink<Item> for SinkHalf<S, CanSink> {
+    type Error = S::Error;
+
+    fn poll_ready(self: std::pin::Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> std::task::Poll<Result<(), Self::Error>> {
+        let this = self.project();
+        this.inner.poll_ready(cx)
+    }
+
+    fn start_send(self: std::pin::Pin<&mut Self>, item: Item) -> Result<(), Self::Error> {
+        let this = self.project();
+        this.inner.start_send(item)
+    }
+
+    fn poll_flush(self: std::pin::Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> std::task::Poll<Result<(), Self::Error>> {
+        let this = self.project();
+        this.inner.poll_flush(cx)
+    }
+
+    fn poll_close(self: std::pin::Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> std::task::Poll<Result<(), Self::Error>> {
+        let this = self.project();
+        this.inner.poll_close(cx)
+    }
 }
 
 impl<S, E> WebSocketConn<S, CanSink>
@@ -74,11 +112,9 @@ where
 impl<T> PayloadRead for StreamHalf<SplitStream<WebSocketStream<T>>, CanSink>
 where
     T: AsyncRead + AsyncWrite + Send + Unpin,
-//     S: Stream<Item = Result<WsMessage, E>> + Send + Unpin,
-//     E: std::error::Error + 'static,
 {
     async fn read_payload(&mut self) -> Option<Result<Vec<u8>, Error>> {
-        match self.inner.next().await? {
+        match self.next().await? {
             Err(e) => {
                 return Some(Err(Error::IoError(std::io::Error::new(
                     ErrorKind::InvalidData,
@@ -105,14 +141,11 @@ where
 impl<T> PayloadWrite for SinkHalf<SplitSink<WebSocketStream<T>, WsMessage>, CanSink>
 where
     T: AsyncRead + AsyncWrite + Send + Unpin,
-    // S: Sink<WsMessage, Error = E> + Send + Sync + Unpin,
-    // E: std::error::Error + 'static,
 {
     async fn write_payload(&mut self, payload: Vec<u8>) -> Result<(), Error> {
         let msg = WsMessage::Binary(payload);
 
-        self.inner
-            .send(msg)
+        self.send(msg)
             .await
             .map_err(|e| Error::IoError(std::io::Error::new(ErrorKind::InvalidData, e.to_string())))
     }
@@ -123,14 +156,11 @@ where
 impl<T> GracefulShutdown for SinkHalf<SplitSink<WebSocketStream<T>, WsMessage>, CanSink>
 where
     T: AsyncRead + AsyncWrite + Send + Unpin,
-//     S: Sink<WsMessage, Error = E> + Send + Sync + Unpin,
-//     E: std::error::Error + 'static,
 {
     async fn close(&mut self) {
         let msg = WsMessage::Close(None);
 
         match self
-            .inner
             .send(msg)
             .await
             .map_err(|e| Error::IoError(std::io::Error::new(ErrorKind::InvalidData, e.to_string())))
