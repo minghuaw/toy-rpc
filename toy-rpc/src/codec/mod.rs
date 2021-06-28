@@ -268,7 +268,7 @@ where
 
 /// A codec that can read the header and body of a message
 #[async_trait]
-pub trait CodecRead: Unmarshal {
+pub trait CodecRead: Send + Unmarshal {
     /// Reads the header of the message.
     async fn read_header<H>(&mut self) -> Option<Result<H, Error>>
     where
@@ -280,7 +280,7 @@ pub trait CodecRead: Unmarshal {
 
 /// A codec that can write the header and body of a message
 #[async_trait]
-pub trait CodecWrite: Marshal {
+pub trait CodecWrite: Send + Marshal {
     /// Writes the header of the message
     async fn write_header<H>(&mut self, header: H) -> Result<(), Error>
     where

@@ -3,7 +3,7 @@ use futures::{sink::{Sink, SinkExt}};
 use brw::{Running, Reader};
 
 use crate::{
-    codec::{split::ServerCodecRead, RequestDeserializer}, 
+    codec::{CodecRead, RequestDeserializer}, 
     service::AsyncServiceMap,
     message::{
         ExecutionMessage, ExecutionResult, MessageId, CANCELLATION_TOKEN, 
@@ -14,12 +14,12 @@ use crate::{
 
 // use super::{preprocess_header, preprocess_request};
 
-pub(crate) struct ServerReader<T: ServerCodecRead>{
+pub(crate) struct ServerReader<T: CodecRead>{
     reader: T,
     services: Arc<AsyncServiceMap>,
 }
 
-impl<T: ServerCodecRead> ServerReader<T> {
+impl<T: CodecRead> ServerReader<T> {
     pub fn new(reader: T, services: Arc<AsyncServiceMap>) -> Self {
         Self {
             reader,
@@ -29,19 +29,19 @@ impl<T: ServerCodecRead> ServerReader<T> {
 }
 
 #[async_trait::async_trait]
-impl<T: ServerCodecRead> Reader for ServerReader<T> {
+impl<T: CodecRead> Reader for ServerReader<T> {
     type BrokerItem = ExecutionMessage;
     type Ok = ();
     type Error = Error;
 
     async fn op<B>(&mut self, mut broker: B) -> Running<Result<Self::Ok, Self::Error>>
     where B: Sink<Self::BrokerItem, Error = flume::SendError<Self::BrokerItem>> + Send + Unpin {
-        if let Some(header) = self.reader.read_request_header().await {
+        if let Some(header) = self.reader.read_header().await {
             let header = match header {
                 Ok(header) => header,
                 Err(err) => return Running::Continue(Err(err))
             };
-            let deserializer = match self.reader.read_request_body().await {
+            let deserializer = match self.reader.read_body().await {
                 Some(res) => {
                     match res {
                         Ok(de) => de,

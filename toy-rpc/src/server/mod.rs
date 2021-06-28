@@ -79,7 +79,7 @@ cfg_if! {
             feature = "serde_rmp",
         ))]
         pub(crate) async fn start_broker_reader_writer(
-            codec: impl crate::codec::split::SplittableServerCodec + 'static,
+            codec: impl crate::codec::split::SplittableCodec + 'static,
             services: Arc<AsyncServiceMap>
         ) -> Result<(), Error> {
             let (writer, reader) = codec.split();

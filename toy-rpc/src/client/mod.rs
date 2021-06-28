@@ -295,7 +295,7 @@ cfg_if! {
         use std::time::Duration;
 
         use crate::{
-            codec::split::SplittableClientCodec,
+            codec::split::SplittableCodec,
             message::{ClientRequestBody, RequestHeader},
         };
         use reader::*;
@@ -320,7 +320,7 @@ cfg_if! {
             #[cfg_attr(feature = "docs", doc(cfg(all(feature = "tokio_runtime", not(feature = "async_std_runtime")))))]
             pub fn with_codec<C>(codec: C) -> Client<Connected>
             where
-                C: SplittableClientCodec + Send + 'static,
+                C: SplittableCodec + Send + 'static,
             {
                 let (writer, reader) = codec.split();
                 let reader = ClientReader { reader };     

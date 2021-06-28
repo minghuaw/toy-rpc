@@ -44,7 +44,7 @@ cfg_if! {
 
         use crate::error::Error;
         use crate::transport::ws::WebSocketConn;
-        use crate::codec::split::SplittableServerCodec;
+        use crate::codec::split::SplittableCodec;
         use crate::codec::DefaultCodec;
 
         use super::{AsyncServiceMap, Server};
@@ -200,7 +200,7 @@ cfg_if! {
             #[cfg_attr(feature = "docs", doc(cfg(feature = "async_std_runtime")))]
             pub async fn serve_codec<C>(&self, codec: C) -> Result<(), Error>
             where
-                C: SplittableServerCodec + Send + 'static,
+                C: SplittableCodec + Send + 'static,
             {
                 super::start_broker_reader_writer(codec, self.services.clone()).await
             }
