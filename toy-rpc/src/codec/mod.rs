@@ -14,7 +14,6 @@ use tungstenite::Message as WsMessage;
 use crate::error::Error;
 use crate::message::{MessageId, Metadata, RequestHeader, ResponseHeader};
 use crate::transport::ws::{CanSink, SinkHalf, StreamHalf, WebSocketConn};
-// use crate::util::GracefulShutdown;
 
 pub mod split;
 
@@ -167,7 +166,7 @@ cfg_if! {
     }
 }
 
-#[cfg(any(feature = "async_std_runtime", feature = "tokio_runtime"))]
+// #[cfg(any(feature = "async_std_runtime", feature = "tokio_runtime"))]
 /// type state for AsyncRead and AsyncWrite connections (ie. raw TCP)
 pub(crate) struct ConnTypeReadWrite {}
 

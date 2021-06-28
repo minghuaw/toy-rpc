@@ -85,6 +85,16 @@ pub enum Header {
 pub(crate) type OutboundBody = Box<dyn erased_serde::Serialize + Send + Sync>;
 pub(crate) type InboundBody = Box<dyn erased_serde::Deserializer<'static> + Send>;
 
+pub(crate) struct InboundMessage {
+    header: Header,
+    body: InboundBody
+}
+
+pub(crate) struct OutboundMessage {
+    header: Header,
+    body: OutboundBody,
+}
+
 #[cfg(test)]
 mod tests {
     use std::io::Cursor;

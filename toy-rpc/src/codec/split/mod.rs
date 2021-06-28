@@ -3,6 +3,8 @@
 use async_trait::async_trait;
 use std::marker::PhantomData;
 
+use crate::util::GracefulShutdown;
+
 use super::*;
 
 mod server;
@@ -183,7 +185,6 @@ cfg_if! {
         )
     ))] {
         use crate::transport::{PayloadRead, PayloadWrite};
-        use crate::util::GracefulShutdown;
 
         #[async_trait]
         impl<R, C> CodecRead for CodecReadHalf<R, C, ConnTypePayload>
@@ -257,5 +258,64 @@ cfg_if! {
                 self.writer.close().await;
             }
         }
+    }
+}
+
+/// Split a Codec into a writing half and a reading half
+pub trait SplittableCodec {
+    /// Type of the writing half
+    type Writer: CodecWrite + GracefulShutdown;
+    /// Type of the reading half
+    type Reader: CodecRead;
+
+    /// Split the codec into a writer and a reader
+    fn split(self) -> (Self::Writer, Self::Reader);
+}
+
+impl<R, W> SplittableCodec for Codec<R, W, ConnTypeReadWrite>
+where 
+    R: FrameRead + Send + Unpin,
+    W: FrameWrite + GracefulShutdown + Send + Unpin
+{
+    type Writer = CodecWriteHalf::<W, Self, ConnTypeReadWrite>;
+    type Reader = CodecReadHalf::<R, Self, ConnTypeReadWrite>;
+
+    fn split(self) -> (Self::Writer, Self::Reader) {
+        (
+            CodecWriteHalf::<W, Self, ConnTypeReadWrite> {
+                writer: self.writer,
+                marker: PhantomData,
+                conn_type: PhantomData,
+            },
+            CodecReadHalf::<R, Self, ConnTypeReadWrite> {
+                reader: self.reader,
+                marker: PhantomData,
+                conn_type: PhantomData
+            }
+        )
+    }
+}
+
+impl<R, W> SplittableCodec for Codec<R, W, ConnTypePayload>
+where 
+    R: PayloadRead + Send,
+    W: PayloadWrite + GracefulShutdown + Send,
+{
+    type Writer = CodecWriteHalf::<W, Self, ConnTypePayload>;
+    type Reader = CodecReadHalf::<R, Self, ConnTypePayload>;
+
+    fn split(self) -> (Self::Writer, Self::Reader) {
+        (
+            CodecWriteHalf::<W, Self, ConnTypePayload> {
+                writer: self.writer,
+                marker: PhantomData,
+                conn_type: PhantomData,
+            },
+            CodecReadHalf::<R, Self, ConnTypePayload> {
+                reader: self.reader,
+                marker: PhantomData,
+                conn_type: PhantomData
+            }
+        )
     }
 }
