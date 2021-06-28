@@ -166,7 +166,7 @@ cfg_if! {
     }
 }
 
-// #[cfg(any(feature = "async_std_runtime", feature = "tokio_runtime"))]
+#[cfg(any(feature = "async_std_runtime", feature = "tokio_runtime"))]
 /// type state for AsyncRead and AsyncWrite connections (ie. raw TCP)
 pub(crate) struct ConnTypeReadWrite {}
 
@@ -247,7 +247,7 @@ impl
 
 #[cfg(all(feature = "http_warp"))]
 // warp websocket
-impl<S, E> Codec<SplitStream<S>, SplitSink<S, warp::ws::Message>, ConnTypePayload>
+impl<S, E> Codec<StreamHalf<SplitStream<S>, CanSink>, SinkHalf<SplitSink<S, warp::ws::Message>, CanSink>, ConnTypePayload>
 where
     S: Stream<Item = Result<warp::ws::Message, E>> + Sink<warp::ws::Message>,
     E: std::error::Error,
@@ -257,6 +257,14 @@ where
     pub fn with_warp_websocket(ws: S) -> Self {
         use futures::StreamExt;
         let (writer, reader) = ws.split();
+        let writer = SinkHalf::<_, CanSink> {
+            inner: writer,
+            can_sink: PhantomData
+        };
+        let reader = StreamHalf::<_, CanSink> {
+            inner: reader,
+            can_sink: PhantomData
+        };
 
         Self {
             reader,

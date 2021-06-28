@@ -4,7 +4,10 @@ use async_trait::async_trait;
 use cfg_if::cfg_if;
 use futures::stream::{SplitSink, SplitStream};
 use futures::{Sink, SinkExt, Stream, StreamExt};
+use futures::io::{AsyncRead, AsyncWrite};
 use tungstenite::Message as WsMessage;
+use async_tungstenite::WebSocketStream;
+use pin_project::pin_project;
 
 use std::{io::ErrorKind, marker::PhantomData};
 
@@ -29,14 +32,16 @@ pub struct WebSocketConn<S, N> {
     can_sink: PhantomData<N>,
 }
 
+/// A wrapper around a type that impls Stream
 pub struct StreamHalf<S, Mode> {
-    inner: S,
-    can_sink: PhantomData<Mode>,
+    pub inner: S,
+    pub can_sink: PhantomData<Mode>,
 }
 
+/// A wrapper around a type that impls Sink
 pub struct SinkHalf<S, Mode> {
-    inner: S,
-    can_sink: PhantomData<Mode>,
+    pub inner: S,
+    pub can_sink: PhantomData<Mode>,
 }
 
 impl<S, E> WebSocketConn<S, CanSink>
@@ -67,10 +72,11 @@ where
 }
 
 #[async_trait]
-impl<S, E> PayloadRead for StreamHalf<S, CanSink>
+impl<T> PayloadRead for StreamHalf<SplitStream<WebSocketStream<T>>, CanSink>
 where
-    S: Stream<Item = Result<WsMessage, E>> + Send + Sync + Unpin,
-    E: std::error::Error + 'static,
+    T: AsyncRead + AsyncWrite + Send + Unpin,
+//     S: Stream<Item = Result<WsMessage, E>> + Send + Unpin,
+//     E: std::error::Error + 'static,
 {
     async fn read_payload(&mut self) -> Option<Result<Vec<u8>, Error>> {
         match self.inner.next().await? {
@@ -97,10 +103,11 @@ where
 }
 
 #[async_trait]
-impl<S, E> PayloadWrite for SinkHalf<S, CanSink>
+impl<T> PayloadWrite for SinkHalf<SplitSink<WebSocketStream<T>, WsMessage>, CanSink>
 where
-    S: Sink<WsMessage, Error = E> + Send + Sync + Unpin,
-    E: std::error::Error + 'static,
+    T: AsyncRead + AsyncWrite + Send + Unpin,
+    // S: Sink<WsMessage, Error = E> + Send + Sync + Unpin,
+    // E: std::error::Error + 'static,
 {
     async fn write_payload(&mut self, payload: Vec<u8>) -> Result<(), Error> {
         let msg = WsMessage::Binary(payload);
@@ -114,10 +121,11 @@ where
 
 // GracefulShutdown is only required on the client side.
 #[async_trait]
-impl<S, E> GracefulShutdown for SinkHalf<S, CanSink>
+impl<T> GracefulShutdown for SinkHalf<SplitSink<WebSocketStream<T>, WsMessage>, CanSink>
 where
-    S: Sink<WsMessage, Error = E> + Send + Sync + Unpin,
-    E: std::error::Error + 'static,
+    T: AsyncRead + AsyncWrite + Send + Unpin,
+//     S: Sink<WsMessage, Error = E> + Send + Sync + Unpin,
+//     E: std::error::Error + 'static,
 {
     async fn close(&mut self) {
         let msg = WsMessage::Close(None);
