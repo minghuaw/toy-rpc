@@ -88,7 +88,7 @@ impl brw::Broker for ClientBroker {
                     #[cfg(all(feature = "tokio_runtime", not(feature = "async_std_runtime")))]
                     let res = ::tokio::time::timeout(duration, fut).await;
                     #[cfg(all(feature = "async_std_runtime", not(feature = "tokio_runtime")))]
-                    let res = ::async_std::future::timeout(timeout, fut).await;
+                    let res = ::async_std::future::timeout(duration, fut).await;
 
                     let res = match res {
                         Ok(res) => res,
