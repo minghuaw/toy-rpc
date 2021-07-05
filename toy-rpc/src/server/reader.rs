@@ -49,6 +49,19 @@ impl<T: CodecRead> ServerReader<T> {
             }
         }
     }
+
+    async fn handle_cancel(
+        &mut self,
+        id: MessageId,
+        mut deserializer: Box<InboundBody>,
+    ) -> Result<(), Error> {
+        let token: String = erased_serde::deserialize(&mut deserializer)?;
+        if is_correct_cancellation_token(id, &token) {
+            Ok(())
+        } else {
+            Err(Error::InvalidArgument)
+        }
+    }
 }
 
 #[async_trait::async_trait]
@@ -109,7 +122,23 @@ impl<T: CodecRead> Reader for ServerReader<T> {
                     unimplemented!() // The server should not receive response
                 },
                 Header::Cancel(id) => {
-                    unimplemented!()
+                    match self.handle_cancel(id, deserializer).await {
+                        Ok(_) => {
+                            let msg = ExecutionMessage::Cancel(id);
+                            Running::Continue(
+                                broker.send(msg).await
+                                    .map_err(|err| err.into())
+                            )
+                        },
+                        Err(err) => {
+                            let result = ExecutionResult{id, result: Err(err)};
+                            let msg = ExecutionMessage::Result(result);
+                            Running::Continue(
+                                broker.send(msg).await
+                                    .map_err(|err| err.into())
+                            )
+                        }
+                    }
                 },
                 Header::Publish{id, topic} => {
                     unimplemented!()
@@ -265,17 +294,17 @@ impl<T: CodecRead> Reader for ServerReader<T> {
 //     }
 // }
 
-// fn is_correct_cancellation_token(id: MessageId, token: &str) -> bool {
-//     match token.find(CANCELLATION_TOKEN_DELIM) {
-//         Some(ind) => {
-//             let base = &token[..ind];
-//             let id_str = &token[ind + 1..];
-//             let _id: MessageId = match id_str.parse() {
-//                 Ok(num) => num,
-//                 Err(_) => return false,
-//             };
-//             base == CANCELLATION_TOKEN && _id == id
-//         }
-//         None => false,
-//     }
-// }
+fn is_correct_cancellation_token(id: MessageId, token: &str) -> bool {
+    match token.find(CANCELLATION_TOKEN_DELIM) {
+        Some(ind) => {
+            let base = &token[..ind];
+            let id_str = &token[ind + 1..];
+            let _id: MessageId = match id_str.parse() {
+                Ok(num) => num,
+                Err(_) => return false,
+            };
+            base == CANCELLATION_TOKEN && _id == id
+        }
+        None => false,
+    }
+}
