@@ -1,6 +1,7 @@
 //! RPC Client impementation
 
 use cfg_if::cfg_if;
+use crossbeam::atomic::AtomicCell;
 use flume::Sender;
 use futures::{channel::oneshot, Future};
 use std::{
@@ -9,10 +10,8 @@ use std::{
     task::{Context, Poll},
 };
 
-use crate::{
-    message::{AtomicMessageId, ClientResponseResult, MessageId},
-    Error,
-};
+use crate::{Error, message::{AtomicMessageId, MessageId}, protocol::OutboundBody};
+use crate::protocol::{InboundBody, Header};
 
 mod broker;
 mod reader;
@@ -20,14 +19,7 @@ mod writer;
 
 use broker::*;
 
-cfg_if! {
-    if #[cfg(any(
-        all(feature = "async_std_runtime", not(feature = "tokio_runtime")),
-        all(feature = "tokio_runtime", not(feature = "async_std_runtime"))
-    ))] {
-    }
-}
-
+const DEFAULT_TIMEOUT_SECONDS: u64 = 10;
 
 cfg_if! {
     if #[cfg(any(
@@ -176,7 +168,7 @@ pub struct Call<Res> {
     id: MessageId,
     cancel: Sender<broker::ClientBrokerItem>,
     #[pin]
-    done: oneshot::Receiver<Result<ClientResponseResult, Error>>,
+    done: oneshot::Receiver<Result<Result<Box<InboundBody>, Box<InboundBody>>, Error>>,
     marker: PhantomData<Res>,
 }
 
@@ -213,7 +205,7 @@ where
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         let this = self.project();
-        let done: Pin<&mut oneshot::Receiver<Result<ClientResponseResult, Error>>> = this.done;
+        let done: Pin<&mut oneshot::Receiver<Result<Result<Box<InboundBody>, Box<InboundBody>>, Error>>> = this.done;
 
         match done.poll(cx) {
             Poll::Pending => Poll::Pending,
@@ -255,6 +247,7 @@ pub struct Connected {}
 )]
 pub struct Client<Mode> {
     count: AtomicMessageId,
+    timeout: AtomicCell<Duration>,
     broker: Sender<ClientBrokerItem>,
     marker: PhantomData<Mode>,
 }
@@ -296,7 +289,7 @@ cfg_if! {
 
         use crate::{
             codec::split::SplittableCodec,
-            message::{ClientRequestBody, RequestHeader},
+            // message::{ClientRequestBody, RequestHeader},
         };
         use reader::*;
         use writer::*;
@@ -334,6 +327,7 @@ cfg_if! {
 
                 Client::<Connected> {
                     count: AtomicMessageId::new(0),
+                    timeout: AtomicCell::new(Duration::from_secs(DEFAULT_TIMEOUT_SECONDS)),
                     broker,
                     marker: PhantomData,
                 }
@@ -355,9 +349,9 @@ cfg_if! {
             #[cfg_attr(feature = "docs", doc(cfg(all(feature = "async_std_runtime", not(feature = "tokio_runtime")))))]
             #[cfg_attr(feature = "docs", doc(cfg(all(feature = "tokio_runtime", not(feature = "async_std_runtime")))))]
             pub fn timeout(&self, duration: Duration) -> &Self {
-                self.broker.send(ClientBrokerItem::SetTimeout(duration))
-                    .unwrap_or_else(|err| log::error!("{:?}", err));
-                // self.timeout.store(Some(duration));
+                // self.broker.send(ClientBrokerItem::SetTimeout(duration))
+                //     .unwrap_or_else(|err| log::error!("{:?}", err));
+                self.timeout.store(duration);
                 &self
             }
 
@@ -437,13 +431,16 @@ cfg_if! {
                 // Prepare RPC request
                 let id = self.count.fetch_add(1, Ordering::Relaxed);
                 let service_method = service_method.to_string();
-                let header = RequestHeader { id, service_method };
-                let body = Box::new(args) as ClientRequestBody;
+                let duration = self.timeout.load();
+                // let header = Header::Request { id, service_method, timeout};
+                let body = Box::new(args) as Box<OutboundBody>;
                 let (resp_tx, resp_rx) = oneshot::channel();
 
                 if let Err(err) = self.broker.send(
                     ClientBrokerItem::Request{
-                        header,
+                        id,
+                        service_method,
+                        duration,
                         body,
                         resp_tx,
                     }

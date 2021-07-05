@@ -16,9 +16,10 @@ cfg_if! {
 
         use super::*;
         use crate::codec::split::{SplittableCodec};
-        use crate::codec::RequestDeserializer;
+        // use crate::codec::RequestDeserializer;
         use crate::codec::split::{CodecReadHalf, CodecWriteHalf};
         use crate::util::GracefulShutdown;
+        use crate::protocol::InboundBody;
 
         #[async_trait]
         impl<R, C> CodecRead for CodecReadHalf<R, C, ConnTypeReadWrite>
@@ -48,7 +49,7 @@ cfg_if! {
 
             async fn read_body(
                 &mut self
-            ) -> Option<Result<RequestDeserializer, Error>> {
+            ) -> Option<Result<Box<InboundBody>, Error>> {
                 let mut buf = String::new();
                 match self.reader.read_line(&mut buf).await {
                     Ok(n) => {

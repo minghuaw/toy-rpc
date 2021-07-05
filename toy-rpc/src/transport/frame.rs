@@ -192,6 +192,8 @@ impl<R: AsyncRead + Unpin + Send> FrameRead for R {
             Err(e) => return Some(Err(e)),
         };
 
+        log::debug!("{:?}", &header);
+
         // determine if end frame is received
         if let PayloadType::Trailer = header.payload_type.into() {
             if header.frame_id == END_FRAME_ID && header.message_id == 0 && header.payload_len == 0
@@ -238,6 +240,8 @@ impl<W: AsyncWrite + Unpin + Send> FrameWrite for W {
         // construct frame header
         let header = FrameHeader::new(message_id, frame_id, payload_type, payload.len() as u32);
 
+        log::debug!("{:?}", &header);
+
         // write magic first
         self.write_all(&[MAGIC]).await?;
 
@@ -247,6 +251,8 @@ impl<W: AsyncWrite + Unpin + Send> FrameWrite for W {
         // write payload
         let _ = self.write_all(&payload).await?;
         self.flush().await?;
+
+        log::debug!("End sending");
 
         Ok(())
     }

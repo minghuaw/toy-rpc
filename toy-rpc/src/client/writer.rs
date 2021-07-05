@@ -7,22 +7,29 @@ cfg_if!{
         all(feature = "async_std_runtime", not(feature = "tokio_runtime")),
         all(feature = "tokio_runtime", not(feature = "async_std_runtime"))
     ))] {
-        use std::time::Duration;
+        // use std::time::Duration;
         use async_trait::async_trait;
         use brw::Running;
 
-        use crate::message::{ClientRequestBody, MessageId, RequestHeader};
+        use crate::message::{MessageId, 
+            // RequestHeader
+        };
 
         use crate::{
             Error, codec::CodecWrite, 
             message::{
-                TIMEOUT_TOKEN, CANCELLATION_TOKEN, CANCELLATION_TOKEN_DELIM, TimeoutRequestBody
+                // TIMEOUT_TOKEN, TimeoutRequestBody
+                CANCELLATION_TOKEN, CANCELLATION_TOKEN_DELIM, 
+            },
+            protocol::{
+                Header, OutboundBody
             }
         };
 
         pub enum ClientWriterItem {
-            Timeout(MessageId, Duration),
-            Request(RequestHeader, ClientRequestBody),
+            // Timeout(MessageId, Duration),
+            // Request(RequestHeader, ClientRequestBody),
+            Request(Header, Box<OutboundBody>),
             Cancel(MessageId),
             Stop,
         }
@@ -34,9 +41,10 @@ cfg_if!{
         impl<W: CodecWrite> ClientWriter<W> {
             pub async fn write_request(
                 &mut self,
-                header: RequestHeader,
-                body: &(dyn erased_serde::Serialize + Send + Sync)
+                header: Header,
+                body: &(dyn erased_serde::Serialize + Send + Sync),
             ) -> Result<(), Error> {
+                log::debug!("{:?}", &header);
                 let id = header.get_id();
                 self.writer.write_header(header).await?;
                 self.writer.write_body(&id, body).await
@@ -51,27 +59,24 @@ cfg_if!{
         
             async fn op(&mut self, item: Self::Item) -> Running<Result<Self::Ok, Self::Error>> {
                 let res = match item {
-                    ClientWriterItem::Timeout(id, dur) => {
-                        let timeout_header = RequestHeader {
-                            id,
-                            service_method: TIMEOUT_TOKEN.into()
-                        };
-                        let timeout_body = Box::new(
-                            TimeoutRequestBody::new(dur)
-                        ) as ClientRequestBody;
-                        self.write_request(timeout_header, &timeout_body).await
-                    },
+                    // ClientWriterItem::Timeout(id, dur) => {
+                    //     let timeout_header = RequestHeader {
+                    //         id,
+                    //         service_method: TIMEOUT_TOKEN.into()
+                    //     };
+                    //     let timeout_body = Box::new(
+                    //         TimeoutRequestBody::new(dur)
+                    //     ) as ClientRequestBody;
+                    //     self.write_request(timeout_header, &timeout_body).await
+                    // },
                     ClientWriterItem::Request(header, body) => {
                         self.write_request(header, &body).await
                     },
                     ClientWriterItem::Cancel(id) => {
-                        let header = RequestHeader {
-                            id,
-                            service_method: CANCELLATION_TOKEN.into(),
-                        };
+                        let header = Header::Cancel(id);
                         let body: String =
                             format!("{}{}{}", CANCELLATION_TOKEN, CANCELLATION_TOKEN_DELIM, id);
-                        let body = Box::new(body) as ClientRequestBody;
+                        let body = Box::new(body) as Box<OutboundBody>;
                         self.write_request(header, &body).await
                     },
                     ClientWriterItem::Stop => {

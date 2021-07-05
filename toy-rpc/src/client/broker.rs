@@ -16,18 +16,20 @@ cfg_if!{
     }
 }
 
-use crate::{Error, message::{ClientRequestBody, ClientResponseResult, MessageId, RequestHeader}};
+use crate::{Error, message::{MessageId}, protocol::{InboundBody, OutboundBody, Header}};
 
 
 #[cfg_attr(all(not(feature = "tokio_runtime"), not(feature = "async_std_runtime")), allow(dead_code))]
 pub enum ClientBrokerItem {
-    SetTimeout(Duration),
+    // SetTimeout(Duration),
     Request{
-        header: RequestHeader, 
-        body: ClientRequestBody, 
-        resp_tx: oneshot::Sender<Result<ClientResponseResult, Error>>,
+        id: MessageId,
+        service_method: String,
+        duration: Duration,
+        body: Box<OutboundBody>, 
+        resp_tx: oneshot::Sender<Result<Result<Box<InboundBody>, Box<InboundBody>>, Error>>,
     },
-    Response(MessageId, ClientResponseResult),
+    Response(MessageId, Result<Box<InboundBody>, Box<InboundBody>>),
     Cancel(MessageId),
     Stop,
 }
@@ -42,7 +44,7 @@ use ::async_std::task::{self};
     all(feature = "async_std_runtime", not(feature = "tokio_runtime"))
 ))]
 pub struct ClientBroker {
-    pub pending: HashMap<MessageId, oneshot::Sender<Result<ClientResponseResult, Error>>>,
+    pub pending: HashMap<MessageId, oneshot::Sender<Result<Result<Box<InboundBody>, Box<InboundBody>>, Error>>>,
     pub next_timeout: Option<Duration>
 }
 
@@ -60,57 +62,94 @@ impl brw::Broker for ClientBroker {
     async fn op<W>(&mut self, _: &Arc<Context<Self::Item>>, item: Self::Item, mut writer: W) -> Running<Result<Self::Ok, Self::Error>>
     where W: Sink<Self::WriterItem, Error = flume::SendError<Self::WriterItem>> + Send + Unpin {
         let res = match item {
-            ClientBrokerItem::SetTimeout(dur) => {
-                self.next_timeout = Some(dur);
-                Ok(())
-            },
+            // ClientBrokerItem::SetTimeout(dur) => {
+            //     self.next_timeout = Some(dur);
+            //     Ok(())
+            // },
             ClientBrokerItem::Request{
-                header,
+                id,
+                service_method,
+                duration,
                 body,
                 resp_tx,
             } => {
-                let id = header.id;
                 let (tx, rx) = oneshot::channel();
                 let fut = async move {
-                    // Takes care of receiving/cancel error
+                    // takes care of receiving/cancel  error
                     match rx.await {
                         Ok(res) => res,
                         Err(_) => Err(Error::Canceled(Some(id)))
                     }
                 };
-                if let Some(dur) = self.next_timeout.take() {
-                    if let Err(err) = writer.send(ClientWriterItem::Timeout(id, dur)).await {
-                        return Running::Continue(Err(err.into()))
-                    }
-
-                    task::spawn(async move {
-                        #[cfg(all(feature = "tokio_runtime", not(feature = "async_std_runtime")))]
-                        let res = ::tokio::time::timeout(dur, fut).await;
-                        #[cfg(all(feature = "async_std_runtime", not(feature = "tokio_runtime")))]
-                        let res = ::async_std::future::timeout(dur, fut).await;
-
-                        let res = match res {
-                            Ok(res) => res,
-                            Err(_) => {
-                                resp_tx.send(Err(Error::Timeout(Some(id))))
-                                    .unwrap_or_else(|_| log::error!("Error sending over response sender"));
-                                return
-                            }
-                        };
-                        resp_tx.send(res)
-                            .unwrap_or_else(|_| log::error!("Error sending over response sender"));
-                    });
-                } else {
-                    task::spawn(async move {
-                        let res = fut.await;
-                        resp_tx.send(res)
-                            .unwrap_or_else(|_| log::error!("Error sending over response sender"));
-                    });
-                }
+                let header = Header::Request{ id, service_method, timeout: duration };
                 let res = writer.send(ClientWriterItem::Request(header, body)).await;
-                self.pending.insert(id, tx);
 
+                task::spawn(async move {
+                    #[cfg(all(feature = "tokio_runtime", not(feature = "async_std_runtime")))]
+                    let res = ::tokio::time::timeout(duration, fut).await;
+                    #[cfg(all(feature = "async_std_runtime", not(feature = "tokio_runtime")))]
+                    let res = ::async_std::future::timeout(timeout, fut).await;
+
+                    let res = match res {
+                        Ok(res) => res,
+                        Err(_) => {
+                            resp_tx.send(Err(Error::Timeout(Some(id))))
+                                .unwrap_or_else(|_| log::error!("Error sending over response sender"));
+                            return
+                        }
+                    };
+                    resp_tx.send(res)
+                        .unwrap_or_else(|_| log::error!("Error sending over response sender"));
+                });
+
+                self.pending.insert(id, tx);
                 res.map_err(|err| err.into())
+
+
+                // let id = header.id;
+                // let (tx, rx) = oneshot::channel();
+                // let fut = async move {
+                //     // Takes care of receiving/cancel error
+                //     match rx.await {
+                //         Ok(res) => res,
+                //         Err(_) => Err(Error::Canceled(Some(id)))
+                //     }
+                // };
+                // if let Some(dur) = self.next_timeout.take() {
+                //     // if let Err(err) = writer.send(ClientWriterItem::Timeout(id, dur)).await {
+                //     //     return Running::Continue(Err(err.into()))
+                //     // }
+                //     let res = writer.send(ClientWriterItem::Request(header, body)).await;
+
+                    
+                //     task::spawn(async move {
+                //         #[cfg(all(feature = "tokio_runtime", not(feature = "async_std_runtime")))]
+                //         let res = ::tokio::time::timeout(dur, fut).await;
+                //         #[cfg(all(feature = "async_std_runtime", not(feature = "tokio_runtime")))]
+                //         let res = ::async_std::future::timeout(dur, fut).await;
+
+                //         let res = match res {
+                //             Ok(res) => res,
+                //             Err(_) => {
+                //                 resp_tx.send(Err(Error::Timeout(Some(id))))
+                //                     .unwrap_or_else(|_| log::error!("Error sending over response sender"));
+                //                 return
+                //             }
+                //         };
+                //         resp_tx.send(res)
+                //             .unwrap_or_else(|_| log::error!("Error sending over response sender"));
+                //     });
+
+                //     self.pending.insert(id, tx);
+                //     res.map_err(|err| err.into())
+                // } else {
+                //     // task::spawn(async move {
+                //     //     let res = fut.await;
+                //     //     resp_tx.send(res)
+                //     //         .unwrap_or_else(|_| log::error!("Error sending over response sender"));
+                //     // });
+                //     panic!("There should always be a timeout");
+                // }
             },
             ClientBrokerItem::Response(id , res) => {
                 if let Some(tx) = self.pending.remove(&id) {

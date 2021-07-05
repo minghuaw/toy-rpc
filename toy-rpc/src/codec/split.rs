@@ -102,6 +102,8 @@ cfg_if! {
             {
                 let reader = &mut self.reader;
 
+                log::debug!("Reading header");
+
                 Some(
                     reader
                         .read_frame()
@@ -112,7 +114,7 @@ cfg_if! {
 
             async fn read_body(
                 &mut self,
-            ) -> Option<Result<RequestDeserializer, Error>> {
+            ) -> Option<Result<Box<InboundBody>, Error>> {
                 let reader = &mut self.reader;
 
                 match reader.read_frame().await? {
@@ -243,7 +245,7 @@ cfg_if! {
 
             async fn read_body(
                 &mut self,
-            ) -> Option<Result<RequestDeserializer, Error>> {
+            ) -> Option<Result<Box<InboundBody>, Error>> {
                 let reader = &mut self.reader;
 
                 match reader.read_payload().await? {

@@ -22,11 +22,11 @@ async fn run() {
     let reply: Result<i32, _> = client.call("Echo.echo_i32", 1313i32).await;
     println!("{:?}", reply);
 
-    println!("Calling finite loop");
-    let call: Call<()> = client.call("Echo.finite_loop", ());
-    time::sleep(Duration::from_secs(2)).await;
-    println!("Calling cancellation");
-    call.cancel();
+    // println!("Calling finite loop");
+    // let call: Call<()> = client.call("Echo.finite_loop", ());
+    // time::sleep(Duration::from_secs(2)).await;
+    // println!("Calling cancellation");
+    // call.cancel();
 
     // let call: Call<i32> = client.call("Echo.echo_i32", 13i32);
     let call = client.echo().echo_i32(13i32);

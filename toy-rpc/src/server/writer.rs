@@ -1,6 +1,8 @@
 use brw::{Running, Writer};
 
-use crate::{codec::CodecWrite, error::Error, message::{ErrorMessage, ExecutionResult, ResponseHeader}};
+use crate::{codec::CodecWrite, error::Error, message::{ErrorMessage, ExecutionResult, Metadata}, protocol::OutboundBody};
+
+use crate::protocol::{Header};
 
 pub(crate) struct ServerWriter<W> {
     writer: W,
@@ -14,10 +16,11 @@ impl<W: CodecWrite> ServerWriter<W> {
 
     async fn write_response(
         &mut self,
-        header: ResponseHeader,
-        body: &(dyn erased_serde::Serialize + Send + Sync),
+        header: Header,
+        // body: &(dyn erased_serde::Serialize + Send + Sync),
+        body: &OutboundBody,
     ) -> Result<(), Error> {
-        let id = header.id;
+        let id = header.get_id();
         self.writer.write_header(header).await?;
         self.writer.write_body(&id, body).await
     }
@@ -28,15 +31,12 @@ impl<W: CodecWrite> ServerWriter<W> {
         match result {
             Ok(body) => {
                 log::trace!("Message {} Success", &id);
-                let header = ResponseHeader {
-                    id,
-                    is_error: false,
-                };
+                let header = Header::Response{ id, is_ok: true };
                 self.write_response(header, &body).await?;
             }
             Err(err) => {
                 log::trace!("Message {} Error", &id);
-                let header = ResponseHeader { id, is_error: true };
+                let header = Header::Response { id, is_ok: false };
                 let msg = ErrorMessage::from_err(err)?;
                 self.write_response(header, &msg).await?;
             }

@@ -14,11 +14,12 @@ use tungstenite::Message as WsMessage;
 use crate::error::Error;
 use crate::message::{MessageId, Metadata};
 
+use crate::protocol::InboundBody;
 use crate::transport::ws::{CanSink, SinkHalf, StreamHalf, WebSocketConn};
 
 pub mod split;
 
-pub(crate) type RequestDeserializer = Box<dyn erased::Deserializer<'static> + Send + 'static>;
+// pub(crate) type RequestDeserializer = Box<dyn erased::Deserializer<'static> + Send + 'static>;
 
 cfg_if! {
     if #[cfg(feature = "http_tide")] {
@@ -284,7 +285,7 @@ pub trait CodecRead: Send + Unmarshal {
         H: serde::de::DeserializeOwned;
 
     /// Reads the body of the message
-    async fn read_body(&mut self) -> Option<Result<RequestDeserializer, Error>>;
+    async fn read_body(&mut self) -> Option<Result<Box<InboundBody>, Error>>;
 }
 
 /// A codec that can write the header and body of a message

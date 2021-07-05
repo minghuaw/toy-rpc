@@ -2,7 +2,7 @@
 use std::time::Duration;
 use serde::{Serialize, Deserialize};
 
-use crate::message::MessageId;
+use crate::message::{MessageId, Metadata};
 
 /// Header of a message
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -59,7 +59,7 @@ pub enum Header {
         /// Topic of the queue
         topic: String,
         /// Number of times this message can be consumed
-        ticket: u32,
+        tickets: u32,
     },
 
     /// Reserved for a potential message queue like design
@@ -82,18 +82,34 @@ pub enum Header {
     }
 }
 
-pub(crate) type OutboundBody = Box<dyn erased_serde::Serialize + Send + Sync>;
-pub(crate) type InboundBody = Box<dyn erased_serde::Deserializer<'static> + Send>;
-
-pub(crate) struct InboundMessage {
-    header: Header,
-    body: InboundBody
+impl Metadata for Header {
+    fn get_id(&self) -> MessageId {
+        match self {
+            Self::Request{id, ..} => id.clone(),
+            Self::Response{id, ..} => id.clone(),
+            Self::Cancel(id) => id.clone(),
+            Self::Publish {id, ..} => id.clone(),
+            Self::Subscribe {id, ..} => id.clone(),
+            Self::Ack(id) => id.clone(),
+            Self::Produce {id, ..} => id.clone(),
+            Self::Consume {id, ..} => id.clone(),
+            Self::Ext {id, ..} => id.clone()
+        }
+    }
 }
 
-pub(crate) struct OutboundMessage {
-    header: Header,
-    body: OutboundBody,
-}
+pub(crate) type OutboundBody = dyn erased_serde::Serialize + Send + Sync;
+pub(crate) type InboundBody = dyn erased_serde::Deserializer<'static> + Send;
+
+// pub(crate) struct InboundMessage {
+//     header: Header,
+//     body: InboundBody
+// }
+
+// pub(crate) struct OutboundMessage {
+//     header: Header,
+//     body: OutboundBody,
+// }
 
 #[cfg(test)]
 mod tests {
