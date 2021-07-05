@@ -21,7 +21,6 @@ use crate::{Error, message::{MessageId}, protocol::{InboundBody, OutboundBody, H
 
 #[cfg_attr(all(not(feature = "tokio_runtime"), not(feature = "async_std_runtime")), allow(dead_code))]
 pub enum ClientBrokerItem {
-    // SetTimeout(Duration),
     Request{
         id: MessageId,
         service_method: String,
@@ -62,10 +61,6 @@ impl brw::Broker for ClientBroker {
     async fn op<W>(&mut self, _: &Arc<Context<Self::Item>>, item: Self::Item, mut writer: W) -> Running<Result<Self::Ok, Self::Error>>
     where W: Sink<Self::WriterItem, Error = flume::SendError<Self::WriterItem>> + Send + Unpin {
         let res = match item {
-            // ClientBrokerItem::SetTimeout(dur) => {
-            //     self.next_timeout = Some(dur);
-            //     Ok(())
-            // },
             ClientBrokerItem::Request{
                 id,
                 service_method,
@@ -104,52 +99,6 @@ impl brw::Broker for ClientBroker {
 
                 self.pending.insert(id, tx);
                 res.map_err(|err| err.into())
-
-
-                // let id = header.id;
-                // let (tx, rx) = oneshot::channel();
-                // let fut = async move {
-                //     // Takes care of receiving/cancel error
-                //     match rx.await {
-                //         Ok(res) => res,
-                //         Err(_) => Err(Error::Canceled(Some(id)))
-                //     }
-                // };
-                // if let Some(dur) = self.next_timeout.take() {
-                //     // if let Err(err) = writer.send(ClientWriterItem::Timeout(id, dur)).await {
-                //     //     return Running::Continue(Err(err.into()))
-                //     // }
-                //     let res = writer.send(ClientWriterItem::Request(header, body)).await;
-
-                    
-                //     task::spawn(async move {
-                //         #[cfg(all(feature = "tokio_runtime", not(feature = "async_std_runtime")))]
-                //         let res = ::tokio::time::timeout(dur, fut).await;
-                //         #[cfg(all(feature = "async_std_runtime", not(feature = "tokio_runtime")))]
-                //         let res = ::async_std::future::timeout(dur, fut).await;
-
-                //         let res = match res {
-                //             Ok(res) => res,
-                //             Err(_) => {
-                //                 resp_tx.send(Err(Error::Timeout(Some(id))))
-                //                     .unwrap_or_else(|_| log::error!("Error sending over response sender"));
-                //                 return
-                //             }
-                //         };
-                //         resp_tx.send(res)
-                //             .unwrap_or_else(|_| log::error!("Error sending over response sender"));
-                //     });
-
-                //     self.pending.insert(id, tx);
-                //     res.map_err(|err| err.into())
-                // } else {
-                //     // task::spawn(async move {
-                //     //     let res = fut.await;
-                //     //     resp_tx.send(res)
-                //     //         .unwrap_or_else(|_| log::error!("Error sending over response sender"));
-                //     // });
-                //     panic!("There should always be a timeout");
-                // }
             },
             ClientBrokerItem::Response(id , res) => {
                 if let Some(tx) = self.pending.remove(&id) {

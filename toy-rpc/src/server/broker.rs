@@ -16,9 +16,6 @@ use crate::{
     error::Error,
 };
 
-
-
-
 #[cfg(any(
     feature = "docs",
     all(feature = "tokio_runtime", not(feature = "async_std_runtime"))
@@ -160,11 +157,7 @@ fn handle_request(
     }
 }
 
-// #[cfg(any(
-//     feature = "docs",
-//     all(feature = "async_std_runtime", not(feature = "tokio_runtime")),
-//     all(feature = "tokio_runtime", not(feature = "async_std_runtime")),
-// ))] 
+// TODO: remove call without timeout
 pub(crate) async fn execute_call(
     id: MessageId,
     fut: impl Future<Output = HandlerResult>,
@@ -187,10 +180,6 @@ pub(crate) async fn execute_call(
     result
 }
 
-// #[cfg(any(
-//     all(feature = "async_std_runtime", not(feature = "tokio_runtime")),
-//     all(feature = "tokio_runtime", not(feature = "async_std_runtime")),
-// ))] 
 pub(crate) async fn execute_timed_call(
     id: MessageId,
     duration: Duration,

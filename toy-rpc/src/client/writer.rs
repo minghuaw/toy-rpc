@@ -7,19 +7,13 @@ cfg_if!{
         all(feature = "async_std_runtime", not(feature = "tokio_runtime")),
         all(feature = "tokio_runtime", not(feature = "async_std_runtime"))
     ))] {
-        // use std::time::Duration;
         use async_trait::async_trait;
         use brw::Running;
-
-        use crate::message::{MessageId, 
-            // RequestHeader
-        };
 
         use crate::{
             Error, codec::CodecWrite, 
             message::{
-                // TIMEOUT_TOKEN, TimeoutRequestBody
-                CANCELLATION_TOKEN, CANCELLATION_TOKEN_DELIM, 
+                CANCELLATION_TOKEN, CANCELLATION_TOKEN_DELIM, MessageId
             },
             protocol::{
                 Header, OutboundBody
@@ -27,8 +21,6 @@ cfg_if!{
         };
 
         pub enum ClientWriterItem {
-            // Timeout(MessageId, Duration),
-            // Request(RequestHeader, ClientRequestBody),
             Request(Header, Box<OutboundBody>),
             Cancel(MessageId),
             Stop,
@@ -59,16 +51,6 @@ cfg_if!{
         
             async fn op(&mut self, item: Self::Item) -> Running<Result<Self::Ok, Self::Error>> {
                 let res = match item {
-                    // ClientWriterItem::Timeout(id, dur) => {
-                    //     let timeout_header = RequestHeader {
-                    //         id,
-                    //         service_method: TIMEOUT_TOKEN.into()
-                    //     };
-                    //     let timeout_body = Box::new(
-                    //         TimeoutRequestBody::new(dur)
-                    //     ) as ClientRequestBody;
-                    //     self.write_request(timeout_header, &timeout_body).await
-                    // },
                     ClientWriterItem::Request(header, body) => {
                         self.write_request(header, &body).await
                     },

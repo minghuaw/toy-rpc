@@ -1,16 +1,13 @@
-use std::{sync::Arc, time::Duration};
+use std::{sync::Arc};
 use futures::{sink::{Sink, SinkExt}};
 use brw::{Running, Reader};
 
 use crate::{codec::{CodecRead}, error::Error, message::{
         ExecutionMessage, ExecutionResult, MessageId, CANCELLATION_TOKEN, 
-        CANCELLATION_TOKEN_DELIM, RequestType, TIMEOUT_TOKEN, TimeoutRequestBody, 
-        // RequestHeader
+        CANCELLATION_TOKEN_DELIM,
     }, service::{ArcAsyncServiceCall, AsyncServiceMap}};
 
 use crate::protocol::{InboundBody, Header};
-
-// use super::{preprocess_header, preprocess_request};
 
 pub(crate) struct ServerReader<T: CodecRead>{
     reader: T,
@@ -159,52 +156,6 @@ impl<T: CodecRead> Reader for ServerReader<T> {
                     unimplemented!()
                 }
             }
-
-            // match preprocess_header(&header) {
-            //     Ok(req_type) => {
-            //         match preprocess_request(&self.services, req_type, deserializer) {
-            //             Ok(msg) => {
-            //                 match broker.send(msg).await {
-            //                     Ok(_) => { },
-            //                     Err(err) => return Running::Continue(Err(err.into()))
-            //                 }
-            //             },
-            //             Err(err) => {
-            //                 log::error!("{}", err);
-            //                 match err {
-            //                     Error::ServiceNotFound => {
-            //                         let result = ExecutionResult {
-            //                             id: header.id,
-            //                             result: Err(Error::ServiceNotFound)
-            //                         };
-            //                         match broker.send(
-            //                             ExecutionMessage::Result(result)
-            //                         ).await{
-            //                             Ok(_) => { },
-            //                             Err(err) => return Running::Continue(Err(err.into()))
-            //                         };
-            //                     },
-            //                     _ => { }
-            //                 }
-            //             }
-            //         }
-            //     },
-            //     Err(err) => {
-            //         // the only error returned should be MethodNotFound,
-            //         // which should be sent back to client
-            //         let result = ExecutionResult {
-            //             id: header.id,
-            //             result: Err(err),
-            //         };
-            //         match broker.send(
-            //             ExecutionMessage::Result(result)
-            //         ).await {
-            //             Ok(_) => { },
-            //             Err(err) => return Running::Continue(Err(err.into()))
-            //         }
-            //     }
-            // }
-            // Running::Continue(Ok(()))
         } else {
             if broker.send(
                 ExecutionMessage::Stop
@@ -220,79 +171,6 @@ impl<T: CodecRead> Reader for ServerReader<T> {
         Running::Continue(())
     }
 }
-
-// pub(crate) fn preprocess_header(header: &Header) -> Result<RequestType, Error> {
-//     match header.service_method.rfind('.') {
-//         Some(pos) => {
-//             // split service and method
-//             let service = header.service_method[..pos].to_string();
-//             let method = header.service_method[pos + 1..].to_string();
-//             Ok(RequestType::Request{
-//                 id: header.id,
-//                 service,
-//                 method
-//             })
-//         },
-//         None => {
-//             // check for timeout request
-//             if header.service_method == TIMEOUT_TOKEN {
-//                 Ok(RequestType::Timeout(header.id))
-//             // check for cancellation request
-//             } else if header.service_method == CANCELLATION_TOKEN {
-//                 Ok(RequestType::Cancel(header.id))
-//             // Method is not provided
-//             } else {
-//                 Err(Error::MethodNotFound)
-//             }
-//         }
-//     }
-// }
-
-// pub(crate) fn preprocess_request<'a> (
-//     services: &AsyncServiceMap,
-//     req_type: RequestType,
-//     mut deserializer: RequestDeserializer
-// ) -> Result<ExecutionMessage, Error> {
-//     match req_type {
-//         RequestType::Timeout(id) => {
-//             let timeout_body: TimeoutRequestBody = erased_serde::deserialize(&mut deserializer)?;
-//             Ok(ExecutionMessage::TimeoutInfo(id, timeout_body.0))
-//         },
-//         RequestType::Cancel(id) => {
-//             let token: String = erased_serde::deserialize(&mut deserializer)?;
-//             if is_correct_cancellation_token(id, &token) {
-//                 Ok(ExecutionMessage::Cancel(id))
-//             } else {
-//                 // If the token is wrong, it should be considered as an InvalidArgument
-//                 Err(Error::InvalidArgument)
-//             }
-//         },
-//         RequestType::Request{
-//             id,
-//             service,
-//             method
-//         } => {
-//             log::trace!("Message id: {}, service: {}, method: {}", id, service, method);
-
-//             // look up the service
-//             match services.get(&service[..]) {
-//                 Some(call) => {
-//                     // send to executor
-//                     Ok(ExecutionMessage::Request {
-//                         call: call.clone(),
-//                         id: id,
-//                         method: method,
-//                         deserializer
-//                     })
-//                 },
-//                 None => {
-//                     log::error!("Service not found: {}", service);
-//                     Err(Error::ServiceNotFound)
-//                 }
-//             }
-//         }
-//     }
-// }
 
 fn is_correct_cancellation_token(id: MessageId, token: &str) -> bool {
     match token.find(CANCELLATION_TOKEN_DELIM) {
