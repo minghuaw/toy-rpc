@@ -3,11 +3,12 @@ use futures::{sink::{Sink, SinkExt}};
 use brw::{Running, Reader};
 
 use crate::{codec::{CodecRead}, error::Error, message::{
-        ExecutionMessage, ExecutionResult, MessageId, CANCELLATION_TOKEN, 
+        MessageId, CANCELLATION_TOKEN, 
         CANCELLATION_TOKEN_DELIM,
     }, service::{ArcAsyncServiceCall, AsyncServiceMap}};
 
 use crate::protocol::{InboundBody, Header};
+use super::broker::ServerBorkerItem;
 
 pub(crate) struct ServerReader<T: CodecRead>{
     reader: T,
@@ -63,7 +64,7 @@ impl<T: CodecRead> ServerReader<T> {
 
 #[async_trait::async_trait]
 impl<T: CodecRead> Reader for ServerReader<T> {
-    type BrokerItem = ExecutionMessage;
+    type BrokerItem = ServerBorkerItem;
     type Ok = ();
     type Error = Error;
 
@@ -88,14 +89,13 @@ impl<T: CodecRead> Reader for ServerReader<T> {
                 Header::Request{id, service_method, timeout} => {
                     match self.handle_request(service_method).await {
                         Ok((call, method)) => {
-                            let msg = ExecutionMessage::Request {
+                            let msg = ServerBorkerItem::Request {
                                 call,
                                 id,
                                 method,
+                                duration: timeout,
                                 deserializer
                             };
-                            broker.send(ExecutionMessage::TimeoutInfo(id, timeout)).await
-                                .unwrap_or_else(|err| log::error!("{}", err));
                             Running::Continue(
                                 broker.send(msg).await
                                     .map_err(|err| err.into())
@@ -103,11 +103,7 @@ impl<T: CodecRead> Reader for ServerReader<T> {
                         },
                         Err(err) => {
                             log::error!("{}", err);
-                            let err_msg = ExecutionResult {
-                                id,
-                                result: Err(err)
-                            };
-                            let msg = ExecutionMessage::Result(err_msg);
+                            let msg = ServerBorkerItem::Response{id, result: Err(err)};
                             Running::Continue(
                                 broker.send(msg).await
                                     .map_err(|err| err.into())
@@ -116,20 +112,20 @@ impl<T: CodecRead> Reader for ServerReader<T> {
                     }
                 },
                 Header::Response{id, is_ok} => {
-                    unimplemented!() // The server should not receive response
+                    log::error!("Server received Response {{id: {}, is_ok: {}}}", id, is_ok);
+                    Running::Continue(Ok(()))
                 },
                 Header::Cancel(id) => {
                     match self.handle_cancel(id, deserializer).await {
                         Ok(_) => {
-                            let msg = ExecutionMessage::Cancel(id);
+                            let msg = ServerBorkerItem::Cancel(id);
                             Running::Continue(
                                 broker.send(msg).await
                                     .map_err(|err| err.into())
                             )
                         },
                         Err(err) => {
-                            let result = ExecutionResult{id, result: Err(err)};
-                            let msg = ExecutionMessage::Result(result);
+                            let msg = ServerBorkerItem::Response{id, result: Err(err)};
                             Running::Continue(
                                 broker.send(msg).await
                                     .map_err(|err| err.into())
@@ -158,7 +154,7 @@ impl<T: CodecRead> Reader for ServerReader<T> {
             }
         } else {
             if broker.send(
-                ExecutionMessage::Stop
+                ServerBorkerItem::Stop
             ).await.is_ok() { }
             Running::Stop
         }

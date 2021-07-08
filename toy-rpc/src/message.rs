@@ -164,22 +164,5 @@ cfg_if! {
             /// Result of execution
             pub result: HandlerResult,
         }
-
-        /// Type of request for internal messaging
-        #[cfg(feature = "server")]
-        pub(crate) enum RequestType {
-            Timeout(MessageId),
-            /// Request
-            Request {
-                /// Request message id
-                id: MessageId,
-                /// Service name
-                service: String,
-                /// Method name
-                method: String,
-            },
-            /// Cancellation
-            Cancel(MessageId),
-        }
     }
 }

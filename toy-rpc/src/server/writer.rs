@@ -1,6 +1,6 @@
 use brw::{Running, Writer};
 
-use crate::{codec::CodecWrite, error::Error, message::{ErrorMessage, ExecutionResult, Metadata}, protocol::OutboundBody};
+use crate::{codec::CodecWrite, error::Error, message::{ErrorMessage, MessageId, Metadata}, protocol::OutboundBody, service::HandlerResult};
 
 use crate::protocol::{Header};
 
@@ -25,9 +25,7 @@ impl<W: CodecWrite> ServerWriter<W> {
         self.writer.write_body(&id, body).await
     }
 
-    async fn write_one_message(&mut self, result: ExecutionResult) -> Result<(), Error> {
-        let ExecutionResult { id, result } = result;
-
+    async fn write_one_message(&mut self, id: MessageId, result: HandlerResult) -> Result<(), Error> {
         match result {
             Ok(body) => {
                 log::trace!("Message {} Success", &id);
@@ -47,12 +45,12 @@ impl<W: CodecWrite> ServerWriter<W> {
 
 #[async_trait::async_trait]
 impl<W: CodecWrite> Writer for ServerWriter<W> {
-    type Item = ExecutionResult;
+    type Item = (MessageId, HandlerResult);
     type Ok = ();
     type Error = Error;
 
     async fn op(&mut self, item: Self::Item) -> Running<Result<Self::Ok, Self::Error>> {
-        let res = self.write_one_message(item).await;
+        let res = self.write_one_message(item.0, item.1).await;
         Running::Continue(res)
     }
 

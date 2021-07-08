@@ -8,11 +8,11 @@ use std::time::Duration;
 use std::collections::HashMap;
 use flume::Sender;
 
-use crate::service::HandlerResult;
-use crate::message::ExecutionResult;
+use crate::protocol::InboundBody;
+use crate::service::{ArcAsyncServiceCall, HandlerResult};
 
 use crate::{
-    message::{MessageId, ExecutionMessage},
+    message::{MessageId},
     error::Error,
 };
 
@@ -26,51 +26,64 @@ use ::async_std::task::JoinHandle;
 
 pub(crate) struct ServerBroker { 
     executions: HashMap<MessageId, JoinHandle<()>>,
-    durations: HashMap<MessageId, Duration>
 }
 
 impl ServerBroker {
     pub fn new() -> Self {
         Self {
             executions: HashMap::new(),
-            durations: HashMap::new(),
         }
     }
 }
 
+#[cfg_attr(feature = "http_actix_web", derive(actix::Message))]
+#[cfg_attr(feature = "http_actix_web", rtype(result = "()"))]
+pub(crate) enum ServerBorkerItem {
+    Request {
+        call: ArcAsyncServiceCall,
+        id: MessageId,
+        method: String,
+        duration: Duration,
+        deserializer: Box<InboundBody>,
+    },
+    Response {
+        id: MessageId,
+        result: HandlerResult
+    },
+    Cancel(MessageId),
+    Stop
+}
+
 #[async_trait::async_trait]
 impl Broker for ServerBroker {
-    type Item = ExecutionMessage;
-    type WriterItem = ExecutionResult;
+    type Item = ServerBorkerItem;
+    type WriterItem = (MessageId, HandlerResult);
     type Ok = ();
     type Error = Error;
 
     async fn op<W>(&mut self, ctx: & Arc<brw::Context<Self::Item>>, item: Self::Item, mut writer: W) -> Running<Result<Self::Ok, Self::Error>>
     where W: Sink<Self::WriterItem, Error = flume::SendError<Self::WriterItem>> + Send + Unpin {
         match item {
-            ExecutionMessage::TimeoutInfo(id, duration) => {
-                self.durations.insert(id, duration);
-                Running::Continue(Ok(()))
-            },
-            ExecutionMessage::Request{
+            ServerBorkerItem::Request{
                 call,
                 id,
                 method,
+                duration,
                 deserializer
             } => {
                 let fut = call(method, deserializer);
                 let _broker = ctx.broker.clone();
-                let handle = handle_request(_broker, &mut self.durations, id, fut);
+                let handle = handle_request(_broker, duration, id, fut);
                 self.executions.insert(id, handle);
                 Running::Continue(Ok(()))
             },
-            ExecutionMessage::Result(result) => {
-                self.executions.remove(&result.id);
-                let res: Result<(), Error> = writer.send(result).await
+            ServerBorkerItem::Response{id, result} => {
+                self.executions.remove(&id);
+                let res: Result<(), Error> = writer.send((id, result)).await
                     .map_err(|err| err.into());
                 Running::Continue(res)
             },
-            ExecutionMessage::Cancel(id) => {
+            ServerBorkerItem::Cancel(id) => {
                 if let Some(handle) = self.executions.remove(&id) {
                     #[cfg(all(feature = "tokio_runtime", not(feature = "async_std_runtime")))]
                     handle.abort();
@@ -80,7 +93,7 @@ impl Broker for ServerBroker {
 
                 Running::Continue(Ok(()))
             },
-            ExecutionMessage::Stop => {
+            ServerBorkerItem::Stop => {
                 for (_, handle) in self.executions.drain() {
                     log::debug!("Stopping execution as client is disconnected");
                     #[cfg(all(feature = "tokio_runtime", not(feature = "async_std_runtime")))]
@@ -95,69 +108,42 @@ impl Broker for ServerBroker {
     }
 }
 
-/// Spawn the execution in a task and return the JoinHandle
+/// Spawn the execution in a async_std task and return the JoinHandle
 #[cfg(all(
     feature = "async_std_runtime",
     not(feature = "tokio_runtime")
 ))]
 fn handle_request(
-    broker: Sender<ExecutionMessage>,
-    durations: &mut HashMap<MessageId, Duration>,
+    broker: Sender<ServerBorkerItem>,
+    duration: Duration,
     id: MessageId,
     fut: impl Future<Output=HandlerResult> + Send + 'static,
 ) -> ::async_std::task::JoinHandle<()> {
-    match durations.remove(&id) {
-        Some(duration) => {
-            ::async_std::task::spawn(async move {
-                let result = execute_timed_call(id, duration, fut).await;
-                let result = ExecutionResult { id, result };
-                broker.send_async(ExecutionMessage::Result(result)).await
-                    .unwrap_or_else(|e| log::error!("{}", e));
-            })
-        },
-        None => {
-            ::async_std::task::spawn(async move {
-                let result = execute_call(id, fut).await;
-                let result = ExecutionResult { id, result };
-                broker.send_async(ExecutionMessage::Result(result)).await
-                    .unwrap_or_else(|e| log::error!("{}", e));
-            })
-        }
-    }
+    ::async_std::task::spawn(async move {
+        let result = execute_timed_call(id, duration, fut).await;
+        broker.send_async(ServerBorkerItem::Response{id, result}).await
+            .unwrap_or_else(|e| log::error!("{}", e));
+    })
 }
 
-/// Spawn the execution in a task and return the JoinHandle
+/// Spawn the execution in a tokio task and return the JoinHandle
 #[cfg(all(
     feature = "tokio_runtime",
     not(feature = "async_std_runtime")
 ))]
 fn handle_request(
-    broker: Sender<ExecutionMessage>,
-    durations: &mut HashMap<MessageId, Duration>,
+    broker: Sender<ServerBorkerItem>,
+    duration: Duration,
     id: MessageId,
     fut: impl Future<Output=HandlerResult> + Send + 'static,
 ) -> ::tokio::task::JoinHandle<()> {
-    match durations.remove(&id) {
-        Some(duration) => {
-            ::tokio::task::spawn(async move {
-                let result = execute_timed_call(id, duration, fut).await;
-                let result = ExecutionResult { id, result };
-                broker.send_async(ExecutionMessage::Result(result)).await
-                    .unwrap_or_else(|e| log::error!("{}", e));
-            })
-        },
-        None => {
-            ::tokio::task::spawn(async move {
-                let result = execute_call(id, fut).await;
-                let result = ExecutionResult { id, result };
-                broker.send_async(ExecutionMessage::Result(result)).await
-                    .unwrap_or_else(|e| log::error!("{}", e));
-            })
-        }
-    }
+    ::tokio::task::spawn(async move {
+        let result = execute_timed_call(id, duration, fut).await;
+        broker.send_async(ServerBorkerItem::Response{id, result}).await
+            .unwrap_or_else(|e| log::error!("{}", e));
+    })
 }
 
-// TODO: remove call without timeout
 pub(crate) async fn execute_call(
     id: MessageId,
     fut: impl Future<Output = HandlerResult>,

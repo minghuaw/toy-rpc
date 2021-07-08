@@ -11,7 +11,7 @@ use std::{
 };
 
 use crate::{Error, message::{AtomicMessageId, MessageId}, protocol::OutboundBody};
-use crate::protocol::{InboundBody, Header};
+use crate::protocol::InboundBody;
 
 mod broker;
 mod reader;
