@@ -287,6 +287,7 @@ pub trait CodecRead: Send + Unmarshal {
     /// Reads the body of the message
     async fn read_body(&mut self) -> Option<Result<Box<InboundBody>, Error>>;
 
+    /// Reads the body as raw bytes
     async fn read_bytes(&mut self) -> Option<Result<Vec<u8>, Error>>;
 }
 

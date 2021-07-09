@@ -2,6 +2,7 @@
 
 use async_trait::async_trait;
 use std::collections::HashMap;
+use serde::{Serialize, de::DeserializeOwned};
 
 use crate::service::AsyncHandler;
 
@@ -71,4 +72,13 @@ impl<T: Send> Terminate for tokio::task::JoinHandle<T> {
     async fn terminate(self) {
         self.abort();
     }
+}
+
+/// Trait for PubSub Topic
+pub trait Topic {
+    /// Message type of the topic
+    type Item: Serialize + DeserializeOwned + Send + Sync + 'static;
+
+    /// Name of the topic
+    fn topic() -> String;
 }

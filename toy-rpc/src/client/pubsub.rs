@@ -1,7 +1,6 @@
 //! PubSub support
 
 use flume::{Receiver, Sender};
-use serde::{Serialize, de::DeserializeOwned};
 use futures::{Stream, Sink};
 use flume::r#async::{SendSink,RecvStream};
 use std::marker::PhantomData;
@@ -11,30 +10,28 @@ use pin_project::pin_project;
 
 use crate::protocol::{InboundBody, OutboundBody};
 use crate::error::Error;
+use crate::util::Topic;
 
-/// Trait for a topic
-pub trait Topic {
-    /// Message type of the topic
-    type Item: Serialize + DeserializeOwned + Send + Sync + 'static;
+use super::broker::ClientBrokerItem;
 
-    /// Name of the topic
-    fn topic() -> String;
-}
-
+/// Publisher of topic T
 #[pin_project]
 pub struct Publisher<T> 
 where 
     T: Topic,
 {
     #[pin]
-    inner: SendSink<'static, Box<OutboundBody>>,
+    inner: SendSink<'static, ClientBrokerItem>,
     marker: PhantomData<T>
 }
 
-impl<T: Topic> Publisher<T> {
-    pub fn from_sender(tx: Sender<Box<OutboundBody>>) -> Self {
+impl<T> From<Sender<ClientBrokerItem>> for Publisher<T> 
+where 
+    T: Topic
+{
+    fn from(inner: Sender<ClientBrokerItem>) -> Self {
         Self {
-            inner: tx.into_sink(),
+            inner: inner.into_sink(),
             marker: PhantomData
         }
     }
@@ -43,6 +40,7 @@ impl<T: Topic> Publisher<T> {
 impl<T> Sink<T::Item> for Publisher<T> 
 where 
     T: Topic,
+    // S: Sink<ClientBrokerItem, Error = Error>,
 {
     type Error = Error;
 
@@ -53,9 +51,11 @@ where
     }
 
     fn start_send(self: Pin<&mut Self>, item: T::Item) -> Result<(), Self::Error> {
-        let outbound_body = Box::new(item) as Box<OutboundBody>;
         let this = self.project();
-        this.inner.start_send(outbound_body)
+        let topic = T::topic();
+        let body = Box::new(item) as Box<OutboundBody>;
+        let item = ClientBrokerItem::Publish{topic, body};
+        this.inner.start_send(item)
             .map_err(|err| err.into())
     }
 
@@ -72,6 +72,7 @@ where
     }
 }
 
+/// Subscriber of topic T
 #[pin_project]
 pub struct Subscriber<T> 
 where 
@@ -83,7 +84,7 @@ where
 }
 
 impl<T:Topic> Subscriber<T> {
-    pub fn from_recver(rx: Receiver<Box<InboundBody>>) -> Self {
+    pub(crate) fn from_recver(rx: Receiver<Box<InboundBody>>) -> Self {
         Self {
             inner: rx.into_stream(),
             marker: PhantomData

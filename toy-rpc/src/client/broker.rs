@@ -1,7 +1,7 @@
 use cfg_if::cfg_if;
 use std::{sync::atomic::Ordering, time::Duration};
 use flume::Sender;
-use futures::{channel::oneshot, lock::Mutex};
+use futures::{channel::oneshot};
 
 cfg_if!{
     if #[cfg(any(

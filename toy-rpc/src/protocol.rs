@@ -59,7 +59,9 @@ pub enum Header {
     ///
     /// The body should be an unit type ie. `()`
     Unsubscribe {
+        /// Message Id
         id: MessageId,
+        /// Topic to unsubscribe from
         topic: String,
     },
 

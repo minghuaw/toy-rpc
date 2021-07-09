@@ -3,17 +3,19 @@
 use cfg_if::cfg_if;
 use crossbeam::atomic::AtomicCell;
 use flume::Sender;
-use futures::{Future, Sink, Stream, channel::oneshot, lock::Mutex};
+use futures::{Future, Sink, channel::oneshot};
 use std::{any::TypeId, marker::PhantomData, pin::Pin, sync::Arc, task::{Context, Poll}};
 
-use crate::{Error, message::{AtomicMessageId, MessageId}, protocol::OutboundBody, pubsub::{Publisher, Subscriber, Topic}};
+use crate::{Error, message::{AtomicMessageId, MessageId}, protocol::OutboundBody, util::Topic};
 use crate::protocol::InboundBody;
 
+mod pubsub;
 mod broker;
 mod reader;
 mod writer;
 
 use broker::*;
+use pubsub::*;
 
 const DEFAULT_TIMEOUT_SECONDS: u64 = 10;
 
@@ -463,9 +465,13 @@ cfg_if! {
             /// Creates a new publisher on a topic. 
             ///
             /// Multiple local publishers on the same topic are allowed. 
-            pub fn publisher<T: Topic>(&self) -> Publisher<T> {
+            pub fn publisher<T, S>(&self) -> Publisher<T> 
+            where 
+                T: Topic,
+                S: Sink<ClientBrokerItem, Error = Error>,
+            {
                 let tx = self.broker.clone();
-                unimplemented!()
+                Publisher::from(tx)
             }
 
             /// Creates a new subscriber on a topic
@@ -481,7 +487,6 @@ cfg_if! {
                 self.subscriptions.insert(topic.clone(), TypeId::of::<T>());
                 
                 // Create new subscription
-                let id = self.count.fetch_add(1, Ordering::Relaxed);
                 if let Err(err) = self.broker.send(ClientBrokerItem::Subscribe{topic, item_sink: tx}) {
                     return Err(err.into())
                 };
