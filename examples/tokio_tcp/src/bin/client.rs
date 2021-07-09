@@ -35,4 +35,6 @@ async fn run() {
 
     let reply = Arith::add(&client, (3i32, 4i32)).await;
     println!("{:?}", reply);
+
+    // client.close().await;
 }

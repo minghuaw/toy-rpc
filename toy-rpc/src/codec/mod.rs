@@ -286,6 +286,8 @@ pub trait CodecRead: Send + Unmarshal {
 
     /// Reads the body of the message
     async fn read_body(&mut self) -> Option<Result<Box<InboundBody>, Error>>;
+
+    async fn read_bytes(&mut self) -> Option<Result<Vec<u8>, Error>>;
 }
 
 /// A codec that can write the header and body of a message

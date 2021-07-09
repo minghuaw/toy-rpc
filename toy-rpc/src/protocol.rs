@@ -8,6 +8,8 @@ use crate::message::{MessageId, Metadata};
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Header {
     /// Header of a request
+    /// 
+    /// The body contains the content of the request
     Request{
         /// Message id
         id: MessageId,
@@ -18,6 +20,8 @@ pub enum Header {
     },
 
     /// Header of a response
+    ///
+    /// The body contains the content of the response/result
     Response{
         /// Message id
         id: MessageId,
@@ -26,9 +30,13 @@ pub enum Header {
     },
 
     /// Header of a cancellation message
+    ///
+    /// TODO: The body should be an unit type ie. `()`
     Cancel(MessageId),
 
     /// Header of a publish message
+    ///
+    /// The body contains the publishing content
     Publish {
         /// Message id
         id: MessageId,
@@ -38,6 +46,8 @@ pub enum Header {
 
     /// Header of a subscribe message
     /// Message will be pushed to the subscriber
+    ///
+    /// The body should be an unit type ie. `()`
     Subscribe {
         /// Message id
         id: MessageId,
@@ -45,10 +55,30 @@ pub enum Header {
         topic: String,
     },
 
+    /// Header of a unsubscribe message
+    ///
+    /// The body should be an unit type ie. `()`
+    Unsubscribe {
+        id: MessageId,
+        topic: String,
+    },
+
+    // /// Header of a subscription item
+    // ///
+    // /// The body contains the content of the subscription item
+    // Subscription {
+    //     /// Message id
+    //     id: MessageId,
+    //     /// Topic of the subscription item
+    //     topic: String,
+    // },
+
     /// Acknowledge of the following type of messages
-    /// - Cancel
+    /// - Cancel?
     /// - Publish
     /// - Subscribe
+    ///
+    /// The body should be an unit type `()`
     Ack(MessageId),
 
     /// Reserved for a potential message queue like design
@@ -90,6 +120,8 @@ impl Metadata for Header {
             Self::Cancel(id) => id.clone(),
             Self::Publish {id, ..} => id.clone(),
             Self::Subscribe {id, ..} => id.clone(),
+            Self::Unsubscribe {id, .. } => id.clone(),
+            // Self::Subscription { id, .. } => id.clone(),
             Self::Ack(id) => id.clone(),
             Self::Produce {id, ..} => id.clone(),
             Self::Consume {id, ..} => id.clone(),

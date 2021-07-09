@@ -139,6 +139,9 @@ impl<T: CodecRead> Reader for ServerReader<T> {
                 Header::Subscribe{id, topic} => {
                     unimplemented!()
                 },
+                Header::Unsubscribe{id, topic} => {
+                    unimplemented!()
+                }
                 Header::Ack(id) => {
                     unimplemented!()
                 },

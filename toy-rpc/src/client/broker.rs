@@ -1,7 +1,7 @@
 use cfg_if::cfg_if;
-use std::{time::Duration};
-
-use futures::{channel::oneshot};
+use std::{sync::atomic::Ordering, time::Duration};
+use flume::Sender;
+use futures::{channel::oneshot, lock::Mutex};
 
 cfg_if!{
     if #[cfg(any(
@@ -16,20 +16,48 @@ cfg_if!{
     }
 }
 
-use crate::{Error, message::{MessageId}, protocol::{InboundBody, OutboundBody, Header}};
+use crate::{Error, message::{AtomicMessageId, MessageId}, protocol::{InboundBody, OutboundBody}};
 
 
 #[cfg_attr(all(not(feature = "tokio_runtime"), not(feature = "async_std_runtime")), allow(dead_code))]
 pub enum ClientBrokerItem {
     Request{
-        id: MessageId,
+        // id: MessageId,
         service_method: String,
         duration: Duration,
         body: Box<OutboundBody>, 
         resp_tx: oneshot::Sender<Result<Result<Box<InboundBody>, Box<InboundBody>>, Error>>,
     },
-    Response(MessageId, Result<Box<InboundBody>, Box<InboundBody>>),
+    Response{
+        id: MessageId,
+        result: Result<Box<InboundBody>, Box<InboundBody>>
+    },
     Cancel(MessageId),
+    Publish{
+        // id: MessageId,
+        topic: String,
+        body: Box<OutboundBody>
+    },
+    Subscribe {
+        // id: MessageId,
+        topic: String,
+
+        // message is deserialized as it is read on the subscriber
+        item_sink: Sender<Box<InboundBody>>, 
+    },
+    NewLocalSubscriber {
+        topic: String,
+        new_item_sink: Sender<Box<InboundBody>>,
+    },
+    Unsubscribe {
+        // id: MessageId,
+        topic: String,
+    },
+    Subscription {
+        id: MessageId,
+        topic: String,
+        item: Box<InboundBody>,
+    },
     Stop,
 }
 
@@ -43,9 +71,19 @@ use ::async_std::task::{self};
     all(feature = "async_std_runtime", not(feature = "tokio_runtime"))
 ))]
 pub struct ClientBroker {
+    pub count: Arc<AtomicMessageId>,
     pub pending: HashMap<MessageId, oneshot::Sender<Result<Result<Box<InboundBody>, Box<InboundBody>>, Error>>>,
-    pub next_timeout: Option<Duration>
+    pub next_timeout: Option<Duration>,
+    pub subscriptions: HashMap<String, Sender<Box<InboundBody>>>,
 }
+
+// impl Default for ClientBroker {
+//     fn default() -> Self {
+//         Self {
+//             ..Default::default()
+//         }
+//     }
+// }
 
 #[cfg(any(
     all(feature = "tokio_runtime", not(feature = "async_std_runtime")),
@@ -62,12 +100,14 @@ impl brw::Broker for ClientBroker {
     where W: Sink<Self::WriterItem, Error = flume::SendError<Self::WriterItem>> + Send + Unpin {
         let res = match item {
             ClientBrokerItem::Request{
-                id,
+                // id,
                 service_method,
                 duration,
                 body,
                 resp_tx,
             } => {
+                // fetch_add returns the previous value
+                let id = self.count.fetch_add(1, Ordering::Relaxed);
                 let (tx, rx) = oneshot::channel();
                 let fut = async move {
                     // takes care of receiving/cancel  error
@@ -76,8 +116,9 @@ impl brw::Broker for ClientBroker {
                         Err(_) => Err(Error::Canceled(Some(id)))
                     }
                 };
-                let header = Header::Request{ id, service_method, timeout: duration };
-                let res = writer.send(ClientWriterItem::Request(header, body)).await;
+                let res = writer.send(
+                    ClientWriterItem::Request(id, service_method, duration, body)
+                ).await;
 
                 task::spawn(async move {
                     #[cfg(all(feature = "tokio_runtime", not(feature = "async_std_runtime")))]
@@ -100,15 +141,78 @@ impl brw::Broker for ClientBroker {
                 self.pending.insert(id, tx);
                 res.map_err(|err| err.into())
             },
-            ClientBrokerItem::Response(id , res) => {
+            ClientBrokerItem::Response{id , result} => {
                 if let Some(tx) = self.pending.remove(&id) {
-                    tx.send(Ok(res)) 
+                    tx.send(Ok(result)) 
                         .map_err(|_| {
                             Error::Internal("InternalError: client failed to send response over channel".into())
                         })
                 } else {
                     Err(Error::Internal("Done channel not found".into()))
                         
+                }
+            },
+            ClientBrokerItem::Publish{topic, body} => {
+                let id = self.count.fetch_add(1, Ordering::Relaxed);
+                // TODO: QoS check? at least once?
+                let res = writer
+                    .send(ClientWriterItem::Publish(id, topic, body))
+                    .await
+                    .map_err(|err| err.into());
+
+                // TODO: Spawn a timed task to check Ack?
+                // task::spawn(async move {
+
+                // });                  
+                res
+            },
+            ClientBrokerItem::Subscribe{topic, item_sink} => {
+                let id = self.count.fetch_add(1, Ordering::Relaxed);
+                // NOTE: Only one local subscriber is allowed
+                self.subscriptions.insert(topic.clone(), item_sink);
+
+                let res = writer
+                    .send(ClientWriterItem::Subscribe(id, topic))
+                    .await
+                    .map_err(|err| err.into());
+                // TODO: Spawn a timed task to check Ack?
+                res
+            },
+            ClientBrokerItem::NewLocalSubscriber{topic, new_item_sink} => {
+                self.subscriptions.insert(topic, new_item_sink);
+                Ok(())
+            }
+            ClientBrokerItem::Unsubscribe{topic } => {
+                let id = self.count.fetch_add(1, Ordering::Relaxed);
+                // NOTE: the sender should be dropped on the Client side
+                let res = writer
+                    .send(ClientWriterItem::Unsubscribe(id, topic))
+                    .await
+                    .map_err(|err| err.into());
+                // TODO: Spawn  timed task to check Ack?
+                res
+            },
+            ClientBrokerItem::Subscription {id, topic, item } => {
+                log::info!("Received subscription message {{id: {}, topic: {}}}", id, &topic);
+                if let Some(sub) = self.subscriptions.get(&topic) {
+                    match sub.try_send(item) {
+                        Ok(_) => { Ok(()) },
+                        Err(err) => {
+                            match err {
+                                flume::TrySendError::Disconnected(_) => {
+                                    self.subscriptions.remove(&topic);
+                                    Err(Error::Internal(
+                                        "Subscription recver is Disconnected".into()
+                                    ))
+                                }
+                                _ => { Ok(()) }
+                            }
+                        }
+                    }
+                } else {
+                    Err(Error::Internal(
+                        "Topic is not found locally".into()
+                    ))
                 }
             },
             ClientBrokerItem::Cancel(id) => {
@@ -119,6 +223,7 @@ impl brw::Broker for ClientBroker {
                 writer.send(ClientWriterItem::Cancel(id)).await
                     .map_err(|err| err.into())
             },
+
             ClientBrokerItem::Stop => {
                 if let Err(err) = writer.send(ClientWriterItem::Stop).await {
                     log::error!("{:?}", err);

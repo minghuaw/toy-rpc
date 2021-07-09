@@ -3,9 +3,7 @@ use async_trait::async_trait;
 use futures::{Sink};
 use brw::Running;
 
-use crate::{Error, codec::CodecRead, 
-    // message::ResponseHeader
-};
+use crate::{Error, codec::CodecRead};
 use super::broker::ClientBrokerItem;
 use crate::protocol::{Header, InboundBody};
 
@@ -26,6 +24,7 @@ impl<R: CodecRead> brw::Reader for ClientReader<R> {
                 Ok(header) => header,
                 Err(err) => return Running::Continue(Err(err))
             };
+            log::debug!("{:?}", &header);
             let deserializer: Box<InboundBody> = match self.reader.read_body().await {
                 Some(res) => {
                     match res {
@@ -38,13 +37,13 @@ impl<R: CodecRead> brw::Reader for ClientReader<R> {
 
             match header {
                 Header::Response{id, is_ok} => {
-                    let res = match is_ok {
+                    let result = match is_ok {
                         true => Ok(deserializer),
                         false => Err(deserializer),
                     };
 
                     if let Err(err) = broker.send(
-                        ClientBrokerItem::Response(id, res)
+                        ClientBrokerItem::Response{id, result}
                     ).await {
                         return Running::Continue(Err(err.into()))
                     }

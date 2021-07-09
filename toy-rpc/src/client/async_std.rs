@@ -46,7 +46,7 @@ cfg_if! {
         /// - `serde_json`
         /// - `serde_cbor`
         /// - `serde_rmp`
-        impl Client<NotConnected> {
+        impl Client {
             /// Connects the an RPC server over socket at the specified network address
             ///
             /// This is enabled
@@ -64,7 +64,7 @@ cfg_if! {
             /// ```
             #[cfg_attr(feature = "docs", doc(cfg(feature = "async_std_runtime")))]
             pub async fn dial(addr: impl ToSocketAddrs)
-                -> Result<Client<Connected>, Error>
+                -> Result<Client, Error>
             {
                 let stream = TcpStream::connect(addr).await?;
                 Ok(Self::with_stream(stream))
@@ -80,7 +80,7 @@ cfg_if! {
                 addr: impl ToSocketAddrs,
                 domain: &str,
                 config: ClientConfig
-            ) -> Result<Client<Connected>, Error> {
+            ) -> Result<Client, Error> {
                 super::tcp_client_with_tls_config(addr, domain, config).await
             }
 
@@ -110,7 +110,7 @@ cfg_if! {
             /// let client = Client::dial_http(addr).await.unwrap();
             /// ```
             #[cfg_attr(feature = "docs", doc(cfg(feature = "async_std_runtime")))]
-            pub async fn dial_http(addr: &str) -> Result<Client<Connected>, Error> {
+            pub async fn dial_http(addr: &str) -> Result<Client, Error> {
                 let mut url = url::Url::parse(addr)?.join(DEFAULT_RPC_PATH)?;
                 url.set_scheme("ws").expect("Failed to change scheme to ws");
 
@@ -127,7 +127,7 @@ cfg_if! {
                 addr: &str,
                 domain: &str,
                 config: ClientConfig,
-            ) -> Result<Client<Connected>, Error> {
+            ) -> Result<Client, Error> {
                 let mut url = url::Url::parse(addr)?.join(DEFAULT_RPC_PATH)?;
                 url.set_scheme("ws").expect("Failed to change scheme to ws");
 
@@ -154,12 +154,12 @@ cfg_if! {
             /// ```
             ///
             #[cfg_attr(feature = "docs", doc(cfg(feature = "async_std_runtime")))]
-            pub async fn dial_websocket(addr: &str) -> Result<Client<Connected>, Error> {
+            pub async fn dial_websocket(addr: &str) -> Result<Client, Error> {
                 let url = url::Url::parse(addr)?;
                 Self::dial_websocket_url(url).await
             }
 
-            async fn dial_websocket_url(url: url::Url) -> Result<Client<Connected>, Error> {
+            async fn dial_websocket_url(url: url::Url) -> Result<Client, Error> {
                 let (ws_stream, _) = connect_async(&url).await?;
                 let ws_stream = WebSocketConn::new(ws_stream);
                 let codec = DefaultCodec::with_websocket(ws_stream);
@@ -173,7 +173,7 @@ cfg_if! {
                 addr: &str,
                 domain: &str,
                 config: ClientConfig,
-            ) -> Result<Client<Connected>, Error> {
+            ) -> Result<Client, Error> {
                 let url = url::Url::parse(addr)?;
                 super::websocket_client_with_tls_config(url, domain, config).await
             }
@@ -194,7 +194,7 @@ cfg_if! {
             /// let client = Client::with_stream(stream);
             /// ```
             #[cfg_attr(feature = "docs", doc(cfg(feature = "async_std_runtime")))]
-            pub fn with_stream<T>(stream: T) -> Client<Connected>
+            pub fn with_stream<T>(stream: T) -> Client
             where
                 T: AsyncRead + AsyncWrite + Send + Unpin + 'static,
             {

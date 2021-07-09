@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use cfg_if::cfg_if;
 
 use crate::{message::Metadata, util::GracefulShutdown};
@@ -21,7 +23,10 @@ cfg_if!{
         };
 
         pub enum ClientWriterItem {
-            Request(Header, Box<OutboundBody>),
+            Request(MessageId, String, Duration, Box<OutboundBody>),
+            Publish(MessageId, String, Box<OutboundBody>),
+            Subscribe(MessageId, String),
+            Unsubscribe(MessageId, String),
             Cancel(MessageId),
             Stop,
         }
@@ -51,7 +56,8 @@ cfg_if!{
         
             async fn op(&mut self, item: Self::Item) -> Running<Result<Self::Ok, Self::Error>> {
                 let res = match item {
-                    ClientWriterItem::Request(header, body) => {
+                    ClientWriterItem::Request(id, service_method, duration, body) => {
+                        let header = Header::Request{id, service_method, timeout: duration};
                         self.write_request(header, &body).await
                     },
                     ClientWriterItem::Cancel(id) => {
@@ -61,6 +67,18 @@ cfg_if!{
                         let body = Box::new(body) as Box<OutboundBody>;
                         self.write_request(header, &body).await
                     },
+                    ClientWriterItem::Publish(id, topic, body) => {
+                        let header = Header::Publish{id, topic};
+                        self.write_request(header, &body).await
+                    },
+                    ClientWriterItem::Subscribe(id, topic) => {
+                        let header = Header::Subscribe{id, topic};
+                        self.write_request(header, &()).await
+                    },
+                    ClientWriterItem::Unsubscribe(id, topic) => {
+                        let header = Header::Unsubscribe{id, topic};
+                        self.write_request(header, &()).await
+                    }
                     ClientWriterItem::Stop => {
                         self.writer.close().await;
                         return Running::Stop

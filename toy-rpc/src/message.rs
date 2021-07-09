@@ -36,10 +36,7 @@ cfg_if! {
         pub(crate) const CANCELLATION_TOKEN_DELIM: &str = ".";
 
         #[cfg(feature = "server")]
-        use crate::{
-            error::Error,
-            service::{ArcAsyncServiceCall, HandlerResult},
-        };
+        use crate::{error::Error};
 
         #[cfg(feature = "server")]
         impl ErrorMessage {

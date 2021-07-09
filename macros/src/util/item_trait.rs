@@ -240,7 +240,7 @@ pub(crate) fn generate_service_client_for_trait(
 
     let client_struct: syn::Item = syn::parse_quote!(
         pub struct #client_ident<'c> {
-            client: &'c toy_rpc::client::Client<toy_rpc::client::Connected>,
+            client: &'c toy_rpc::client::Client,
             service_name: &'c str,
         }
     );
@@ -322,7 +322,7 @@ pub(crate) fn generate_client_stub_for_trait(
 
     let service_name = trait_ident.to_string();
     let stub_impl: syn::ItemImpl = syn::parse_quote!(
-        impl #stub_ident for toy_rpc::client::Client<toy_rpc::client::Connected> {
+        impl #stub_ident for toy_rpc::client::Client {
             fn #stub_fn<'c>(&'c self) -> #client_ident {
                 #client_ident {
                     client: self,
@@ -354,7 +354,7 @@ pub fn generate_trait_impl_for_client(
             }
         });
     let mut output: syn::ItemImpl = syn::parse_quote!(
-        impl #service_ident for toy_rpc::client::Client<toy_rpc::client::Connected> {
+        impl #service_ident for toy_rpc::client::Client {
 
         }
     );

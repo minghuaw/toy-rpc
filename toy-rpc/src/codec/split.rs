@@ -125,6 +125,13 @@ cfg_if! {
                     Err(e) => return Some(Err(e)),
                 }
             }
+
+            async fn read_bytes(&mut self) -> Option<Result<Vec<u8>, Error>> {
+                self.reader.read_frame().await
+                    .map(|res| {
+                        res.map(|f| f.payload)
+                    })
+            }
         }
 
         #[async_trait]
@@ -255,6 +262,10 @@ cfg_if! {
                     }
                     Err(e) => return Some(Err(e)),
                 }
+            }
+
+            async fn read_bytes(&mut self) -> Option<Result<Vec<u8>, Error>> {
+                self.reader.read_payload().await
             }
         }
 

@@ -3,14 +3,10 @@
 use cfg_if::cfg_if;
 use crossbeam::atomic::AtomicCell;
 use flume::Sender;
-use futures::{channel::oneshot, Future};
-use std::{
-    marker::PhantomData,
-    pin::Pin,
-    task::{Context, Poll},
-};
+use futures::{Future, Sink, Stream, channel::oneshot, lock::Mutex};
+use std::{any::TypeId, marker::PhantomData, pin::Pin, sync::Arc, task::{Context, Poll}};
 
-use crate::{Error, message::{AtomicMessageId, MessageId}, protocol::OutboundBody};
+use crate::{Error, message::{AtomicMessageId, MessageId}, protocol::OutboundBody, pubsub::{Publisher, Subscriber, Topic}};
 use crate::protocol::InboundBody;
 
 mod broker;
@@ -143,6 +139,10 @@ mod async_std;
     )
 ))]mod tokio;
 
+/* -------------------------------------------------------------------------- */
+/*                                  Call                                      */
+/* -------------------------------------------------------------------------- */
+
 /// Call of a RPC request. The result can be obtained by `.await`ing the `Call`.
 /// The call can be cancelled with `cancel()` method.
 ///
@@ -234,10 +234,9 @@ where
     }
 }
 
-/// Type state for creating `Client`
-pub struct NotConnected {}
-/// Type state for creating `Client`
-pub struct Connected {}
+/* -------------------------------------------------------------------------- */
+/*                               RPC client                                   */
+/* -------------------------------------------------------------------------- */
 
 /// RPC client
 ///
@@ -245,23 +244,23 @@ pub struct Connected {}
     not(any(feature = "async_std_runtime", feature = "tokio_runtime")),
     allow(dead_code)
 )]
-pub struct Client<Mode> {
-    count: AtomicMessageId,
+pub struct Client {
+    count: Arc<AtomicMessageId>,
     timeout: AtomicCell<Duration>,
     broker: Sender<ClientBrokerItem>,
-    marker: PhantomData<Mode>,
+    subscriptions: HashMap<String, TypeId>,
 }
 
 // seems like it still works even without this impl
-impl<Mode> Drop for Client<Mode> {
+impl Drop for Client {
     fn drop(&mut self) {
-        if self.broker.send(broker::ClientBrokerItem::Stop).is_err() {
+        if self.broker.try_send(broker::ClientBrokerItem::Stop).is_err() {
             log::error!("Failed to send stop signal to writer loop")
         }
     }
 }
 
-impl Client<Connected> {
+impl Client {
     /// Closes connection with the server
     ///
     /// Dropping the client will close the connection as well
@@ -294,7 +293,7 @@ cfg_if! {
         use reader::*;
         use writer::*;
 
-        impl Client<NotConnected> {
+        impl Client {
             /// Creates an RPC 'Client` over socket with a specified codec
             ///
             /// Example
@@ -311,30 +310,33 @@ cfg_if! {
             // ))]
             #[cfg_attr(feature = "docs", doc(cfg(all(feature = "async_std_runtime", not(feature = "tokio_runtime")))))]
             #[cfg_attr(feature = "docs", doc(cfg(all(feature = "tokio_runtime", not(feature = "async_std_runtime")))))]
-            pub fn with_codec<C>(codec: C) -> Client<Connected>
+            pub fn with_codec<C>(codec: C) -> Client
             where
                 C: SplittableCodec + Send + 'static,
             {
                 let (writer, reader) = codec.split();
                 let reader = ClientReader { reader };     
                 let writer = ClientWriter { writer };
-                let broker = ClientBroker{
+                let count = Arc::new(AtomicMessageId::new(0));
+
+                let broker = ClientBroker {
+                    count: count.clone(),
                     pending: HashMap::new(),
-                    // timingouts: HashMap::new(),
-                    next_timeout: None
-                };           
+                    next_timeout: None,
+                    subscriptions: HashMap::new(),
+                };          
                 let (_, broker) = brw::spawn(broker, reader, writer);
 
-                Client::<Connected> {
-                    count: AtomicMessageId::new(0),
+                Client {
+                    count,
                     timeout: AtomicCell::new(Duration::from_secs(DEFAULT_TIMEOUT_SECONDS)),
                     broker,
-                    marker: PhantomData,
+                    subscriptions: HashMap::new(),
                 }
             }
         }
 
-        impl Client<Connected> {
+        impl Client {
             /// Sets the timeout duration **ONLY** for the next RPC request
             ///
             /// Example
@@ -429,7 +431,8 @@ cfg_if! {
                 Res: serde::de::DeserializeOwned + Send + 'static,
             {
                 // Prepare RPC request
-                let id = self.count.fetch_add(1, Ordering::Relaxed);
+                // let id = self.count.fetch_add(1, Ordering::Relaxed);
+                let id = self.count.load(Ordering::Relaxed) as MessageId;
                 let service_method = service_method.to_string();
                 let duration = self.timeout.load();
                 // let header = Header::Request { id, service_method, timeout};
@@ -438,7 +441,7 @@ cfg_if! {
 
                 if let Err(err) = self.broker.send(
                     ClientBrokerItem::Request{
-                        id,
+                        // id,
                         service_method,
                         duration,
                         body,
@@ -454,6 +457,59 @@ cfg_if! {
                     cancel: self.broker.clone(),
                     done: resp_rx,
                     marker: PhantomData
+                }
+            }
+
+            /// Creates a new publisher on a topic. 
+            ///
+            /// Multiple local publishers on the same topic are allowed. 
+            pub fn publisher<T: Topic>(&self) -> Publisher<T> {
+                let tx = self.broker.clone();
+                unimplemented!()
+            }
+
+            /// Creates a new subscriber on a topic
+            ///
+            pub fn subscriber<T: Topic + 'static>(&mut self, cap: usize) -> Result<Subscriber<T>, Error> {
+                let (tx, rx) = flume::bounded(cap);
+                let topic = T::topic();
+
+                // Check if there is an existing subscriber
+                if self.subscriptions.contains_key(&topic) {
+                    return Err(Error::Internal("Only one local subscriber per topic is allowed".into()))
+                }
+                self.subscriptions.insert(topic.clone(), TypeId::of::<T>());
+                
+                // Create new subscription
+                let id = self.count.fetch_add(1, Ordering::Relaxed);
+                if let Err(err) = self.broker.send(ClientBrokerItem::Subscribe{topic, item_sink: tx}) {
+                    return Err(err.into())
+                };
+
+                let sub = Subscriber::from_recver(rx);
+                Ok(sub)
+            }
+
+            /// Replaces the local subscriber without sending any message to the server
+            ///
+            /// The previous subscriber will no longer receive any message.
+            pub fn replace_local_subscriber<T: Topic + 'static>(&mut self, cap: usize) -> Result<Subscriber<T>, Error> {
+                let topic = T::topic();
+                match self.subscriptions.get(&topic) {
+                    Some(entry) => {
+                        match &TypeId::of::<T>() == entry {
+                            true => {
+                                let (tx, rx) = flume::bounded(cap);
+                                if let Err(err) = self.broker.send(ClientBrokerItem::NewLocalSubscriber{topic, new_item_sink: tx}) {
+                                    return Err(err.into())
+                                }
+                                let sub = Subscriber::from_recver(rx);
+                                Ok(sub)
+                            },
+                            false => Err(Error::Internal("TypeId mismatch".into()))
+                        }
+                    },
+                    None => Err(Error::Internal("There is no existing local subscriber".into()))
                 }
             }
         }
