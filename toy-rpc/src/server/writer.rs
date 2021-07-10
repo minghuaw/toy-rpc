@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use brw::{Running, Writer};
 
-use crate::{codec::CodecWrite, error::Error, message::{ErrorMessage, MessageId, Metadata}, protocol::OutboundBody, service::HandlerResult};
+use crate::{codec::CodecWrite, error::Error, message::{ErrorMessage, MessageId}, service::HandlerResult};
 
 use crate::protocol::{Header};
 
@@ -36,7 +36,7 @@ impl<W: CodecWrite> ServerWriter<W> {
                 let header = Header::Response{ id, is_ok: true };
                 // self.write_response(header, &body).await?;
                 self.writer.write_header(header).await?;
-                self.writer.write_body(&id, &body).await
+                self.writer.write_body(id, &body).await
             }
             Err(err) => {
                 log::trace!("Message {} Error", &id);
@@ -44,15 +44,15 @@ impl<W: CodecWrite> ServerWriter<W> {
                 let msg = ErrorMessage::from_err(err)?;
                 // self.write_response(header, &msg).await?;
                 self.writer.write_header(header).await?;
-                self.writer.write_body(&id, &msg).await
+                self.writer.write_body(id, &msg).await
             }
         }
     }
 
-    async fn write_publication(&mut self, id: MessageId, topic: String, content: Arc<Vec<u8>>) -> Result<(), Error> {
+    async fn write_publication(&mut self, id: MessageId, topic: String, content: &[u8]) -> Result<(), Error> {
         let header = Header::Publish{id, topic};
         self.writer.write_header(header).await?;
-        self.writer.write_body_bytes(&id, *content).await
+        self.writer.write_body_bytes(id, &content).await
     }
 }
 

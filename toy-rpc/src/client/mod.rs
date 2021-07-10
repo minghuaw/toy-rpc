@@ -93,7 +93,7 @@ cfg_if! {
             addr: impl ToSocketAddrs,
             domain: &str,
             config: ClientConfig
-        ) -> Result<Client<Connected>, Error> {
+        ) -> Result<Client, Error> {
             let stream = TcpStream::connect(addr).await?;
             let connector = TlsConnector::from(std::sync::Arc::new(config));
             let domain = DNSNameRef::try_from_ascii_str(domain)?;
@@ -107,7 +107,7 @@ cfg_if! {
             url: url::Url,
             domain: &str,
             config: ClientConfig,
-        ) -> Result<Client<Connected>, Error> {
+        ) -> Result<Client, Error> {
             let host = url.host_str()
                 .ok_or(Error::Internal("Invalid host address".into()))?;
             let port = url.port_or_known_default()

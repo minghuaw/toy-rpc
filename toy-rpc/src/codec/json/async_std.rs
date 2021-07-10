@@ -17,10 +17,8 @@ cfg_if! {
 
         use super::*;
         use crate::codec::split::{SplittableCodec};
-        // use crate::codec::RequestDeserializer;
         use crate::codec::split::{CodecReadHalf, CodecWriteHalf};
         use crate::util::GracefulShutdown;
-        use crate::protocol::InboundBody;
 
         #[async_trait]
         impl<R, C> CodecRead for CodecReadHalf<R, C, ConnTypeReadWrite>
@@ -28,41 +26,55 @@ cfg_if! {
             R: AsyncBufRead + Send + Unpin,
             C: Unmarshal + EraseDeserializer + Send,
         {
-            async fn read_header<H>(&mut self) -> Option<Result<H, Error>>
-            where
-                H: serde::de::DeserializeOwned,
-            {
+            // async fn read_header<H>(&mut self) -> Option<Result<H, Error>>
+            // where
+            //     H: serde::de::DeserializeOwned,
+            // {
+            //     let mut buf = String::new();
+            //     match self.reader.read_line(&mut buf).await {
+            //         Ok(n) => {
+            //             if n == 0 {
+            //                 // EOF, probably end of connection
+            //                 return None;
+            //             }
+
+            //             Some(Self::unmarshal(buf.as_bytes()))
+            //         }
+            //         Err(err) => {
+            //             Some(Err(err.into()))
+            //         }
+            //     }
+            // }
+
+            // async fn read_body(
+            //     &mut self
+            // ) -> Option<Result<Box<InboundBody>, Error>> {
+            //     let mut buf = String::new();
+            //     match self.reader.read_line(&mut buf).await {
+            //         Ok(n) => {
+            //             if n == 0 {
+            //                 // EOF, probably client closed connection
+            //                 return None;
+            //             }
+
+            //             let de = Self::from_bytes(buf.into_bytes());
+            //             Some(Ok(de))
+            //         }
+            //         Err(err) => return Some(Err(err.into())),
+            //     }
+            // }
+
+            async fn read_bytes(&mut self) -> Option<Result<Vec<u8>, Error>> {
                 let mut buf = String::new();
                 match self.reader.read_line(&mut buf).await {
                     Ok(n) => {
                         if n == 0 {
-                            // EOF, probably end of connection
-                            return None;
+                            // EOF
+                            return None
                         }
-
-                        Some(Self::unmarshal(buf.as_bytes()))
-                    }
-                    Err(err) => {
-                        Some(Err(err.into()))
-                    }
-                }
-            }
-
-            async fn read_body(
-                &mut self
-            ) -> Option<Result<Box<InboundBody>, Error>> {
-                let mut buf = String::new();
-                match self.reader.read_line(&mut buf).await {
-                    Ok(n) => {
-                        if n == 0 {
-                            // EOF, probably client closed connection
-                            return None;
-                        }
-
-                        let de = Self::from_bytes(buf.into_bytes());
-                        Some(Ok(de))
-                    }
-                    Err(err) => return Some(Err(err.into())),
+                        Some(Ok(buf.into_bytes()))
+                    },
+                    Err(err) => Some(Err(err.into()))
                 }
             }
         }
@@ -88,7 +100,7 @@ cfg_if! {
 
             async fn write_body(
                 &mut self,
-                _id: &MessageId,
+                _id: MessageId,
                 body: &(dyn erased::Serialize + Send + Sync),
             ) -> Result<(), Error> {
                 let buf = Self::marshal(&body)?;
@@ -98,6 +110,13 @@ cfg_if! {
 
                 Ok(())
             }
+
+            async fn write_body_bytes(&mut self, _: MessageId, bytes: &[u8]) -> Result<(), Error> {
+                let _ = self.writer.write(bytes).await?;
+                self.writer.flush().await?;
+                Ok(())
+            }
+
         }
 
         impl<R, W> SplittableCodec for Codec<R, W, ConnTypeReadWrite>

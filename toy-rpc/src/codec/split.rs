@@ -1,10 +1,10 @@
 //! Implements `SplittableCodec`
 
-use std::marker::PhantomData;
+use std::{marker::PhantomData};
 #[cfg(any(feature = "tokio_runtime", feature = "async_std_runtime"))]
 use async_trait::async_trait;
 
-use crate::util::GracefulShutdown;
+use crate::{util::GracefulShutdown};
 
 use super::*;
 
@@ -88,7 +88,7 @@ cfg_if! {
             )
         )
     ))] {
-        use crate::transport::frame::{Frame, PayloadType, FrameRead, FrameWrite};
+        use crate::transport::frame::{PayloadType, FrameRead, FrameWrite, FrameHeader};
 
         #[async_trait]
         impl<R, C> CodecRead for CodecReadHalf<R, C, ConnTypeReadWrite>
@@ -118,25 +118,28 @@ cfg_if! {
 
                 let id = header.get_id();
                 let buf = Self::marshal(&header)?;
-                let frame = Frame::new(id, 0, PayloadType::Header, buf);
+                // let frame = Frame::new(id, 0, PayloadType::Header, buf);
+                let frame_header = FrameHeader::new(id, 0, PayloadType::Header, buf.len() as u32);
 
-                writer.write_frame(frame).await
+                writer.write_frame(frame_header, &buf).await
             }
 
             async fn write_body(
                 &mut self,
-                id: &MessageId,
+                id: MessageId,
                 body: &(dyn erased::Serialize + Send + Sync),
             ) -> Result<(), Error> {
                 let writer = &mut self.writer;
                 let buf = Self::marshal(&body)?;
-                let frame = Frame::new(id.to_owned(), 1, PayloadType::Data, buf.to_owned());
-                writer.write_frame(frame).await
+                // let frame = Frame::new(id.to_owned(), 1, PayloadType::Data, buf.to_owned());
+                let frame_header = FrameHeader::new(id, 1, PayloadType::Data, buf.len() as u32);
+                writer.write_frame(frame_header, &buf).await
             }
 
-            async fn write_body_bytes(&mut self, id: &MessageId, bytes: Vec<u8>) -> Result<(), Error> {
-                let frame = Frame::new(*id, 1, PayloadType::Data, bytes);
-                self.writer.write_frame(frame).await
+            async fn write_body_bytes(&mut self, id: MessageId, bytes: &[u8]) -> Result<(), Error> {
+                // let frame = Frame::new(*id, 1, PayloadType::Data, bytes);
+                let frame_header = FrameHeader::new(id, 1, PayloadType::Data, bytes.len() as u32);
+                self.writer.write_frame(frame_header, bytes).await
             }
         }
 
@@ -228,20 +231,20 @@ cfg_if! {
             {
                 let writer = &mut self.writer;
                 let buf = Self::marshal(&header)?;
-                writer.write_payload(buf).await
+                writer.write_payload(&buf).await
             }
 
             async fn write_body(
                 &mut self,
-                _: &MessageId,
+                _: MessageId,
                 body: &(dyn erased::Serialize + Send + Sync),
             ) -> Result<(), Error> {
                 let buf = Self::marshal(&body)?;
                 let writer = &mut self.writer;
-                writer.write_payload(buf).await
+                writer.write_payload(&buf).await
             }
 
-            async fn write_body_bytes(&mut self, _: &MessageId, bytes: Vec<u8>) -> Result<(), Error> {
+            async fn write_body_bytes(&mut self, _: MessageId, bytes: &[u8]) -> Result<(), Error> {
                 self.writer.write_payload(bytes).await
             }
         }

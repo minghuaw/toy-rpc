@@ -28,5 +28,5 @@ pub trait PayloadRead {
 #[async_trait]
 pub trait PayloadWrite {
     /// Writes bytes to the payload
-    async fn write_payload(&mut self, payload: Vec<u8>) -> Result<(), Error>;
+    async fn write_payload(&mut self, payload: &[u8]) -> Result<(), Error>;
 }

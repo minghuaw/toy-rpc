@@ -11,7 +11,7 @@ use crate::{
 
 /// Server builder
 pub struct ServerBuilder {
-    services: AsyncServiceMap,
+    pub services: AsyncServiceMap,
 }
 
 impl ServerBuilder {
@@ -93,7 +93,14 @@ impl ServerBuilder {
         builder.services.insert(name, Arc::new(call));
         builder
     }
+}
 
+#[cfg(any(
+    feature = "docs",
+    all(feature = "async_std_runtime", not(feature = "tokio_runtime")),
+    all(feature = "tokio_runtime", not(feature = "async_std_runtime")),
+))]
+impl ServerBuilder {
     /// Builds an RPC `Server`
     /// 
     /// # Example
@@ -105,9 +112,7 @@ impl ServerBuilder {
     /// let server: Server = builder.build();        
     /// ```
     pub fn build(self) -> Server {
-        Server {
-            services: Arc::new(self.services),
-        }
+        Server::from_builder(self)
     }
 }
 

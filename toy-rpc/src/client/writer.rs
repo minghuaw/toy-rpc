@@ -44,7 +44,7 @@ cfg_if!{
                 log::debug!("{:?}", &header);
                 let id = header.get_id();
                 self.writer.write_header(header).await?;
-                self.writer.write_body(&id, body).await
+                self.writer.write_body(id, body).await
             }
         }
 

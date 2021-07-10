@@ -24,13 +24,32 @@ pub(crate) enum PubSubItem {
     Stop
 }
 
-struct PubSubBroker {
+pub(crate) struct PubSubBroker {
     listener: Receiver<PubSubItem>,
     subscriptions: HashMap<String, BTreeMap<ClientId, Sender<ServerBrokerItem>>>
 }
 
 impl PubSubBroker {
-    pub async fn pubsub_loop(&mut self) {
+    pub fn new(listener: Receiver<PubSubItem>) -> Self {
+        Self {
+            listener,
+            subscriptions: HashMap::new()
+        }
+    }
+
+    /// Spawn PubSubBroker loop in a task
+    #[cfg(any(
+        all(feature = "async_std_runtime", not(feature = "tokio_runtime")),
+        all(feature = "tokio_runtime", not(feature = "async_std_runtime")),
+    ))]
+    pub fn spawn(self) {
+        #[cfg(all(feature = "tokio_runtime", not(feature = "async_std_runtime")))]
+        ::tokio::task::spawn(self.pubsub_loop());
+        #[cfg(all(feature = "async_std_runtime", not(feature = "tokio_runtime")))]
+        ::async_std::task::spawn(self.pubsub_loop());
+    }
+
+    pub async fn pubsub_loop(mut self) {
         while let Ok(item) = self.listener.recv_async().await {
             match item {
                 PubSubItem::Publish {msg_id, topic, content} => {
@@ -41,7 +60,10 @@ impl PubSubBroker {
                                 topic: topic.clone(), 
                                 content: content.clone()
                             };
-                            sender.send_async(msg).await; // TODO: handle error
+                            // TODO: handle error
+                            if let Err(err) = sender.send_async(msg).await {
+                                log::error!("{}", err);
+                            }
                         }
                     }
                 },

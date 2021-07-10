@@ -33,6 +33,8 @@ cfg_if! {
             not(feature = "serde_bincode"),
         ),
     ))] {
+        use std::sync::atomic::Ordering;
+
         use crate::codec::DefaultCodec;
         use crate::DEFAULT_RPC_PATH;
         use crate::server::start_broker_reader_writer;
@@ -85,11 +87,11 @@ cfg_if! {
                             let ws_stream = WebSocketConn::new_without_sink(ws_stream);
                             let codec = DefaultCodec::with_tide_websocket(ws_stream);
                             let services = req.state().services.clone();
+                            let client_id = req.state().client_counter.fetch_add(1, Ordering::Relaxed);
+                            let pubsub_broker = req.state().pubsub_tx.clone();
 
-                            let fut = start_broker_reader_writer(codec, services);
-
+                            let fut = start_broker_reader_writer(codec, services, client_id, pubsub_broker);
                             log::trace!("Client disconnected.");
-
                             fut.await?;
                             Ok(())
                         },

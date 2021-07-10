@@ -142,8 +142,8 @@ impl<T> PayloadWrite for SinkHalf<SplitSink<WebSocketStream<T>, WsMessage>, CanS
 where
     T: AsyncRead + AsyncWrite + Send + Unpin,
 {
-    async fn write_payload(&mut self, payload: Vec<u8>) -> Result<(), Error> {
-        let msg = WsMessage::Binary(payload);
+    async fn write_payload(&mut self, payload: &[u8]) -> Result<(), Error> {
+        let msg = WsMessage::Binary(payload.to_owned());
 
         self.send(msg)
             .await

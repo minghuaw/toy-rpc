@@ -58,12 +58,12 @@ pub trait FrameRead {
 #[async_trait]
 pub trait FrameWrite {
     /// Writes a frame
-    async fn write_frame(&mut self, frame: Frame) -> Result<(), Error>;
+    async fn write_frame(&mut self, frame_header: FrameHeader, payload: &[u8]) -> Result<(), Error>;
 }
 
 /// Header of a frame
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
-pub(crate) struct FrameHeader {
+pub struct FrameHeader {
     message_id: MessageId,
     frame_id: FrameId,
     payload_type: u8, // this is not used for now
@@ -215,13 +215,13 @@ impl<R: AsyncRead + Unpin + Send> FrameRead for R {
 
 #[async_trait]
 impl<W: AsyncWrite + Unpin + Send> FrameWrite for W {
-    async fn write_frame(&mut self, frame: Frame) -> Result<(), Error> {
-        let Frame {
-            message_id,
-            frame_id,
-            payload_type,
-            payload,
-        } = frame;
+    async fn write_frame(&mut self, frame_header: FrameHeader, payload: &[u8]) -> Result<(), Error> {
+        // let Frame {
+        //     message_id,
+        //     frame_id,
+        //     payload_type,
+        //     payload,
+        // } = frame;
 
         // check if buf length exceeds maximum
         if payload.len() > PayloadLen::MAX as usize {
@@ -236,13 +236,13 @@ impl<W: AsyncWrite + Unpin + Send> FrameWrite for W {
         }
 
         // construct frame header
-        let header = FrameHeader::new(message_id, frame_id, payload_type, payload.len() as u32);
+        // let header = FrameHeader::new(message_id, frame_id, payload_type, payload.len() as u32);
 
         // write magic first
         self.write_all(&[MAGIC]).await?;
 
         // write header
-        self.write_all(&header.to_vec()?).await?;
+        self.write_all(&frame_header.to_vec()?).await?;
 
         // write payload
         let _ = self.write_all(&payload).await?;
@@ -290,8 +290,10 @@ where
 {
     async fn close(&mut self) {
         // send a trailer frame with message id 0 and END_FRAME_ID and empty payload
-        let end_frame = Frame::new(0, END_FRAME_ID, PayloadType::Trailer, Vec::with_capacity(0));
-        self.write_frame(end_frame)
+        // let end_frame = Frame::new(0, END_FRAME_ID, PayloadType::Trailer, Vec::with_capacity(0));
+        let end_frame_header = FrameHeader::new(0, END_FRAME_ID, PayloadType::Trailer, 0);
+        let payload = Vec::with_capacity(0);
+        self.write_frame(end_frame_header, &payload)
             .await
             .unwrap_or_else(|e| log::error!("{}", e));
     }

@@ -19,8 +19,6 @@ use crate::transport::ws::{CanSink, SinkHalf, StreamHalf, WebSocketConn};
 
 pub mod split;
 
-// pub(crate) type RequestDeserializer = Box<dyn erased::Deserializer<'static> + Send + 'static>;
-
 cfg_if! {
     if #[cfg(feature = "http_tide")] {
         use tide_websockets as tide_ws;
@@ -316,12 +314,12 @@ pub trait CodecWrite: Send + Marshal {
     /// Writes the body of the message
     async fn write_body(
         &mut self,
-        id: &MessageId,
+        id: MessageId,
         body: &(dyn erased::Serialize + Send + Sync),
     ) -> Result<(), Error>;
 
     /// Writes body as raw bytes
-    async fn write_body_bytes(&mut self, id: &MessageId, bytes: Vec<u8>) -> Result<(), Error>;
+    async fn write_body_bytes(&mut self, id: MessageId, bytes: &[u8]) -> Result<(), Error>;
 }
 
 cfg_if! {

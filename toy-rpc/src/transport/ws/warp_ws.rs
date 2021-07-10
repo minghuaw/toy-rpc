@@ -32,7 +32,7 @@ impl PayloadRead for StreamHalf<SplitStream<WebSocket>, CanSink> {
 #[async_trait]
 impl PayloadWrite for SinkHalf<SplitSink<WebSocket, WsMessage>, CanSink>
 {
-    async fn write_payload(&mut self, payload: Vec<u8>) -> Result<(), Error> {
+    async fn write_payload(&mut self, payload: &[u8]) -> Result<(), Error> {
         let msg = warp::ws::Message::binary(payload);
 
         self.send(msg)

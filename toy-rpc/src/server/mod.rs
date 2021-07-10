@@ -3,7 +3,8 @@
 //!
 
 use cfg_if::cfg_if;
-use std::sync::Arc;
+use flume::Sender;
+use std::sync::{Arc, atomic::{AtomicU64}};
 
 use crate::{service::AsyncServiceMap};
 
@@ -40,7 +41,10 @@ mod tokio;
 pub mod builder;
 use builder::ServerBuilder;
 
-pub(crate) type ClientId = u32;
+use self::pubsub::{PubSubBroker, PubSubItem};
+
+pub(crate) type ClientId = u64;
+pub(crate) type AtomicClientId = AtomicU64;
 
 /// RPC Server
 ///
@@ -50,6 +54,14 @@ pub(crate) type ClientId = u32;
 #[derive(Clone)]
 pub struct Server {
     services: Arc<AsyncServiceMap>,
+    client_counter: Arc<AtomicClientId>, // monotomically increase counter
+    pubsub_tx: Sender<PubSubItem>,
+}
+
+impl Drop for Server {
+    fn drop(&mut self) {
+        self.pubsub_tx.send(PubSubItem::Stop);
+    }
 }
 
 impl Server {
@@ -75,6 +87,23 @@ cfg_if! {
     ))] {
         use crate::error::Error;
 
+        impl Server {
+            /// Builds a Server from a ServerBuilder
+            pub fn from_builder(builder: ServerBuilder) -> Self {
+                let services = Arc::new(builder.services);
+                let (tx, rx) = flume::unbounded();
+        
+                let pubsub_broker = PubSubBroker::new(rx);
+                pubsub_broker.spawn();
+
+                Self {
+                    client_counter: Arc::new(AtomicClientId::new(0)),
+                    services,
+                    pubsub_tx: tx
+                }
+            }
+        }
+
         // Spawn tasks for the reader/broker/writer loops
         #[cfg(any(
             feature = "serde_bincode", 
@@ -84,16 +113,19 @@ cfg_if! {
         ))]
         pub(crate) async fn start_broker_reader_writer(
             codec: impl crate::codec::split::SplittableCodec + 'static,
-            services: Arc<AsyncServiceMap>
+            services: Arc<AsyncServiceMap>,
+            client_id: ClientId,
+            pubsub_tx: Sender<PubSubItem>,
         ) -> Result<(), Error> {
             let (writer, reader) = codec.split();
 
             let reader = reader::ServerReader::new(reader, services);
             let writer = writer::ServerWriter::new(writer);
-            let broker = broker::ServerBroker::new();
+            let broker = broker::ServerBroker::new(client_id, pubsub_tx);
 
-            let (mut broker_handle, _) = brw::spawn(broker, reader, writer);
-            brw::util::Conclude::conclude(&mut broker_handle);
+            let (broker_handle, _) = brw::spawn(broker, reader, writer);
+            // brw::util::Conclude::conclude(&mut broker_handle);
+            let _ = broker_handle.await;
             Ok(())
         }
     }

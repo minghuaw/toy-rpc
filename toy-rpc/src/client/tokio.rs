@@ -80,7 +80,7 @@ cfg_if! {
                 addr: impl ToSocketAddrs,
                 domain: &str,
                 config: ClientConfig
-            ) -> Result<Client<Connected>, Error> {
+            ) -> Result<Client, Error> {
                 super::tcp_client_with_tls_config(addr, domain, config).await
             }
 
@@ -128,7 +128,7 @@ cfg_if! {
                 addr: &str,
                 domain: &str,
                 config: ClientConfig,
-            ) -> Result<Client<Connected>, Error> {
+            ) -> Result<Client, Error> {
                 let mut url = url::Url::parse(addr)?.join(DEFAULT_RPC_PATH)?;
                 url.set_scheme("ws").expect("Failed to change scheme to ws");
 
@@ -174,7 +174,7 @@ cfg_if! {
                 addr: &str,
                 domain: &str,
                 config: ClientConfig,
-            ) -> Result<Client<Connected>, Error> {
+            ) -> Result<Client, Error> {
                 let url = url::Url::parse(addr)?;
                 super::websocket_client_with_tls_config(url, domain, config).await
             }
