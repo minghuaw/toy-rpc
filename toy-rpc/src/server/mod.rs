@@ -40,7 +40,7 @@ mod tokio;
 pub mod builder;
 use builder::ServerBuilder;
 
-pub type ClientId = u32;
+pub(crate) type ClientId = u32;
 
 /// RPC Server
 ///

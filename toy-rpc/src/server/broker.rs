@@ -15,6 +15,8 @@ use crate::{
     message::{MessageId},
     error::Error,
 };
+use super::ClientId;
+use super::pubsub::PubSubItem;
 
 #[cfg(any(
     feature = "docs",
@@ -25,13 +27,17 @@ use ::tokio::task::JoinHandle;
 use ::async_std::task::JoinHandle;
 
 pub(crate) struct ServerBroker { 
+    client_id: ClientId,
     executions: HashMap<MessageId, JoinHandle<()>>,
+    pubsub_broker: Sender<PubSubItem>
 }
 
 impl ServerBroker {
-    pub fn new() -> Self {
+    pub fn new(client_id: ClientId, pubsub_broker: Sender<PubSubItem>) -> Self {
         Self {
+            client_id,
             executions: HashMap::new(),
+            pubsub_broker,
         }
     }
 }
@@ -51,6 +57,27 @@ pub(crate) enum ServerBrokerItem {
         result: HandlerResult
     },
     Cancel(MessageId),
+    // A new publish from the client
+    Publish {
+        id: MessageId,
+        topic: String,
+        content: Vec<u8>,
+    },
+    // A new subscribe from the client
+    Subscribe {
+        id: MessageId,
+        topic: String,
+    },
+    Unsubscribe {
+        id: MessageId,
+        topic: String,
+    },
+    // A publication message to the client
+    Publication {
+        id: MessageId,
+        topic: String,
+        content: Arc<Vec<u8>>, 
+    },
     Stop
 }
 
@@ -92,6 +119,27 @@ impl Broker for ServerBroker {
                 }
 
                 Running::Continue(Ok(()))
+            },
+            ServerBrokerItem::Publish {id, topic, content} => {
+                let content = Arc::new(content);
+                let msg = PubSubItem::Publish{
+                    msg_id: id,
+                    topic,
+                    content
+                };
+                Running::Continue(
+                    self.pubsub_broker.send_async(msg).await
+                        .map_err(|err| err.into())
+                )
+            },
+            ServerBrokerItem::Subscribe {id, topic} => {
+
+            },
+            ServerBrokerItem::Unsubscribe {id, topic} => {
+
+            },
+            ServerBrokerItem::Subscription {id, topic, content} => {
+
             },
             ServerBrokerItem::Stop => {
                 for (_, handle) in self.executions.drain() {

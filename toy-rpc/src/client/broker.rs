@@ -33,6 +33,7 @@ pub enum ClientBrokerItem {
         result: Result<Box<InboundBody>, Box<InboundBody>>
     },
     Cancel(MessageId),
+    /// New publication to the server
     Publish{
         // id: MessageId,
         topic: String,
@@ -53,6 +54,7 @@ pub enum ClientBrokerItem {
         // id: MessageId,
         topic: String,
     },
+    /// Subscription from the server
     Subscription {
         id: MessageId,
         topic: String,
