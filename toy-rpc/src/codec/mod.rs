@@ -278,14 +278,28 @@ where
 
 /// A codec that can read the header and body of a message
 #[async_trait]
-pub trait CodecRead: Send + Unmarshal {
+pub trait CodecRead: Send + Unmarshal + EraseDeserializer {
     /// Reads the header of the message.
     async fn read_header<H>(&mut self) -> Option<Result<H, Error>>
     where
-        H: serde::de::DeserializeOwned;
+        H: serde::de::DeserializeOwned
+    {
+        Some(
+            self.read_bytes().await?
+                .and_then(|payload| Self::unmarshal(&payload))
+        )
+    }
 
     /// Reads the body of the message
-    async fn read_body(&mut self) -> Option<Result<Box<InboundBody>, Error>>;
+    async fn read_body(&mut self) -> Option<Result<Box<InboundBody>, Error>> {
+        match self.read_bytes().await? {
+            Ok(payload) => {
+                let de = Self::from_bytes(payload);
+                Some(Ok(de))
+            }
+            Err(e) => return Some(Err(e)),
+        }
+    }
 
     /// Reads the body as raw bytes
     async fn read_bytes(&mut self) -> Option<Result<Vec<u8>, Error>>;
@@ -305,6 +319,9 @@ pub trait CodecWrite: Send + Marshal {
         id: &MessageId,
         body: &(dyn erased::Serialize + Send + Sync),
     ) -> Result<(), Error>;
+
+    /// Writes body as raw bytes
+    async fn write_body_bytes(&mut self, id: &MessageId, bytes: Vec<u8>) -> Result<(), Error>;
 }
 
 cfg_if! {

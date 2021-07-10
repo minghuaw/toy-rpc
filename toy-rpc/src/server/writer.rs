@@ -17,7 +17,6 @@ impl<W: CodecWrite> ServerWriter<W> {
     async fn write_response(
         &mut self,
         header: Header,
-        // body: &(dyn erased_serde::Serialize + Send + Sync),
         body: &OutboundBody,
     ) -> Result<(), Error> {
         let id = header.get_id();

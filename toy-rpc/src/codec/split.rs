@@ -96,36 +96,6 @@ cfg_if! {
             R: FrameRead + Send + Unpin,
             C: Unmarshal + EraseDeserializer + Send
         {
-            async fn read_header<H>(&mut self) -> Option<Result<H, Error>>
-            where
-                H: serde::de::DeserializeOwned,
-            {
-                let reader = &mut self.reader;
-
-                log::debug!("Reading header");
-
-                Some(
-                    reader
-                        .read_frame()
-                        .await?
-                        .and_then(|frame| Self::unmarshal(&frame.payload)),
-                )
-            }
-
-            async fn read_body(
-                &mut self,
-            ) -> Option<Result<Box<InboundBody>, Error>> {
-                let reader = &mut self.reader;
-
-                match reader.read_frame().await? {
-                    Ok(frame) => {
-                        let de = C::from_bytes(frame.payload);
-                        Some(Ok(de))
-                    }
-                    Err(e) => return Some(Err(e)),
-                }
-            }
-
             async fn read_bytes(&mut self) -> Option<Result<Vec<u8>, Error>> {
                 self.reader.read_frame().await
                     .map(|res| {
@@ -162,6 +132,11 @@ cfg_if! {
                 let buf = Self::marshal(&body)?;
                 let frame = Frame::new(id.to_owned(), 1, PayloadType::Data, buf.to_owned());
                 writer.write_frame(frame).await
+            }
+
+            async fn write_body_bytes(&mut self, id: &MessageId, bytes: Vec<u8>) -> Result<(), Error> {
+                let frame = Frame::new(*id, 1, PayloadType::Data, bytes);
+                self.writer.write_frame(frame).await
             }
         }
 
@@ -236,34 +211,6 @@ cfg_if! {
             R: PayloadRead + Send,
             C: Unmarshal + EraseDeserializer + Send
         {
-            async fn read_header<H>(&mut self) -> Option<Result<H, Error>>
-            where
-                H: serde::de::DeserializeOwned,
-            {
-                let reader = &mut self.reader;
-
-                Some(
-                    reader
-                        .read_payload()
-                        .await?
-                        .and_then(|payload| Self::unmarshal(&payload)),
-                )
-            }
-
-            async fn read_body(
-                &mut self,
-            ) -> Option<Result<Box<InboundBody>, Error>> {
-                let reader = &mut self.reader;
-
-                match reader.read_payload().await? {
-                    Ok(payload) => {
-                        let de = Self::from_bytes(payload);
-                        Some(Ok(de))
-                    }
-                    Err(e) => return Some(Err(e)),
-                }
-            }
-
             async fn read_bytes(&mut self) -> Option<Result<Vec<u8>, Error>> {
                 self.reader.read_payload().await
             }
@@ -292,6 +239,10 @@ cfg_if! {
                 let buf = Self::marshal(&body)?;
                 let writer = &mut self.writer;
                 writer.write_payload(buf).await
+            }
+
+            async fn write_body_bytes(&mut self, _: &MessageId, bytes: Vec<u8>) -> Result<(), Error> {
+                self.writer.write_payload(bytes).await
             }
         }
 

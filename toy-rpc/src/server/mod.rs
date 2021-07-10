@@ -18,6 +18,8 @@ cfg_if! {
         mod broker;
         mod reader;
         mod writer;
+
+        mod pubsub;
     }
 }
 
@@ -37,6 +39,8 @@ mod tokio;
 
 pub mod builder;
 use builder::ServerBuilder;
+
+pub type ClientId = u32;
 
 /// RPC Server
 ///

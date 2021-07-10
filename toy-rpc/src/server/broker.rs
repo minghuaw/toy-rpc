@@ -38,7 +38,7 @@ impl ServerBroker {
 
 #[cfg_attr(feature = "http_actix_web", derive(actix::Message))]
 #[cfg_attr(feature = "http_actix_web", rtype(result = "()"))]
-pub(crate) enum ServerBorkerItem {
+pub(crate) enum ServerBrokerItem {
     Request {
         call: ArcAsyncServiceCall,
         id: MessageId,
@@ -56,7 +56,7 @@ pub(crate) enum ServerBorkerItem {
 
 #[async_trait::async_trait]
 impl Broker for ServerBroker {
-    type Item = ServerBorkerItem;
+    type Item = ServerBrokerItem;
     type WriterItem = (MessageId, HandlerResult);
     type Ok = ();
     type Error = Error;
@@ -64,7 +64,7 @@ impl Broker for ServerBroker {
     async fn op<W>(&mut self, ctx: & Arc<brw::Context<Self::Item>>, item: Self::Item, mut writer: W) -> Running<Result<Self::Ok, Self::Error>>
     where W: Sink<Self::WriterItem, Error = flume::SendError<Self::WriterItem>> + Send + Unpin {
         match item {
-            ServerBorkerItem::Request{
+            ServerBrokerItem::Request{
                 call,
                 id,
                 method,
@@ -77,13 +77,13 @@ impl Broker for ServerBroker {
                 self.executions.insert(id, handle);
                 Running::Continue(Ok(()))
             },
-            ServerBorkerItem::Response{id, result} => {
+            ServerBrokerItem::Response{id, result} => {
                 self.executions.remove(&id);
                 let res: Result<(), Error> = writer.send((id, result)).await
                     .map_err(|err| err.into());
                 Running::Continue(res)
             },
-            ServerBorkerItem::Cancel(id) => {
+            ServerBrokerItem::Cancel(id) => {
                 if let Some(handle) = self.executions.remove(&id) {
                     #[cfg(all(feature = "tokio_runtime", not(feature = "async_std_runtime")))]
                     handle.abort();
@@ -93,7 +93,7 @@ impl Broker for ServerBroker {
 
                 Running::Continue(Ok(()))
             },
-            ServerBorkerItem::Stop => {
+            ServerBrokerItem::Stop => {
                 for (_, handle) in self.executions.drain() {
                     log::debug!("Stopping execution as client is disconnected");
                     #[cfg(all(feature = "tokio_runtime", not(feature = "async_std_runtime")))]
@@ -132,14 +132,14 @@ fn handle_request(
     not(feature = "async_std_runtime")
 ))]
 fn handle_request(
-    broker: Sender<ServerBorkerItem>,
+    broker: Sender<ServerBrokerItem>,
     duration: Duration,
     id: MessageId,
     fut: impl Future<Output=HandlerResult> + Send + 'static,
 ) -> ::tokio::task::JoinHandle<()> {
     ::tokio::task::spawn(async move {
         let result = execute_timed_call(id, duration, fut).await;
-        broker.send_async(ServerBorkerItem::Response{id, result}).await
+        broker.send_async(ServerBrokerItem::Response{id, result}).await
             .unwrap_or_else(|e| log::error!("{}", e));
     })
 }
