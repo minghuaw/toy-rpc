@@ -29,10 +29,10 @@ rustdoc-args = ["--cfg", "feature=\"docs\""]
 [features]
 default = [
     "serde_json",
-    # "http_warp",
-    # "server",
-    # "client",
-    # "tls",
+    "tokio_runtime",
+    "server",
+    "client",
+    "tls",
 ]
 
 docs = []

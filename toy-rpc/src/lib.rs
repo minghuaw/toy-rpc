@@ -109,6 +109,7 @@ pub mod service;
 pub mod transport;
 pub mod util;
 pub mod protocol;
+pub mod pubsub;
 
 /// The default path added to the HTTP url
 #[cfg(any(

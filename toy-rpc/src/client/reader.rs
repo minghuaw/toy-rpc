@@ -49,6 +49,12 @@ impl<R: CodecRead> brw::Reader for ClientReader<R> {
                     }
                     Running::Continue(Ok(()))
                 },
+                Header::Publish{id, topic} => {
+                    Running::Continue(
+                        broker.send(ClientBrokerItem::Subscription{id, topic, item: deserializer}).await
+                            .map_err(|err| err.into())
+                    )
+                },
                 _ => {
                     unimplemented!()
                 }

@@ -10,7 +10,7 @@ use pin_project::pin_project;
 
 use crate::protocol::{InboundBody, OutboundBody};
 use crate::error::Error;
-use crate::util::Topic;
+use crate::pubsub::Topic;
 
 use super::broker::ClientBrokerItem;
 

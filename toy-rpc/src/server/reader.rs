@@ -75,18 +75,19 @@ impl<T: CodecRead> Reader for ServerReader<T> {
                 Ok(header) => header,
                 Err(err) => return Running::Continue(Err(err))
             };
-            let deserializer = match self.reader.read_body().await {
-                Some(res) => {
-                    match res {
-                        Ok(de) => de,
-                        Err(err) => return Running::Continue(Err(err))
-                    }
-                },
-                None => return Running::Stop
-            };
+            log::debug!("{:?}", &header);
 
             match header {
                 Header::Request{id, service_method, timeout} => {
+                    let deserializer = match self.reader.read_body().await {
+                        Some(res) => {
+                            match res {
+                                Ok(de) => de,
+                                Err(err) => return Running::Continue(Err(err))
+                            }
+                        },
+                        None => return Running::Stop
+                    };
                     match self.handle_request(service_method).await {
                         Ok((call, method)) => {
                             let msg = ServerBrokerItem::Request {
@@ -112,10 +113,28 @@ impl<T: CodecRead> Reader for ServerReader<T> {
                     }
                 },
                 Header::Response{id, is_ok} => {
+                    let _ = match self.reader.read_body().await {
+                        Some(res) => {
+                            match res {
+                                Ok(de) => de,
+                                Err(err) => return Running::Continue(Err(err))
+                            }
+                        },
+                        None => return Running::Stop
+                    };
                     log::error!("Server received Response {{id: {}, is_ok: {}}}", id, is_ok);
                     Running::Continue(Ok(()))
                 },
                 Header::Cancel(id) => {
+                    let deserializer = match self.reader.read_body().await {
+                        Some(res) => {
+                            match res {
+                                Ok(de) => de,
+                                Err(err) => return Running::Continue(Err(err))
+                            }
+                        },
+                        None => return Running::Stop
+                    };
                     match self.handle_cancel(id, deserializer).await {
                         Ok(_) => {
                             let msg = ServerBrokerItem::Cancel(id);
@@ -134,13 +153,33 @@ impl<T: CodecRead> Reader for ServerReader<T> {
                     }
                 },
                 Header::Publish{id, topic} => {
-                    unimplemented!()
+                    let content = match self.reader.read_bytes().await {
+                        Some(res ) => {
+                            match res {
+                                Ok(b) => b,
+                                Err(err) => return Running::Continue(Err(err))
+                            }
+                        },
+                        None => return Running::Stop
+                    };
+                    Running::Continue(
+                        broker.send(ServerBrokerItem::Publish{id, topic, content}).await
+                            .map_err(|err| err.into())
+                    )
                 },
                 Header::Subscribe{id, topic} => {
-                    unimplemented!()
+                    let _ = self.reader.read_bytes().await;
+                    Running::Continue(
+                        broker.send(ServerBrokerItem::Subscribe{id, topic}).await
+                            .map_err(|err| err.into())
+                    )
                 },
                 Header::Unsubscribe{id, topic} => {
-                    unimplemented!()
+                    let _ = self.reader.read_bytes().await;
+                    Running::Continue(
+                        broker.send(ServerBrokerItem::Unsubscribe{id, topic}).await
+                            .map_err(|err| err.into())
+                    )
                 }
                 Header::Ack(id) => {
                     unimplemented!()

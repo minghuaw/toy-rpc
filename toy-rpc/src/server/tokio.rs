@@ -37,7 +37,6 @@ cfg_if! {
         use futures::{StreamExt};
         use ::tokio::task::{self};
         use tokio::io::{AsyncRead, AsyncWrite};
-        use async_tungstenite::tokio::TokioAdapter;
         use flume::Sender;
         use std::sync::atomic::Ordering;
 

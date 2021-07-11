@@ -6,7 +6,7 @@ use flume::Sender;
 use futures::{Future, Sink, channel::oneshot};
 use std::{any::TypeId, marker::PhantomData, pin::Pin, sync::Arc, task::{Context, Poll}};
 
-use crate::{Error, message::{AtomicMessageId, MessageId}, protocol::OutboundBody, util::Topic};
+use crate::{Error, message::{AtomicMessageId, MessageId}, protocol::OutboundBody, pubsub::Topic};
 use crate::protocol::InboundBody;
 
 mod pubsub;
@@ -465,10 +465,9 @@ cfg_if! {
             /// Creates a new publisher on a topic. 
             ///
             /// Multiple local publishers on the same topic are allowed. 
-            pub fn publisher<T, S>(&self) -> Publisher<T> 
+            pub fn publisher<T>(&self) -> Publisher<T> 
             where 
                 T: Topic,
-                S: Sink<ClientBrokerItem, Error = Error>,
             {
                 let tx = self.broker.clone();
                 Publisher::from(tx)
