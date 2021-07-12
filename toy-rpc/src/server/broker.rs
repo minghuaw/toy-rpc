@@ -136,6 +136,7 @@ impl Broker for ServerBroker {
                 )
             },
             ServerBrokerItem::Subscribe {id, topic} => {
+                log::debug!("Message ID: {}, Subscribe to topic: {}", &id, &topic);
                 let msg = PubSubItem::Subscribe {
                     client_id: self.client_id, 
                     topic, 
@@ -147,6 +148,7 @@ impl Broker for ServerBroker {
                 )
             },
             ServerBrokerItem::Unsubscribe {id, topic} => {
+                log::debug!("Message ID: {}, Unsubscribe from topic: {}", &id, &topic);
                 let msg = PubSubItem::Unsubscribe{client_id: self.client_id, topic};
                 Running::Continue(
                     self.pubsub_broker.send_async(msg).await

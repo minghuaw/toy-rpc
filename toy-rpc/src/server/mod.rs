@@ -60,7 +60,9 @@ pub struct Server {
 
 impl Drop for Server {
     fn drop(&mut self) {
-        self.pubsub_tx.send(PubSubItem::Stop);
+        if let Err(err) = self.pubsub_tx.send(PubSubItem::Stop) {
+            log::error!("{}", err);
+        }
     }
 }
 

@@ -181,16 +181,16 @@ impl<T: CodecRead> Reader for ServerReader<T> {
                             .map_err(|err| err.into())
                     )
                 }
-                Header::Ack(id) => {
+                Header::Ack(_) => {
                     unimplemented!()
                 },
-                Header::Produce { id, topic, tickets} => {
+                Header::Produce { id: _, topic: _, tickets: _} => {
                     unimplemented!()
                 },
-                Header::Consume{id, topic} => {
+                Header::Consume{id: _, topic: _} => {
                     unimplemented!()
                 },
-                Header::Ext {id, content, marker} => {
+                Header::Ext {id: _, content: _, marker: _} => {
                     unimplemented!()
                 }
             }

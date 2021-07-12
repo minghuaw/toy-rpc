@@ -11,6 +11,7 @@ use crate::{
 
 /// Server builder
 pub struct ServerBuilder {
+    /// Registered services
     pub services: AsyncServiceMap,
 }
 
