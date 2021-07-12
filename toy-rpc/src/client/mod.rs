@@ -6,13 +6,13 @@ use flume::Sender;
 use futures::{Future, channel::oneshot};
 use std::{any::TypeId, marker::PhantomData, pin::Pin, sync::Arc, task::{Context, Poll}};
 
-use crate::{Error, message::{AtomicMessageId, MessageId}, protocol::OutboundBody, pubsub::Topic};
+use crate::{Error, message::{AtomicMessageId, MessageId}, protocol::OutboundBody};
 use crate::protocol::InboundBody;
-use crate::pubsub::{Publisher, Subscriber};
 
 pub(crate) mod broker;
 mod reader;
 mod writer;
+mod pubsub;
 
 use broker::*;
 
@@ -458,61 +458,6 @@ cfg_if! {
                     cancel: self.broker.clone(),
                     done: resp_rx,
                     marker: PhantomData
-                }
-            }
-
-            /// Creates a new publisher on a topic. 
-            ///
-            /// Multiple local publishers on the same topic are allowed. 
-            pub fn publisher<T>(&self) -> Publisher<T, ClientBrokerItem> 
-            where 
-                T: Topic,
-            {
-                let tx = self.broker.clone();
-                Publisher::from(tx)
-            }
-
-            /// Creates a new subscriber on a topic
-            ///
-            pub fn subscriber<T: Topic + 'static>(&mut self, cap: usize) -> Result<Subscriber<T>, Error> {
-                let (tx, rx) = flume::bounded(cap);
-                let topic = T::topic();
-
-                // Check if there is an existing subscriber
-                if self.subscriptions.contains_key(&topic) {
-                    return Err(Error::Internal("Only one local subscriber per topic is allowed".into()))
-                }
-                self.subscriptions.insert(topic.clone(), TypeId::of::<T>());
-                
-                // Create new subscription
-                if let Err(err) = self.broker.send(ClientBrokerItem::Subscribe{topic, item_sink: tx}) {
-                    return Err(err.into())
-                };
-
-                let sub = Subscriber::from_recver(rx);
-                Ok(sub)
-            }
-
-            /// Replaces the local subscriber without sending any message to the server
-            ///
-            /// The previous subscriber will no longer receive any message.
-            pub fn replace_local_subscriber<T: Topic + 'static>(&mut self, cap: usize) -> Result<Subscriber<T>, Error> {
-                let topic = T::topic();
-                match self.subscriptions.get(&topic) {
-                    Some(entry) => {
-                        match &TypeId::of::<T>() == entry {
-                            true => {
-                                let (tx, rx) = flume::bounded(cap);
-                                if let Err(err) = self.broker.send(ClientBrokerItem::NewLocalSubscriber{topic, new_item_sink: tx}) {
-                                    return Err(err.into())
-                                }
-                                let sub = Subscriber::from_recver(rx);
-                                Ok(sub)
-                            },
-                            false => Err(Error::Internal("TypeId mismatch".into()))
-                        }
-                    },
-                    None => Err(Error::Internal("There is no existing local subscriber".into()))
                 }
             }
         }

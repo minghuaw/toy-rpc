@@ -1,16 +1,14 @@
 //! PubSub support
-use flume::{Receiver, Sender};
-use futures::{Stream, Sink};
+use flume::{Receiver};
+use futures::{Stream};
 use flume::r#async::{SendSink,RecvStream};
 use std::marker::PhantomData;
 use std::task::Poll;
-use std::pin::Pin;
 use pin_project::pin_project;
 use serde::{Serialize, de::DeserializeOwned};
 
-use crate::protocol::{InboundBody, OutboundBody};
+use crate::protocol::{InboundBody};
 use crate::error::Error;
-use crate::client::broker::ClientBrokerItem;
 
 /// Trait for PubSub Topic
 pub trait Topic {
@@ -29,55 +27,8 @@ where
     I: 'static
 {
     #[pin]
-    inner: SendSink<'static, I>,
-    marker: PhantomData<T>
-}
-
-impl<T> From<Sender<ClientBrokerItem>> for Publisher<T, ClientBrokerItem> 
-where 
-    T: Topic
-{
-    fn from(inner: Sender<ClientBrokerItem>) -> Self {
-        Self {
-            inner: inner.into_sink(),
-            marker: PhantomData
-        }
-    }
-}
-
-impl<T> Sink<T::Item> for Publisher<T, ClientBrokerItem> 
-where 
-    T: Topic,
-    // S: Sink<ClientBrokerItem, Error = Error>,
-{
-    type Error = Error;
-
-    fn poll_ready(self: Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> Poll<Result<(), Self::Error>> {
-        let this = self.project();
-        this.inner.poll_ready(cx)
-            .map_err(|err| err.into())
-    }
-
-    fn start_send(self: Pin<&mut Self>, item: T::Item) -> Result<(), Self::Error> {
-        let this = self.project();
-        let topic = T::topic();
-        let body = Box::new(item) as Box<OutboundBody>;
-        let item = ClientBrokerItem::Publish{topic, body};
-        this.inner.start_send(item)
-            .map_err(|err| err.into())
-    }
-
-    fn poll_flush(self: Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> Poll<Result<(), Self::Error>> {
-        let this = self.project();
-        this.inner.poll_flush(cx)
-            .map_err(|err| err.into())
-    }
-
-    fn poll_close(self: Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> Poll<Result<(), Self::Error>> {
-        let this = self.project();
-        this.inner.poll_close(cx)
-            .map_err(|err| err.into())
-    }
+    pub(crate) inner: SendSink<'static, I>,
+    pub(crate) marker: PhantomData<T>
 }
 
 /// Subscriber of topic T
