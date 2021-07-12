@@ -1,8 +1,6 @@
 use std::collections::{HashMap, BTreeMap};
 use std::sync::Arc;
 use flume::{Sender, Receiver};
-use pin_project::pin_project;
-use futures::{StreamExt, SinkExt};
 
 use crate::message::MessageId;
 
@@ -96,16 +94,3 @@ impl PubSubBroker {
         }
     }
 }
-
-/* -------------------------------------------------------------------------- */
-/*                                 Public structs                             */
-/* -------------------------------------------------------------------------- */
-
-// /// Publisher of topic T on the server side
-// #[pin_project]
-// pub struct Publisher<T>
-// where 
-//     T: Topic,
-// {
-
-// }

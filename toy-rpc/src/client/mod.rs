@@ -8,14 +8,13 @@ use std::{any::TypeId, marker::PhantomData, pin::Pin, sync::Arc, task::{Context,
 
 use crate::{Error, message::{AtomicMessageId, MessageId}, protocol::OutboundBody, pubsub::Topic};
 use crate::protocol::InboundBody;
+use crate::pubsub::{Publisher, Subscriber};
 
-mod pubsub;
-mod broker;
+pub(crate) mod broker;
 mod reader;
 mod writer;
 
 use broker::*;
-use pubsub::*;
 
 const DEFAULT_TIMEOUT_SECONDS: u64 = 10;
 
