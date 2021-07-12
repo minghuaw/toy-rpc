@@ -16,16 +16,17 @@ use super::broker::ClientBrokerItem;
 
 /// Publisher of topic T
 #[pin_project]
-pub struct Publisher<T> 
+pub struct Publisher<T, I> 
 where 
     T: Topic,
+    I: 'static
 {
     #[pin]
-    inner: SendSink<'static, ClientBrokerItem>,
+    inner: SendSink<'static, I>,
     marker: PhantomData<T>
 }
 
-impl<T> From<Sender<ClientBrokerItem>> for Publisher<T> 
+impl<T> From<Sender<ClientBrokerItem>> for Publisher<T, ClientBrokerItem> 
 where 
     T: Topic
 {
@@ -37,7 +38,7 @@ where
     }
 }
 
-impl<T> Sink<T::Item> for Publisher<T> 
+impl<T> Sink<T::Item> for Publisher<T, ClientBrokerItem> 
 where 
     T: Topic,
     // S: Sink<ClientBrokerItem, Error = Error>,

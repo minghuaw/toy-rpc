@@ -3,7 +3,7 @@
 use cfg_if::cfg_if;
 use crossbeam::atomic::AtomicCell;
 use flume::Sender;
-use futures::{Future, Sink, channel::oneshot};
+use futures::{Future, channel::oneshot};
 use std::{any::TypeId, marker::PhantomData, pin::Pin, sync::Arc, task::{Context, Poll}};
 
 use crate::{Error, message::{AtomicMessageId, MessageId}, protocol::OutboundBody, pubsub::Topic};
@@ -465,7 +465,7 @@ cfg_if! {
             /// Creates a new publisher on a topic. 
             ///
             /// Multiple local publishers on the same topic are allowed. 
-            pub fn publisher<T>(&self) -> Publisher<T> 
+            pub fn publisher<T>(&self) -> Publisher<T, ClientBrokerItem> 
             where 
                 T: Topic,
             {
