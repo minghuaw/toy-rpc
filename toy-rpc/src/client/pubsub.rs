@@ -3,14 +3,10 @@ use std::any::TypeId;
 use std::marker::PhantomData;
 use std::pin::Pin;
 use std::task::Poll;
-use futures::{Sink};
-use flume::{Sender};
+use futures::{Sink, Stream};
+use flume::{Receiver, Sender};
 
-use crate::{
-    error::Error,
-    pubsub::{Topic, Publisher, Subscriber},
-    protocol::OutboundBody,
-};
+use crate::{error::Error, protocol::{InboundBody, OutboundBody}, pubsub::{Topic, Publisher, Subscriber}};
 use super::{Client, broker::ClientBrokerItem};
 
 
@@ -61,6 +57,36 @@ where
     }
 }
 
+impl<T:Topic> Subscriber<T, Box<InboundBody>> {
+    pub(crate) fn from_recver(rx: Receiver<Box<InboundBody>>) -> Self {
+        Self {
+            inner: rx.into_stream(),
+            marker: PhantomData
+        }
+    }
+}
+
+impl<T: Topic> Stream for Subscriber<T, Box<InboundBody>> {
+    type Item = Result<T::Item, Error>;
+
+    fn poll_next(self: std::pin::Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> Poll<Option<Self::Item>> {
+        let this = self.project();
+        match this.inner.poll_next(cx) {
+            Poll::Pending => Poll::Pending,
+            Poll::Ready(val) => {
+                match val {
+                    Some(mut body) => {
+                        let result = erased_serde::deserialize(&mut body)
+                            .map_err(|err| err.into());
+                        Poll::Ready(Some(result))
+                    },
+                    None => Poll::Ready(None)
+                }
+            }
+        }
+    }
+}
+
 impl Client {
     /// Creates a new publisher on a topic. 
     ///
@@ -75,7 +101,7 @@ impl Client {
     
     /// Creates a new subscriber on a topic
     ///
-    pub fn subscriber<T: Topic + 'static>(&mut self, cap: usize) -> Result<Subscriber<T>, Error> {
+    pub fn subscriber<T: Topic + 'static>(&mut self, cap: usize) -> Result<Subscriber<T, Box<InboundBody>>, Error> {
         let (tx, rx) = flume::bounded(cap);
         let topic = T::topic();
     
@@ -97,7 +123,7 @@ impl Client {
     /// Replaces the local subscriber without sending any message to the server
     ///
     /// The previous subscriber will no longer receive any message.
-    pub fn replace_local_subscriber<T: Topic + 'static>(&mut self, cap: usize) -> Result<Subscriber<T>, Error> {
+    pub fn replace_local_subscriber<T: Topic + 'static>(&mut self, cap: usize) -> Result<Subscriber<T, Box<InboundBody>>, Error> {
         let topic = T::topic();
         match self.subscriptions.get(&topic) {
             Some(entry) => {
