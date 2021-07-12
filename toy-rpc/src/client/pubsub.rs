@@ -1,31 +1,15 @@
 //! PubSub integration for client
 use std::any::TypeId;
-use std::marker::PhantomData;
 use std::pin::Pin;
 use std::task::Poll;
 use futures::{Sink, Stream};
-use flume::{Receiver, Sender};
 
 use crate::{error::Error, protocol::{InboundBody, OutboundBody}, pubsub::{Topic, Publisher, Subscriber}};
 use super::{Client, broker::ClientBrokerItem};
 
-
-impl<T> From<Sender<ClientBrokerItem>> for Publisher<T, ClientBrokerItem> 
-where 
-    T: Topic
-{
-    fn from(inner: Sender<ClientBrokerItem>) -> Self {
-        Self {
-            inner: inner.into_sink(),
-            marker: PhantomData
-        }
-    }
-}
-
 impl<T> Sink<T::Item> for Publisher<T, ClientBrokerItem> 
 where 
     T: Topic,
-    // S: Sink<ClientBrokerItem, Error = Error>,
 {
     type Error = Error;
 
@@ -54,15 +38,6 @@ where
         let this = self.project();
         this.inner.poll_close(cx)
             .map_err(|err| err.into())
-    }
-}
-
-impl<T:Topic> Subscriber<T, Box<InboundBody>> {
-    pub(crate) fn from_recver(rx: Receiver<Box<InboundBody>>) -> Self {
-        Self {
-            inner: rx.into_stream(),
-            marker: PhantomData
-        }
     }
 }
 
@@ -116,7 +91,7 @@ impl Client {
             return Err(err.into())
         };
     
-        let sub = Subscriber::from_recver(rx);
+        let sub = Subscriber::from(rx);
         Ok(sub)
     }
     
@@ -133,7 +108,7 @@ impl Client {
                         if let Err(err) = self.broker.send(ClientBrokerItem::NewLocalSubscriber{topic, new_item_sink: tx}) {
                             return Err(err.into())
                         }
-                        let sub = Subscriber::from_recver(rx);
+                        let sub = Subscriber::from(rx);
                         Ok(sub)
                     },
                     false => Err(Error::Internal("TypeId mismatch".into()))
