@@ -2,7 +2,7 @@ use toy_rpc::Server;
 use tokio::net::TcpListener;
 use tokio::task;
 use std::time::Duration;
-use futures::SinkExt;
+use futures::{SinkExt, StreamExt}; // Make sure this is imported to use `send` or `next`
 
 use tokio_pubsub::*;
 
@@ -14,6 +14,8 @@ async fn main() {
         .build();
 
     let mut count_pub = server.publisher::<Count>();
+    let mut count_sub = server.subscriber::<Count>(10).unwrap();
+    
     task::spawn(async move {
         let mut count = 0;
         loop {
@@ -22,6 +24,14 @@ async fn main() {
             tokio::time::sleep(Duration::from_millis(1000)).await;
         }
     });
+
+    task::spawn(async move {
+        while let Some(item) = count_sub.next().await {
+            let item = item.unwrap();
+            println!("topic: "Count", item: {}", item);
+        }
+    });
+
     let listener = TcpListener::bind(ADDR).await.unwrap();
     server.accept(listener).await.unwrap();
 }
