@@ -88,8 +88,8 @@ cfg_if! {
             let writer = writer::ServerWriter::new(writer);
             let broker = broker::ServerBroker::new();
 
-            let (mut broker_handle, _) = brw::spawn(broker, reader, writer);
-            brw::util::Conclude::conclude(&mut broker_handle);
+            let (broker_handle, _) = brw::spawn(broker, reader, writer);
+            let _ = broker_handle.await;
             Ok(())
         }
     }
