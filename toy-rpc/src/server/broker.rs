@@ -58,13 +58,13 @@ pub(crate) enum ServerBrokerItem {
         result: HandlerResult
     },
     Cancel(MessageId),
-    // A new publish from the client
+    // A new publish from the client publisher
     Publish {
         id: MessageId,
         topic: String,
         content: Vec<u8>,
     },
-    // A new subscribe from the client
+    // A new subscribe from the client subscriber
     Subscribe {
         id: MessageId,
         topic: String,
@@ -73,7 +73,7 @@ pub(crate) enum ServerBrokerItem {
         id: MessageId,
         topic: String,
     },
-    // A publication message to the client
+    // A publication message to the client subscriber
     Publication {
         id: MessageId,
         topic: String,

@@ -46,6 +46,10 @@ use self::pubsub::{PubSubBroker, PubSubItem};
 pub(crate) type ClientId = u64;
 pub(crate) type AtomicClientId = AtomicU64;
 
+/// Client ID 0 is reserved for publisher and subscriber on the server side.
+/// Remote client have their ID starting from `RESERVED_CLIENT_ID + 1`
+pub const RESERVED_CLIENT_ID: ClientId = 0;
+
 /// RPC Server
 ///
 /// ```
@@ -99,7 +103,7 @@ cfg_if! {
                 pubsub_broker.spawn();
 
                 Self {
-                    client_counter: Arc::new(AtomicClientId::new(0)),
+                    client_counter: Arc::new(AtomicClientId::new(RESERVED_CLIENT_ID + 1)),
                     services,
                     pubsub_tx: tx
                 }

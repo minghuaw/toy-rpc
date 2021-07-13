@@ -1,7 +1,6 @@
 
 use toy_rpc::Client;
 use futures::StreamExt;
-use std::time::Duration;
 
 use tokio_pubsub::*;
 
@@ -12,7 +11,7 @@ async fn main() {
     let mut client = Client::dial(ADDR).await.unwrap();
     let mut count_sub = client.subscriber::<Count>(10).unwrap();
 
-    for _ in 0..3 {
+    for _ in 0..30 {
         if let Some(item) = count_sub.next().await {
             let item = item.unwrap();
             println!("{}", item);
@@ -20,11 +19,5 @@ async fn main() {
             break;
         }
     }
-
-    // tokio::time::sleep(Duration::from_millis(100)).await;
-    // println!("calling unsub");
-    // client.unsubscribe::<Count>().await;
-    
-    // client.close().await;
-    // tokio::time::sleep(Duration::from_millis(500)).await;
+    client.close().await;
 }

@@ -166,12 +166,15 @@ cfg_if! {
     }
 }
 
+/// Type state for AsyncRead and AsyncWrite connections (ie. raw TCP)
 #[cfg(any(feature = "async_std_runtime", feature = "tokio_runtime"))]
-/// type state for AsyncRead and AsyncWrite connections (ie. raw TCP)
 pub(crate) struct ConnTypeReadWrite {}
 
-/// type state for PayloadRead and PayloadWrite connections (ie. WebSocket)
+/// Type state for PayloadRead and PayloadWrite connections (ie. WebSocket)
 pub(crate) struct ConnTypePayload {}
+
+/// Reserved type state for Reader/Writer for Codec
+pub struct Reserved {}
 
 /// Default codec. `Codec` is re-exported as `DefaultCodec` when one of these feature
 /// flags is toggled (`serde_bincode`, `serde_json`, `serde_cbor`, `serde_rmp`")

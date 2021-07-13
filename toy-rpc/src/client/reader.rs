@@ -7,7 +7,7 @@ use crate::{Error, codec::CodecRead};
 use super::broker::ClientBrokerItem;
 use crate::protocol::{Header, InboundBody};
 
-pub struct ClientReader<R> {
+pub(crate) struct ClientReader<R> {
     pub reader: R,
 }
 

@@ -20,7 +20,7 @@ use crate::{Error, message::{AtomicMessageId, MessageId}, protocol::{InboundBody
 
 
 #[cfg_attr(all(not(feature = "tokio_runtime"), not(feature = "async_std_runtime")), allow(dead_code))]
-pub enum ClientBrokerItem {
+pub(crate) enum ClientBrokerItem {
     Request{
         // id: MessageId,
         service_method: String,
@@ -73,7 +73,7 @@ use ::async_std::task::{self};
     all(feature = "tokio_runtime", not(feature = "async_std_runtime")),
     all(feature = "async_std_runtime", not(feature = "tokio_runtime"))
 ))]
-pub struct ClientBroker {
+pub(crate) struct ClientBroker {
     pub count: Arc<AtomicMessageId>,
     pub pending: HashMap<MessageId, oneshot::Sender<Result<Result<Box<InboundBody>, Box<InboundBody>>, Error>>>,
     pub next_timeout: Option<Duration>,
