@@ -147,8 +147,6 @@ pub(crate) type InboundBody = dyn erased_serde::Deserializer<'static> + Send;
 
 #[cfg(test)]
 mod tests {
-    use std::io::Cursor;
-
     use bincode::{self, Options};
     use super::*;
 
