@@ -30,7 +30,7 @@ async fn main() {
     task::spawn(async move {
         while let Some(item) = count_sub.next().await {
             let item = item.unwrap();
-            println!("topic: "Count", item: {}", item);
+            println!("topic: Count, item: {}", item);
         }
     });
 
