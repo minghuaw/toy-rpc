@@ -130,7 +130,6 @@ cfg_if! {
             let broker = broker::ServerBroker::new(client_id, pubsub_tx);
 
             let (broker_handle, _) = brw::spawn(broker, reader, writer);
-            // brw::util::Conclude::conclude(&mut broker_handle);
             let _ = broker_handle.await;
             Ok(())
         }
