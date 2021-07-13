@@ -204,31 +204,4 @@ mod tests {
         let size = bincode_opt.serialized_size(&opt).unwrap();
         println!("size: {:?}", size);
     }
-
-    #[test]
-    fn bincode_i16() {
-        let opt = bincode::DefaultOptions::new()
-            .with_varint_encoding();
-        let num = 10;
-        type Out = i16;
-        let num = num as Out;
-        let buf = opt.serialize(&num).unwrap();
-
-        // serde::deserialize will yield the correct result
-        let mut de = bincode::Deserializer::with_reader(
-            Cursor::new(buf.clone()), 
-            opt
-            );
-        let out: Out = serde::Deserialize::deserialize(&mut de).unwrap();
-        println!("serde::Deserialize::deserialize: {:?}", out);
-
-        // erased serde somehow always multiplies the result by 2
-        let mut de = bincode::Deserializer::with_reader(
-            Cursor::new(buf), 
-            opt
-            );
-        let mut de = Box::new(<dyn erased_serde::Deserializer>::erase(&mut de)) as Box<dyn erased_serde::Deserializer>;
-        let out: Out = erased_serde::deserialize(&mut de).unwrap();
-        println!("erased_serde::deserialize: {:?}", out);
-    }
 }

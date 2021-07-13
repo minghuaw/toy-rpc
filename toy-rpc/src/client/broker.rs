@@ -219,7 +219,6 @@ impl brw::Broker for ClientBroker {
                     .map_err(|err| err.into())
             },
             ClientBrokerItem::Stop => {
-                println!("Stop");
                 if let Err(err) = writer.send(ClientWriterItem::Stop).await {
                     log::error!("{:?}", err);
                 }

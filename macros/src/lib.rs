@@ -393,7 +393,6 @@ pub fn export_trait(attr: proc_macro::TokenStream, item: proc_macro::TokenStream
         Ok(v) => v,
         Err(err) => { return proc_macro::TokenStream::from(err.write_errors()); }
     };
-    println!("{:?}", args);
 
     let input = syn::parse_macro_input!(item as syn::ItemTrait);
     #[cfg(feature = "server")]

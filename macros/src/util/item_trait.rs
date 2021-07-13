@@ -359,7 +359,6 @@ pub fn generate_trait_impl_for_client(
         }
     );
     output.items = generated_items;
-    // println!("{:?}", output);
     output
 }
 
