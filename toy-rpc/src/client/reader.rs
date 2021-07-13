@@ -56,7 +56,8 @@ impl<R: CodecRead> brw::Reader for ClientReader<R> {
                     )
                 },
                 _ => {
-                    unimplemented!()
+                    log::error!("Unexpected Header type");
+                    Running::Continue(Ok(()))
                 }
             }
         } else {

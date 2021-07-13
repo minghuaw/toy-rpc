@@ -182,16 +182,20 @@ impl<T: CodecRead> Reader for ServerReader<T> {
                     )
                 }
                 Header::Ack(_) => {
-                    unimplemented!()
+                    log::error!("Unexpected Header type (Header::Ack)");
+                    Running::Continue(Ok(()))
                 },
                 Header::Produce { id: _, topic: _, tickets: _} => {
-                    unimplemented!()
+                    log::error!("Unexpected Header type (Header::Produce)");
+                    Running::Continue(Ok(()))
                 },
                 Header::Consume{id: _, topic: _} => {
-                    unimplemented!()
+                    log::error!("Unexpected Header type (Header::Consume)");
+                    Running::Continue(Ok(()))
                 },
                 Header::Ext {id: _, content: _, marker: _} => {
-                    unimplemented!()
+                    log::error!("Unexpected Header type (Header::Ext)");
+                    Running::Continue(Ok(()))
                 }
             }
         } else {
