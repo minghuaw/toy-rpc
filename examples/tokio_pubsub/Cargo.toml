@@ -6,6 +6,7 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+ctrlc = "3.1.9"
 env_logger = "0.8.4"
 futures = "0.3.15"
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "sync", "time", "io-util"]}

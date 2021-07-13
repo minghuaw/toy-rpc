@@ -60,6 +60,7 @@ pub enum ClientBrokerItem {
         topic: String,
         item: Box<InboundBody>,
     },
+    /// Stops the broker
     Stop,
 }
 
@@ -78,14 +79,6 @@ pub struct ClientBroker {
     pub next_timeout: Option<Duration>,
     pub subscriptions: HashMap<String, Sender<Box<InboundBody>>>,
 }
-
-// impl Default for ClientBroker {
-//     fn default() -> Self {
-//         Self {
-//             ..Default::default()
-//         }
-//     }
-// }
 
 #[cfg(any(
     all(feature = "tokio_runtime", not(feature = "async_std_runtime")),
@@ -225,8 +218,8 @@ impl brw::Broker for ClientBroker {
                 writer.send(ClientWriterItem::Cancel(id)).await
                     .map_err(|err| err.into())
             },
-
             ClientBrokerItem::Stop => {
+                println!("Stop");
                 if let Err(err) = writer.send(ClientWriterItem::Stop).await {
                     log::error!("{:?}", err);
                 }

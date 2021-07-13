@@ -100,7 +100,8 @@ thiserror = "1.0"
 flume = "0.10"
 pin-project = "1.0"
 crossbeam = "0.8"
-brw = { version = "0.1.4" }
+# brw = { version = "0.1.5", path = "../../brw", features = ["debug"] }
+brw = "^0.1.5"
 
 [[test]]
 name = "async_std_tcp"

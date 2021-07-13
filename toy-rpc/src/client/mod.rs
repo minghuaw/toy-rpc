@@ -255,8 +255,15 @@ pub struct Client {
 // seems like it still works even without this impl
 impl Drop for Client {
     fn drop(&mut self) {
-        if self.broker.try_send(broker::ClientBrokerItem::Stop).is_err() {
-            log::error!("Failed to send stop signal to writer loop")
+        log::debug!("Unsunscribe all");
+        for (topic, _) in self.subscriptions.drain() {
+            self.broker.try_send(broker::ClientBrokerItem::Unsubscribe{topic})
+                .unwrap_or_else(|err| log::error!("{}", err));
+        }
+
+        log::debug!("Stopping broker");
+        if let Err(err) = self.broker.try_send(broker::ClientBrokerItem::Stop) {
+            log::error!("Failed to send stop signal to writer loop: {}", err);
         }
     }
 }
@@ -265,11 +272,15 @@ impl Client {
     /// Closes connection with the server
     ///
     /// Dropping the client will close the connection as well
-    pub async fn close(self) {
-        self.broker.send_async(
-            broker::ClientBrokerItem::Stop
-        ).await
-        .unwrap_or_else(|err| log::error!("{}", err));
+    pub async fn close(mut self) {
+        // log::debug!("Unsunscribe all");
+        for (topic, _) in self.subscriptions.drain() {
+            self.broker.send_async(broker::ClientBrokerItem::Unsubscribe{topic}).await
+                .unwrap_or_else(|err| log::error!("{}", err));
+        }
+
+        self.broker.send_async(broker::ClientBrokerItem::Stop).await
+            .unwrap_or_else(|err| log::error!("{}", err));
     }
 }
 

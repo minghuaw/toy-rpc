@@ -53,18 +53,24 @@ impl PubSubBroker {
         while let Ok(item) = self.listener.recv_async().await {
             match item {
                 PubSubItem::Publish {msg_id, topic, content} => {
-                    if let Some(entry) = self.subscriptions.get(&topic) {
-                        for sender in entry.values() {
+                    if let Some(entry) = self.subscriptions.get_mut(&topic) {
+                        entry.retain(|_, sender| {
                             let msg = ServerBrokerItem::Publication{
                                 id: msg_id, 
                                 topic: topic.clone(), 
                                 content: content.clone()
                             };
-                            // TODO: handle error
-                            if let Err(err) = sender.send_async(msg).await {
-                                log::error!("{}", err);
+                            if let Err(err) = sender.try_send(msg) {
+                                match err {
+                                    flume::TrySendError::Disconnected(_) => {
+                                        log::error!("Client is disconnected, removing from subscriptions");
+                                        return false
+                                    }
+                                    e @ _ => log::error!("{}", e)
+                                }
                             }
-                        }
+                            true
+                        })
                     }
                 },
                 PubSubItem::Subscribe {client_id, topic, sender} => {
@@ -98,4 +104,3 @@ impl PubSubBroker {
 /* -------------------------------------------------------------------------- */
 /*                                 Public API                                 */
 /* -------------------------------------------------------------------------- */
-

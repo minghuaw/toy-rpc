@@ -41,7 +41,6 @@ cfg_if!{
                 header: Header,
                 body: &(dyn erased_serde::Serialize + Send + Sync),
             ) -> Result<(), Error> {
-                log::debug!("{:?}", &header);
                 let id = header.get_id();
                 self.writer.write_header(header).await?;
                 self.writer.write_body(id, body).await
@@ -58,10 +57,12 @@ cfg_if!{
                 let res = match item {
                     ClientWriterItem::Request(id, service_method, duration, body) => {
                         let header = Header::Request{id, service_method, timeout: duration};
+                        log::debug!("{:?}", &header);
                         self.write_request(header, &body).await
                     },
                     ClientWriterItem::Cancel(id) => {
                         let header = Header::Cancel(id);
+                        log::debug!("{:?}", &header);
                         let body: String =
                             format!("{}{}{}", CANCELLATION_TOKEN, CANCELLATION_TOKEN_DELIM, id);
                         let body = Box::new(body) as Box<OutboundBody>;
@@ -69,14 +70,17 @@ cfg_if!{
                     },
                     ClientWriterItem::Publish(id, topic, body) => {
                         let header = Header::Publish{id, topic};
+                        log::debug!("{:?}", &header);
                         self.write_request(header, &body).await
                     },
                     ClientWriterItem::Subscribe(id, topic) => {
                         let header = Header::Subscribe{id, topic};
+                        log::debug!("{:?}", &header);
                         self.write_request(header, &()).await
                     },
                     ClientWriterItem::Unsubscribe(id, topic) => {
                         let header = Header::Unsubscribe{id, topic};
+                        log::debug!("{:?}", &header);
                         self.write_request(header, &()).await
                     }
                     ClientWriterItem::Stop => {

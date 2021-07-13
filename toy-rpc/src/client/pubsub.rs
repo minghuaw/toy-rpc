@@ -117,4 +117,17 @@ impl Client {
             None => Err(Error::Internal("There is no existing local subscriber".into()))
         }
     }
+
+    /// Unsubscribe from a topic
+    pub async fn unsubscribe<T: Topic + 'static>(&mut self) -> Result<(), Error> {
+        let topic = T::topic();
+        if let Some(type_id) = self.subscriptions.get(&topic) {
+            if type_id == &TypeId::of::<T>() {
+                self.subscriptions.remove(&topic);
+                self.broker.send_async(ClientBrokerItem::Unsubscribe{topic}).await?;
+                return Ok(())
+            }
+        } 
+        Err(Error::Internal(format!("Not registered to topic: {}", topic).into()))
+    }
 }
