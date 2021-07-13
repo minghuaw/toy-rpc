@@ -16,6 +16,7 @@ async fn main() {
     let mut count_pub = server.publisher::<Count>();
     let mut count_sub = server.subscriber::<Count>(10).unwrap();
     
+    // Periodically publish a message
     task::spawn(async move {
         let mut count = 0;
         loop {
@@ -25,6 +26,7 @@ async fn main() {
         }
     });
 
+    // Prints message published on topic `Count`
     task::spawn(async move {
         while let Some(item) = count_sub.next().await {
             let item = item.unwrap();
