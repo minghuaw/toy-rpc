@@ -35,7 +35,8 @@ async fn run() {
     println!("{:?}", reply);
 
     println!("Calling infinite loop with timeout");
-    let call: Call<()> = client.timeout(Duration::from_secs(3))
+    let call: Call<()> = client
+        .set_next_timeout(Duration::from_secs(3))
         .echo()
         .infinite_loop(());
     let reply = call.await;

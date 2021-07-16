@@ -42,7 +42,8 @@ async fn main() {
     println!("{:?}", reply);
 
     println!("Calling finite_loop with timeout");
-    let reply: Result<(), _> = client.timeout(Duration::from_secs(4))
+    let reply: Result<(), _> = client
+        .set_next_timeout(Duration::from_secs(4))
         .call("BarService.finite_loop", ())
         .await;
     println!("{:?}", reply);

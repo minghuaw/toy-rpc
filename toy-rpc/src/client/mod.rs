@@ -150,7 +150,6 @@ pub use call::Call;
 )]
 pub struct Client {
     count: Arc<AtomicMessageId>,
-    // timeout: AtomicCell<Duration>,
     default_timeout: Duration,
     next_timeout: AtomicCell<Option<Duration>>,
     broker: Sender<ClientBrokerItem>,
@@ -286,7 +285,7 @@ cfg_if! {
             /// ```
             #[cfg_attr(feature = "docs", doc(cfg(all(feature = "async_std_runtime", not(feature = "tokio_runtime")))))]
             #[cfg_attr(feature = "docs", doc(cfg(all(feature = "tokio_runtime", not(feature = "async_std_runtime")))))]
-            pub fn set_next_timeout(&mut self, duration: Duration) -> &Self {
+            pub fn set_next_timeout(&self, duration: Duration) -> &Self {
                 let _ = self.next_timeout.swap(Some(duration));
                 self
             }
