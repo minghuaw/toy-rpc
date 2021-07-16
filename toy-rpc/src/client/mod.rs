@@ -150,7 +150,9 @@ pub use call::Call;
 )]
 pub struct Client {
     count: Arc<AtomicMessageId>,
-    timeout: AtomicCell<Duration>,
+    // timeout: AtomicCell<Duration>,
+    default_timeout: Duration,
+    next_timeout: AtomicCell<Option<Duration>>,
     broker: Sender<ClientBrokerItem>,
     subscriptions: HashMap<String, TypeId>,
 }
@@ -244,7 +246,8 @@ cfg_if! {
 
                 Client {
                     count,
-                    timeout: AtomicCell::new(Duration::from_secs(DEFAULT_TIMEOUT_SECONDS)),
+                    default_timeout: Duration::from_secs(DEFAULT_TIMEOUT_SECONDS),
+                    next_timeout: AtomicCell::new(None),
                     broker,
                     subscriptions: HashMap::new(),
                 }
@@ -252,24 +255,40 @@ cfg_if! {
         }
 
         impl Client {
-            /// Sets the timeout duration **ONLY** for the next RPC request
+            /// Sets the default timeout duration for this client
             ///
             /// Example
             ///
             /// ```rust
             /// let call: Call<()> = client
-            ///     .timeout(std::time::Duration::from_secs(2)) // the RPC Call will timeout after 2 seconds
+            ///     .set_default_timeout(std::time::Duration::from_secs(2)) // the RPC Call will timeout after 2 seconds
             ///     .call("Service.wait_for_10secs", ()); // request a RPC call that waits for 10 seconds
             /// let result = call.await; 
             /// println!("{:?}", result); // Err(Error::Timeout(Some(call_id)))
             /// ```
             #[cfg_attr(feature = "docs", doc(cfg(all(feature = "async_std_runtime", not(feature = "tokio_runtime")))))]
             #[cfg_attr(feature = "docs", doc(cfg(all(feature = "tokio_runtime", not(feature = "async_std_runtime")))))]
-            pub fn timeout(&self, duration: Duration) -> &Self {
-                // self.broker.send(ClientBrokerItem::SetTimeout(duration))
-                //     .unwrap_or_else(|err| log::error!("{:?}", err));
-                self.timeout.store(duration);
-                &self
+            pub fn set_default_timeout(&mut self, duration: Duration) -> &Self {
+                self.default_timeout = duration;
+                self
+            }
+
+            /// Sets the timeout duration **ONLY** for the next RPC request
+            ///
+            /// Example
+            ///
+            /// ```rust
+            /// let call: Call<()> = client
+            ///     .set_next_timeout(std::time::Duration::from_secs(2)) // the RPC Call will timeout after 2 seconds
+            ///     .call("Service.wait_for_10secs", ()); // request a RPC call that waits for 10 seconds
+            /// let result = call.await; 
+            /// println!("{:?}", result); // Err(Error::Timeout(Some(call_id)))
+            /// ```
+            #[cfg_attr(feature = "docs", doc(cfg(all(feature = "async_std_runtime", not(feature = "tokio_runtime")))))]
+            #[cfg_attr(feature = "docs", doc(cfg(all(feature = "tokio_runtime", not(feature = "async_std_runtime")))))]
+            pub fn set_next_timeout(&mut self, duration: Duration) -> &Self {
+                let _ = self.next_timeout.swap(Some(duration));
+                self
             }
 
             /// Invokes the named function and wait synchronously in a blocking manner.
@@ -346,17 +365,17 @@ cfg_if! {
                 Res: serde::de::DeserializeOwned + Send + 'static,
             {
                 // Prepare RPC request
-                // let id = self.count.fetch_add(1, Ordering::Relaxed);
                 let id = self.count.load(Ordering::Relaxed) as MessageId;
                 let service_method = service_method.to_string();
-                let duration = self.timeout.load();
-                // let header = Header::Request { id, service_method, timeout};
+                let duration = match self.next_timeout.swap(None) {
+                    Some(dur) => dur,
+                    None => self.default_timeout.clone()
+                };
                 let body = Box::new(args) as Box<OutboundBody>;
                 let (resp_tx, resp_rx) = oneshot::channel();
 
                 if let Err(err) = self.broker.send(
                     ClientBrokerItem::Request{
-                        // id,
                         service_method,
                         duration,
                         body,
