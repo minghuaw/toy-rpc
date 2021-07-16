@@ -182,20 +182,24 @@ impl<T: CodecRead> Reader for ServerReader<T> {
                     )
                 }
                 Header::Ack(_) => {
-                    log::error!("Unexpected Header type (Header::Ack)");
-                    Running::Continue(Ok(()))
+                    Running::Continue(
+                        Err(Error::Internal("Unexpected Header type (Header::Ack)".into()))
+                    )
                 },
                 Header::Produce { id: _, topic: _, tickets: _} => {
-                    log::error!("Unexpected Header type (Header::Produce)");
-                    Running::Continue(Ok(()))
+                    Running::Continue(
+                        Err(Error::Internal("Unexpected Header type (Header::Produce)".into()))
+                    )
                 },
                 Header::Consume{id: _, topic: _} => {
-                    log::error!("Unexpected Header type (Header::Consume)");
-                    Running::Continue(Ok(()))
+                    Running::Continue(
+                        Err(Error::Internal("Unexpected Header type (Header::Consume)".into()))
+                    )
                 },
                 Header::Ext {id: _, content: _, marker: _} => {
-                    log::error!("Unexpected Header type (Header::Ext)");
-                    Running::Continue(Ok(()))
+                    Running::Continue(
+                        Err(Error::Internal("Unexpected Header type (Header::Ext)".into()))
+                    )
                 }
             }
         } else {
