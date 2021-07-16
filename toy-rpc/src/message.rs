@@ -1,4 +1,4 @@
-//! Custom definition of rpc request and response headers
+//! ErrorMessage from server to client
 use cfg_if::cfg_if;
 use serde::{Deserialize, Serialize};
 use std::sync::atomic::AtomicU16;
