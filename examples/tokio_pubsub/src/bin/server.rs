@@ -20,7 +20,7 @@ async fn main() {
     task::spawn(async move {
         let mut count = 0;
         loop {
-            count_pub.send(count).await.unwrap();
+            count_pub.send(Count(count)).await.unwrap();
             count += 1;
             tokio::time::sleep(Duration::from_millis(1000)).await;
         }
@@ -30,7 +30,7 @@ async fn main() {
     task::spawn(async move {
         while let Some(item) = count_sub.next().await {
             let item = item.unwrap();
-            println!("topic: Count, item: {}", item);
+            println!("topic: Count, item: {:?}", item);
         }
     });
 

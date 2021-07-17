@@ -14,7 +14,7 @@ async fn main() {
     for _ in 0..30 {
         if let Some(item) = count_sub.next().await {
             let item = item.unwrap();
-            println!("{}", item);
+            println!("{:?}", item);
         } else {
             break;
         }
