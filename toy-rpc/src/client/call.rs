@@ -28,7 +28,6 @@ use super::broker;
 /// // You can still .await on the canceled `Call` but will get an error
 /// let result = call.await; // Err(Error::Canceled(Some(id)))
 /// ```
-// #[pin_project::pin_project(PinnedDrop)]
 #[pin_project::pin_project]
 pub struct Call<Res> {
     pub(crate) id: MessageId,
