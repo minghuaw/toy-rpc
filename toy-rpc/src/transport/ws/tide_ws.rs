@@ -71,9 +71,9 @@ impl GracefulShutdown for SinkHalf<tide_websockets::WebSocketConnection, CannotS
     async fn close(&mut self) {
         let close_msg = tide_websockets::Message::Close(None);
         self.inner
-            .send(close_msg)   
+            .send(close_msg)
             .await
-            .map_err(|err| Error::Internal(Box::new(err))) 
+            .map_err(|err| Error::Internal(Box::new(err)))
             .unwrap_or_else(|err| log::error!("{}", err));
     }
 }

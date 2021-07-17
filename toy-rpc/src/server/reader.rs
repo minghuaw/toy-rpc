@@ -1,16 +1,18 @@
-use std::{sync::Arc};
-use futures::{sink::{Sink, SinkExt}};
-use brw::{Running, Reader};
+use brw::{Reader, Running};
+use futures::sink::{Sink, SinkExt};
+use std::sync::Arc;
 
-use crate::{codec::{CodecRead}, error::Error, message::{
-        MessageId, CANCELLATION_TOKEN, 
-        CANCELLATION_TOKEN_DELIM,
-    }, service::{ArcAsyncServiceCall, AsyncServiceMap}};
+use crate::{
+    codec::CodecRead,
+    error::Error,
+    message::{MessageId, CANCELLATION_TOKEN, CANCELLATION_TOKEN_DELIM},
+    service::{ArcAsyncServiceCall, AsyncServiceMap},
+};
 
-use crate::protocol::{InboundBody, Header};
 use super::broker::ServerBrokerItem;
+use crate::protocol::{Header, InboundBody};
 
-pub(crate) struct ServerReader<T>{
+pub(crate) struct ServerReader<T> {
     reader: T,
     services: Arc<AsyncServiceMap>,
 }
@@ -18,10 +20,7 @@ pub(crate) struct ServerReader<T>{
 impl<T: CodecRead> ServerReader<T> {
     #[cfg(not(feature = "http_actix_web"))]
     pub fn new(reader: T, services: Arc<AsyncServiceMap>) -> Self {
-        Self {
-            reader,
-            services
-        }
+        Self { reader, services }
     }
 }
 
@@ -35,18 +34,14 @@ pub(crate) fn get_service(
         [s, m] => (s, m),
         _ => {
             // Method not found
-            return Err(Error::MethodNotFound)
+            return Err(Error::MethodNotFound);
         }
     };
 
     // look up the service
     match services.get(service) {
-        Some(call) => {
-            Ok((call.clone(), method.into()))
-        },
-        None => {
-            Err(Error::ServiceNotFound)
-        }
+        Some(call) => Ok((call.clone(), method.into())),
+        None => Err(Error::ServiceNotFound),
     }
 }
 
@@ -84,24 +79,28 @@ impl<T: CodecRead> Reader for ServerReader<T> {
     type Error = Error;
 
     async fn op<B>(&mut self, mut broker: B) -> Running<Result<Self::Ok, Self::Error>>
-    where B: Sink<Self::BrokerItem, Error = flume::SendError<Self::BrokerItem>> + Send + Unpin {
+    where
+        B: Sink<Self::BrokerItem, Error = flume::SendError<Self::BrokerItem>> + Send + Unpin,
+    {
         if let Some(header) = self.reader.read_header().await {
             let header: Header = match header {
                 Ok(header) => header,
-                Err(err) => return Running::Continue(Err(err))
+                Err(err) => return Running::Continue(Err(err)),
             };
             log::debug!("{:?}", &header);
 
             match header {
-                Header::Request{id, service_method, timeout} => {
+                Header::Request {
+                    id,
+                    service_method,
+                    timeout,
+                } => {
                     let deserializer = match self.reader.read_body().await {
-                        Some(res) => {
-                            match res {
-                                Ok(de) => de,
-                                Err(err) => return Running::Continue(Err(err))
-                            }
+                        Some(res) => match res {
+                            Ok(de) => de,
+                            Err(err) => return Running::Continue(Err(err)),
                         },
-                        None => return Running::Stop
+                        None => return Running::Stop,
                     };
                     match get_service(&self.services, service_method) {
                         Ok((call, method)) => {
@@ -110,120 +109,110 @@ impl<T: CodecRead> Reader for ServerReader<T> {
                                 id,
                                 method,
                                 duration: timeout,
-                                deserializer
+                                deserializer,
                             };
-                            Running::Continue(
-                                broker.send(msg).await
-                                    .map_err(|err| err.into())
-                            )
-                        },
+                            Running::Continue(broker.send(msg).await.map_err(|err| err.into()))
+                        }
                         Err(err) => {
                             log::error!("{}", &err);
-                            let msg = ServerBrokerItem::Response{id, result: Err(err)};
-                            Running::Continue(
-                                broker.send(msg).await
-                                    .map_err(|err| err.into())
-                            )
+                            let msg = ServerBrokerItem::Response {
+                                id,
+                                result: Err(err),
+                            };
+                            Running::Continue(broker.send(msg).await.map_err(|err| err.into()))
                         }
                     }
-                },
-                Header::Response{id, is_ok} => {
+                }
+                Header::Response { id, is_ok } => {
                     let _ = match self.reader.read_body().await {
-                        Some(res) => {
-                            match res {
-                                Ok(de) => de,
-                                Err(err) => return Running::Continue(Err(err))
-                            }
+                        Some(res) => match res {
+                            Ok(de) => de,
+                            Err(err) => return Running::Continue(Err(err)),
                         },
-                        None => return Running::Stop
+                        None => return Running::Stop,
                     };
-                    Running::Continue(
-                        Err(Error::Internal(
-                            format!("Server received Response {{id: {}, is_ok: {}}}", id, is_ok).into()
-                        ))
-                    )
-                },
+                    Running::Continue(Err(Error::Internal(
+                        format!("Server received Response {{id: {}, is_ok: {}}}", id, is_ok).into(),
+                    )))
+                }
                 Header::Cancel(id) => {
                     let deserializer = match self.reader.read_body().await {
-                        Some(res) => {
-                            match res {
-                                Ok(de) => de,
-                                Err(err) => return Running::Continue(Err(err))
-                            }
+                        Some(res) => match res {
+                            Ok(de) => de,
+                            Err(err) => return Running::Continue(Err(err)),
                         },
-                        None => return Running::Stop
+                        None => return Running::Stop,
                     };
                     match handle_cancel(id, deserializer) {
                         Ok(_) => {
                             let msg = ServerBrokerItem::Cancel(id);
-                            Running::Continue(
-                                broker.send(msg).await
-                                    .map_err(|err| err.into())
-                            )
-                        },
+                            Running::Continue(broker.send(msg).await.map_err(|err| err.into()))
+                        }
                         Err(err) => {
-                            let msg = ServerBrokerItem::Response{id, result: Err(err)};
-                            Running::Continue(
-                                broker.send(msg).await
-                                    .map_err(|err| err.into())
-                            )
+                            let msg = ServerBrokerItem::Response {
+                                id,
+                                result: Err(err),
+                            };
+                            Running::Continue(broker.send(msg).await.map_err(|err| err.into()))
                         }
                     }
-                },
-                Header::Publish{id, topic} => {
+                }
+                Header::Publish { id, topic } => {
                     let content = match self.reader.read_bytes().await {
-                        Some(res ) => {
-                            match res {
-                                Ok(b) => b,
-                                Err(err) => return Running::Continue(Err(err))
-                            }
+                        Some(res) => match res {
+                            Ok(b) => b,
+                            Err(err) => return Running::Continue(Err(err)),
                         },
-                        None => return Running::Stop
+                        None => return Running::Stop,
                     };
                     Running::Continue(
-                        broker.send(ServerBrokerItem::Publish{id, topic, content}).await
-                            .map_err(|err| err.into())
-                    )
-                },
-                Header::Subscribe{id, topic} => {
-                    let _ = self.reader.read_bytes().await;
-                    Running::Continue(
-                        broker.send(ServerBrokerItem::Subscribe{id, topic}).await
-                            .map_err(|err| err.into())
-                    )
-                },
-                Header::Unsubscribe{id, topic} => {
-                    let _ = self.reader.read_bytes().await;
-                    Running::Continue(
-                        broker.send(ServerBrokerItem::Unsubscribe{id, topic}).await
-                            .map_err(|err| err.into())
+                        broker
+                            .send(ServerBrokerItem::Publish { id, topic, content })
+                            .await
+                            .map_err(|err| err.into()),
                     )
                 }
-                Header::Ack(_) => {
+                Header::Subscribe { id, topic } => {
+                    let _ = self.reader.read_bytes().await;
                     Running::Continue(
-                        Err(Error::Internal("Unexpected Header type (Header::Ack)".into()))
-                    )
-                },
-                Header::Produce { id: _, topic: _, tickets: _} => {
-                    Running::Continue(
-                        Err(Error::Internal("Unexpected Header type (Header::Produce)".into()))
-                    )
-                },
-                Header::Consume{id: _, topic: _} => {
-                    Running::Continue(
-                        Err(Error::Internal("Unexpected Header type (Header::Consume)".into()))
-                    )
-                },
-                Header::Ext {id: _, content: _, marker: _} => {
-                    Running::Continue(
-                        Err(Error::Internal("Unexpected Header type (Header::Ext)".into()))
+                        broker
+                            .send(ServerBrokerItem::Subscribe { id, topic })
+                            .await
+                            .map_err(|err| err.into()),
                     )
                 }
+                Header::Unsubscribe { id, topic } => {
+                    let _ = self.reader.read_bytes().await;
+                    Running::Continue(
+                        broker
+                            .send(ServerBrokerItem::Unsubscribe { id, topic })
+                            .await
+                            .map_err(|err| err.into()),
+                    )
+                }
+                Header::Ack(_) => Running::Continue(Err(Error::Internal(
+                    "Unexpected Header type (Header::Ack)".into(),
+                ))),
+                Header::Produce {
+                    id: _,
+                    topic: _,
+                    tickets: _,
+                } => Running::Continue(Err(Error::Internal(
+                    "Unexpected Header type (Header::Produce)".into(),
+                ))),
+                Header::Consume { id: _, topic: _ } => Running::Continue(Err(Error::Internal(
+                    "Unexpected Header type (Header::Consume)".into(),
+                ))),
+                Header::Ext {
+                    id: _,
+                    content: _,
+                    marker: _,
+                } => Running::Continue(Err(Error::Internal(
+                    "Unexpected Header type (Header::Ext)".into(),
+                ))),
             }
         } else {
-            if broker.send(
-                ServerBrokerItem::Stop
-            ).await.is_ok() { }
+            if broker.send(ServerBrokerItem::Stop).await.is_ok() {}
             Running::Stop
         }
     }

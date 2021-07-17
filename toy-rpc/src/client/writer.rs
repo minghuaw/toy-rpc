@@ -1,8 +1,6 @@
-
 use cfg_if::cfg_if;
 
-
-cfg_if!{
+cfg_if! {
     if #[cfg(any(
         all(feature = "async_std_runtime", not(feature = "tokio_runtime")),
         all(feature = "tokio_runtime", not(feature = "async_std_runtime"))
@@ -10,11 +8,11 @@ cfg_if!{
         use std::time::Duration;
         use async_trait::async_trait;
         use brw::Running;
-        
+
         use crate::{message::Metadata, util::GracefulShutdown};
 
         use crate::{
-            Error, codec::CodecWrite, 
+            Error, codec::CodecWrite,
             message::{
                 CANCELLATION_TOKEN, CANCELLATION_TOKEN_DELIM, MessageId
             },
@@ -53,7 +51,7 @@ cfg_if!{
             type Item = ClientWriterItem;
             type Ok = ();
             type Error = Error;
-        
+
             async fn op(&mut self, item: Self::Item) -> Running<Result<Self::Ok, Self::Error>> {
                 let res = match item {
                     ClientWriterItem::Request(id, service_method, duration, body) => {
@@ -89,10 +87,9 @@ cfg_if!{
                         return Running::Stop
                     }
                 };
-        
+
                 Running::Continue(res)
             }
         }
     }
 }
-

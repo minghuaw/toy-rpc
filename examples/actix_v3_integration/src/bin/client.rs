@@ -15,7 +15,7 @@ async fn main() {
 
     let addr = "ws://127.0.0.1:23333/rpc/";
     let mut client = Client::dial_http(addr).await.unwrap();
-    let mut subscriber = client.subscriber::<Count>(10).unwrap();;
+    let mut subscriber = client.subscriber::<Count>(10).unwrap();
     let handle = tokio::spawn(async move {
         while let Some(item) = subscriber.next().await {
             println!("{:?}", item)
@@ -65,5 +65,5 @@ async fn main() {
     println!("{:?}", reply);
     // client.close().await;
 
-        handle.await;
+    handle.await.unwrap();
 }

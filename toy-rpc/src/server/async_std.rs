@@ -190,14 +190,14 @@ cfg_if! {
 
             /// Serves a stream that implements `futures::io::AsyncRead` and `futures::io::AsyncWrite`
             #[cfg_attr(feature = "docs", doc(cfg(feature = "async_std_runtime")))]
-            pub async fn serve_stream<T>(&self, stream: T) -> Result<(), Error> 
-            where 
+            pub async fn serve_stream<T>(&self, stream: T) -> Result<(), Error>
+            where
                 T: AsyncRead + AsyncWrite + Send + Unpin + 'static
             {
                 let codec = DefaultCodec::new(stream);
                 let ret = self.serve_codec(codec).await;
                 log::info!("Client disconnected from stream");
-                ret   
+                ret
             }
 
             /// This is like serve_conn except that it uses a specified codec
@@ -228,7 +228,7 @@ cfg_if! {
             stream: TcpStream,
             acceptor: TlsAcceptor,
             services: Arc<AsyncServiceMap>,
-            client_id: ClientId, 
+            client_id: ClientId,
             pubsub_broker: Sender<PubSubItem>
         ) -> Result<(), Error> {
             let peer_addr = stream.peer_addr()?;
@@ -242,9 +242,9 @@ cfg_if! {
 
         /// Serves a single connection
         async fn serve_tcp_connection(
-            stream: TcpStream, 
+            stream: TcpStream,
             services: Arc<AsyncServiceMap>,
-            client_id: ClientId, 
+            client_id: ClientId,
             pubsub_broker: Sender<PubSubItem>
         ) -> Result<(), Error> {
             let _peer_addr = stream.peer_addr()?;
@@ -256,9 +256,9 @@ cfg_if! {
         }
 
         async fn accept_ws_connection(
-            stream: TcpStream, 
+            stream: TcpStream,
             services: Arc<AsyncServiceMap>,
-            client_id: ClientId, 
+            client_id: ClientId,
             pubsub_broker: Sender<PubSubItem>
         ) {
             let ws_stream = async_tungstenite::accept_async(stream).await
@@ -287,8 +287,8 @@ cfg_if! {
         // }
 
         // #[inline]
-        // async fn serve_readwrite_stream<T>(stream: T, services: Arc<AsyncServiceMap>) -> Result<(), Error> 
-        // where 
+        // async fn serve_readwrite_stream<T>(stream: T, services: Arc<AsyncServiceMap>) -> Result<(), Error>
+        // where
         //     T: AsyncRead + AsyncWrite + Send + Unpin + 'static,
         // {
         //     let codec = DefaultCodec::new(stream);

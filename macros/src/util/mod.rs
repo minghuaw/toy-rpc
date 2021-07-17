@@ -1,47 +1,33 @@
+#[cfg(all(feature = "client", feature = "runtime",))]
+use super::{CLIENT_STUB_SUFFIX, CLIENT_SUFFIX};
 #[cfg(feature = "server")]
-use super::{HANDLER_SUFFIX, EXPORTED_TRAIT_SUFFIX};
-#[cfg(all(
-    feature = "client",
-    feature = "runtime",
-))]
-use super::{CLIENT_SUFFIX, CLIENT_STUB_SUFFIX};
+use super::{EXPORTED_TRAIT_SUFFIX, HANDLER_SUFFIX};
 // #[cfg(any(feature = "server", feature = "client"))]
-use super::{ATTR_EXPORT_METHOD};
+use super::ATTR_EXPORT_METHOD;
 
 pub mod item_impl;
 
 pub mod item_trait;
 
-#[cfg(all(
-    feature = "client",
-    feature = "runtime"
-))]
+#[cfg(all(feature = "client", feature = "runtime"))]
 pub(crate) fn get_ok_ident_from_type(ty: Box<syn::Type>) -> Option<syn::GenericArgument> {
     let ty = Box::leak(ty);
     let arg = syn::GenericArgument::Type(ty.to_owned());
     recursively_get_result_from_generic_arg(&arg)
 }
 
-#[cfg(all(
-    feature = "client",
-    feature = "runtime"
-))]
-pub(crate) fn recursively_get_result_from_generic_arg(arg: &syn::GenericArgument) -> Option<syn::GenericArgument> {
+#[cfg(all(feature = "client", feature = "runtime"))]
+pub(crate) fn recursively_get_result_from_generic_arg(
+    arg: &syn::GenericArgument,
+) -> Option<syn::GenericArgument> {
     match &arg {
-        syn::GenericArgument::Type(ty) => {
-            recusively_get_result_from_type(&ty)
-        }
-        syn::GenericArgument::Binding(binding) => {
-            recusively_get_result_from_type(&binding.ty)
-        }
+        syn::GenericArgument::Type(ty) => recusively_get_result_from_type(&ty),
+        syn::GenericArgument::Binding(binding) => recusively_get_result_from_type(&binding.ty),
         _ => None,
     }
 }
 
-#[cfg(all(
-    feature = "client",
-    feature = "runtime"
-))]
+#[cfg(all(feature = "client", feature = "runtime"))]
 pub(crate) fn recusively_get_result_from_type(ty: &syn::Type) -> Option<syn::GenericArgument> {
     match ty {
         syn::Type::Path(ref path) => {
@@ -71,13 +57,7 @@ pub(crate) fn recusively_get_result_from_type(ty: &syn::Type) -> Option<syn::Gen
     }
 }
 
-#[cfg(any(
-    feature = "server", 
-    all(
-        feature = "client",
-        feature = "runtime",
-    )
-))]
+#[cfg(any(feature = "server", all(feature = "client", feature = "runtime",)))]
 pub(crate) fn parse_impl_self_ty(self_ty: &syn::Type) -> Result<&syn::Ident, syn::Error> {
     match self_ty {
         syn::Type::Path(tp) => Ok(&tp.path.segments[0].ident),
@@ -88,10 +68,7 @@ pub(crate) fn parse_impl_self_ty(self_ty: &syn::Type) -> Result<&syn::Ident, syn
     }
 }
 
-#[cfg(all(
-    feature = "client",
-    feature = "runtime"
-))]
+#[cfg(all(feature = "client", feature = "runtime"))]
 pub(crate) fn parse_stub_fn_name(ident: &syn::Ident) -> syn::Ident {
     let mut output_fn = String::new();
     for c in ident.to_string().chars() {
@@ -118,10 +95,7 @@ fn is_exported(attr: &syn::Attribute) -> bool {
     }
 }
 
-#[cfg(all(
-    feature = "client",
-    feature = "runtime"
-))]
+#[cfg(all(feature = "client", feature = "runtime"))]
 pub(crate) fn generate_client_stub_for_struct_method_impl(
     service_ident: &syn::Ident,
     fn_ident: &syn::Ident,

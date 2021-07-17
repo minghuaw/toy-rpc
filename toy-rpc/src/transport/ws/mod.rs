@@ -1,13 +1,13 @@
 //! WebSocket transport support
 
 use async_trait::async_trait;
+use async_tungstenite::WebSocketStream;
 use cfg_if::cfg_if;
+use futures::io::{AsyncRead, AsyncWrite};
 use futures::stream::{SplitSink, SplitStream};
 use futures::{Sink, SinkExt, Stream, StreamExt};
-use futures::io::{AsyncRead, AsyncWrite};
-use tungstenite::Message as WsMessage;
-use async_tungstenite::WebSocketStream;
 use pin_project::pin_project;
+use tungstenite::Message as WsMessage;
 
 use std::{io::ErrorKind, marker::PhantomData};
 
@@ -43,7 +43,10 @@ pub struct StreamHalf<S, Mode> {
 impl<S: Stream> Stream for StreamHalf<S, CanSink> {
     type Item = S::Item;
 
-    fn poll_next(self: std::pin::Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> std::task::Poll<Option<Self::Item>> {
+    fn poll_next(
+        self: std::pin::Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<Option<Self::Item>> {
         let this = self.project();
         this.inner.poll_next(cx)
     }
@@ -60,7 +63,10 @@ pub struct SinkHalf<S, Mode> {
 impl<S: Sink<Item>, Item> Sink<Item> for SinkHalf<S, CanSink> {
     type Error = S::Error;
 
-    fn poll_ready(self: std::pin::Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> std::task::Poll<Result<(), Self::Error>> {
+    fn poll_ready(
+        self: std::pin::Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<Result<(), Self::Error>> {
         let this = self.project();
         this.inner.poll_ready(cx)
     }
@@ -70,12 +76,18 @@ impl<S: Sink<Item>, Item> Sink<Item> for SinkHalf<S, CanSink> {
         this.inner.start_send(item)
     }
 
-    fn poll_flush(self: std::pin::Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> std::task::Poll<Result<(), Self::Error>> {
+    fn poll_flush(
+        self: std::pin::Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<Result<(), Self::Error>> {
         let this = self.project();
         this.inner.poll_flush(cx)
     }
 
-    fn poll_close(self: std::pin::Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> std::task::Poll<Result<(), Self::Error>> {
+    fn poll_close(
+        self: std::pin::Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<Result<(), Self::Error>> {
         let this = self.project();
         this.inner.poll_close(cx)
     }

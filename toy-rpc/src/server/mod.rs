@@ -3,10 +3,9 @@
 //!
 
 use cfg_if::cfg_if;
-use std::sync::{Arc, atomic::{AtomicU64}};
+use std::sync::{atomic::AtomicU64, Arc};
 
-use crate::{service::AsyncServiceMap};
-
+use crate::service::AsyncServiceMap;
 
 cfg_if! {
     if #[cfg(any(
@@ -25,7 +24,6 @@ cfg_if! {
     }
 }
 
-
 #[cfg(any(
     feature = "docs",
     doc,
@@ -36,7 +34,11 @@ mod async_std;
 #[cfg(any(
     feature = "docs",
     doc,
-    all(feature = "tokio_runtime", not(feature = "async_std_runtime"), not(feature = "http_actix_web"))
+    all(
+        feature = "tokio_runtime",
+        not(feature = "async_std_runtime"),
+        not(feature = "http_actix_web")
+    )
 ))]
 mod tokio;
 
@@ -109,7 +111,7 @@ cfg_if! {
             pub fn from_builder(builder: ServerBuilder) -> Self {
                 let services = Arc::new(builder.services);
                 let (tx, rx) = flume::unbounded();
-        
+
                 let pubsub_broker = PubSubBroker::new(rx);
                 pubsub_broker.spawn();
 
@@ -126,7 +128,7 @@ cfg_if! {
             feature = "docs",
             all(
                 any(
-                    feature = "serde_bincode", 
+                    feature = "serde_bincode",
                     feature = "serde_json",
                     feature = "serde_cbor",
                     feature = "serde_rmp",
@@ -152,5 +154,3 @@ cfg_if! {
         }
     }
 }
-
-

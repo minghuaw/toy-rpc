@@ -2,23 +2,28 @@ use std::sync::Arc;
 
 use brw::{Running, Writer};
 
-use crate::{codec::CodecWrite, error::Error, message::{ErrorMessage, MessageId}, service::HandlerResult};
+use crate::{
+    codec::CodecWrite,
+    error::Error,
+    message::{ErrorMessage, MessageId},
+    service::HandlerResult,
+};
 
-use crate::protocol::{Header};
+use crate::protocol::Header;
 
 #[cfg_attr(feature = "http_actix_web", derive(actix::Message))]
 #[cfg_attr(feature = "http_actix_web", rtype(result = "()"))]
 pub(crate) enum ServerWriterItem {
     Response {
         id: MessageId,
-        result: HandlerResult
+        result: HandlerResult,
     },
     /// Publish subscription item to client
     Publication {
         id: MessageId,
         topic: String,
-        content: Arc<Vec<u8>>
-    }
+        content: Arc<Vec<u8>>,
+    },
 }
 
 pub(crate) struct ServerWriter<W> {
@@ -28,16 +33,14 @@ pub(crate) struct ServerWriter<W> {
 impl<W: CodecWrite> ServerWriter<W> {
     #[cfg(not(feature = "http_actix_web"))]
     pub fn new(writer: W) -> Self {
-        Self {
-            writer
-        }
+        Self { writer }
     }
 
     async fn write_response(&mut self, id: MessageId, result: HandlerResult) -> Result<(), Error> {
         match result {
             Ok(body) => {
                 log::trace!("Message {} Success", &id);
-                let header = Header::Response{ id, is_ok: true };
+                let header = Header::Response { id, is_ok: true };
                 self.writer.write_header(header).await?;
                 self.writer.write_body(id, &body).await
             }
@@ -51,8 +54,13 @@ impl<W: CodecWrite> ServerWriter<W> {
         }
     }
 
-    async fn write_publication(&mut self, id: MessageId, topic: String, content: &[u8]) -> Result<(), Error> {
-        let header = Header::Publish{id, topic};
+    async fn write_publication(
+        &mut self,
+        id: MessageId,
+        topic: String,
+        content: &[u8],
+    ) -> Result<(), Error> {
+        let header = Header::Publish { id, topic };
         self.writer.write_header(header).await?;
         self.writer.write_body_bytes(id, &content).await
     }
@@ -66,10 +74,8 @@ impl<W: CodecWrite> Writer for ServerWriter<W> {
 
     async fn op(&mut self, item: Self::Item) -> Running<Result<Self::Ok, Self::Error>> {
         let res = match item {
-            ServerWriterItem::Response{id, result} => {
-                self.write_response(id, result).await
-            },
-            ServerWriterItem::Publication{id, topic, content} => {
+            ServerWriterItem::Response { id, result } => self.write_response(id, result).await,
+            ServerWriterItem::Publication { id, topic, content } => {
                 self.write_publication(id, topic, &content).await
             }
         };

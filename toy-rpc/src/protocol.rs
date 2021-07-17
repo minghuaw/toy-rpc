@@ -1,6 +1,6 @@
 //! Message protocol between server and client
+use serde::{Deserialize, Serialize};
 use std::time::Duration;
-use serde::{Serialize, Deserialize};
 
 use crate::message::{MessageId, Metadata};
 
@@ -8,9 +8,9 @@ use crate::message::{MessageId, Metadata};
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Header {
     /// Header of a request
-    /// 
+    ///
     /// The body contains the content of the request
-    Request{
+    Request {
         /// Message id
         id: MessageId,
         /// RPC service and method in the format of "{Service}.{method}"
@@ -22,7 +22,7 @@ pub enum Header {
     /// Header of a response
     ///
     /// The body contains the content of the response/result
-    Response{
+    Response {
         /// Message id
         id: MessageId,
         /// Whether the result is Ok
@@ -74,7 +74,6 @@ pub enum Header {
     //     /// Topic of the subscription item
     //     topic: String,
     // },
-
     /// Acknowledge of the following type of messages
     /// - Cancel?
     /// - Publish
@@ -111,23 +110,23 @@ pub enum Header {
         content: String,
         /// Reserved for some numerical/enum content
         marker: u32,
-    }
+    },
 }
 
 impl Metadata for Header {
     fn get_id(&self) -> MessageId {
         match self {
-            Self::Request{id, ..} => id.clone(),
-            Self::Response{id, ..} => id.clone(),
+            Self::Request { id, .. } => id.clone(),
+            Self::Response { id, .. } => id.clone(),
             Self::Cancel(id) => id.clone(),
-            Self::Publish {id, ..} => id.clone(),
-            Self::Subscribe {id, ..} => id.clone(),
-            Self::Unsubscribe {id, .. } => id.clone(),
+            Self::Publish { id, .. } => id.clone(),
+            Self::Subscribe { id, .. } => id.clone(),
+            Self::Unsubscribe { id, .. } => id.clone(),
             // Self::Subscription { id, .. } => id.clone(),
             Self::Ack(id) => id.clone(),
-            Self::Produce {id, ..} => id.clone(),
-            Self::Consume {id, ..} => id.clone(),
-            Self::Ext {id, ..} => id.clone()
+            Self::Produce { id, .. } => id.clone(),
+            Self::Consume { id, .. } => id.clone(),
+            Self::Ext { id, .. } => id.clone(),
         }
     }
 }
@@ -147,32 +146,28 @@ pub(crate) type InboundBody = dyn erased_serde::Deserializer<'static> + Send;
 
 #[cfg(test)]
 mod tests {
-    use bincode::{self, Options};
     use super::*;
+    use bincode::{self, Options};
 
     #[derive(Debug, Clone, Serialize, Deserialize)]
     enum MyEnum {
         One(u16),
-        Two(String)
+        Two(String),
     }
 
     #[test]
     fn size_of_header() {
-        let bincode_opt = bincode::DefaultOptions::new()
-            .with_varint_encoding();
+        let bincode_opt = bincode::DefaultOptions::new().with_varint_encoding();
 
-        let header = Header::Request{
+        let header = Header::Request {
             id: 3000,
             service_method: "".into(),
-            timeout: Duration::from_secs(10)
+            timeout: Duration::from_secs(10),
         };
         let size = bincode_opt.serialized_size(&header).unwrap();
         println!("Header::Request size: {:?}", size);
 
-        let header = Header::Response{
-            id: 0,
-            is_ok: true
-        };
+        let header = Header::Response { id: 0, is_ok: true };
         let size = bincode_opt.serialized_size(&header).unwrap();
         println!("Header::Response size: {:?}", size);
 
@@ -180,16 +175,16 @@ mod tests {
         let size = bincode_opt.serialized_size(&header).unwrap();
         println!("Header::Cancel size: {:?}", size);
 
-        let header = Header::Publish{
+        let header = Header::Publish {
             id: 0,
-            topic: "".into()
+            topic: "".into(),
         };
         let size = bincode_opt.serialized_size(&header).unwrap();
         println!("Header::Publish size: {:?}", size);
 
-        let header = Header::Subscribe{
+        let header = Header::Subscribe {
             id: 0,
-            topic: "".into()
+            topic: "".into(),
         };
         let size = bincode_opt.serialized_size(&header).unwrap();
         println!("Header::Subscribe size: {:?}", size);

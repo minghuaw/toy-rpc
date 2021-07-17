@@ -1,7 +1,7 @@
 //! WebSocket support for `warp`
 //! Separate implementation is required because `warp` has wrapped `tungstenite` types
-use warp::ws::{WebSocket, Message as WsMessage};
 use super::*;
+use warp::ws::{Message as WsMessage, WebSocket};
 
 #[async_trait]
 impl PayloadRead for StreamHalf<SplitStream<WebSocket>, CanSink> {
@@ -30,8 +30,7 @@ impl PayloadRead for StreamHalf<SplitStream<WebSocket>, CanSink> {
 }
 
 #[async_trait]
-impl PayloadWrite for SinkHalf<SplitSink<WebSocket, WsMessage>, CanSink>
-{
+impl PayloadWrite for SinkHalf<SplitSink<WebSocket, WsMessage>, CanSink> {
     async fn write_payload(&mut self, payload: &[u8]) -> Result<(), Error> {
         let msg = warp::ws::Message::binary(payload);
 
@@ -42,8 +41,7 @@ impl PayloadWrite for SinkHalf<SplitSink<WebSocket, WsMessage>, CanSink>
 }
 
 #[async_trait]
-impl GracefulShutdown for SinkHalf<SplitSink<WebSocket, WsMessage>, CanSink>
-{
+impl GracefulShutdown for SinkHalf<SplitSink<WebSocket, WsMessage>, CanSink> {
     async fn close(&mut self) {
         let msg = warp::ws::Message::close();
 

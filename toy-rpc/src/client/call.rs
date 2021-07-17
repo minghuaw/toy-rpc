@@ -1,11 +1,15 @@
 //! RPC Call
 
-use std::{marker::PhantomData, pin::Pin, task::{Context, Poll}};
+use std::{
+    marker::PhantomData,
+    pin::Pin,
+    task::{Context, Poll},
+};
 
 use flume::Sender;
-use futures::{Future, channel::oneshot};
+use futures::{channel::oneshot, Future};
 
-use crate::{Error, message::MessageId, protocol::InboundBody};
+use crate::{message::MessageId, protocol::InboundBody, Error};
 
 use super::broker;
 
@@ -70,7 +74,9 @@ where
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         let this = self.project();
-        let done: Pin<&mut oneshot::Receiver<Result<Result<Box<InboundBody>, Box<InboundBody>>, Error>>> = this.done;
+        let done: Pin<
+            &mut oneshot::Receiver<Result<Result<Box<InboundBody>, Box<InboundBody>>, Error>>,
+        > = this.done;
 
         match done.poll(cx) {
             Poll::Pending => Poll::Pending,
@@ -82,7 +88,7 @@ where
 
                 let res = match res {
                     Ok(val) => val,
-                    Err(err) => return Poll::Ready(Err(err))
+                    Err(err) => return Poll::Ready(Err(err)),
                 };
 
                 let res = match res {
@@ -94,7 +100,7 @@ where
                     ),
                 };
                 Poll::Ready(res)
-            },
+            }
         }
     }
 }

@@ -72,7 +72,7 @@ cfg_if! {
 
             /// Connects to an RPC server with TLS enabled
             ///
-            /// A more detailed example can be found in the 
+            /// A more detailed example can be found in the
             /// [GitHub repo](https://github.com/minghuaw/toy-rpc/blob/9793bf53909bd7ffa74967fae6267f973e03ec8a/examples/async_std_tls/src/bin/client.rs#L22)
             #[cfg(feature = "tls")]
             #[cfg_attr(feature = "docs",doc(cfg(all(feature = "tls", feature = "async_std_runtime"))))]
@@ -119,7 +119,7 @@ cfg_if! {
 
             /// Connects to an HTTP RPC server with TLS enabled
             ///
-            /// An example with self-signed certificate can be found in the 
+            /// An example with self-signed certificate can be found in the
             /// [GitHub repo](https://github.com/minghuaw/toy-rpc/blob/9793bf53909bd7ffa74967fae6267f973e03ec8a/examples/tide_tls/src/bin/client.rs#L27)
             #[cfg(feature = "tls")]
             #[cfg_attr(feature = "docs",doc(cfg(all(feature = "tls", feature = "async_std_runtime"))))]
@@ -136,7 +136,7 @@ cfg_if! {
 
             /// Similar to `dial`, this connects to an WebSocket RPC server at the specified network address using the defatul codec.
             ///
-            /// The difference between `dial_websocket` and `dial_http` is that, `dial_websocket` does not 
+            /// The difference between `dial_websocket` and `dial_http` is that, `dial_websocket` does not
             /// append `DEFAULT_RPC_PATH="_rpc"` to the end of the addr.
             ///
             /// This is enabled

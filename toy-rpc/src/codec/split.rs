@@ -1,10 +1,10 @@
 //! Implements `SplittableCodec`
 
-use std::{marker::PhantomData};
 #[cfg(any(feature = "tokio_runtime", feature = "async_std_runtime"))]
 use async_trait::async_trait;
+use std::marker::PhantomData;
 
-use crate::{util::GracefulShutdown};
+use crate::util::GracefulShutdown;
 
 use super::*;
 
@@ -48,7 +48,6 @@ where
         C::from_bytes(buf)
     }
 }
-
 
 /// Split a Codec into a writing half and a reading half
 pub trait SplittableCodec {
@@ -144,7 +143,7 @@ cfg_if! {
         }
 
         impl<R, W> SplittableCodec for Codec<R, W, ConnTypeReadWrite>
-        where 
+        where
             R: FrameRead + Send + Unpin,
             W: FrameWrite + GracefulShutdown + Send + Unpin
         {
@@ -168,7 +167,6 @@ cfg_if! {
         }
     }
 }
-
 
 /* -------------------------------------------------------------------------- */
 /*                           // WebSocket Transport                           */
@@ -262,7 +260,7 @@ cfg_if! {
         }
 
         impl<R, W> SplittableCodec for Codec<R, W, ConnTypePayload>
-        where 
+        where
             R: PayloadRead + Send,
             W: PayloadWrite + GracefulShutdown + Send,
         {
@@ -286,4 +284,3 @@ cfg_if! {
         }
     }
 }
-

@@ -3,14 +3,34 @@
 use actix::{Actor, ActorContext, AsyncContext, Context, Recipient, Running, StreamHandler};
 use actix_web::{web, HttpRequest, HttpResponse};
 use actix_web_actors::ws;
-use flume::Sender;
 use cfg_if::cfg_if;
+use flume::Sender;
 use futures::FutureExt;
-use std::{collections::HashMap, future::Future, marker::PhantomData, pin::Pin, sync::{Arc, atomic::Ordering}, time::Duration};
+use std::{
+    collections::HashMap,
+    future::Future,
+    marker::PhantomData,
+    pin::Pin,
+    sync::{atomic::Ordering, Arc},
+    time::Duration,
+};
 
-use crate::{codec::{EraseDeserializer, Marshal, Unmarshal}, error::Error, message::{ErrorMessage, MessageId}, protocol::{Header}, server::{ClientId, broker::{ServerBrokerItem}, pubsub::PubSubItem, reader::{get_service, handle_cancel}, writer::ServerWriterItem}, service::{AsyncServiceMap, HandlerResult}};
+use crate::{
+    codec::{EraseDeserializer, Marshal, Unmarshal},
+    error::Error,
+    message::{ErrorMessage, MessageId},
+    protocol::Header,
+    server::{
+        broker::ServerBrokerItem,
+        pubsub::{PubSubItem, PubSubResponder},
+        reader::{get_service, handle_cancel},
+        writer::ServerWriterItem,
+        ClientId,
+    },
+    service::{AsyncServiceMap, HandlerResult},
+};
 
-use crate::server::{broker::execute_call};
+use crate::server::broker::execute_call;
 
 // =============================================================================
 // `WsMessageActor`
@@ -85,116 +105,80 @@ where
                 log::debug!("Received closing message");
                 ctx.stop();
             }
-            Ok(ws::Message::Binary(buf)) => {
-                match self.req_header.take() {
-                    None => match C::unmarshal(&buf) {
-                        Ok(h) => {
-                            self.req_header.get_or_insert(h);
-                        }
-                        Err(err) => {
-                            log::error!("Failed to unmarshal request header: {}", err);
-                        }
-                    },
-                    Some(header) => {
-                        // let deserializer = C::from_bytes(buf.to_vec());
-
-                        // match preprocess_header(&header) {
-                        //     Ok(req_type) => {
-                        //         match preprocess_request(&self.services, req_type, deserializer) {
-                        //             Ok(msg) => {
-                        //                 if let Some(ref manager) = self.manager {
-                        //                     manager
-                        //                         .do_send(msg)
-                        //                         .unwrap_or_else(|e| log::error!("{}", e));
-                        //                 }
-                        //             }
-                        //             Err(err) => {
-                        //                 log::error!("{}", err);
-                        //                 match err {
-                        //                     Error::ServiceNotFound => {
-                        //                         Self::send_response_via_context(
-                        //                             ExecutionResult {
-                        //                                 id: header.id,
-                        //                                 result: Err(Error::ServiceNotFound),
-                        //                             },
-                        //                             ctx,
-                        //                         )
-                        //                         .unwrap_or_else(|e| log::error!("{}", e));
-                        //                     }
-                        //                     _ => {}
-                        //                 }
-                        //             }
-                        //         }
-                        //     }
-                        //     Err(err) => {
-                        //         // the only error returned is MethodNotFound,
-                        //         // which should be sent back to client
-                        //         let err = ExecutionResult {
-                        //             id: header.id,
-                        //             result: Err(err),
-                        //         };
-                        //         Self::send_response_via_context(err, ctx)
-                        //             .unwrap_or_else(|e| log::error!("{}", e));
-                        //     }
-                        // }
-
-                        match header {
-                            Header::Request{id, service_method, timeout} => {
-                                let deserializer = C::from_bytes(buf.to_vec());
-                                match get_service(&self.services, service_method) {
-                                    Ok((call, method)) => {
-                                        let item = ServerBrokerItem::Request {
-                                            call,
-                                            id,
-                                            method,
-                                            duration: timeout,
-                                            deserializer
-                                        };
-                                        self.send_to_manager(item);
-                                    },
-                                    Err(err) => {
-                                        log::error!("{}", &err);
-                                        let item = ServerWriterItem::Response {id, result: Err(err) };
-                                        Self::send_via_context(item, ctx)
-                                            .unwrap_or_else(|err| log::error!("{}", err));
-                                    }
-                                }
-                            },
-                            Header::Response{id, is_ok } => {
-                                log::error!("Server received Response {{id: {}, is_ok: {}}}", id, is_ok);
-                            },
-                            Header::Cancel(id) => {
-                                let deserializer = C::from_bytes(buf.to_vec());
-                                match handle_cancel(id, deserializer) {
-                                    Ok(_) => {
-                                        let item = ServerBrokerItem::Cancel(id);
-                                        self.send_to_manager(item);
-                                    },
-                                    Err(err) => {
-                                        let item = ServerWriterItem::Response{id, result: Err(err)};
-                                        Self::send_via_context(item, ctx)
-                                            .unwrap_or_else(|err| log::error!("{}", err));
-                                    }
-                                }
-                            },
-                            Header::Publish{id, topic} => {
-                                let content = buf.to_vec();
-                                self.send_to_manager(ServerBrokerItem::Publish{id, topic, content});
-                            },
-                            Header::Subscribe{id, topic} => {
-                                self.send_to_manager(ServerBrokerItem::Subscribe{id, topic});
-                            },
-                            Header::Unsubscribe{id, topic} => {
-                                self.send_to_manager(ServerBrokerItem::Unsubscribe{id, topic});
-                            },
-                            Header::Ack(_) => { },
-                            Header::Produce{ .. } => { },
-                            Header::Consume{ .. } => { },
-                            Header::Ext { .. } => { },
+            Ok(ws::Message::Binary(buf)) => match self.req_header.take() {
+                None => match C::unmarshal(&buf) {
+                    Ok(h) => {
+                        self.req_header.get_or_insert(h);
+                    }
+                    Err(err) => {
+                        log::error!("Failed to unmarshal request header: {}", err);
+                    }
+                },
+                Some(header) => match header {
+                    Header::Request {
+                        id,
+                        service_method,
+                        timeout,
+                    } => {
+                        let deserializer = C::from_bytes(buf.to_vec());
+                        match get_service(&self.services, service_method) {
+                            Ok((call, method)) => {
+                                let item = ServerBrokerItem::Request {
+                                    call,
+                                    id,
+                                    method,
+                                    duration: timeout,
+                                    deserializer,
+                                };
+                                self.send_to_manager(item);
+                            }
+                            Err(err) => {
+                                log::error!("{}", &err);
+                                let item = ServerWriterItem::Response {
+                                    id,
+                                    result: Err(err),
+                                };
+                                Self::send_via_context(item, ctx)
+                                    .unwrap_or_else(|err| log::error!("{}", err));
+                            }
                         }
                     }
-                }
-            }
+                    Header::Response { id, is_ok } => {
+                        log::error!("Server received Response {{id: {}, is_ok: {}}}", id, is_ok);
+                    }
+                    Header::Cancel(id) => {
+                        let deserializer = C::from_bytes(buf.to_vec());
+                        match handle_cancel(id, deserializer) {
+                            Ok(_) => {
+                                let item = ServerBrokerItem::Cancel(id);
+                                self.send_to_manager(item);
+                            }
+                            Err(err) => {
+                                let item = ServerWriterItem::Response {
+                                    id,
+                                    result: Err(err),
+                                };
+                                Self::send_via_context(item, ctx)
+                                    .unwrap_or_else(|err| log::error!("{}", err));
+                            }
+                        }
+                    }
+                    Header::Publish { id, topic } => {
+                        let content = buf.to_vec();
+                        self.send_to_manager(ServerBrokerItem::Publish { id, topic, content });
+                    }
+                    Header::Subscribe { id, topic } => {
+                        self.send_to_manager(ServerBrokerItem::Subscribe { id, topic });
+                    }
+                    Header::Unsubscribe { id, topic } => {
+                        self.send_to_manager(ServerBrokerItem::Unsubscribe { id, topic });
+                    }
+                    Header::Ack(_) => {}
+                    Header::Produce { .. } => {}
+                    Header::Consume { .. } => {}
+                    Header::Ext { .. } => {}
+                },
+            },
             Err(err) => {
                 log::error!("{}", err);
             }
@@ -222,22 +206,22 @@ where
         ctx: &mut <Self as Actor>::Context,
     ) -> Result<(), Error> {
         match item {
-            ServerWriterItem::Response{id, result} => {
+            ServerWriterItem::Response { id, result } => {
                 match result {
                     Ok(body) => {
                         log::trace!("Message {} Success", &id);
-                        let header = Header::Response{id, is_ok: true};
+                        let header = Header::Response { id, is_ok: true };
                         let buf = C::marshal(&header)?;
                         ctx.binary(buf);
-        
+
                         let buf = C::marshal(&body)?;
                         ctx.binary(buf);
                     }
                     Err(err) => {
                         log::trace!("Message {} Error", id.clone());
-                        let header = Header::Response{id, is_ok: false};
+                        let header = Header::Response { id, is_ok: false };
                         let msg = ErrorMessage::from_err(err)?;
-        
+
                         // compose error response header
                         let buf = C::marshal(&header)?;
                         ctx.binary(buf);
@@ -245,9 +229,9 @@ where
                         ctx.binary(buf);
                     }
                 };
-            },
-            ServerWriterItem::Publication{id, topic, content} => { 
-                let header = Header::Publish{id, topic};
+            }
+            ServerWriterItem::Publication { id, topic, content } => {
+                let header = Header::Publish { id, topic };
                 let buf = C::marshal(&header)?;
                 ctx.binary(buf);
                 ctx.binary(content.to_vec());
@@ -278,8 +262,7 @@ impl Actor for ExecutionBroker {
 
     fn stopping(&mut self, _: &mut Self::Context) -> Running {
         for (_, tx) in self.executions.drain() {
-            tx.send(())
-                .unwrap_or_else(|err| log::error!("{}", err));
+            tx.send(()).unwrap_or_else(|err| log::error!("{}", err));
         }
 
         Running::Stop
@@ -302,12 +285,12 @@ impl actix::Handler<ServerBrokerItem> for ExecutionBroker {
                 let broker = ctx.address().recipient();
 
                 let fut: Pin<Box<dyn Future<Output = ()>>> = Box::pin(async move {
-                        let result = execute_timed_call(id, duration, call_fut).await;
-                        let item = ServerBrokerItem::Response{id, result};
-                        broker
-                            .do_send(item)
-                            .unwrap_or_else(|e| log::error!("{}", e));
-                    });
+                    let result = execute_timed_call(id, duration, call_fut).await;
+                    let item = ServerBrokerItem::Response { id, result };
+                    broker
+                        .do_send(item)
+                        .unwrap_or_else(|e| log::error!("{}", e));
+                });
                 let (tx, rx) = flume::bounded(1);
                 self.executions.insert(id, tx);
 
@@ -322,9 +305,9 @@ impl actix::Handler<ServerBrokerItem> for ExecutionBroker {
                     }
                 });
             }
-            ServerBrokerItem::Response{id, result} => {
+            ServerBrokerItem::Response { id, result } => {
                 self.executions.remove(&id);
-                let msg = ServerWriterItem::Response{id, result};
+                let msg = ServerWriterItem::Response { id, result };
                 self.responder
                     .do_send(msg)
                     .unwrap_or_else(|e| log::error!("{}", e));
@@ -332,45 +315,54 @@ impl actix::Handler<ServerBrokerItem> for ExecutionBroker {
             ServerBrokerItem::Cancel(id) => {
                 log::debug!("Sending Cancel({})", &id);
                 if let Some(exec) = self.executions.remove(&id) {
-                    exec.send(())
-                        .unwrap_or_else(|e| log::error!("{}", e));
+                    exec.send(()).unwrap_or_else(|e| log::error!("{}", e));
                 }
-            },
-            ServerBrokerItem::Publish {id, topic, content} => {
+            }
+            ServerBrokerItem::Publish { id, topic, content } => {
                 let content = Arc::new(content);
-                let msg = PubSubItem::Publish{msg_id: id, topic, content};
-                self.pubsub_broker.send(msg)
+                let msg = PubSubItem::Publish {
+                    msg_id: id,
+                    topic,
+                    content,
+                };
+                self.pubsub_broker
+                    .send(msg)
                     .unwrap_or_else(|err| log::error!("{}", err));
-            },
-            ServerBrokerItem::Subscribe {id, topic} => {
+            }
+            ServerBrokerItem::Subscribe { id, topic } => {
                 log::debug!("Message ID: {}, Subscribe to topic: {}", &id, &topic);
+                let sender = PubSubResponder::Recipient(ctx.address().recipient());
                 let msg = PubSubItem::Subscribe {
                     client_id: self.client_id,
-                    topic, 
-                    sender: ctx.address().recipient()
+                    topic,
+                    sender,
                 };
-                self.pubsub_broker.send(msg)
+                self.pubsub_broker
+                    .send(msg)
                     .unwrap_or_else(|err| log::error!("{}", err));
-            },
-            ServerBrokerItem::Unsubscribe {id, topic} => {
+            }
+            ServerBrokerItem::Unsubscribe { id, topic } => {
                 log::debug!("Message ID: {}, Unsubscribe from topic: {}", &id, &topic);
-                let msg = PubSubItem::Unsubscribe{client_id: self.client_id, topic};
-                self.pubsub_broker.send(msg)
+                let msg = PubSubItem::Unsubscribe {
+                    client_id: self.client_id,
+                    topic,
+                };
+                self.pubsub_broker
+                    .send(msg)
                     .unwrap_or_else(|err| log::error!("{}", err));
-            },
-            ServerBrokerItem::Publication{id, topic, content} => {
-                let msg = ServerWriterItem::Publication{id, topic, content};
+            }
+            ServerBrokerItem::Publication { id, topic, content } => {
+                let msg = ServerWriterItem::Publication { id, topic, content };
                 self.responder
                     .do_send(msg)
                     .unwrap_or_else(|err| log::error!("{}", err));
-            },
+            }
             ServerBrokerItem::Stop => {
                 ctx.stop();
             }
         }
     }
 }
-
 
 // A separate implementation is required because actix-web still
 // depends on older version of tokio (actix-rt)
@@ -384,7 +376,6 @@ async fn execute_timed_call(
         Err(_) => Err(Error::Timeout(Some(id))),
     }
 }
-
 
 // =============================================================================
 // Integration
@@ -454,7 +445,7 @@ cfg_if! {
             /// - `serde_cbor`
             /// - `serde_rmp`
             ///
-            /// # Example 
+            /// # Example
             ///
             /// ```
             /// let example_service = Arc::new(Example { });
@@ -462,7 +453,7 @@ cfg_if! {
             ///     .register(example_service)
             ///     .build();
             /// let app_data = web::Data::new(server);
-            /// 
+            ///
             /// HttpServer::new(
             ///     move || {
             ///         App::new()
@@ -502,7 +493,7 @@ cfg_if! {
             /// - `serde_cbor`
             /// - `serde_rmp`
             ///
-            /// # Example 
+            /// # Example
             ///
             /// ```
             /// let example_service = Arc::new(Example { });
@@ -510,7 +501,7 @@ cfg_if! {
             ///     .register(example_service)
             ///     .build();
             /// let app_data = web::Data::new(server);
-            /// 
+            ///
             /// HttpServer::new(
             ///     move || {
             ///         App::new()

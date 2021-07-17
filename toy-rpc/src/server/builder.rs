@@ -74,7 +74,7 @@ impl ServerBuilder {
 
     /// Register a `Service` instance. This allows registering multiple instances
     /// of the same type on the server.
-    /// 
+    ///
     /// # Example
     ///
     /// ```rust
@@ -109,7 +109,7 @@ impl ServerBuilder {
 ))]
 impl ServerBuilder {
     /// Builds an RPC `Server`
-    /// 
+    ///
     /// # Example
     ///
     /// ```

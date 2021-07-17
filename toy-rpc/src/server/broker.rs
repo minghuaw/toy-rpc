@@ -1,24 +1,22 @@
-/// Broker on the server side
-
-use std::sync::Arc;
 use std::future::Future;
+/// Broker on the server side
+use std::sync::Arc;
 use std::time::Duration;
 
 use crate::protocol::InboundBody;
 use crate::service::{ArcAsyncServiceCall, HandlerResult};
 
-use crate::{
-    message::{MessageId},
-    error::Error,
-};
+use crate::{error::Error, message::MessageId};
 
 cfg_if::cfg_if! {
     if #[cfg(not(feature = "http_actix_web"))] {
         use std::collections::HashMap;
-        
+
         use flume::Sender;
         use brw::{Running, Broker};
         use futures::sink::{Sink, SinkExt};
+
+        use crate::server::pubsub::PubSubResponder;
 
         use super::ClientId;
         use super::pubsub::PubSubItem;
@@ -26,19 +24,23 @@ cfg_if::cfg_if! {
     }
 }
 
-#[cfg(any(
-    feature = "docs",
-    all(feature = "tokio_runtime", not(feature = "async_std_runtime"), not(feature = "http_actix_web"))
-))]
-use ::tokio::task::JoinHandle;
 #[cfg(all(feature = "async_std_runtime", not(feature = "tokio_runtime")))]
 use ::async_std::task::JoinHandle;
+#[cfg(any(
+    feature = "docs",
+    all(
+        feature = "tokio_runtime",
+        not(feature = "async_std_runtime"),
+        not(feature = "http_actix_web")
+    )
+))]
+use ::tokio::task::JoinHandle;
 
 #[cfg(not(feature = "http_actix_web"))]
-pub(crate) struct ServerBroker { 
+pub(crate) struct ServerBroker {
     pub client_id: ClientId,
     pub executions: HashMap<MessageId, JoinHandle<()>>,
-    pub pubsub_broker: Sender<PubSubItem>
+    pub pubsub_broker: Sender<PubSubItem>,
 }
 
 #[cfg(not(feature = "http_actix_web"))]
@@ -64,7 +66,7 @@ pub(crate) enum ServerBrokerItem {
     },
     Response {
         id: MessageId,
-        result: HandlerResult
+        result: HandlerResult,
     },
     Cancel(MessageId),
     // A new publish from the client publisher
@@ -86,9 +88,9 @@ pub(crate) enum ServerBrokerItem {
     Publication {
         id: MessageId,
         topic: String,
-        content: Arc<Vec<u8>>, 
+        content: Arc<Vec<u8>>,
     },
-    Stop
+    Stop,
 }
 
 #[cfg(not(feature = "http_actix_web"))]
@@ -99,29 +101,35 @@ impl Broker for ServerBroker {
     type Ok = ();
     type Error = Error;
 
-    async fn op<W>(&mut self, ctx: & Arc<brw::Context<Self::Item>>, item: Self::Item, mut writer: W) -> Running<Result<Self::Ok, Self::Error>>
-    where W: Sink<Self::WriterItem, Error = flume::SendError<Self::WriterItem>> + Send + Unpin {
+    async fn op<W>(
+        &mut self,
+        ctx: &Arc<brw::Context<Self::Item>>,
+        item: Self::Item,
+        mut writer: W,
+    ) -> Running<Result<Self::Ok, Self::Error>>
+    where
+        W: Sink<Self::WriterItem, Error = flume::SendError<Self::WriterItem>> + Send + Unpin,
+    {
         match item {
-            ServerBrokerItem::Request{
+            ServerBrokerItem::Request {
                 call,
                 id,
                 method,
                 duration,
-                deserializer
+                deserializer,
             } => {
                 let fut = call(method, deserializer);
                 let _broker = ctx.broker.clone();
                 let handle = handle_request(_broker, duration, id, fut);
                 self.executions.insert(id, handle);
                 Running::Continue(Ok(()))
-            },
-            ServerBrokerItem::Response{id, result} => {
+            }
+            ServerBrokerItem::Response { id, result } => {
                 self.executions.remove(&id);
-                let msg = ServerWriterItem::Response{id, result};
-                let res: Result<(), Error> = writer.send(msg).await
-                    .map_err(|err| err.into());
+                let msg = ServerWriterItem::Response { id, result };
+                let res: Result<(), Error> = writer.send(msg).await.map_err(|err| err.into());
                 Running::Continue(res)
-            },
+            }
             ServerBrokerItem::Cancel(id) => {
                 if let Some(handle) = self.executions.remove(&id) {
                     #[cfg(all(feature = "tokio_runtime", not(feature = "async_std_runtime")))]
@@ -131,48 +139,55 @@ impl Broker for ServerBroker {
                 }
 
                 Running::Continue(Ok(()))
-            },
-            ServerBrokerItem::Publish {id, topic, content} => {
+            }
+            ServerBrokerItem::Publish { id, topic, content } => {
                 // Publish is the PubSub message from client to server
                 let content = Arc::new(content);
-                let msg = PubSubItem::Publish{
+                let msg = PubSubItem::Publish {
                     msg_id: id,
                     topic,
-                    content
+                    content,
                 };
                 Running::Continue(
-                    self.pubsub_broker.send_async(msg).await
-                        .map_err(|err| err.into())
+                    self.pubsub_broker
+                        .send_async(msg)
+                        .await
+                        .map_err(|err| err.into()),
                 )
-            },
-            ServerBrokerItem::Subscribe {id, topic} => {
+            }
+            ServerBrokerItem::Subscribe { id, topic } => {
                 log::debug!("Message ID: {}, Subscribe to topic: {}", &id, &topic);
+                let sender = PubSubResponder::Sender(ctx.broker.clone());
                 let msg = PubSubItem::Subscribe {
-                    client_id: self.client_id, 
-                    topic, 
-                    sender: ctx.broker.clone()
+                    client_id: self.client_id,
+                    topic,
+                    sender,
                 };
                 Running::Continue(
-                    self.pubsub_broker.send_async(msg).await
-                        .map_err(|err| err.into())
+                    self.pubsub_broker
+                        .send_async(msg)
+                        .await
+                        .map_err(|err| err.into()),
                 )
-            },
-            ServerBrokerItem::Unsubscribe {id, topic} => {
+            }
+            ServerBrokerItem::Unsubscribe { id, topic } => {
                 log::debug!("Message ID: {}, Unsubscribe from topic: {}", &id, &topic);
-                let msg = PubSubItem::Unsubscribe{client_id: self.client_id, topic};
+                let msg = PubSubItem::Unsubscribe {
+                    client_id: self.client_id,
+                    topic,
+                };
                 Running::Continue(
-                    self.pubsub_broker.send_async(msg).await
-                        .map_err(|err| err.into())
+                    self.pubsub_broker
+                        .send_async(msg)
+                        .await
+                        .map_err(|err| err.into()),
                 )
-            },
-            ServerBrokerItem::Publication {id, topic, content} => {
+            }
+            ServerBrokerItem::Publication { id, topic, content } => {
                 // Publication is the PubSub message from server to client
-                let msg = ServerWriterItem::Publication{id, topic, content};
-                Running::Continue(
-                    writer.send(msg).await
-                        .map_err(|err| err.into())
-                )
-            },
+                let msg = ServerWriterItem::Publication { id, topic, content };
+                Running::Continue(writer.send(msg).await.map_err(|err| err.into()))
+            }
             ServerBrokerItem::Stop => {
                 for (_, handle) in self.executions.drain() {
                     log::debug!("Stopping execution as client is disconnected");
@@ -189,19 +204,18 @@ impl Broker for ServerBroker {
 }
 
 /// Spawn the execution in a async_std task and return the JoinHandle
-#[cfg(all(
-    feature = "async_std_runtime",
-    not(feature = "tokio_runtime")
-))]
+#[cfg(all(feature = "async_std_runtime", not(feature = "tokio_runtime")))]
 fn handle_request(
     broker: Sender<ServerBrokerItem>,
     duration: Duration,
     id: MessageId,
-    fut: impl Future<Output=HandlerResult> + Send + 'static,
+    fut: impl Future<Output = HandlerResult> + Send + 'static,
 ) -> ::async_std::task::JoinHandle<()> {
     ::async_std::task::spawn(async move {
         let result = execute_timed_call(id, duration, fut).await;
-        broker.send_async(ServerBrokerItem::Response{id, result}).await
+        broker
+            .send_async(ServerBrokerItem::Response { id, result })
+            .await
             .unwrap_or_else(|e| log::error!("{}", e));
     })
 }
@@ -216,11 +230,13 @@ fn handle_request(
     broker: Sender<ServerBrokerItem>,
     duration: Duration,
     id: MessageId,
-    fut: impl Future<Output=HandlerResult> + Send + 'static,
+    fut: impl Future<Output = HandlerResult> + Send + 'static,
 ) -> ::tokio::task::JoinHandle<()> {
     ::tokio::task::spawn(async move {
         let result = execute_timed_call(id, duration, fut).await;
-        broker.send_async(ServerBrokerItem::Response{id, result}).await
+        broker
+            .send_async(ServerBrokerItem::Response { id, result })
+            .await
             .unwrap_or_else(|e| log::error!("{}", e));
     })
 }
@@ -251,29 +267,17 @@ pub(crate) async fn execute_call(
 pub(crate) async fn execute_timed_call(
     id: MessageId,
     duration: Duration,
-    fut: impl Future<Output = HandlerResult>
+    fut: impl Future<Output = HandlerResult>,
 ) -> HandlerResult {
-    #[cfg(all(
-        feature = "async_std_runtime",
-        not(feature = "tokio_runtime")
-    ))]
-    match ::async_std::future::timeout(
-        duration,
-        execute_call(id, fut)
-    ).await {
+    #[cfg(all(feature = "async_std_runtime", not(feature = "tokio_runtime")))]
+    match ::async_std::future::timeout(duration, execute_call(id, fut)).await {
         Ok(res) => res,
-        Err(_) => Err(Error::Timeout(Some(id)))
+        Err(_) => Err(Error::Timeout(Some(id))),
     }
 
-    #[cfg(all(
-        feature = "tokio_runtime",
-        not(feature = "async_std_runtime"),
-    ))]
-    match ::tokio::time::timeout(
-        duration,
-        execute_call(id, fut)
-    ).await {
+    #[cfg(all(feature = "tokio_runtime", not(feature = "async_std_runtime"),))]
+    match ::tokio::time::timeout(duration, execute_call(id, fut)).await {
         Ok(res) => res,
-        Err(_) => Err(Error::Timeout(Some(id)))
+        Err(_) => Err(Error::Timeout(Some(id))),
     }
 }

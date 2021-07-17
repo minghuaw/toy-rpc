@@ -76,7 +76,7 @@
 //! TLS support
 //!
 //! - `tls`: enables TLS support
-//! 
+//!
 //! Other trivial feature flags are listed below, and they are likely of no actual usage for you.
 //! - `docs`
 //! - `std`: `serde/std`. There is no actual usage right now.
@@ -105,11 +105,11 @@ pub mod codec;
 pub mod error;
 pub mod macros;
 pub mod message;
+pub mod protocol;
+pub mod pubsub;
 pub mod service;
 pub mod transport;
 pub mod util;
-pub mod protocol;
-pub mod pubsub;
 
 /// The default path added to the HTTP url
 #[cfg(any(
@@ -131,7 +131,7 @@ pub mod server;
 pub use server::{builder::ServerBuilder, Server};
 
 /// Type alias for `std::result::Result<T, toy_rpc::error::Error>`
-pub type Result<T, E=error::Error> = std::result::Result<T, E>;
+pub type Result<T, E = error::Error> = std::result::Result<T, E>;
 
 pub use error::Error;
 

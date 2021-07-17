@@ -8,13 +8,13 @@ use std::{any::TypeId, collections::HashMap, sync::Arc, time::Duration};
 use crate::message::AtomicMessageId;
 
 pub(crate) mod broker;
+mod pubsub;
 mod reader;
 mod writer;
-mod pubsub;
 
 use broker::ClientBrokerItem;
 
-cfg_if!{
+cfg_if! {
     if #[cfg(any(
         feature = "docs",
         all(feature = "tokio_runtime", not(feature = "async_std_runtime")),
@@ -144,19 +144,14 @@ cfg_if! {
 
 #[cfg(any(
     feature = "docs",
-    all(
-        feature = "async_std_runtime",
-        not(feature = "tokio_runtime")
-    )
+    all(feature = "async_std_runtime", not(feature = "tokio_runtime"))
 ))]
 mod async_std;
 #[cfg(any(
     feature = "docs",
-    all(
-        feature = "tokio_runtime",
-        not(feature = "async_std_runtime")
-    )
-))]mod tokio;
+    all(feature = "tokio_runtime", not(feature = "async_std_runtime"))
+))]
+mod tokio;
 
 pub mod call;
 pub use call::Call;
@@ -179,7 +174,8 @@ pub struct Client {
 impl Drop for Client {
     fn drop(&mut self) {
         for (topic, _) in self.subscriptions.drain() {
-            self.broker.try_send(broker::ClientBrokerItem::Unsubscribe{topic})
+            self.broker
+                .try_send(broker::ClientBrokerItem::Unsubscribe { topic })
                 .unwrap_or_else(|err| log::error!("{}", err));
         }
 
@@ -196,11 +192,15 @@ impl Client {
     pub async fn close(mut self) {
         // log::debug!("Unsunscribe all");
         for (topic, _) in self.subscriptions.drain() {
-            self.broker.send_async(broker::ClientBrokerItem::Unsubscribe{topic}).await
+            self.broker
+                .send_async(broker::ClientBrokerItem::Unsubscribe { topic })
+                .await
                 .unwrap_or_else(|err| log::error!("{}", err));
         }
 
-        self.broker.send_async(broker::ClientBrokerItem::Stop).await
+        self.broker
+            .send_async(broker::ClientBrokerItem::Stop)
+            .await
             .unwrap_or_else(|err| log::error!("{}", err));
     }
 }
@@ -246,7 +246,7 @@ cfg_if! {
                 C: SplittableCodec + Send + 'static,
             {
                 let (writer, reader) = codec.split();
-                let reader = ClientReader { reader };     
+                let reader = ClientReader { reader };
                 let writer = ClientWriter { writer };
                 let count = Arc::new(AtomicMessageId::new(0));
 
@@ -255,7 +255,7 @@ cfg_if! {
                     pending: HashMap::new(),
                     next_timeout: None,
                     subscriptions: HashMap::new(),
-                };          
+                };
                 let (_, broker) = brw::spawn(broker, reader, writer);
 
                 Client {
@@ -277,7 +277,7 @@ cfg_if! {
             /// let call: Call<()> = client
             ///     .set_default_timeout(std::time::Duration::from_secs(2)) // the RPC Call will timeout after 2 seconds
             ///     .call("Service.wait_for_10secs", ()); // request a RPC call that waits for 10 seconds
-            /// let result = call.await; 
+            /// let result = call.await;
             /// println!("{:?}", result); // Err(Error::Timeout(Some(call_id)))
             /// ```
             #[cfg_attr(feature = "docs", doc(cfg(all(feature = "async_std_runtime", not(feature = "tokio_runtime")))))]
@@ -295,7 +295,7 @@ cfg_if! {
             /// let call: Call<()> = client
             ///     .set_next_timeout(std::time::Duration::from_secs(2)) // the RPC Call will timeout after 2 seconds
             ///     .call("Service.wait_for_10secs", ()); // request a RPC call that waits for 10 seconds
-            /// let result = call.await; 
+            /// let result = call.await;
             /// println!("{:?}", result); // Err(Error::Timeout(Some(call_id)))
             /// ```
             #[cfg_attr(feature = "docs", doc(cfg(all(feature = "async_std_runtime", not(feature = "tokio_runtime")))))]

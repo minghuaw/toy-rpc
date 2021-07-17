@@ -120,7 +120,7 @@ cfg_if! {
         }
 
         impl<R, W> SplittableCodec for Codec<R, W, ConnTypeReadWrite>
-        where 
+        where
             R: AsyncBufRead + Send + Unpin,
             W: AsyncWrite + GracefulShutdown + Send + Unpin,
         {

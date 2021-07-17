@@ -63,7 +63,7 @@ cfg_if! {
             /// - `serde_rmp`
             ///
             /// # Example
-            /// 
+            ///
             /// ```
             /// let foo_service = Arc::new(FooService { });
             /// let server = Server::builder()
@@ -133,7 +133,7 @@ cfg_if! {
             /// - `serde_rmp`
             ///
             /// # Example
-            /// 
+            ///
             /// ```
             /// let foo_service = Arc::new(FooService { });
             /// let server = Server::builder()

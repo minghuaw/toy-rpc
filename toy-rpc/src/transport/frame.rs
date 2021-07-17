@@ -58,7 +58,8 @@ pub trait FrameRead {
 #[async_trait]
 pub trait FrameWrite {
     /// Writes a frame
-    async fn write_frame(&mut self, frame_header: FrameHeader, payload: &[u8]) -> Result<(), Error>;
+    async fn write_frame(&mut self, frame_header: FrameHeader, payload: &[u8])
+        -> Result<(), Error>;
 }
 
 /// Header of a frame
@@ -141,7 +142,7 @@ impl From<PayloadType> for u8 {
     }
 }
 
-/// Frame 
+/// Frame
 #[derive(Debug)]
 pub struct Frame {
     /// Message id
@@ -215,7 +216,11 @@ impl<R: AsyncRead + Unpin + Send> FrameRead for R {
 
 #[async_trait]
 impl<W: AsyncWrite + Unpin + Send> FrameWrite for W {
-    async fn write_frame(&mut self, frame_header: FrameHeader, payload: &[u8]) -> Result<(), Error> {
+    async fn write_frame(
+        &mut self,
+        frame_header: FrameHeader,
+        payload: &[u8],
+    ) -> Result<(), Error> {
         // let Frame {
         //     message_id,
         //     frame_id,

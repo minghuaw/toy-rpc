@@ -1,25 +1,32 @@
-use std::collections::{HashMap, BTreeMap};
+use flume::r#async::{RecvStream, SendSink};
+use flume::{Receiver, Sender};
+use futures::{Sink, Stream};
+use pin_project::pin_project;
+use std::collections::{BTreeMap, HashMap};
 use std::marker::PhantomData;
-use std::sync::Arc;
 use std::pin::Pin;
 use std::sync::atomic::Ordering;
+use std::sync::Arc;
 use std::task::{Context, Poll};
-use flume::r#async::{RecvStream, SendSink};
-use flume::{Sender, Receiver};
-use futures::{Stream, Sink};
-use pin_project::pin_project;
 
 #[cfg(feature = "http_actix_web")]
 use actix::Recipient;
 
 use crate::codec::{Marshal, Reserved, Unmarshal};
-use crate::message::{AtomicMessageId, MessageId};
-use crate::pubsub::{Topic};
 use crate::error::Error;
+use crate::message::{AtomicMessageId, MessageId};
+use crate::pubsub::Topic;
 
 #[cfg(not(feature = "http_actix_web"))]
 use super::RESERVED_CLIENT_ID;
 use super::{broker::ServerBrokerItem, ClientId, Server};
+
+pub(crate) enum PubSubResponder {
+    #[cfg(not(feature = "http_actix_web"))]
+    Sender(Sender<ServerBrokerItem>),
+    #[cfg(feature = "http_actix_web")]
+    Recipient(Recipient<ServerBrokerItem>),
+}
 
 pub(crate) enum PubSubItem {
     Publish {
@@ -30,33 +37,25 @@ pub(crate) enum PubSubItem {
     Subscribe {
         client_id: ClientId,
         topic: String,
-        #[cfg(not(feature = "http_actix_web"))]
-        sender: Sender<ServerBrokerItem>,
-        #[cfg(feature = "http_actix_web")]
-        sender: Recipient<ServerBrokerItem>,
+        sender: PubSubResponder,
     },
     Unsubscribe {
         client_id: ClientId,
         topic: String,
     },
-    Stop
+    Stop,
 }
 
 pub(crate) struct PubSubBroker {
     listener: Receiver<PubSubItem>,
-    
-    #[cfg(feature = "http_actix_web")]
-    subscriptions: HashMap<String, BTreeMap<ClientId, Recipient<ServerBrokerItem>>>,
-    
-    #[cfg(not(feature = "http_actix_web"))]
-    subscriptions: HashMap<String, BTreeMap<ClientId, Sender<ServerBrokerItem>>>,
+    subscriptions: HashMap<String, BTreeMap<ClientId, PubSubResponder>>,
 }
 
 impl PubSubBroker {
     pub fn new(listener: Receiver<PubSubItem>) -> Self {
         Self {
             listener,
-            subscriptions: HashMap::new()
+            subscriptions: HashMap::new(),
         }
     }
 
@@ -68,7 +67,11 @@ impl PubSubBroker {
     pub fn spawn(self) {
         #[cfg(all(feature = "async_std_runtime", not(feature = "tokio_runtime")))]
         ::async_std::task::spawn(self.pubsub_loop());
-        #[cfg(all(feature = "tokio_runtime", not(feature = "async_std_runtime"), not(feature = "http_actix_web")))]
+        #[cfg(all(
+            feature = "tokio_runtime",
+            not(feature = "async_std_runtime"),
+            not(feature = "http_actix_web")
+        ))]
         ::tokio::task::spawn(self.pubsub_loop());
         #[cfg(all(feature = "http_actix_web", not(feature = "async_std_runtime")))]
         actix::spawn(self.pubsub_loop());
@@ -77,60 +80,66 @@ impl PubSubBroker {
     pub async fn pubsub_loop(mut self) {
         while let Ok(item) = self.listener.recv_async().await {
             match item {
-                PubSubItem::Publish {msg_id, topic, content} => {
+                PubSubItem::Publish {
+                    msg_id,
+                    topic,
+                    content,
+                } => {
                     if let Some(entry) = self.subscriptions.get_mut(&topic) {
                         entry.retain(|_, sender| {
                             let msg = ServerBrokerItem::Publication{
-                                id: msg_id, 
-                                topic: topic.clone(), 
+                                id: msg_id,
+                                topic: topic.clone(),
                                 content: content.clone()
                             };
-                            if let Err(err) = sender.try_send(msg) {
+
+                            match sender {
                                 #[cfg(not(feature = "http_actix_web"))]
-                                match err {
-                                    flume::TrySendError::Disconnected(_) => {
-                                        log::error!("Client is disconnected, removing from subscriptions");
-                                        return false
+                                PubSubResponder::Sender(tx) => {
+                                    if let Err(err) = tx.try_send(msg) {
+                                        if let flume::TrySendError::Disconnected(_) = err {
+                                            log::error!("Client is disconnected, removing from subscriptions");
+                                            return false
+                                        }
                                     }
-                                    e @ _ => log::error!("{}", e)
-                                }
-                                
+                                },
                                 #[cfg(feature = "http_actix_web")]
-                                match err {
-                                    actix::prelude::SendError::Closed(_) => {
-                                        log::error!("Client is disconnected, removing from subscriptions");
-                                        return false
+                                PubSubResponder::Recipient(tx) => {
+                                    if let Err(err) = tx.try_send(msg) {
+                                        if let actix::prelude::SendError::Closed(_) = err {
+                                            log::error!("Client is disconnected, removing from subscriptions");
+                                            return false
+                                        }
                                     }
-                                    e @ _ => log::error!("{}", e)
                                 }
                             }
                             true
                         })
                     }
-                },
-                PubSubItem::Subscribe {client_id, topic, sender} => {
-                    match self.subscriptions.get_mut(&topic) {
-                        Some(entry) => {
-                            entry.insert(client_id, sender);
-                        },
-                        None => {
-                            let mut entry = BTreeMap::new();
-                            entry.insert(client_id, sender);
-                            self.subscriptions.insert(topic, entry);
-                        }
+                }
+                PubSubItem::Subscribe {
+                    client_id,
+                    topic,
+                    sender,
+                } => match self.subscriptions.get_mut(&topic) {
+                    Some(entry) => {
+                        entry.insert(client_id, sender);
+                    }
+                    None => {
+                        let mut entry = BTreeMap::new();
+                        entry.insert(client_id, sender);
+                        self.subscriptions.insert(topic, entry);
                     }
                 },
-                PubSubItem::Unsubscribe {client_id, topic} => {
+                PubSubItem::Unsubscribe { client_id, topic } => {
                     match self.subscriptions.get_mut(&topic) {
                         Some(entry) => {
                             entry.remove(&client_id);
-                        },
-                        None => { }
+                        }
+                        None => {}
                     }
-                },
-                PubSubItem::Stop => {
-                    return
                 }
+                PubSubItem::Stop => return,
             }
         }
     }
@@ -146,7 +155,7 @@ pub struct Publisher<T: Topic, C: Marshal> {
     inner: SendSink<'static, PubSubItem>,
     counter: AtomicMessageId,
     marker: PhantomData<T>,
-    codec: PhantomData<C>
+    codec: PhantomData<C>,
 }
 
 impl<T: Topic, C: Marshal> From<Sender<PubSubItem>> for Publisher<T, C> {
@@ -161,12 +170,14 @@ impl<T: Topic, C: Marshal> From<Sender<PubSubItem>> for Publisher<T, C> {
 }
 
 impl<T: Topic, C: Marshal> Sink<T::Item> for Publisher<T, C> {
-    type Error = Error; 
+    type Error = Error;
 
-    fn poll_ready(self: Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> Poll<Result<(), Self::Error>> {
+    fn poll_ready(
+        self: Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+    ) -> Poll<Result<(), Self::Error>> {
         let this = self.project();
-        this.inner.poll_ready(cx)
-            .map_err(|err| err.into())
+        this.inner.poll_ready(cx).map_err(|err| err.into())
     }
 
     fn start_send(self: Pin<&mut Self>, item: T::Item) -> Result<(), Self::Error> {
@@ -175,21 +186,28 @@ impl<T: Topic, C: Marshal> Sink<T::Item> for Publisher<T, C> {
         let msg_id = this.counter.fetch_add(1, Ordering::Relaxed);
         let body = C::marshal(&item)?;
         let content = Arc::new(body);
-        let item = PubSubItem::Publish{msg_id, topic, content};
-        this.inner.start_send(item)
-            .map_err(|err| err.into())
+        let item = PubSubItem::Publish {
+            msg_id,
+            topic,
+            content,
+        };
+        this.inner.start_send(item).map_err(|err| err.into())
     }
 
-    fn poll_flush(self: Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> Poll<Result<(), Self::Error>> {
+    fn poll_flush(
+        self: Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+    ) -> Poll<Result<(), Self::Error>> {
         let this = self.project();
-        this.inner.poll_flush(cx)
-            .map_err(|err| err.into())
+        this.inner.poll_flush(cx).map_err(|err| err.into())
     }
 
-    fn poll_close(self: Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> Poll<Result<(), Self::Error>> {
+    fn poll_close(
+        self: Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+    ) -> Poll<Result<(), Self::Error>> {
         let this = self.project();
-        this.inner.poll_close(cx)
-            .map_err(|err| err.into())
+        this.inner.poll_close(cx).map_err(|err| err.into())
     }
 }
 
@@ -199,8 +217,8 @@ pub struct Subscriber<T: Topic, C: Unmarshal> {
     inner: RecvStream<'static, ServerBrokerItem>,
     topic: String,
     marker: PhantomData<T>,
-    codec: PhantomData<C>
-} 
+    codec: PhantomData<C>,
+}
 
 impl<T: Topic, C: Unmarshal> From<Receiver<ServerBrokerItem>> for Subscriber<T, C> {
     fn from(inner: Receiver<ServerBrokerItem>) -> Self {
@@ -220,36 +238,31 @@ impl<T: Topic, C: Unmarshal> Stream for Subscriber<T, C> {
         let this = self.project();
         match this.inner.poll_next(cx) {
             Poll::Pending => Poll::Pending,
-            Poll::Ready(opt) => {
-                match opt {
-                    Some(item) => {
-                        match item {
-                            ServerBrokerItem::Publication{id: _, topic, content} => {
-                                let result = match &topic == this.topic {
-                                    true => {
-                                        C::unmarshal(&content)
-                                    },
-                                    false => {
-                                        Err(Error::Internal("Mismatched topic".into()))
-                                    }
-                                };
-                                Poll::Ready(Some(result))
-                            },
-                            _ => {
-                                let result = Err(Error::Internal("Invalid PubSub item".into()));
-                                Poll::Ready(Some(result))
-                            }
-                        }
-                    },
-                    None => Poll::Ready(None)
-                }
-            }
+            Poll::Ready(opt) => match opt {
+                Some(item) => match item {
+                    ServerBrokerItem::Publication {
+                        id: _,
+                        topic,
+                        content,
+                    } => {
+                        let result = match &topic == this.topic {
+                            true => C::unmarshal(&content),
+                            false => Err(Error::Internal("Mismatched topic".into())),
+                        };
+                        Poll::Ready(Some(result))
+                    }
+                    _ => {
+                        let result = Err(Error::Internal("Invalid PubSub item".into()));
+                        Poll::Ready(Some(result))
+                    }
+                },
+                None => Poll::Ready(None),
+            },
         }
     }
 }
 
-
-cfg_if::cfg_if!{
+cfg_if::cfg_if! {
     if #[cfg(any(
         any(feature = "docs", doc),
         all(
@@ -280,7 +293,7 @@ cfg_if::cfg_if!{
         use crate::codec::DefaultCodec;
 
         type PhantomCodec = DefaultCodec<Reserved, Reserved, Reserved>;
-        
+
         impl Server {
             /// Creates a new publihser on a topic
             pub fn publisher<T: Topic>(&self) -> Publisher<T, PhantomCodec> {
@@ -297,6 +310,7 @@ cfg_if::cfg_if!{
                 let (sender, rx) = flume::bounded(cap);
                 let client_id = RESERVED_CLIENT_ID;
                 let topic = T::topic();
+                let sender = PubSubResponder::Sender(sender);
                 self.pubsub_tx.send(PubSubItem::Subscribe{client_id, topic, sender})?;
                 Ok(
                     Subscriber::from(rx)

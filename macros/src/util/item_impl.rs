@@ -46,7 +46,9 @@ use super::*;
 /// }
 /// ```
 #[cfg(feature = "server")]
-pub(crate) fn transform_impl(input: syn::ItemImpl) -> (syn::ItemImpl, Vec<String>, Vec<syn::Ident>) {
+pub(crate) fn transform_impl(
+    input: syn::ItemImpl,
+) -> (syn::ItemImpl, Vec<String>, Vec<syn::Ident>) {
     let mut names = Vec::new();
     let mut idents = Vec::new();
     let mut output = filter_exported_impl_items(input);
@@ -110,25 +112,19 @@ pub(crate) fn transform_impl_item(f: &mut syn::ImplItemMethod) {
 
 /// remove #[export_method] attribute
 // #[cfg(any(
-//     feature = "server", 
+//     feature = "server",
 //     feature = "client"
 // ))]
 pub(crate) fn remove_export_attr_from_impl(mut input: syn::ItemImpl) -> syn::ItemImpl {
-    input
-        .items
-        .iter_mut()
-        .for_each(|item| {
-            // clear the attributes for now
-            if let syn::ImplItem::Method(f) = item {
-                f.attrs.retain(|attr| {
-                    !is_exported(attr)
-                })
-            }
-        });
+    input.items.iter_mut().for_each(|item| {
+        // clear the attributes for now
+        if let syn::ImplItem::Method(f) = item {
+            f.attrs.retain(|attr| !is_exported(attr))
+        }
+    });
 
     input
 }
-
 
 /// Generate implementation of the `toy_rpc::util::RegisterService` trait.
 ///
@@ -137,9 +133,9 @@ pub(crate) fn remove_export_attr_from_impl(mut input: syn::ItemImpl) -> syn::Ite
 ///
 #[cfg(feature = "server")]
 pub(crate) fn impl_register_service_for_struct(
-    struct_ident: &syn::Ident, 
-    names: Vec<String>, 
-    handler_idents: Vec<syn::Ident>
+    struct_ident: &syn::Ident,
+    names: Vec<String>,
+    handler_idents: Vec<syn::Ident>,
 ) -> impl quote::ToTokens {
     let service_name = struct_ident.to_string();
     let ret = quote::quote! {
@@ -159,34 +155,21 @@ pub(crate) fn impl_register_service_for_struct(
     ret
 }
 
-#[cfg(any(
-    feature = "server", 
-    all(
-        feature = "client",
-        feature = "runtime"
-    )
-))]
+#[cfg(any(feature = "server", all(feature = "client", feature = "runtime")))]
 pub(crate) fn filter_exported_impl_items(input: syn::ItemImpl) -> syn::ItemImpl {
     let mut output = input;
     output.items.retain(|item| match item {
-        syn::ImplItem::Method(f) => {
-            f.attrs.iter()
-                .any(|attr| is_exported(attr))
-        }
+        syn::ImplItem::Method(f) => f.attrs.iter().any(|attr| is_exported(attr)),
         _ => false,
     });
     output
 }
 
-#[cfg(all(
-    feature = "client",
-    feature = "runtime"
-))]
+#[cfg(all(feature = "client", feature = "runtime"))]
 pub(crate) fn generate_service_client_for_struct(
     struct_ident: &syn::Ident,
     input: &syn::ItemImpl,
-) -> (syn::Item, syn::ItemImpl)
-{
+) -> (syn::Item, syn::ItemImpl) {
     let concat_name = format!("{}{}", &struct_ident.to_string(), CLIENT_SUFFIX);
     let client_ident = syn::Ident::new(&concat_name, struct_ident.span());
 
@@ -202,10 +185,7 @@ pub(crate) fn generate_service_client_for_struct(
 }
 
 /// Generate client stub implementation that allows, conveniently, type checking with the RPC argument
-#[cfg(all(
-    feature = "client",
-    feature = "runtime"
-))]
+#[cfg(all(feature = "client", feature = "runtime"))]
 fn client_stub_impl_for_struct(
     service_ident: &syn::Ident,
     client_ident: &syn::Ident,
@@ -213,16 +193,13 @@ fn client_stub_impl_for_struct(
 ) -> syn::ItemImpl {
     let input = filter_exported_impl_items(input.clone());
     let mut generated_items: Vec<syn::ImplItem> = Vec::new();
-    input
-        .items
-        .iter()
-        .for_each(|item| {
-            if let syn::ImplItem::Method(f) = item {
-                if let Some(method) = generate_client_stub_for_struct_method(service_ident, f) {
-                    generated_items.push(syn::ImplItem::Method(method));
-                }
+    input.items.iter().for_each(|item| {
+        if let syn::ImplItem::Method(f) = item {
+            if let Some(method) = generate_client_stub_for_struct_method(service_ident, f) {
+                generated_items.push(syn::ImplItem::Method(method));
             }
-        });
+        }
+    });
 
     let mut output: syn::ItemImpl = syn::parse_quote!(
         impl<'c> #client_ident<'c> {
@@ -234,10 +211,7 @@ fn client_stub_impl_for_struct(
     output
 }
 
-#[cfg(all(
-    feature = "client",
-    feature = "runtime"
-))]
+#[cfg(all(feature = "client", feature = "runtime"))]
 pub(crate) fn generate_client_stub_for_struct_method(
     service_ident: &syn::Ident,
     f: &syn::ImplItemMethod,
@@ -261,10 +235,7 @@ pub(crate) fn generate_client_stub_for_struct_method(
 }
 
 /// Generate client stub for the service impl block
-#[cfg(all(
-    feature = "client",
-    feature = "runtime"
-))]
+#[cfg(all(feature = "client", feature = "runtime"))]
 pub(crate) fn generate_client_stub_for_struct(
     struct_ident: &syn::Ident,
 ) -> (syn::Item, syn::ItemImpl) {

@@ -250,7 +250,12 @@ impl
 
 #[cfg(all(feature = "http_warp"))]
 // warp websocket
-impl<S, E> Codec<StreamHalf<SplitStream<S>, CanSink>, SinkHalf<SplitSink<S, warp::ws::Message>, CanSink>, ConnTypePayload>
+impl<S, E>
+    Codec<
+        StreamHalf<SplitStream<S>, CanSink>,
+        SinkHalf<SplitSink<S, warp::ws::Message>, CanSink>,
+        ConnTypePayload,
+    >
 where
     S: Stream<Item = Result<warp::ws::Message, E>> + Sink<warp::ws::Message>,
     E: std::error::Error,
@@ -262,11 +267,11 @@ where
         let (writer, reader) = ws.split();
         let writer = SinkHalf::<_, CanSink> {
             inner: writer,
-            can_sink: PhantomData
+            can_sink: PhantomData,
         };
         let reader = StreamHalf::<_, CanSink> {
             inner: reader,
-            can_sink: PhantomData
+            can_sink: PhantomData,
         };
 
         Self {
@@ -283,11 +288,12 @@ pub trait CodecRead: Send + Unmarshal + EraseDeserializer {
     /// Reads the header of the message.
     async fn read_header<H>(&mut self) -> Option<Result<H, Error>>
     where
-        H: serde::de::DeserializeOwned
+        H: serde::de::DeserializeOwned,
     {
         Some(
-            self.read_bytes().await?
-                .and_then(|payload| Self::unmarshal(&payload))
+            self.read_bytes()
+                .await?
+                .and_then(|payload| Self::unmarshal(&payload)),
         )
     }
 

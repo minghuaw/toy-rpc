@@ -4,7 +4,9 @@ const REGISTRY_SUFFIX: &str = "Registry";
 use super::*;
 
 #[cfg(feature = "server")]
-pub(crate) fn transform_trait(input: syn::ItemTrait) -> (syn::ItemTrait, syn::ItemImpl, Vec<String>, Vec<syn::Ident>) {
+pub(crate) fn transform_trait(
+    input: syn::ItemTrait,
+) -> (syn::ItemTrait, syn::ItemImpl, Vec<String>, Vec<syn::Ident>) {
     let mut names: Vec<String> = Vec::new();
     let mut idents: Vec<syn::Ident> = Vec::new();
     let mut handler_idents = Vec::new();
@@ -13,15 +15,13 @@ pub(crate) fn transform_trait(input: syn::ItemTrait) -> (syn::ItemTrait, syn::It
 
     let concat_name = format!("{}{}", &input.ident.to_string(), EXPORTED_TRAIT_SUFFIX);
     let transformed_trait_ident = syn::Ident::new(&&concat_name, input.ident.span());
-    input.items
-        .iter()
-        .for_each(|item| 
-            if let syn::TraitItem::Method(f) = item {
-                names.push(f.sig.ident.to_string());
-                // transform_trait_item(f);
-                idents.push(f.sig.ident.clone());
-            }
-        );
+    input.items.iter().for_each(|item| {
+        if let syn::TraitItem::Method(f) = item {
+            names.push(f.sig.ident.to_string());
+            // transform_trait_item(f);
+            idents.push(f.sig.ident.clone());
+        }
+    });
     let mut transformed_trait: syn::ItemTrait = syn::parse_quote!(
         pub trait #transformed_trait_ident: Send + Sync {
 
@@ -41,25 +41,25 @@ pub(crate) fn transform_trait(input: syn::ItemTrait) -> (syn::ItemTrait, syn::It
 
         }
     );
-    let transformed_trait_impl = impl_transformed_trait(
-        transformed_trait_impl, 
-        &transformed_trait, 
-        &input
-    );
+    let transformed_trait_impl =
+        impl_transformed_trait(transformed_trait_impl, &transformed_trait, &input);
 
-    (transformed_trait, transformed_trait_impl, names, handler_idents)
+    (
+        transformed_trait,
+        transformed_trait_impl,
+        names,
+        handler_idents,
+    )
 }
 
 #[cfg(feature = "server")]
-fn generate_transformed_trait_item(
-    ident: &syn::Ident,
-) -> syn::TraitItemMethod {
+fn generate_transformed_trait_item(ident: &syn::Ident) -> syn::TraitItemMethod {
     let concat_name = format!("{}_{}", &ident.to_string(), HANDLER_SUFFIX);
     let handler_ident = syn::Ident::new(&concat_name, ident.span());
 
     syn::parse_quote!(
         fn #handler_ident(
-            self: std::sync::Arc<Self>, 
+            self: std::sync::Arc<Self>,
             deserializer: Box<dyn toy_rpc::erased_serde::Deserializer<'static> + Send>
         ) -> toy_rpc::service::HandlerResultFut;
     )
@@ -67,26 +67,24 @@ fn generate_transformed_trait_item(
 
 #[cfg(feature = "server")]
 fn impl_transformed_trait(
-    mut trait_impl: syn::ItemImpl, 
+    mut trait_impl: syn::ItemImpl,
     handler_trait: &syn::ItemTrait,
-    orig_trait: &syn::ItemTrait
+    orig_trait: &syn::ItemTrait,
 ) -> syn::ItemImpl {
-    let handler_items = handler_trait.items.iter()
-        .filter_map(|item| 
-            if let syn::TraitItem::Method(f) = item {
-                Some(f)
-            } else {
-                None
-            }
-        );
-    let orig_items = orig_trait.items.iter()
-        .filter_map(|item| {
-            if let syn::TraitItem::Method(f) = item {
-                Some(f)
-            } else {
-                None
-            }
-        });
+    let handler_items = handler_trait.items.iter().filter_map(|item| {
+        if let syn::TraitItem::Method(f) = item {
+            Some(f)
+        } else {
+            None
+        }
+    });
+    let orig_items = orig_trait.items.iter().filter_map(|item| {
+        if let syn::TraitItem::Method(f) = item {
+            Some(f)
+        } else {
+            None
+        }
+    });
     let items = handler_items.zip(orig_items);
     for (handler_item, orig_item) in items {
         if let syn::FnArg::Typed(pt) = orig_item.sig.inputs.last().unwrap() {
@@ -96,7 +94,7 @@ fn impl_transformed_trait(
 
             let f: syn::ImplItemMethod = syn::parse_quote!(
                 fn #handler_ident(
-                    self: std::sync::Arc<Self>, 
+                    self: std::sync::Arc<Self>,
                     mut deserializer: Box<dyn toy_rpc::erased_serde::Deserializer<'static> + Send>
                 ) -> toy_rpc::service::HandlerResultFut
                 {
@@ -104,7 +102,7 @@ fn impl_transformed_trait(
                         async move {
                             let req: #req_ty = toy_rpc::erased_serde::deserialize(&mut deserializer)
                                 .map_err(|e| toy_rpc::error::Error::ParseError(Box::new(e)))?;
-                            self.#orig_ident(req).await 
+                            self.#orig_ident(req).await
                                 .map(|r| Box::new(r) as Box<dyn toy_rpc::erased_serde::Serialize + Send + Sync + 'static>)
                                 .map_err(|err| err.into())
                         }
@@ -119,20 +117,15 @@ fn impl_transformed_trait(
 }
 
 // #[cfg(any(
-//     feature = "server", 
+//     feature = "server",
 //     feature = "client"
 // ))]
 pub(crate) fn remove_export_attr_from_trait(mut input: syn::ItemTrait) -> syn::ItemTrait {
-    input 
-        .items
-        .iter_mut()
-        .for_each(|item| {
-            if let syn::TraitItem::Method(f) = item {
-                f.attrs.retain(|attr|
-                    !is_exported(attr)
-                )
-            }
-        });
+    input.items.iter_mut().for_each(|item| {
+        if let syn::TraitItem::Method(f) = item {
+            f.attrs.retain(|attr| !is_exported(attr))
+        }
+    });
 
     input
 }
@@ -142,7 +135,7 @@ pub(crate) fn impl_local_registry_for_trait(
     orig_trait_ident: &syn::Ident,
     transformed_trait_ident: &syn::Ident,
     names: Vec<String>,
-    handler_idents: Vec<syn::Ident>
+    handler_idents: Vec<syn::Ident>,
 ) -> impl quote::ToTokens {
     let service_name = orig_trait_ident.to_string();
     let concat_name = format!("{}{}", transformed_trait_ident.to_string(), REGISTRY_SUFFIX);
@@ -153,8 +146,8 @@ pub(crate) fn impl_local_registry_for_trait(
             fn default_name() -> &'static str;
         }
 
-        impl<T> #registry_ident for T 
-        where 
+        impl<T> #registry_ident for T
+        where
             T: #transformed_trait_ident + Send + Sync + 'static
         {
             fn handlers() -> std::collections::HashMap<&'static str, toy_rpc::service::AsyncHandler<Self>> {
@@ -199,42 +192,28 @@ pub(crate) fn impl_register_service_for_trait_impl(
 #[cfg(feature = "server")]
 pub(crate) fn get_trait_ident_from_item_impl(input: &syn::ItemImpl) -> Option<syn::Ident> {
     if let Some((_, ref path, _)) = input.trait_ {
-        path.get_ident()
-            .map(|id| id.clone())
+        path.get_ident().map(|id| id.clone())
     } else {
         None
     }
 }
 
-#[cfg(any(
-    feature = "server", 
-    all(
-        feature = "client",
-        feature = "runtime",
-    )
-))]
+#[cfg(any(feature = "server", all(feature = "client", feature = "runtime",)))]
 pub(crate) fn filter_exported_trait_items(input: syn::ItemTrait) -> syn::ItemTrait {
     let mut output = input;
     output.items.retain(|item| match item {
-        syn::TraitItem::Method(f) => {
-            f.attrs.iter()
-                .any(|attr| is_exported(attr))
-        },
-        _ => false
+        syn::TraitItem::Method(f) => f.attrs.iter().any(|attr| is_exported(attr)),
+        _ => false,
     });
 
     output
 }
 
-#[cfg(all(
-    feature = "client",
-    feature = "runtime"
-))]
+#[cfg(all(feature = "client", feature = "runtime"))]
 pub(crate) fn generate_service_client_for_trait(
     trait_ident: &syn::Ident,
-    input: &syn::ItemTrait
-) -> (syn::Item, syn::ItemImpl)
-{
+    input: &syn::ItemTrait,
+) -> (syn::Item, syn::ItemImpl) {
     let concat_name = format!("{}{}", &trait_ident.to_string(), CLIENT_SUFFIX);
     let client_ident = syn::Ident::new(&&concat_name, trait_ident.span());
 
@@ -248,10 +227,7 @@ pub(crate) fn generate_service_client_for_trait(
     (client_struct, client_impl)
 }
 
-#[cfg(all(
-    feature = "client",
-    feature = "runtime"
-))]
+#[cfg(all(feature = "client", feature = "runtime"))]
 fn client_stub_impl_for_trait(
     service_ident: &syn::Ident,
     client_ident: &syn::Ident,
@@ -259,14 +235,13 @@ fn client_stub_impl_for_trait(
 ) -> syn::ItemImpl {
     let input = filter_exported_trait_items(input.clone());
     let mut generated_items: Vec<syn::ImplItem> = Vec::new();
-    input.items.iter()
-        .for_each(|item| {
-            if let syn::TraitItem::Method(f) = item {
-                if let Some(method) = generate_client_stub_for_trait_method(service_ident, f) {
-                    generated_items.push(syn::ImplItem::Method(method))
-                }
+    input.items.iter().for_each(|item| {
+        if let syn::TraitItem::Method(f) = item {
+            if let Some(method) = generate_client_stub_for_trait_method(service_ident, f) {
+                generated_items.push(syn::ImplItem::Method(method))
             }
-        });
+        }
+    });
 
     let mut output: syn::ItemImpl = syn::parse_quote!(
         impl<'c> #client_ident<'c> {
@@ -277,13 +252,10 @@ fn client_stub_impl_for_trait(
     output
 }
 
-#[cfg(all(
-    feature = "client",
-    feature = "runtime"
-))]
+#[cfg(all(feature = "client", feature = "runtime"))]
 fn generate_client_stub_for_trait_method(
     service_ident: &syn::Ident,
-    f: &syn::TraitItemMethod
+    f: &syn::TraitItemMethod,
 ) -> Option<syn::ImplItemMethod> {
     if let syn::FnArg::Typed(pt) = f.sig.inputs.last().unwrap() {
         let fn_ident = &f.sig.ident;
@@ -292,17 +264,18 @@ fn generate_client_stub_for_trait_method(
         if let syn::ReturnType::Type(_, ret_ty) = f.sig.output.clone() {
             let ok_ty = get_ok_ident_from_type(ret_ty)?;
             return Some(generate_client_stub_for_struct_method_impl(
-                service_ident, fn_ident, &req_ty, &ok_ty))
+                service_ident,
+                fn_ident,
+                &req_ty,
+                &ok_ty,
+            ));
         }
     }
 
     None
 }
 
-#[cfg(all(
-    feature = "client",
-    feature = "runtime"
-))]
+#[cfg(all(feature = "client", feature = "runtime"))]
 pub(crate) fn generate_client_stub_for_trait(
     trait_ident: &syn::Ident,
 ) -> (syn::Item, syn::ItemImpl) {
@@ -335,24 +308,18 @@ pub(crate) fn generate_client_stub_for_trait(
     (stub_trait, stub_impl)
 }
 
-#[cfg(all(
-    feature = "client",
-    feature = "runtime"
-))]
-pub fn generate_trait_impl_for_client(
-    input: &syn::ItemTrait
-) -> syn::ItemImpl {
+#[cfg(all(feature = "client", feature = "runtime"))]
+pub fn generate_trait_impl_for_client(input: &syn::ItemTrait) -> syn::ItemImpl {
     let service_ident = &input.ident;
     let input = filter_exported_trait_items(input.clone());
     let mut generated_items: Vec<syn::ImplItem> = Vec::new();
-    input.items.iter() 
-        .for_each(|item| {
-            if let syn::TraitItem::Method(f) = item {
-                generated_items.push(syn::ImplItem::Method(
-                    generate_trait_method_impl_for_client(service_ident, f)
-                ))
-            }
-        });
+    input.items.iter().for_each(|item| {
+        if let syn::TraitItem::Method(f) = item {
+            generated_items.push(syn::ImplItem::Method(
+                generate_trait_method_impl_for_client(service_ident, f),
+            ))
+        }
+    });
     let mut output: syn::ItemImpl = syn::parse_quote!(
         impl #service_ident for toy_rpc::client::Client {
 
@@ -362,20 +329,17 @@ pub fn generate_trait_impl_for_client(
     output
 }
 
-/// 
+///
 /// PANIC: panics if the argument ident is not found
-#[cfg(all(
-    feature = "client",
-    feature = "runtime"
-))]
+#[cfg(all(feature = "client", feature = "runtime"))]
 fn generate_trait_method_impl_for_client(
     service_ident: &syn::Ident,
-    method: &syn::TraitItemMethod
+    method: &syn::TraitItemMethod,
 ) -> syn::ImplItemMethod {
-use std::ops::Deref;
+    use std::ops::Deref;
 
-    let method_ident = &method.sig.ident; 
-    let arg = method.sig.inputs.last().unwrap();   
+    let method_ident = &method.sig.ident;
+    let arg = method.sig.inputs.last().unwrap();
     let arg_ident = match arg {
         syn::FnArg::Typed(pt) => {
             if let syn::Pat::Ident(pat_id) = pt.pat.deref() {
@@ -383,8 +347,8 @@ use std::ops::Deref;
             } else {
                 panic!("Argument ident not found")
             }
-        },
-        _ => panic!("Argument ident not found")
+        }
+        _ => panic!("Argument ident not found"),
     };
     let service_method = format!("{}.{}", service_ident, method_ident);
     let block: syn::Block = syn::parse_quote!(
@@ -396,12 +360,12 @@ use std::ops::Deref;
             )
         }
     );
-    
+
     syn::ImplItemMethod {
         attrs: method.attrs.clone(),
         vis: syn::Visibility::Inherited,
         defaultness: None,
         sig: method.sig.clone(),
-        block
+        block,
     }
 }

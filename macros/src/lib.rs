@@ -17,15 +17,9 @@ pub(crate) const ATTR_EXPORT_METHOD: &str = "export_method";
 pub(crate) const HANDLER_SUFFIX: &str = "handler";
 #[cfg(feature = "server")]
 pub(crate) const EXPORTED_TRAIT_SUFFIX: &str = "Handler";
-#[cfg(all(
-    feature = "client",
-    feature = "runtime",
-))]
+#[cfg(all(feature = "client", feature = "runtime",))]
 pub(crate) const CLIENT_SUFFIX: &str = "Client";
-#[cfg(all(
-    feature = "client",
-    feature = "runtime",
-))]
+#[cfg(all(feature = "client", feature = "runtime",))]
 pub(crate) const CLIENT_STUB_SUFFIX: &str = "ClientStub";
 
 /// A macro that impls serde::Deserializer by simply calling the
@@ -234,7 +228,6 @@ pub fn impl_inner_deserializer(_: proc_macro::TokenStream) -> proc_macro::TokenS
     output.into()
 }
 
-
 // =============================================================================
 // #[export_impl]
 // =============================================================================
@@ -246,16 +239,16 @@ pub fn impl_inner_deserializer(_: proc_macro::TokenStream) -> proc_macro::TokenS
 /// Under the hood, this macro generates method handlers. This macro implements the
 /// `toy_rpc::util::RegisterService` trait, which returns the handler hashmap
 /// when a service is registered on the server.
-/// 
+///
 /// ### Note
-/// 
+///
 /// - The default service name generated will be the same as the name of the struct.
 ///
 /// ### Example - Export impl block
-/// 
+///
 /// ```rust
 /// struct Abacus { }
-/// 
+///
 /// #[export_impl] // This will give a default service name of "Abacus"
 /// impl Abacus {
 ///     #[export_method]
@@ -265,20 +258,17 @@ pub fn impl_inner_deserializer(_: proc_macro::TokenStream) -> proc_macro::TokenS
 /// }
 /// ```
 #[proc_macro_attribute]
-pub fn export_impl(_attr: proc_macro::TokenStream, item: proc_macro::TokenStream) -> proc_macro::TokenStream {
+pub fn export_impl(
+    _attr: proc_macro::TokenStream,
+    item: proc_macro::TokenStream,
+) -> proc_macro::TokenStream {
     // parse item
     let input = syn::parse_macro_input!(item as syn::ItemImpl);
     #[cfg(feature = "server")]
     let (handler_impl, names, handler_idents) = transform_impl(input.clone());
 
     // extract Self type and use it for construct Ident for handler HashMap
-    #[cfg(any(
-        feature = "server", 
-        all(
-            feature = "client",
-            feature = "runtime"
-        )
-    ))]
+    #[cfg(any(feature = "server", all(feature = "client", feature = "runtime")))]
     let ident = {
         let self_ty = &input.self_ty;
         match util::parse_impl_self_ty(self_ty) {
@@ -301,11 +291,7 @@ pub fn export_impl(_attr: proc_macro::TokenStream, item: proc_macro::TokenStream
     #[cfg(all(feature = "client", feature = "runtime"))]
     let client_impl = remove_export_attr_from_impl(client_impl);
 
-    #[cfg(all(
-        feature = "server",
-        feature = "client",
-        feature = "runtime"
-    ))]
+    #[cfg(all(feature = "server", feature = "client", feature = "runtime"))]
     let output = quote::quote! {
         #input
         #handler_impl
@@ -315,11 +301,7 @@ pub fn export_impl(_attr: proc_macro::TokenStream, item: proc_macro::TokenStream
         #stub_trait
         #stub_impl
     };
-    #[cfg(all(
-        not(feature = "server"),
-        feature = "client",
-        feature = "runtime"
-    ))]
+    #[cfg(all(not(feature = "server"), feature = "client", feature = "runtime"))]
     let output = quote::quote! {
         #input
         #client_ty
@@ -329,10 +311,7 @@ pub fn export_impl(_attr: proc_macro::TokenStream, item: proc_macro::TokenStream
     };
     #[cfg(all(
         feature = "server",
-        any(
-            not(feature = "client"),
-            not(feature = "runtime")
-        )
+        any(not(feature = "client"), not(feature = "runtime"))
     ))]
     let output = quote::quote! {
         #input
@@ -341,10 +320,7 @@ pub fn export_impl(_attr: proc_macro::TokenStream, item: proc_macro::TokenStream
     };
     #[cfg(all(
         not(feature = "server"),
-        any(
-            not(feature = "client"),
-            not(feature = "runtime")
-        )
+        any(not(feature = "client"), not(feature = "runtime"))
     ))]
     let output = quote::quote! {
         #input
@@ -356,58 +332,63 @@ pub fn export_impl(_attr: proc_macro::TokenStream, item: proc_macro::TokenStream
 // #[export_trait]
 // =============================================================================
 
-
 #[derive(Debug, darling::FromMeta)]
 struct MacroArgs {
     #[darling(default)]
     impl_for_client: bool,
 }
 
-/// "Exports" methods defined in the trait with the `#[export_method]` attribute. 
-/// Methods not marked with `#[export_method]` will not be affected. 
-/// 
-/// This macro should be used together with `#[export_trait_impl]` to allow conveniently 
-/// register the struct that implements the service trait as a service. 
-/// 
+/// "Exports" methods defined in the trait with the `#[export_method]` attribute.
+/// Methods not marked with `#[export_method]` will not be affected.
+///
+/// This macro should be used together with `#[export_trait_impl]` to allow conveniently
+/// register the struct that implements the service trait as a service.
+///
 /// ## Note
-/// 
-/// - The default service name generated will be the same as the name of the trait. 
-/// 
-/// - This macro should be placed on the trait definition. 
-/// 
+///
+/// - The default service name generated will be the same as the name of the trait.
+///
+/// - This macro should be placed on the trait definition.
+///
 /// ## Example
-/// 
-/// ```rust 
+///
+/// ```rust
 /// #[async_trait]
 /// #[export_trait] // This will give a default service name of "Arith"
 /// pub trait Arith {
-///     // Mark method(s) to be "exported" with `#[export_method]` 
+///     // Mark method(s) to be "exported" with `#[export_method]`
 ///     // in the definition.
 ///     #[export_method]
 ///     async fn add(&self, args(i32, i32)) -> Result<i32, String>;
 /// }
 /// ```
 #[proc_macro_attribute]
-pub fn export_trait(_attr: proc_macro::TokenStream, item: proc_macro::TokenStream) -> proc_macro::TokenStream {
+pub fn export_trait(
+    _attr: proc_macro::TokenStream,
+    item: proc_macro::TokenStream,
+) -> proc_macro::TokenStream {
     #[cfg(all(feature = "client", feature = "runtime"))]
     let args = {
         let attr_args = syn::parse_macro_input!(_attr as syn::AttributeArgs);
         match MacroArgs::from_list(&attr_args) {
             Ok(v) => v,
-            Err(err) => { return proc_macro::TokenStream::from(err.write_errors()); }
+            Err(err) => {
+                return proc_macro::TokenStream::from(err.write_errors());
+            }
         }
     };
 
     let input = syn::parse_macro_input!(item as syn::ItemTrait);
     #[cfg(feature = "server")]
-    let (transformed_trait, 
-        transformed_trait_impl,
-        names, 
-        handler_idents
-    ) = transform_trait(input.clone());
+    let (transformed_trait, transformed_trait_impl, names, handler_idents) =
+        transform_trait(input.clone());
     #[cfg(feature = "server")]
     let local_registry = impl_local_registry_for_trait(
-        &input.ident, &transformed_trait.ident, names, handler_idents);
+        &input.ident,
+        &transformed_trait.ident,
+        names,
+        handler_idents,
+    );
 
     #[cfg(all(feature = "client", feature = "runtime"))]
     let (client_ty, client_impl) = generate_service_client_for_trait(&input.ident, &input);
@@ -426,11 +407,7 @@ pub fn export_trait(_attr: proc_macro::TokenStream, item: proc_macro::TokenStrea
     #[cfg(feature = "server")]
     let transformed_trait_impl = remove_export_attr_from_impl(transformed_trait_impl);
 
-    #[cfg(all(
-        feature = "server",
-        feature = "client",
-        feature = "runtime"
-    ))]
+    #[cfg(all(feature = "server", feature = "client", feature = "runtime"))]
     let output = if args.impl_for_client {
         quote::quote! {
             #input
@@ -455,11 +432,7 @@ pub fn export_trait(_attr: proc_macro::TokenStream, item: proc_macro::TokenStrea
             #stub_impl
         }
     };
-    #[cfg(all(
-        not(feature = "server"),
-        feature = "client",
-        feature = "runtime"
-    ))]
+    #[cfg(all(not(feature = "server"), feature = "client", feature = "runtime"))]
     let output = if args.impl_for_client {
         quote::quote! {
             #input
@@ -480,10 +453,7 @@ pub fn export_trait(_attr: proc_macro::TokenStream, item: proc_macro::TokenStrea
     };
     #[cfg(all(
         feature = "server",
-        any(
-            not(feature = "client"),
-            not(feature = "runtime")
-        )
+        any(not(feature = "client"), not(feature = "runtime"))
     ))]
     let output = quote::quote! {
         #input
@@ -493,10 +463,7 @@ pub fn export_trait(_attr: proc_macro::TokenStream, item: proc_macro::TokenStrea
     };
     #[cfg(all(
         not(feature = "server"),
-        any(
-            not(feature = "client"),
-            not(feature = "runtime")
-        )
+        any(not(feature = "client"), not(feature = "runtime"))
     ))]
     let output = quote::quote! {
         #input
@@ -506,18 +473,18 @@ pub fn export_trait(_attr: proc_macro::TokenStream, item: proc_macro::TokenStrea
 
 /// This macro implements the `toy_rpc::util::RegisterService` trait to allow
 /// convenient registration of the service. This should be used along with the
-/// macro `#[export_trait]`. 
-/// 
+/// macro `#[export_trait]`.
+///
 /// ## Note
-/// 
-/// - This macro should be placed on the impl block of the defined RPC service 
-/// trait 
-/// 
-/// ## Example 
-/// 
-/// ```rust 
+///
+/// - This macro should be placed on the impl block of the defined RPC service
+/// trait
+///
+/// ## Example
+///
+/// ```rust
 /// struct Abacus { }
-/// 
+///
 /// #[async_trait]
 /// #[export_trait_impl] // The default name will follow the name of the trait (ie. "Arith")
 /// impl Arith  for Abacus {
@@ -529,7 +496,10 @@ pub fn export_trait(_attr: proc_macro::TokenStream, item: proc_macro::TokenStrea
 /// }
 /// ```
 #[proc_macro_attribute]
-pub fn export_trait_impl(_attr: proc_macro::TokenStream, item: proc_macro::TokenStream) -> proc_macro::TokenStream {
+pub fn export_trait_impl(
+    _attr: proc_macro::TokenStream,
+    item: proc_macro::TokenStream,
+) -> proc_macro::TokenStream {
     let input = syn::parse_macro_input!(item as syn::ItemImpl);
     #[cfg(feature = "server")]
     let trait_ident = get_trait_ident_from_item_impl(&input).unwrap();
@@ -546,7 +516,7 @@ pub fn export_trait_impl(_attr: proc_macro::TokenStream, item: proc_macro::Token
 
     #[cfg(feature = "server")]
     let register_impl = impl_register_service_for_trait_impl(&trait_ident, type_ident);
-    
+
     let input = remove_export_attr_from_impl(input);
 
     #[cfg(feature = "server")]

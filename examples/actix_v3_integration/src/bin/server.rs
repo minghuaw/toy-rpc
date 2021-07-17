@@ -90,7 +90,7 @@ async fn main() -> std::io::Result<()> {
         let mut count: u32 = 1;
         loop {
             println!("Send to publisher");
-            publisher.send(Count(count)).await;
+            publisher.send(Count(count)).await.unwrap();
             count += 1;
             delay_for(Duration::from_millis(1000)).await;
         }

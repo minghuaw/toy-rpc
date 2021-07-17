@@ -1,7 +1,6 @@
 //! This modules implements `Server`'s methods that require `feature = "tokio_runtime"`,
 //! `feature = "http_actix_web"` or `feature = "http_warp"`.
 
-
 use cfg_if::cfg_if;
 
 cfg_if! {
@@ -191,15 +190,15 @@ cfg_if! {
 
             /// Serves a stream that implements `tokio::io::AsyncRead` and `tokio::io::AsyncWrite`
             #[cfg_attr(feature = "docs", doc(cfg(feature = "tokio_runtime")))]
-            pub async fn serve_stream<T>(&self, stream: T) -> Result<(), Error> 
-            where 
+            pub async fn serve_stream<T>(&self, stream: T) -> Result<(), Error>
+            where
                 T: AsyncRead + AsyncWrite + Send + Unpin + 'static
             {
                 // let ret = serve_readwrite_stream(stream, self.services.clone()).await;
                 let codec = DefaultCodec::new(stream);
                 let ret = self.serve_codec(codec).await;
                 log::info!("Client disconnected from stream");
-                ret            
+                ret
             }
 
             /// This is like serve_conn except that it uses a specified codec
@@ -230,7 +229,7 @@ cfg_if! {
             stream: TcpStream,
             acceptor: TlsAcceptor,
             services: Arc<AsyncServiceMap>,
-            client_id: ClientId, 
+            client_id: ClientId,
             pubsub_broker: Sender<PubSubItem>
         ) -> Result<(), Error> {
             let peer_addr = stream.peer_addr()?;
@@ -244,9 +243,9 @@ cfg_if! {
 
         /// Serves a single connection
         async fn serve_tcp_connection(
-            stream: TcpStream, 
+            stream: TcpStream,
             services: Arc<AsyncServiceMap>,
-            client_id: ClientId, 
+            client_id: ClientId,
             pubsub_broker: Sender<PubSubItem>
         ) -> Result<(), Error> {
             let _peer_addr = stream.peer_addr()?;
@@ -258,9 +257,9 @@ cfg_if! {
         }
 
         async fn accept_ws_connection(
-            stream: TcpStream, 
+            stream: TcpStream,
             services: Arc<AsyncServiceMap>,
-            client_id: ClientId, 
+            client_id: ClientId,
             pubsub_broker: Sender<PubSubItem>
         ) {
             let ws_stream = async_tungstenite::tokio::accept_async(stream).await
