@@ -14,5 +14,6 @@
     - [Cancellation](./06a_cancellation.md)
     - [Timeout](./06b_timeout.md)
 - [TLS Support](./07_tls.md)
+- [PubSub](./08_pubsub.md)
 - [Examples](./09_examples.md)
 - [Change Logs](./10_change_log.md)

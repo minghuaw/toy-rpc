@@ -19,7 +19,7 @@ cfg_if! {
         mod reader;
         mod writer;
 
-        mod pubsub;
+        pub mod pubsub;
         use pubsub::{PubSubBroker, PubSubItem};
     }
 }

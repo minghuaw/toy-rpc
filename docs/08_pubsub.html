@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Introduction - toy-rpc Book</title>
+        <title>PubSub - toy-rpc Book</title>
         
         
 
@@ -95,7 +95,7 @@
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
             <div class="sidebar-scrollbox">
-                <ol class="chapter"><li class="chapter-item expanded "><a href="01_introduction.html" class="active"><strong aria-hidden="true">1.</strong> Introduction</a></li><li class="chapter-item expanded "><a href="02_quickstart.html"><strong aria-hidden="true">2.</strong> Quickstart</a></li><li class="chapter-item expanded "><a href="03_define_service.html"><strong aria-hidden="true">3.</strong> Define Service</a></li><li class="chapter-item expanded "><a href="04_server.html"><strong aria-hidden="true">4.</strong> Server</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="04a_async_std.html"><strong aria-hidden="true">4.1.</strong> async-std</a></li><li class="chapter-item expanded "><a href="04b_tokio.html"><strong aria-hidden="true">4.2.</strong> tokio</a></li></ol></li><li class="chapter-item expanded "><a href="05_integration.html"><strong aria-hidden="true">5.</strong> Integration</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="05a_actix_web.html"><strong aria-hidden="true">5.1.</strong> actix-web</a></li><li class="chapter-item expanded "><a href="05b_tide.html"><strong aria-hidden="true">5.2.</strong> tide</a></li><li class="chapter-item expanded "><a href="05c_warp.html"><strong aria-hidden="true">5.3.</strong> warp</a></li></ol></li><li class="chapter-item expanded "><a href="06_client.html"><strong aria-hidden="true">6.</strong> Client</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="06a_cancellation.html"><strong aria-hidden="true">6.1.</strong> Cancellation</a></li><li class="chapter-item expanded "><a href="06b_timeout.html"><strong aria-hidden="true">6.2.</strong> Timeout</a></li></ol></li><li class="chapter-item expanded "><a href="07_tls.html"><strong aria-hidden="true">7.</strong> TLS Support</a></li><li class="chapter-item expanded "><a href="08_pubsub.html"><strong aria-hidden="true">8.</strong> PubSub</a></li><li class="chapter-item expanded "><a href="09_examples.html"><strong aria-hidden="true">9.</strong> Examples</a></li><li class="chapter-item expanded "><a href="10_change_log.html"><strong aria-hidden="true">10.</strong> Change Logs</a></li></ol>
+                <ol class="chapter"><li class="chapter-item expanded "><a href="01_introduction.html"><strong aria-hidden="true">1.</strong> Introduction</a></li><li class="chapter-item expanded "><a href="02_quickstart.html"><strong aria-hidden="true">2.</strong> Quickstart</a></li><li class="chapter-item expanded "><a href="03_define_service.html"><strong aria-hidden="true">3.</strong> Define Service</a></li><li class="chapter-item expanded "><a href="04_server.html"><strong aria-hidden="true">4.</strong> Server</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="04a_async_std.html"><strong aria-hidden="true">4.1.</strong> async-std</a></li><li class="chapter-item expanded "><a href="04b_tokio.html"><strong aria-hidden="true">4.2.</strong> tokio</a></li></ol></li><li class="chapter-item expanded "><a href="05_integration.html"><strong aria-hidden="true">5.</strong> Integration</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="05a_actix_web.html"><strong aria-hidden="true">5.1.</strong> actix-web</a></li><li class="chapter-item expanded "><a href="05b_tide.html"><strong aria-hidden="true">5.2.</strong> tide</a></li><li class="chapter-item expanded "><a href="05c_warp.html"><strong aria-hidden="true">5.3.</strong> warp</a></li></ol></li><li class="chapter-item expanded "><a href="06_client.html"><strong aria-hidden="true">6.</strong> Client</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="06a_cancellation.html"><strong aria-hidden="true">6.1.</strong> Cancellation</a></li><li class="chapter-item expanded "><a href="06b_timeout.html"><strong aria-hidden="true">6.2.</strong> Timeout</a></li></ol></li><li class="chapter-item expanded "><a href="07_tls.html"><strong aria-hidden="true">7.</strong> TLS Support</a></li><li class="chapter-item expanded "><a href="08_pubsub.html" class="active"><strong aria-hidden="true">8.</strong> PubSub</a></li><li class="chapter-item expanded "><a href="09_examples.html"><strong aria-hidden="true">9.</strong> Examples</a></li><li class="chapter-item expanded "><a href="10_change_log.html"><strong aria-hidden="true">10.</strong> Change Logs</a></li></ol>
             </div>
             <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
         </nav>
@@ -165,88 +165,78 @@
 
                 <div id="content" class="content">
                     <main>
-                        <h1 id="introduction"><a class="header" href="#introduction">Introduction</a></h1>
-<div align="center">
-<!-- Crates version -->
-<a href="https://crates.io/crates/toy-rpc">
-<img src="https://img.shields.io/crates/v/toy-rpc.svg?style=flat" alt="Crates.io version" />
-</a>
-<!-- docs.rs docs -->
-<a href="https://docs.rs/toy-rpc">
-<img src="https://img.shields.io/badge/docs-latest-blue.svg?style=flat" alt="docs.rs docs" />
-</a>
-<!-- Downloads -->
-<a href="https://crates.io/crates/toy-rpc">
-<img src="https://img.shields.io/crates/d/toy-rpc.svg?style=flat" alt="Download" />
-</a>
-<a href="https://github.com/rust-secure-code/safety-dance/">
-<img src="https://img.shields.io/badge/unsafe-forbidden-success.svg?style=flat" alt="Unsafe Rust forbidden" />
-</a>
-</div>
-<p><code>toy-rpc</code> aims to be an easy-to-use <code>async</code> RPC tool that is inspired by golang's <code>net/rpc</code>'s API. 
-It supports both <code>async_std</code> and <code>tokio</code> runtimes over either TCP or TLS. Integration with common HTTP server frameworks such as <code>actix_web</code>, <code>warp</code> and <code>tide</code>
-are provided.</p>
-<p>The overall usage and API should feel similar to that of the golang's <code>net/rpc</code> package. Some of the names are changed 
-to make them sound more &quot;rusty&quot;. Because rust does not come with runtime reflection, attribute macros <code>#[export_impl]</code>
-and <code>#[export_trait]</code> / <code>#[export_trait_impl]</code>, and attribute <code>#[export_method]</code> are used to mark functions &quot;exported&quot; in golang's 
-<code>net/rpc</code> perspective.</p>
-<h2 id="why"><a class="header" href="#why">Why?</a></h2>
-<p>While there are grpc implementations like <code>grpc-rs</code> and <code>tonic</code> as well as schema-free crates like <code>tarpc</code>, I didn't find 
-a crate that offers the same level of ease-of-use as that of the golang's <code>net/rpc</code> package. Other than the ease-of-use,
-not many async RPC crates work with both <code>async_std</code> and <code>tokio</code> runtime and could be difficult to integrate with the common
-async HTTP crates (<code>actix_web</code>, <code>warp</code>, and <code>tide</code>). Thus I started working on this crate to bring something that is 
-easy-to-use and supports both <code>async_std</code> and <code>tokio</code> runtimes.</p>
-<h2 id="feature-flags"><a class="header" href="#feature-flags">Feature flags</a></h2>
-<p>Most of the feature flags can be put into three categories.</p>
-<p>Choice of runtime and HTTP framework integration</p>
-<ul>
-<li><code>async_std_runtime</code>: supports usage with <code>async-std</code></li>
-<li><code>tokio_runtime</code>: supports usage with <code>tokio</code></li>
-<li><code>http_tide</code>: enables <code>tide</code> integration on the server side. This also enables <code>async_std_runtime</code></li>
-<li><code>http_actix_web</code>: enables <code>actix-web</code> integration on the server side. This also enables <code>tokio_runtime</code></li>
-<li><code>http_warp</code>: enables integration with <code>warp</code> on the server side. This also enables <code>tokio_runtime</code></li>
-</ul>
-<p>Choice of RPC server or client (both can be enabled at the same time)</p>
-<ul>
-<li><code>server</code>: enables RPC server</li>
-<li><code>client</code>: enables RPC client </li>
-</ul>
-<p>Choice of serialization/deserialzation (only one should be enabled at a time)</p>
-<ul>
-<li><code>serde_bincode</code>: (default) the default codec will use <code>bincode</code>
-for serialization/deserialization</li>
-<li><code>serde_json</code>: the default codec will use <code>serde_json</code>
-for <code>json</code> serialization/deserialization</li>
-<li><code>serde_cbor</code>: the default codec will use <code>serde_cbor</code>
-for serialization/deserialization</li>
-<li><code>serde_rmp</code>: the default codec will use <code>rmp-serde</code>
-for serialization/deserialization</li>
-</ul>
-<p>TLS support</p>
-<ul>
-<li><code>tls</code>: enables TLS support</li>
-</ul>
-<p>Other trivial feature flags are listed below, and they are likely of no actual usage for you.</p>
-<ul>
-<li><code>docs</code></li>
-<li><code>std</code>: <code>serde/std</code>. There is no actual usage right now.</li>
-</ul>
-<p>By default, only <code>serde_bincode</code> feature is enabled. 
-You must enable at least one runtime feature flag and the <code>server</code> and/or <code>client</code> to have something usable.</p>
-<h2 id="default-features"><a class="header" href="#default-features">Default features</a></h2>
-<pre><code class="language-toml">default = [
-    &quot;serde_bincode&quot;,
-]
-</code></pre>
+                        <h1 id="pubsub"><a class="header" href="#pubsub">PubSub</a></h1>
+<p>A simple PubSub support is added in 0.8.0. A simple example can be found <a href="https://github.com/minghuaw/toy-rpc/tree/main/examples/tokio_pubsub">here</a>.</p>
+<p>A publisher can be created on the server side or the client side using the <code>publisher::&lt;T: Topic&gt;()</code> method, and a subscriber can be created using the <code>subscriber::&lt;T: Topic&gt;(cap: usize)</code> method. They both take one type parameter <code>T</code> that must implements the <code>toy_rpc::pubsub::Topic</code> trait. (TODO: add derive trait). </p>
+<p>A topic can be defined by implementing the <code>Topic</code> trait.</p>
+<pre><pre class="playground"><code class="language-rust edition2018">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>#[derive(Serialize, Deserialize)]
+pub struct Count(pub u32);
+
+impl Topic for Count {
+    type Item = Count; // The Item type must implement `Serialize` and `Deserialize`
+
+    // A String identifier for the topic. The user must ensure it is unique
+    fn topic() -&gt; String {
+        &quot;Count&quot;
+    }
+}
+<span class="boring">}
+</span></code></pre></pre>
+<p>A publisher can be created by specifying the topic in the type parameter.</p>
+<pre><pre class="playground"><code class="language-rust edition2018">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let publisher = client.publisher::&lt;Count&gt;(); // on client side
+// let publisher = server.publisher::&lt;Count&gt;(); // on server side
+<span class="boring">}
+</span></code></pre></pre>
+<p>The <code>Publisher</code> implements the <code>futures::Sink&lt;T&gt;</code> trait where <code>T</code> is the type parameter representing the topic. In order to publish message to the topic, the <code>futures::SinkExt</code> trait must be imported.</p>
+<pre><pre class="playground"><code class="language-rust edition2018">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use futures::SinkExt;
+
+publisher.send(Count(7)).await.unwrap();
+<span class="boring">}
+</span></code></pre></pre>
+<p>A subscriber can be created by specifying the topic in the type parameter and the capacity of its local buffer. Here we will create a subscriber on the client side listening to messages on the topic <code>Count</code> with a local capacity of 10.</p>
+<pre><pre class="playground"><code class="language-rust edition2018">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let subscriber = client.subscirber::&lt;Count&gt;(10).unwrap(); // on the client side
+// let subscriber = server.subscriber::&lt;Count&gt;(10).unwrap(); // on the server side (except for `actix-web`)
+<span class="boring">}
+</span></code></pre></pre>
+<p>The <code>Subscriber</code> implements the <code>futures::Stream&lt;Item = Result&lt;T, toy_rpc::Error&gt;&gt;</code> trait where <code>T</code> is the type parameter representing the topic. In order to process incoming messages, the <code>futures::StreamExt</code> trait must be imported.</p>
+<pre><pre class="playground"><code class="language-rust edition2018">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use futures::StreamExt;
+
+if let Some(result) = subscriber.next().await {
+    let item = result.unwrap(); // There could be errors recving incoming messages
+    // do something with the item
+}
+<span class="boring">}
+</span></code></pre></pre>
+<h2 id="example"><a class="header" href="#example">Example</a></h2>
+<p><a href="https://github.com/minghuaw/toy-rpc/tree/main/examples/tokio_pubsub">GitHub repo</a></p>
 
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
                         
+                            <a rel="prev" href="07_tls.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+                        
 
                         
-                            <a rel="next" href="02_quickstart.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next" href="09_examples.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <i class="fa fa-angle-right"></i>
                             </a>
                         
@@ -258,9 +248,13 @@ You must enable at least one runtime feature flag and the <code>server</code> an
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
                 
+                    <a rel="prev" href="07_tls.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+                
 
                 
-                    <a rel="next" href="02_quickstart.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next" href="09_examples.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <i class="fa fa-angle-right"></i>
                     </a>
                 

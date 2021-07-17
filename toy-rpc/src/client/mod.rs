@@ -8,7 +8,7 @@ use std::{any::TypeId, collections::HashMap, sync::Arc, time::Duration};
 use crate::message::AtomicMessageId;
 
 pub(crate) mod broker;
-mod pubsub;
+pub mod pubsub;
 mod reader;
 mod writer;
 
