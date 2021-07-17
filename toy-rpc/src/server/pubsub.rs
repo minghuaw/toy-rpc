@@ -54,10 +54,12 @@ impl PubSubBroker {
         all(feature = "tokio_runtime", not(feature = "async_std_runtime")),
     ))]
     pub fn spawn(self) {
-        #[cfg(all(feature = "tokio_runtime", not(feature = "async_std_runtime")))]
-        ::tokio::task::spawn(self.pubsub_loop());
         #[cfg(all(feature = "async_std_runtime", not(feature = "tokio_runtime")))]
         ::async_std::task::spawn(self.pubsub_loop());
+        #[cfg(all(feature = "tokio_runtime", not(feature = "async_std_runtime"), not(feature = "http_actix_web")))]
+        ::tokio::task::spawn(self.pubsub_loop());
+        #[cfg(all(feature = "http_actix_web", not(feature = "async_std_runtime")))]
+        actix::spawn(self.pubsub_loop());
     }
 
     pub async fn pubsub_loop(mut self) {

@@ -6,6 +6,8 @@ use crate::{codec::CodecWrite, error::Error, message::{ErrorMessage, MessageId},
 
 use crate::protocol::{Header};
 
+#[cfg_attr(feature = "http_actix_web", derive(actix::Message))]
+#[cfg_attr(feature = "http_actix_web", rtype(result = "()"))]
 pub(crate) enum ServerWriterItem {
     Response {
         id: MessageId,
@@ -34,7 +36,6 @@ impl<W: CodecWrite> ServerWriter<W> {
             Ok(body) => {
                 log::trace!("Message {} Success", &id);
                 let header = Header::Response{ id, is_ok: true };
-                // self.write_response(header, &body).await?;
                 self.writer.write_header(header).await?;
                 self.writer.write_body(id, &body).await
             }
@@ -42,7 +43,6 @@ impl<W: CodecWrite> ServerWriter<W> {
                 log::trace!("Message {} Error", &id);
                 let header = Header::Response { id, is_ok: false };
                 let msg = ErrorMessage::from_err(err)?;
-                // self.write_response(header, &msg).await?;
                 self.writer.write_header(header).await?;
                 self.writer.write_body(id, &msg).await
             }

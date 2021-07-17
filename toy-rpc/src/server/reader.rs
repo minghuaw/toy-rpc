@@ -10,7 +10,7 @@ use crate::{codec::{CodecRead}, error::Error, message::{
 use crate::protocol::{InboundBody, Header};
 use super::broker::ServerBrokerItem;
 
-pub(crate) struct ServerReader<T: CodecRead>{
+pub(crate) struct ServerReader<T>{
     reader: T,
     services: Arc<AsyncServiceMap>,
 }
@@ -22,43 +22,57 @@ impl<T: CodecRead> ServerReader<T> {
             services
         }
     }
+}
 
-    async fn handle_request(
-        &mut self, 
-        service_method: String,
-    ) -> Result<(ArcAsyncServiceCall, String), Error> {
-        // split service and method
-        let args: Vec<&str> = service_method.split('.').collect();
-        let (service, method) = match args[..] {
-            [s, m] => (s, m),
-            _ => {
-                // Method not found
-                return Err(Error::MethodNotFound)
-            }
-        };
+pub(crate) fn get_service(
+    services: &Arc<AsyncServiceMap>,
+    service_method: String,
+) -> Result<(ArcAsyncServiceCall, String), Error> {
+    // split service and method
+    let args: Vec<&str> = service_method.split('.').collect();
+    let (service, method) = match args[..] {
+        [s, m] => (s, m),
+        _ => {
+            // Method not found
+            return Err(Error::MethodNotFound)
+        }
+    };
 
-        // look up the service
-        match self.services.get(service) {
-            Some(call) => {
-                Ok((call.clone(), method.into()))
-            },
-            None => {
-                Err(Error::ServiceNotFound)
-            }
+    // look up the service
+    match services.get(service) {
+        Some(call) => {
+            Ok((call.clone(), method.into()))
+        },
+        None => {
+            Err(Error::ServiceNotFound)
         }
     }
+}
 
-    async fn handle_cancel(
-        &mut self,
-        id: MessageId,
-        mut deserializer: Box<InboundBody>,
-    ) -> Result<(), Error> {
-        let token: String = erased_serde::deserialize(&mut deserializer)?;
-        if is_correct_cancellation_token(id, &token) {
-            Ok(())
-        } else {
-            Err(Error::InvalidArgument)
+pub(crate) fn handle_cancel(
+    id: MessageId,
+    mut deserializer: Box<InboundBody>,
+) -> Result<(), Error> {
+    let token: String = erased_serde::deserialize(&mut deserializer)?;
+    if is_correct_cancellation_token(id, &token) {
+        Ok(())
+    } else {
+        Err(Error::InvalidArgument)
+    }
+}
+
+fn is_correct_cancellation_token(id: MessageId, token: &str) -> bool {
+    match token.find(CANCELLATION_TOKEN_DELIM) {
+        Some(ind) => {
+            let base = &token[..ind];
+            let id_str = &token[ind + 1..];
+            let _id: MessageId = match id_str.parse() {
+                Ok(num) => num,
+                Err(_) => return false,
+            };
+            base == CANCELLATION_TOKEN && _id == id
         }
+        None => false,
     }
 }
 
@@ -88,7 +102,7 @@ impl<T: CodecRead> Reader for ServerReader<T> {
                         },
                         None => return Running::Stop
                     };
-                    match self.handle_request(service_method).await {
+                    match get_service(&self.services, service_method) {
                         Ok((call, method)) => {
                             let msg = ServerBrokerItem::Request {
                                 call,
@@ -103,7 +117,7 @@ impl<T: CodecRead> Reader for ServerReader<T> {
                             )
                         },
                         Err(err) => {
-                            log::error!("{}", err);
+                            log::error!("{}", &err);
                             let msg = ServerBrokerItem::Response{id, result: Err(err)};
                             Running::Continue(
                                 broker.send(msg).await
@@ -122,8 +136,11 @@ impl<T: CodecRead> Reader for ServerReader<T> {
                         },
                         None => return Running::Stop
                     };
-                    log::error!("Server received Response {{id: {}, is_ok: {}}}", id, is_ok);
-                    Running::Continue(Ok(()))
+                    Running::Continue(
+                        Err(Error::Internal(
+                            format!("Server received Response {{id: {}, is_ok: {}}}", id, is_ok).into()
+                        ))
+                    )
                 },
                 Header::Cancel(id) => {
                     let deserializer = match self.reader.read_body().await {
@@ -135,7 +152,7 @@ impl<T: CodecRead> Reader for ServerReader<T> {
                         },
                         None => return Running::Stop
                     };
-                    match self.handle_cancel(id, deserializer).await {
+                    match handle_cancel(id, deserializer) {
                         Ok(_) => {
                             let msg = ServerBrokerItem::Cancel(id);
                             Running::Continue(
@@ -215,20 +232,5 @@ impl<T: CodecRead> Reader for ServerReader<T> {
             log::error!("{:?}", err);
         }
         Running::Continue(())
-    }
-}
-
-fn is_correct_cancellation_token(id: MessageId, token: &str) -> bool {
-    match token.find(CANCELLATION_TOKEN_DELIM) {
-        Some(ind) => {
-            let base = &token[..ind];
-            let id_str = &token[ind + 1..];
-            let _id: MessageId = match id_str.parse() {
-                Ok(num) => num,
-                Err(_) => return false,
-            };
-            base == CANCELLATION_TOKEN && _id == id
-        }
-        None => false,
     }
 }

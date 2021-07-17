@@ -85,9 +85,7 @@ dependencies = [
 
 [[package]]
 name = "brw"
-version = "0.1.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "95dc83ae48d2db4f067b68eaec884b40481f21fb2fbba3abe26d70fcc3848ced"
+version = "0.1.5"
 dependencies = [
  "async-trait",
  "flume",

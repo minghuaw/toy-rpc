@@ -28,9 +28,9 @@ use ::tokio::task::JoinHandle;
 use ::async_std::task::JoinHandle;
 
 pub(crate) struct ServerBroker { 
-    client_id: ClientId,
-    executions: HashMap<MessageId, JoinHandle<()>>,
-    pubsub_broker: Sender<PubSubItem>
+    pub client_id: ClientId,
+    pub executions: HashMap<MessageId, JoinHandle<()>>,
+    pub pubsub_broker: Sender<PubSubItem>
 }
 
 impl ServerBroker {
