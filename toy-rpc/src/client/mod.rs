@@ -16,6 +16,7 @@ use broker::ClientBrokerItem;
 
 cfg_if!{
     if #[cfg(any(
+        feature = "docs",
         all(feature = "tokio_runtime", not(feature = "async_std_runtime")),
         all(feature = "async_std_runtime", not(feature = "tokio_runtime"))
     ))] {
@@ -25,6 +26,9 @@ cfg_if!{
 
         #[cfg(feature = "tls")]
         use crate::transport::ws::WebSocketConn;
+
+        #[cfg(feature = "tls")]
+        use crate::codec::DefaultCodec;
 
         const DEFAULT_TIMEOUT_SECONDS: u64 = 10;
     }
@@ -57,9 +61,6 @@ cfg_if! {
             not(feature = "serde_bincode"),
         )
     ))] {
-        #[cfg(any(feature = "async_std_runtime", feature = "tokio_runtime"))]
-        use crate::codec::DefaultCodec;
-
         #[cfg(all(
             feature = "tls",
             all(feature = "tokio_runtime", not(feature = "async_std_runtime"))

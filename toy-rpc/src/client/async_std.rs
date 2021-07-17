@@ -1,6 +1,5 @@
 //! Client implementation with `async_std` runtime
-
-use super::*;
+use cfg_if::cfg_if;
 
 cfg_if! {
     if #[cfg(any(
@@ -37,8 +36,11 @@ cfg_if! {
         #[cfg(feature = "tls")]
         use rustls::{ClientConfig};
 
-        use crate::DEFAULT_RPC_PATH;
+        use crate::{Error, codec::DefaultCodec};
         use crate::transport::ws::WebSocketConn;
+        use crate::DEFAULT_RPC_PATH;
+
+        use super::{Client};
 
         /// The following impl block is controlled by feature flag. It is enabled
         /// if and only if **exactly one** of the the following feature flag is turned on
@@ -63,9 +65,7 @@ cfg_if! {
             /// let client = Client::dial(addr).await.unwrap();
             /// ```
             #[cfg_attr(feature = "docs", doc(cfg(feature = "async_std_runtime")))]
-            pub async fn dial(addr: impl ToSocketAddrs)
-                -> Result<Client, Error>
-            {
+            pub async fn dial(addr: impl ToSocketAddrs)-> Result<Client, Error> {
                 let stream = TcpStream::connect(addr).await?;
                 Ok(Self::with_stream(stream))
             }

@@ -1,6 +1,5 @@
 //! Client implementation with `tokio` runtime
-
-use super::*;
+use cfg_if::cfg_if;
 
 cfg_if! {
     if #[cfg(any(
@@ -37,8 +36,11 @@ cfg_if! {
         #[cfg(feature = "tls")]
         use rustls::{ClientConfig};
 
+        use crate::{Error, codec::DefaultCodec};
         use crate::transport::ws::WebSocketConn;
         use crate::DEFAULT_RPC_PATH;
+       
+        use super::{Client};
 
         /// The following impl block is controlled by feature flag. It is enabled
         /// if and only if **exactly one** of the the following feature flag is turned on

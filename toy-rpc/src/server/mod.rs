@@ -123,12 +123,17 @@ cfg_if! {
 
         // Spawn tasks for the reader/broker/writer loops
         #[cfg(any(
-            feature = "serde_bincode", 
-            feature = "serde_json",
-            feature = "serde_cbor",
-            feature = "serde_rmp",
+            feature = "docs",
+            all(
+                any(
+                    feature = "serde_bincode", 
+                    feature = "serde_json",
+                    feature = "serde_cbor",
+                    feature = "serde_rmp",
+                ),
+                not(feature = "http_actix_web")
+            )
         ))]
-        #[cfg(not(feature = "http_actix_web"))]
         pub(crate) async fn start_broker_reader_writer(
             codec: impl crate::codec::split::SplittableCodec + 'static,
             services: Arc<AsyncServiceMap>,
