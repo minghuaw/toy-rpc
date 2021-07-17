@@ -1,6 +1,6 @@
 # Set timeout for an RPC call
 
-The client can set the timeout for the next RPC request using the `timeout(duration: Duration)` method, which can be chained with the `call` method. Please note that the timeout is **ONLY** set for the immediate next RPC call, and all RPC calls do not have timeout if not explicitly set using the `timeout` method.
+A default timeout of 10 seconds is assigned to client upon creation, and this default timeout can be changed using `set_default_timeout(duration: Duration)` method on the client. Each RPC call will have the default timeout unless it is prepended with `set_next_timeout(..)` method. The client can set the timeout for the next RPC request using the `set_next_timeout(duration: Duration)` method, which can be chained with the `call` method. Please note that the timeout is **ONLY** set for the immediate next RPC call, and all RPC calls do not have timeout if not explicitly set using the `timeout` method.
 
 We will re-use the example service definition in the [cancellation chapter](https://minghuaw.github.io/toy-rpc/06a_cancellation.html). For you convenience, the service definition and server code are copied below.
 
@@ -88,7 +88,7 @@ async fn main() {
         .expect("Failed to connect to server");
 
     let call: Call<()> = client
-        .timeout(Duration::from_secs(3))
+        .set_next_timeout(Duration::from_secs(3))
         .example() // access `Example` service
         .finite_loop(()); // access `finite_loop` method
     let result = call.await; // This should give you `Err(Error::Timeout)`

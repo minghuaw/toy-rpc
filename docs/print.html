@@ -1056,7 +1056,7 @@ async fn main() {
 }
 </code></pre>
 <div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><h1 id="set-timeout-for-an-rpc-call"><a class="header" href="#set-timeout-for-an-rpc-call">Set timeout for an RPC call</a></h1>
-<p>The client can set the timeout for the next RPC request using the <code>timeout(duration: Duration)</code> method, which can be chained with the <code>call</code> method. Please note that the timeout is <strong>ONLY</strong> set for the immediate next RPC call, and all RPC calls do not have timeout if not explicitly set using the <code>timeout</code> method.</p>
+<p>A default timeout of 10 seconds is assigned to client upon creation, and this default timeout can be changed using <code>set_default_timeout(duration: Duration)</code> method on the client. Each RPC call will have the default timeout unless it is prepended with <code>set_next_timeout(..)</code> method. The client can set the timeout for the next RPC request using the <code>set_next_timeout(duration: Duration)</code> method, which can be chained with the <code>call</code> method. Please note that the timeout is <strong>ONLY</strong> set for the immediate next RPC call, and all RPC calls do not have timeout if not explicitly set using the <code>timeout</code> method.</p>
 <p>We will re-use the example service definition in the <a href="https://minghuaw.github.io/toy-rpc/06a_cancellation.html">cancellation chapter</a>. For you convenience, the service definition and server code are copied below.</p>
 <p>File structure:</p>
 <pre><code>./src
@@ -1128,7 +1128,7 @@ async fn main() {
         .expect(&quot;Failed to connect to server&quot;);
 
     let call: Call&lt;()&gt; = client
-        .timeout(Duration::from_secs(3))
+        .set_next_timeout(Duration::from_secs(3))
         .example() // access `Example` service
         .finite_loop(()); // access `finite_loop` method
     let result = call.await; // This should give you `Err(Error::Timeout)`
