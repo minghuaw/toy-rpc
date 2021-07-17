@@ -4,7 +4,10 @@ use async_trait::async_trait;
 use cfg_if::cfg_if;
 use futures::stream::{SplitSink, SplitStream};
 use futures::{Sink, SinkExt, Stream, StreamExt};
+use futures::io::{AsyncRead, AsyncWrite};
 use tungstenite::Message as WsMessage;
+use async_tungstenite::WebSocketStream;
+use pin_project::pin_project;
 
 use std::{io::ErrorKind, marker::PhantomData};
 
@@ -29,14 +32,53 @@ pub struct WebSocketConn<S, N> {
     can_sink: PhantomData<N>,
 }
 
+/// A wrapper around a type that impls Stream
+#[pin_project]
 pub struct StreamHalf<S, Mode> {
-    inner: S,
-    can_sink: PhantomData<Mode>,
+    #[pin]
+    pub inner: S,
+    pub can_sink: PhantomData<Mode>,
 }
 
+impl<S: Stream> Stream for StreamHalf<S, CanSink> {
+    type Item = S::Item;
+
+    fn poll_next(self: std::pin::Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> std::task::Poll<Option<Self::Item>> {
+        let this = self.project();
+        this.inner.poll_next(cx)
+    }
+}
+
+/// A wrapper around a type that impls Sink
+#[pin_project]
 pub struct SinkHalf<S, Mode> {
-    inner: S,
-    can_sink: PhantomData<Mode>,
+    #[pin]
+    pub inner: S,
+    pub can_sink: PhantomData<Mode>,
+}
+
+impl<S: Sink<Item>, Item> Sink<Item> for SinkHalf<S, CanSink> {
+    type Error = S::Error;
+
+    fn poll_ready(self: std::pin::Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> std::task::Poll<Result<(), Self::Error>> {
+        let this = self.project();
+        this.inner.poll_ready(cx)
+    }
+
+    fn start_send(self: std::pin::Pin<&mut Self>, item: Item) -> Result<(), Self::Error> {
+        let this = self.project();
+        this.inner.start_send(item)
+    }
+
+    fn poll_flush(self: std::pin::Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> std::task::Poll<Result<(), Self::Error>> {
+        let this = self.project();
+        this.inner.poll_flush(cx)
+    }
+
+    fn poll_close(self: std::pin::Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> std::task::Poll<Result<(), Self::Error>> {
+        let this = self.project();
+        this.inner.poll_close(cx)
+    }
 }
 
 impl<S, E> WebSocketConn<S, CanSink>
@@ -67,13 +109,12 @@ where
 }
 
 #[async_trait]
-impl<S, E> PayloadRead for StreamHalf<S, CanSink>
+impl<T> PayloadRead for StreamHalf<SplitStream<WebSocketStream<T>>, CanSink>
 where
-    S: Stream<Item = Result<WsMessage, E>> + Send + Sync + Unpin,
-    E: std::error::Error + 'static,
+    T: AsyncRead + AsyncWrite + Send + Unpin,
 {
     async fn read_payload(&mut self) -> Option<Result<Vec<u8>, Error>> {
-        match self.inner.next().await? {
+        match self.next().await? {
             Err(e) => {
                 return Some(Err(Error::IoError(std::io::Error::new(
                     ErrorKind::InvalidData,
@@ -97,16 +138,14 @@ where
 }
 
 #[async_trait]
-impl<S, E> PayloadWrite for SinkHalf<S, CanSink>
+impl<T> PayloadWrite for SinkHalf<SplitSink<WebSocketStream<T>, WsMessage>, CanSink>
 where
-    S: Sink<WsMessage, Error = E> + Send + Sync + Unpin,
-    E: std::error::Error + 'static,
+    T: AsyncRead + AsyncWrite + Send + Unpin,
 {
-    async fn write_payload(&mut self, payload: Vec<u8>) -> Result<(), Error> {
-        let msg = WsMessage::Binary(payload);
+    async fn write_payload(&mut self, payload: &[u8]) -> Result<(), Error> {
+        let msg = WsMessage::Binary(payload.to_owned());
 
-        self.inner
-            .send(msg)
+        self.send(msg)
             .await
             .map_err(|e| Error::IoError(std::io::Error::new(ErrorKind::InvalidData, e.to_string())))
     }
@@ -114,16 +153,14 @@ where
 
 // GracefulShutdown is only required on the client side.
 #[async_trait]
-impl<S, E> GracefulShutdown for SinkHalf<S, CanSink>
+impl<T> GracefulShutdown for SinkHalf<SplitSink<WebSocketStream<T>, WsMessage>, CanSink>
 where
-    S: Sink<WsMessage, Error = E> + Send + Sync + Unpin,
-    E: std::error::Error + 'static,
+    T: AsyncRead + AsyncWrite + Send + Unpin,
 {
     async fn close(&mut self) {
         let msg = WsMessage::Close(None);
 
         match self
-            .inner
             .send(msg)
             .await
             .map_err(|e| Error::IoError(std::io::Error::new(ErrorKind::InvalidData, e.to_string())))

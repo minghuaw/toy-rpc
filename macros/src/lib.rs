@@ -4,6 +4,8 @@
 
 // #[cfg(any(feature = "server", feature = "client"))]
 mod util;
+#[cfg(all(feature = "client", feature = "runtime"))]
+use darling::FromMeta;
 // #[cfg(any(feature = "server", feature = "client"))]
 use util::item_impl::*;
 // #[cfg(any(feature = "server", feature = "client"))]
@@ -354,6 +356,13 @@ pub fn export_impl(_attr: proc_macro::TokenStream, item: proc_macro::TokenStream
 // #[export_trait]
 // =============================================================================
 
+
+#[derive(Debug, darling::FromMeta)]
+struct MacroArgs {
+    #[darling(default)]
+    impl_for_client: bool,
+}
+
 /// "Exports" methods defined in the trait with the `#[export_method]` attribute. 
 /// Methods not marked with `#[export_method]` will not be affected. 
 /// 
@@ -380,6 +389,15 @@ pub fn export_impl(_attr: proc_macro::TokenStream, item: proc_macro::TokenStream
 /// ```
 #[proc_macro_attribute]
 pub fn export_trait(_attr: proc_macro::TokenStream, item: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    #[cfg(all(feature = "client", feature = "runtime"))]
+    let args = {
+        let attr_args = syn::parse_macro_input!(_attr as syn::AttributeArgs);
+        match MacroArgs::from_list(&attr_args) {
+            Ok(v) => v,
+            Err(err) => { return proc_macro::TokenStream::from(err.write_errors()); }
+        }
+    };
+
     let input = syn::parse_macro_input!(item as syn::ItemTrait);
     #[cfg(feature = "server")]
     let (transformed_trait, 
@@ -396,6 +414,12 @@ pub fn export_trait(_attr: proc_macro::TokenStream, item: proc_macro::TokenStrea
     #[cfg(all(feature = "client", feature = "runtime"))]
     let (stub_trait, stub_impl) = generate_client_stub_for_trait(&input.ident);
 
+    #[cfg(all(feature = "client", feature = "runtime"))]
+    let trait_impl = {
+        let trait_impl = generate_trait_impl_for_client(&input);
+        remove_export_attr_from_impl(trait_impl)
+    };
+
     let input = remove_export_attr_from_trait(input);
     #[cfg(feature = "server")]
     let transformed_trait = remove_export_attr_from_trait(transformed_trait);
@@ -407,27 +431,52 @@ pub fn export_trait(_attr: proc_macro::TokenStream, item: proc_macro::TokenStrea
         feature = "client",
         feature = "runtime"
     ))]
-    let output = quote::quote! {
-        #input
-        #transformed_trait
-        #transformed_trait_impl
-        #local_registry
-        #client_ty
-        #client_impl
-        #stub_trait
-        #stub_impl
+    let output = if args.impl_for_client {
+        quote::quote! {
+            #input
+            #transformed_trait
+            #transformed_trait_impl
+            #local_registry
+            #client_ty
+            #client_impl
+            #stub_trait
+            #stub_impl
+            #trait_impl
+        }
+    } else {
+        quote::quote! {
+            #input
+            #transformed_trait
+            #transformed_trait_impl
+            #local_registry
+            #client_ty
+            #client_impl
+            #stub_trait
+            #stub_impl
+        }
     };
     #[cfg(all(
         not(feature = "server"),
         feature = "client",
         feature = "runtime"
     ))]
-    let output = quote::quote! {
-        #input
-        #client_ty
-        #client_impl
-        #stub_trait
-        #stub_impl
+    let output = if args.impl_for_client {
+        quote::quote! {
+            #input
+            #client_ty
+            #client_impl
+            #stub_trait
+            #stub_impl
+            #trait_impl
+        }
+    } else {
+        quote::quote! {
+            #input
+            #client_ty
+            #client_impl
+            #stub_trait
+            #stub_impl
+        }
     };
     #[cfg(all(
         feature = "server",

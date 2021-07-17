@@ -1,0 +1,14 @@
+[package]
+name = "tokio_pubsub"
+version = "0.1.0"
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+ctrlc = "3.1.9"
+env_logger = "0.8.4"
+futures = "0.3.15"
+serde = { version = "1.0.126", features = ["derive"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "sync", "time", "io-util"]}
+toy-rpc = {version = "0.8.0-alpha", path = "../../toy-rpc", features = ["tokio_runtime", "server", "client"]}

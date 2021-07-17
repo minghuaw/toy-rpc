@@ -3,28 +3,29 @@ use async_trait::async_trait;
 use futures::{Sink};
 use brw::Running;
 
-use crate::{Error, codec::split::ClientCodecRead, message::ResponseHeader};
+use crate::{Error, codec::CodecRead};
 use super::broker::ClientBrokerItem;
+use crate::protocol::{Header, InboundBody};
 
-pub struct ClientReader<R> {
+pub(crate) struct ClientReader<R> {
     pub reader: R,
 }
 
 #[async_trait]
-impl<R: ClientCodecRead> brw::Reader for ClientReader<R> {
+impl<R: CodecRead> brw::Reader for ClientReader<R> {
     type BrokerItem = ClientBrokerItem;
     type Ok = ();
     type Error = Error;
 
     async fn op<B>(&mut self, mut broker: B) -> Running<Result<Self::Ok, Self::Error>>
     where B: Sink<Self::BrokerItem, Error = flume::SendError<Self::BrokerItem>> + Send + Unpin {
-        if let Some(header) = self.reader.read_response_header().await {
-            let header = match header {
+        if let Some(header) = self.reader.read_header().await {
+            let header: Header = match header {
                 Ok(header) => header,
                 Err(err) => return Running::Continue(Err(err))
             };
-            let ResponseHeader{id, is_error} = header;
-            let deserializer = match self.reader.read_response_body().await {
+            log::debug!("{:?}", &header);
+            let deserializer: Box<InboundBody> = match self.reader.read_body().await {
                 Some(res) => {
                     match res {
                         Ok(de) => de,
@@ -34,17 +35,32 @@ impl<R: ClientCodecRead> brw::Reader for ClientReader<R> {
                 None => return Running::Stop
             };
 
-            let res = match is_error {
-                false => Ok(deserializer),
-                true => Err(deserializer),
-            };
+            match header {
+                Header::Response{id, is_ok} => {
+                    let result = match is_ok {
+                        true => Ok(deserializer),
+                        false => Err(deserializer),
+                    };
 
-            if let Err(err) = broker.send(
-                ClientBrokerItem::Response(id, res)
-            ).await {
-                return Running::Continue(Err(err.into()))
+                    if let Err(err) = broker.send(
+                        ClientBrokerItem::Response{id, result}
+                    ).await {
+                        return Running::Continue(Err(err.into()))
+                    }
+                    Running::Continue(Ok(()))
+                },
+                Header::Publish{id, topic} => {
+                    Running::Continue(
+                        broker.send(ClientBrokerItem::Subscription{id, topic, item: deserializer}).await
+                            .map_err(|err| err.into())
+                    )
+                },
+                _ => {
+                    Running::Continue(
+                        Err(Error::Internal("Unexpected Header type".into()))
+                    )
+                }
             }
-            Running::Continue(Ok(()))
         } else {
             if broker.send(
                 ClientBrokerItem::Stop

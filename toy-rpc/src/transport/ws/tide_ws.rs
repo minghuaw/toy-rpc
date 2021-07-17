@@ -58,10 +58,22 @@ impl PayloadRead for StreamHalf<tide_websockets::WebSocketConnection, CannotSink
 
 #[async_trait]
 impl PayloadWrite for SinkHalf<tide_websockets::WebSocketConnection, CannotSink> {
-    async fn write_payload(&mut self, payload: Vec<u8>) -> Result<(), Error> {
+    async fn write_payload(&mut self, payload: &[u8]) -> Result<(), Error> {
         self.inner
-            .send_bytes(payload)
+            .send_bytes(payload.to_owned())
             .await
             .map_err(|e| Error::Internal(Box::new(e)))
+    }
+}
+
+#[async_trait]
+impl GracefulShutdown for SinkHalf<tide_websockets::WebSocketConnection, CannotSink> {
+    async fn close(&mut self) {
+        let close_msg = tide_websockets::Message::Close(None);
+        self.inner
+            .send(close_msg)   
+            .await
+            .map_err(|err| Error::Internal(Box::new(err))) 
+            .unwrap_or_else(|err| log::error!("{}", err));
     }
 }

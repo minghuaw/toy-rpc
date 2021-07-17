@@ -12,6 +12,7 @@ cfg_if::cfg_if! {
         use serde::{Deserialize, Serialize};
 
         use toy_rpc::macros::export_impl;
+        use toy_rpc::Error;
 
         pub const COMMON_TEST_MAGIC_U8: u8 = 167;
         pub const COMMON_TEST_MAGIC_U16: u16 = 512;
@@ -79,7 +80,7 @@ cfg_if::cfg_if! {
         #[export_impl]
         impl CommonTest {
             #[export_method]
-            async fn get_magic_u8(&self, _: ()) -> Result<u8, String> {
+            async fn get_magic_u8(&self, _: ()) -> Result<u8, Error> {
                 Ok(self.magic_u8)
             }
 
@@ -139,9 +140,9 @@ cfg_if::cfg_if! {
             }
         }
 
-        use toy_rpc::client::{Client, Connected};
+        use toy_rpc::client::{Client};
 
-        pub async fn test_get_magic_u8(client: &Client<Connected>) {
+        pub async fn test_get_magic_u8(client: &Client) {
             let reply: u8 = client
                 .common_test()
                 .get_magic_u8(())
@@ -151,79 +152,87 @@ cfg_if::cfg_if! {
             println!("test_get_magic_u8() Passed")
         }
 
-        pub async fn test_get_magic_u16(client: &Client<Connected>) {
+        pub async fn test_get_magic_u16(client: &Client) {
             let reply: u16 = client
                 .common_test()
                 .get_magic_u16(())
                 .await
                 .expect("Unexpected error executing RPC");
             assert_eq!(COMMON_TEST_MAGIC_U16, reply);
+            println!("test_get_magic_u16() Passed")
         }
 
-        pub async fn test_get_magic_u32(client: &Client<Connected>) {
+        pub async fn test_get_magic_u32(client: &Client) {
             let reply: u32 = client
                 .common_test()
                 .get_magic_u32(())
                 .await
                 .expect("Unexpected error executing RPC");
             assert_eq!(COMMON_TEST_MAGIC_U32, reply);
+            println!("test_get_magic_u32() Passed")
         }
 
-        pub async fn test_get_magic_u64(client: &Client<Connected>) {
+        pub async fn test_get_magic_u64(client: &Client) {
             let reply: u64 = client
                 .common_test()
                 .get_magic_u64(())
                 .await
                 .expect("Unexpected error executing RPC");
             assert_eq!(COMMON_TEST_MAGIC_U64, reply);
+            println!("test_get_magic_u64() Passed")
         }
 
-        pub async fn test_get_magic_i8(client: &Client<Connected>) {
+        pub async fn test_get_magic_i8(client: &Client) {
             let reply: i8 = client
                 .common_test()
                 .get_magic_i8(())
                 .await
                 .expect("Unexpected error executing RPC");
             assert_eq!(COMMON_TEST_MAGIC_I8, reply);
+            println!("test_get_magic_i8() Passed")
         }
 
-        pub async fn test_get_magic_i16(client: &Client<Connected>) {
+        pub async fn test_get_magic_i16(client: &Client) {
             let reply: i16 = client
                 .common_test()
                 .get_magic_i16(())
                 .await
                 .expect("Unexpected error executing RPC");
             assert_eq!(COMMON_TEST_MAGIC_I16, reply);
+            println!("test_get_magic_i16() Passed")
         }
 
-        pub async fn test_get_magic_i32(client: &Client<Connected>) {
+        pub async fn test_get_magic_i32(client: &Client) {
             let reply: i32 = client
                 .common_test()
                 .get_magic_i32(())
                 .await
                 .expect("Unexpected error executing RPC");
             assert_eq!(COMMON_TEST_MAGIC_I32, reply);
+            println!("test_get_magic_i32() Passed")
         }
 
-        pub async fn test_get_magic_i64(client: &Client<Connected>) {
+        pub async fn test_get_magic_i64(client: &Client) {
             let reply: i64 = client
                 .common_test()
                 .get_magic_i64(())
                 .await
                 .expect("Unexpected error executing RPC");
             assert_eq!(COMMON_TEST_MAGIC_I64, reply);
+            println!("test_get_magic_i64() Passed")
         }
 
-        pub async fn test_get_magic_bool(client: &Client<Connected>) {
+        pub async fn test_get_magic_bool(client: &Client) {
             let reply: bool = client
                 .common_test()
                 .get_magic_bool(())
                 .await
                 .expect("Unexpected error executing RPC");
             assert_eq!(COMMON_TEST_MAGIC_BOOL, reply);
+            println!("test_get_magic_bool() Passed")
         }
 
-        pub async fn test_get_magic_str(client: &Client<Connected>) {
+        pub async fn test_get_magic_str(client: &Client) {
             let reply: String = client
                 .common_test()
                 .get_magic_str(())
@@ -231,9 +240,10 @@ cfg_if::cfg_if! {
                 .expect("Unexpected error executing RPC");
             let reply = &reply[..];
             assert_eq!(COMMON_TEST_MAGIC_STR, reply);
+            println!("test_get_magic_str() Passed")
         }
 
-        pub async fn test_service_not_found(client: &Client<Connected>) {
+        pub async fn test_service_not_found(client: &Client) {
             let reply: Result<(), toy_rpc::Error> = client.call("UndefinedService.method", ()).await;
             let expected = toy_rpc::Error::ServiceNotFound;
             match reply {
@@ -242,9 +252,10 @@ cfg_if::cfg_if! {
                     assert_eq!(err.to_string(), expected.to_string())
                 }
             };
+            println!("test_service_not_found() Passed")
         }
 
-        pub async fn test_method_not_found(client: &Client<Connected>) {
+        pub async fn test_method_not_found(client: &Client) {
             let service_method = format!("{}.undefined_method", COMMON_TEST_SERVICE_NAME);
             let reply: Result<(), toy_rpc::Error> = client.call(service_method, ()).await;
             let expected = toy_rpc::Error::MethodNotFound;
@@ -254,9 +265,10 @@ cfg_if::cfg_if! {
                     assert_eq!(err.to_string(), expected.to_string())
                 }
             };
+            println!("test_method_not_found() Passed")
         }
 
-        pub async fn test_imcomplete_service_method(client: &Client<Connected>) {
+        pub async fn test_imcomplete_service_method(client: &Client) {
             let service_method = format!("{}", COMMON_TEST_SERVICE_NAME);
             let reply: Result<(), toy_rpc::Error> = client.call(service_method, ()).await;
             let expected = toy_rpc::Error::MethodNotFound;
@@ -266,9 +278,10 @@ cfg_if::cfg_if! {
                     assert_eq!(err.to_string(), expected.to_string())
                 }
             };
+            println!("test_imcomplete_service_method() Passed")
         }
 
-        pub async fn test_execution_error(client: &Client<Connected>) {
+        pub async fn test_execution_error(client: &Client) {
             let val = "an error message".to_string();
             let reply = client.common_test().echo_error(val.clone()).await;
             let expected = toy_rpc::Error::ExecutionError(val);
@@ -278,6 +291,7 @@ cfg_if::cfg_if! {
                     assert_eq!(err.to_string(), expected.to_string())
                 }
             };
+            println!("test_execution_error() Passed")
         }
 
         pub fn simply_panic() {

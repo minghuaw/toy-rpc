@@ -1,8 +1,5 @@
 //! This module implements integration with `warp`.
 use cfg_if::cfg_if;
-use std::sync::Arc;
-
-use crate::server::Server;
 
 cfg_if! {
     if #[cfg(any(
@@ -32,7 +29,10 @@ cfg_if! {
             not(feature = "serde_bincode"),
         ),
     ))] {
+        use std::sync::{Arc, atomic::Ordering};
         use warp::{Filter, Reply, filters::BoxedFilter};
+
+        use crate::{server::Server};
         use crate::codec::DefaultCodec;
         use crate::server::start_broker_reader_writer;
 
@@ -48,8 +48,10 @@ cfg_if! {
                 ws.on_upgrade(|websocket| async move {
                     let codec = DefaultCodec::with_warp_websocket(websocket);
                     let services = state.services.clone();
+                    let client_id = state.client_counter.fetch_add(1, Ordering::Relaxed);
+                    let pubsub_broker = state.pubsub_tx.clone();
 
-                    let fut = start_broker_reader_writer(codec, services);
+                    let fut = start_broker_reader_writer(codec, services, client_id, pubsub_broker);
                     fut.await.unwrap_or_else(|e| log::error!("{}", e));
                 })
             }

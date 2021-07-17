@@ -1,48 +1,78 @@
+use std::sync::Arc;
+
 use brw::{Running, Writer};
 
-use crate::{codec::split::ServerCodecWrite, error::Error, message::{ErrorMessage, ExecutionResult, ResponseHeader}};
+use crate::{codec::CodecWrite, error::Error, message::{ErrorMessage, MessageId}, service::HandlerResult};
+
+use crate::protocol::{Header};
+
+#[cfg_attr(feature = "http_actix_web", derive(actix::Message))]
+#[cfg_attr(feature = "http_actix_web", rtype(result = "()"))]
+pub(crate) enum ServerWriterItem {
+    Response {
+        id: MessageId,
+        result: HandlerResult
+    },
+    /// Publish subscription item to client
+    Publication {
+        id: MessageId,
+        topic: String,
+        content: Arc<Vec<u8>>
+    }
+}
 
 pub(crate) struct ServerWriter<W> {
     writer: W,
 }
-impl<W: ServerCodecWrite> ServerWriter<W> {
+
+impl<W: CodecWrite> ServerWriter<W> {
+    #[cfg(not(feature = "http_actix_web"))]
     pub fn new(writer: W) -> Self {
         Self {
             writer
         }
     }
 
-    async fn write_one_message(&mut self, result: ExecutionResult) -> Result<(), Error> {
-        let ExecutionResult { id, result } = result;
-
+    async fn write_response(&mut self, id: MessageId, result: HandlerResult) -> Result<(), Error> {
         match result {
             Ok(body) => {
                 log::trace!("Message {} Success", &id);
-                let header = ResponseHeader {
-                    id,
-                    is_error: false,
-                };
-                self.writer.write_response(header, &body).await?;
+                let header = Header::Response{ id, is_ok: true };
+                self.writer.write_header(header).await?;
+                self.writer.write_body(id, &body).await
             }
             Err(err) => {
                 log::trace!("Message {} Error", &id);
-                let header = ResponseHeader { id, is_error: true };
+                let header = Header::Response { id, is_ok: false };
                 let msg = ErrorMessage::from_err(err)?;
-                self.writer.write_response(header, &msg).await?;
+                self.writer.write_header(header).await?;
+                self.writer.write_body(id, &msg).await
             }
-        };
-        Ok(())
+        }
+    }
+
+    async fn write_publication(&mut self, id: MessageId, topic: String, content: &[u8]) -> Result<(), Error> {
+        let header = Header::Publish{id, topic};
+        self.writer.write_header(header).await?;
+        self.writer.write_body_bytes(id, &content).await
     }
 }
 
 #[async_trait::async_trait]
-impl<W: ServerCodecWrite> Writer for ServerWriter<W> {
-    type Item = ExecutionResult;
+impl<W: CodecWrite> Writer for ServerWriter<W> {
+    type Item = ServerWriterItem;
     type Ok = ();
     type Error = Error;
 
     async fn op(&mut self, item: Self::Item) -> Running<Result<Self::Ok, Self::Error>> {
-        let res = self.write_one_message(item).await;
+        let res = match item {
+            ServerWriterItem::Response{id, result} => {
+                self.write_response(id, result).await
+            },
+            ServerWriterItem::Publication{id, topic, content} => {
+                self.write_publication(id, topic, &content).await
+            }
+        };
         Running::Continue(res)
     }
 

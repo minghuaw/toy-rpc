@@ -14,6 +14,7 @@ use crate::error::Error;
 ))]
 pub(crate) mod frame;
 
+// #[cfg(any(feature = "async_std_runtime", feature = "tokio_runtime",))]
 pub(crate) mod ws;
 
 /// Reads bytes from transport protocols that carry payload (ie. WebSocket)
@@ -27,5 +28,5 @@ pub trait PayloadRead {
 #[async_trait]
 pub trait PayloadWrite {
     /// Writes bytes to the payload
-    async fn write_payload(&mut self, payload: Vec<u8>) -> Result<(), Error>;
+    async fn write_payload(&mut self, payload: &[u8]) -> Result<(), Error>;
 }

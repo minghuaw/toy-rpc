@@ -91,7 +91,7 @@ pub(crate) fn transform_impl_item(f: &mut syn::ImplItemMethod) {
                         .map_err(|e| toy_rpc::error::Error::ParseError(Box::new(e)))?;
                     self.#ident(req).await
                         .map(|r| Box::new(r) as Box<dyn toy_rpc::erased_serde::Serialize + Send + Sync + 'static>)
-                        .map_err(|e| toy_rpc::error::Error::ExecutionError(e.to_string()))
+                        .map_err(|err| err.into())
                 }
             )
         });
@@ -192,7 +192,7 @@ pub(crate) fn generate_service_client_for_struct(
 
     let client_struct = syn::parse_quote!(
         pub struct #client_ident<'c> {
-            client: &'c toy_rpc::client::Client<toy_rpc::client::Connected>,
+            client: &'c toy_rpc::client::Client,
             service_name: &'c str,
         }
     );
@@ -284,7 +284,7 @@ pub(crate) fn generate_client_stub_for_struct(
 
     let service_name = struct_ident.to_string();
     let stub_impl: syn::ItemImpl = syn::parse_quote!(
-        impl #stub_ident for toy_rpc::client::Client<toy_rpc::client::Connected> {
+        impl #stub_ident for toy_rpc::client::Client {
             fn #stub_fn<'c>(&'c self) -> #client_ident {
                 #client_ident {
                     client: self,

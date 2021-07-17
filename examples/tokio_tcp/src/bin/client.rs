@@ -2,11 +2,11 @@ use tokio::time;
 use std::time::Duration;
 
 use toy_rpc::client::{Client, Call};
+use tokio_tcp::rpc::*;
 
 #[tokio::main]
 async fn main() {
     run().await;
-    println!("After run");
 }
 
 async fn run() {
@@ -28,10 +28,13 @@ async fn run() {
     println!("Calling cancellation");
     call.cancel();
 
-    let call: Call<i32> = client.call("Echo.echo_i32", 13i32);
+    // let call: Call<i32> = client.call("Echo.echo_i32", 13i32);
+    let call = client.echo().echo_i32(13i32);
     let reply = call.await;
     println!("{:?}", reply);
 
-    // let reply: Result<i32, _> = client.call("Echo.echo_i32", 1313i32).await;
-    // println!("{:?}", reply);
+    let reply = Arith::add(&client, (3i32, 4i32)).await;
+    println!("{:?}", reply);
+
+    // client.close().await;
 }

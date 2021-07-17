@@ -106,7 +106,7 @@ fn impl_transformed_trait(
                                 .map_err(|e| toy_rpc::error::Error::ParseError(Box::new(e)))?;
                             self.#orig_ident(req).await 
                                 .map(|r| Box::new(r) as Box<dyn toy_rpc::erased_serde::Serialize + Send + Sync + 'static>)
-                                .map_err(|e| toy_rpc::error::Error::ExecutionError(e.to_string()))
+                                .map_err(|err| err.into())
                         }
                     )
                 }
@@ -240,7 +240,7 @@ pub(crate) fn generate_service_client_for_trait(
 
     let client_struct: syn::Item = syn::parse_quote!(
         pub struct #client_ident<'c> {
-            client: &'c toy_rpc::client::Client<toy_rpc::client::Connected>,
+            client: &'c toy_rpc::client::Client,
             service_name: &'c str,
         }
     );
@@ -322,7 +322,7 @@ pub(crate) fn generate_client_stub_for_trait(
 
     let service_name = trait_ident.to_string();
     let stub_impl: syn::ItemImpl = syn::parse_quote!(
-        impl #stub_ident for toy_rpc::client::Client<toy_rpc::client::Connected> {
+        impl #stub_ident for toy_rpc::client::Client {
             fn #stub_fn<'c>(&'c self) -> #client_ident {
                 #client_ident {
                     client: self,
@@ -333,4 +333,75 @@ pub(crate) fn generate_client_stub_for_trait(
     );
 
     (stub_trait, stub_impl)
+}
+
+#[cfg(all(
+    feature = "client",
+    feature = "runtime"
+))]
+pub fn generate_trait_impl_for_client(
+    input: &syn::ItemTrait
+) -> syn::ItemImpl {
+    let service_ident = &input.ident;
+    let input = filter_exported_trait_items(input.clone());
+    let mut generated_items: Vec<syn::ImplItem> = Vec::new();
+    input.items.iter() 
+        .for_each(|item| {
+            if let syn::TraitItem::Method(f) = item {
+                generated_items.push(syn::ImplItem::Method(
+                    generate_trait_method_impl_for_client(service_ident, f)
+                ))
+            }
+        });
+    let mut output: syn::ItemImpl = syn::parse_quote!(
+        impl #service_ident for toy_rpc::client::Client {
+
+        }
+    );
+    output.items = generated_items;
+    output
+}
+
+/// 
+/// PANIC: panics if the argument ident is not found
+#[cfg(all(
+    feature = "client",
+    feature = "runtime"
+))]
+fn generate_trait_method_impl_for_client(
+    service_ident: &syn::Ident,
+    method: &syn::TraitItemMethod
+) -> syn::ImplItemMethod {
+use std::ops::Deref;
+
+    let method_ident = &method.sig.ident; 
+    let arg = method.sig.inputs.last().unwrap();   
+    let arg_ident = match arg {
+        syn::FnArg::Typed(pt) => {
+            if let syn::Pat::Ident(pat_id) = pt.pat.deref() {
+                &pat_id.ident
+            } else {
+                panic!("Argument ident not found")
+            }
+        },
+        _ => panic!("Argument ident not found")
+    };
+    let service_method = format!("{}.{}", service_ident, method_ident);
+    let block: syn::Block = syn::parse_quote!(
+        {
+            Box::pin(
+                async move {
+                    self.call(#service_method, #arg_ident).await.into()
+                }
+            )
+        }
+    );
+    
+    syn::ImplItemMethod {
+        attrs: method.attrs.clone(),
+        vis: syn::Visibility::Inherited,
+        defaultness: None,
+        sig: method.sig.clone(),
+        block
+    }
 }

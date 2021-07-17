@@ -85,9 +85,7 @@ dependencies = [
 
 [[package]]
 name = "brw"
-version = "0.1.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "95dc83ae48d2db4f067b68eaec884b40481f21fb2fbba3abe26d70fcc3848ced"
+version = "0.1.5"
 dependencies = [
  "async-trait",
  "flume",
@@ -216,6 +214,41 @@ checksum = "d82cfc11ce7f2c3faef78d8a684447b40d503d9681acebed6cb728d45940c4db"
 dependencies = [
  "cfg-if",
  "lazy_static",
+]
+
+[[package]]
+name = "darling"
+version = "0.13.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "757c0ded2af11d8e739c4daea1ac623dd1624b06c844cf3f5a39f1bdbd99bb12"
+dependencies = [
+ "darling_core",
+ "darling_macro",
+]
+
+[[package]]
+name = "darling_core"
+version = "0.13.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2c34d8efb62d0c2d7f60ece80f75e5c63c1588ba68032740494b0b9a996466e3"
+dependencies = [
+ "fnv",
+ "ident_case",
+ "proc-macro2",
+ "quote",
+ "strsim",
+ "syn",
+]
+
+[[package]]
+name = "darling_macro"
+version = "0.13.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ade7bff147130fe5e6d39f089c6bd49ec0250f35d70b2eebf72afdfc919f15cc"
+dependencies = [
+ "darling_core",
+ "quote",
+ "syn",
 ]
 
 [[package]]
@@ -441,6 +474,12 @@ name = "humantime"
 version = "2.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9a3a5bfb195931eeb336b2a7b4d761daec841b97f947d34394601737a7bba5e4"
+
+[[package]]
+name = "ident_case"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b9e0384b61958566e926dc50660321d12159025e767c18e043daf26b70104c39"
 
 [[package]]
 name = "idna"
@@ -797,12 +836,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ryu"
-version = "1.0.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "71d301d4193d031abdd79ff7e3dd721168a9572ef3fe51a1517aba235bd8f86e"
-
-[[package]]
 name = "schannel"
 version = "0.1.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -862,17 +895,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "serde_json"
-version = "1.0.64"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "799e97dc9fdae36a5c8b8f2cae9ce2ee9fdce2058c57a93e6099d919fd982f79"
-dependencies = [
- "itoa",
- "ryu",
- "serde",
-]
-
-[[package]]
 name = "sha-1"
 version = "0.9.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -899,6 +921,12 @@ checksum = "75adad84ee84b521fb2cca2d4fd0f1dab1d8d026bda3c5bea4ca63b5f9f9293c"
 dependencies = [
  "lock_api",
 ]
+
+[[package]]
+name = "strsim"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "73473c0e59e6d5812c5dfe2a064a6444949f089e20eec9a2e5506596494e4623"
 
 [[package]]
 name = "syn"
@@ -1011,6 +1039,7 @@ dependencies = [
 name = "tokio_tcp"
 version = "0.1.0"
 dependencies = [
+ "async-trait",
  "env_logger",
  "log",
  "tokio",
@@ -1019,7 +1048,7 @@ dependencies = [
 
 [[package]]
 name = "toy-rpc"
-version = "0.7.4"
+version = "0.8.0-alpha"
 dependencies = [
  "async-trait",
  "async-tungstenite",
@@ -1034,7 +1063,6 @@ dependencies = [
  "log",
  "pin-project",
  "serde",
- "serde_json",
  "thiserror",
  "tokio",
  "tokio-stream",
@@ -1045,10 +1073,9 @@ dependencies = [
 
 [[package]]
 name = "toy-rpc-macros"
-version = "0.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "78878e5a7e1de67ca1c410c1e4ae9bebf79dd49c72af207254b17a6b71be9ed4"
+version = "0.6.0-alpha"
 dependencies = [
+ "darling",
  "quote",
  "syn",
 ]

@@ -15,8 +15,7 @@ cfg_if! {
         use async_trait::async_trait;
 
         use super::*;
-        use crate::codec::split::{SplittableServerCodec, SplittableClientCodec};
-        use crate::codec::RequestDeserializer;
+        use crate::codec::split::{SplittableCodec};
         use crate::codec::split::{CodecReadHalf, CodecWriteHalf};
         use crate::util::GracefulShutdown;
 
@@ -26,29 +25,45 @@ cfg_if! {
             R: AsyncBufRead + Send + Unpin,
             C: Unmarshal + EraseDeserializer + Send,
         {
-            async fn read_header<H>(&mut self) -> Option<Result<H, Error>>
-            where
-                H: serde::de::DeserializeOwned,
-            {
-                let mut buf = String::new();
-                match self.reader.read_line(&mut buf).await {
-                    Ok(n) => {
-                        if n == 0 {
-                            // EOF, probably end of connection
-                            return None;
-                        }
+            // async fn read_header<H>(&mut self) -> Option<Result<H, Error>>
+            // where
+            //     H: serde::de::DeserializeOwned,
+            // {
+            //     let mut buf = String::new();
+            //     match self.reader.read_line(&mut buf).await {
+            //         Ok(n) => {
+            //             if n == 0 {
+            //                 // EOF, probably end of connection
+            //                 return None;
+            //             }
 
-                        Some(Self::unmarshal(buf.as_bytes()))
-                    }
-                    Err(err) => {
-                        Some(Err(err.into()))
-                    }
-                }
-            }
+            //             Some(Self::unmarshal(buf.as_bytes()))
+            //         }
+            //         Err(err) => {
+            //             Some(Err(err.into()))
+            //         }
+            //     }
+            // }
 
-            async fn read_body(
-                &mut self
-            ) -> Option<Result<RequestDeserializer, Error>> {
+            // async fn read_body(
+            //     &mut self
+            // ) -> Option<Result<Box<InboundBody>, Error>> {
+            //     let mut buf = String::new();
+            //     match self.reader.read_line(&mut buf).await {
+            //         Ok(n) => {
+            //             if n == 0 {
+            //                 // EOF, probably client closed connection
+            //                 return None;
+            //             }
+
+            //             let de = Self::from_bytes(buf.into_bytes());
+            //             Some(Ok(de))
+            //         }
+            //         Err(err) => return Some(Err(err.into())),
+            //     }
+            // }
+
+            async fn read_bytes(&mut self) -> Option<Result<Vec<u8>, Error>> {
                 let mut buf = String::new();
                 match self.reader.read_line(&mut buf).await {
                     Ok(n) => {
@@ -57,8 +72,7 @@ cfg_if! {
                             return None;
                         }
 
-                        let de = Self::from_bytes(buf.into_bytes());
-                        Some(Ok(de))
+                        Some(Ok(buf.into_bytes()))
                     }
                     Err(err) => return Some(Err(err.into())),
                 }
@@ -86,7 +100,7 @@ cfg_if! {
 
             async fn write_body(
                 &mut self,
-                _id: &MessageId,
+                _id: MessageId,
                 body: &(dyn erased::Serialize + Send + Sync),
             ) -> Result<(), Error> {
                 let buf = Self::marshal(&body)?;
@@ -96,38 +110,18 @@ cfg_if! {
 
                 Ok(())
             }
-        }
 
-        #[async_trait]
-        impl<R, W> SplittableServerCodec for Codec<R, W, ConnTypeReadWrite>
-        where
-            R: AsyncBufRead + Send + Unpin,
-            W: AsyncWrite + Send + Unpin,
-        {
-            type Reader = CodecReadHalf::<R, Self, ConnTypeReadWrite>;
-            type Writer = CodecWriteHalf::<W, Self, ConnTypeReadWrite>;
-
-            fn split(self) -> (Self::Writer, Self::Reader) {
-                (
-                    CodecWriteHalf::<W, Self, ConnTypeReadWrite> {
-                        writer: self.writer,
-                        marker: PhantomData,
-                        conn_type: PhantomData,
-                    },
-                    CodecReadHalf::<R, Self, ConnTypeReadWrite> {
-                        reader: self.reader,
-                        marker: PhantomData,
-                        conn_type: PhantomData
-                    }
-                )
+            async fn write_body_bytes(&mut self, _: MessageId, bytes: &[u8]) -> Result<(), Error> {
+                let _ = self.writer.write(bytes).await?;
+                self.writer.flush().await?;
+                Ok(())
             }
         }
 
-        #[async_trait]
-        impl<R, W> SplittableClientCodec for Codec<R, W, ConnTypeReadWrite>
-        where
+        impl<R, W> SplittableCodec for Codec<R, W, ConnTypeReadWrite>
+        where 
             R: AsyncBufRead + Send + Unpin,
-            W: AsyncWrite + Send + Unpin,
+            W: AsyncWrite + GracefulShutdown + Send + Unpin,
         {
             type Reader = CodecReadHalf::<R, Self, ConnTypeReadWrite>;
             type Writer = CodecWriteHalf::<W, Self, ConnTypeReadWrite>;

@@ -1,6 +1,6 @@
 //! Custom errors
 
-use std::io::ErrorKind;
+use std::{fmt::{Debug}, io::ErrorKind};
 
 use crate::message::{ErrorMessage, MessageId};
 
@@ -146,5 +146,78 @@ impl From<erased_serde::Error> for crate::error::Error {
 impl From<webpki::InvalidDNSNameError> for crate::error::Error {
     fn from(err: webpki::InvalidDNSNameError) -> Self {
         Self::Internal(Box::new(err))
+    }
+}
+
+// /// Trait that convert `std::error::Error` to a 
+// /// `toy_rpc::error::Error::ExecutionError` 
+// pub trait IntoError {
+//     /// Format the error as a string
+//     fn into_error(self) -> Error;
+// }
+
+impl From<String> for Error {
+    fn from(val: String) -> Self {
+        Self::ExecutionError(val)
+    }
+}
+
+impl From<&str> for Error {
+    fn from(val: &str) -> Self {
+        Self::ExecutionError(val.to_string())
+    }
+}
+
+impl From<bool> for Error {
+    fn from(val: bool) -> Self {
+        Self::ExecutionError(val.to_string())
+    }
+}
+
+impl From<u8> for Error {
+    fn from(val: u8) -> Self {
+        Self::ExecutionError(val.to_string())
+    }
+}
+
+impl From<u16> for Error {
+    fn from(val: u16) -> Self {
+        Self::ExecutionError(val.to_string())
+    }
+}
+
+impl From<u32> for Error {
+    fn from(val: u32) -> Self {
+        Self::ExecutionError(val.to_string())
+    }
+}
+
+impl From<u64> for Error {
+    fn from(val: u64) -> Self {
+        Self::ExecutionError(val.to_string())
+    }
+}
+
+impl From<i8> for Error {
+    fn from(val: i8) -> Self {
+        Self::ExecutionError(val.to_string())
+    }
+}
+
+impl From<i16> for Error {
+    fn from(val: i16) -> Self {
+        Self::ExecutionError(val.to_string())
+    }
+}
+
+impl From<i32> for Error {
+    fn from(val: i32) -> Self {
+        Self::ExecutionError(val.to_string())
+    }
+}
+
+impl From<i64> for Error {
+    fn from(val: i64) -> Self {
+        Self::ExecutionError(val.to_string())
     }
 }

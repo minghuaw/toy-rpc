@@ -1,12 +1,17 @@
 use actix_web::{App, HttpResponse, HttpServer, Responder, get, web};
+use actix::clock::{delay_for, Duration};
 use async_trait::async_trait;
 use std::sync::Arc;
 use tokio::sync::Mutex;
+use futures::SinkExt; // This is needed for publisher
 
 use toy_rpc::macros::{export_impl};
 use toy_rpc::Server;
 
-use actix_v3_integration::rpc::{Rpc, BarService, FooRequest, FooResponse};
+use actix_v3_integration::{
+    Count,
+    rpc::{Rpc, BarService, FooRequest, FooResponse}
+};
 
 #[get("/")]
 async fn hello() -> impl Responder {
@@ -28,7 +33,6 @@ impl Rpc for FooService {
         let res = FooResponse { a: req.a, b: req.b };
 
         Ok(res)
-        // Err("echo error".into())
     }
 
     #[export_method]
@@ -42,7 +46,6 @@ impl Rpc for FooService {
         };
 
         Ok(res)
-        // Err("increment_a error".into())
     }
 
     #[export_method]
@@ -56,7 +59,6 @@ impl Rpc for FooService {
         };
 
         Ok(res)
-        // Err("increment_b error".into())
     }
 
     #[export_method]
@@ -64,7 +66,6 @@ impl Rpc for FooService {
         let counter = self.counter.lock().await;
         let res = *counter;
         Ok(res)
-        // Ok(0)
     }
 }
 
@@ -83,6 +84,17 @@ async fn main() -> std::io::Result<()> {
         .register(foo_service)
         .register(bar_service)
         .build();
+    let mut publisher = server.publisher::<Count>();
+
+    actix::spawn(async move {
+        let mut count: u32 = 1;
+        loop {
+            println!("Send to publisher");
+            publisher.send(Count(count)).await;
+            count += 1;
+            delay_for(Duration::from_millis(1000)).await;
+        }
+    });
 
     let app_data = web::Data::new(server);
 

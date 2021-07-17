@@ -9,9 +9,11 @@ use std::pin::Pin;
 use std::sync::Arc;
 
 use crate::error::Error;
+use crate::protocol::OutboundBody;
 
 /// Ok type of HandlerResult
-pub(crate) type Success = Box<dyn erased::Serialize + Send + Sync + 'static>;
+// pub(crate) type Success = Box<dyn erased::Serialize + Send + Sync + 'static>;
+pub(crate) type Success = Box<OutboundBody>;
 
 /// Return type of RPC handler
 pub type HandlerResult = Result<Success, Error>;

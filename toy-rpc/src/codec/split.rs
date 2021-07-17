@@ -1,15 +1,12 @@
-//! Implements `SplittableServerCodec` and `SplittableClientCodec`
+//! Implements `SplittableCodec`
 
+use std::{marker::PhantomData};
+#[cfg(any(feature = "tokio_runtime", feature = "async_std_runtime"))]
 use async_trait::async_trait;
-use std::marker::PhantomData;
+
+use crate::{util::GracefulShutdown};
 
 use super::*;
-
-mod server;
-pub use server::*;
-
-mod client;
-pub use client::*;
 
 #[allow(dead_code)]
 pub(crate) struct CodecReadHalf<R, C, CT> {
@@ -52,6 +49,21 @@ where
     }
 }
 
+
+/// Split a Codec into a writing half and a reading half
+pub trait SplittableCodec {
+    /// Type of the writing half
+    type Writer: CodecWrite + GracefulShutdown;
+    /// Type of the reading half
+    type Reader: CodecRead;
+
+    /// Split the codec into a writer and a reader
+    fn split(self) -> (Self::Writer, Self::Reader);
+}
+
+/* -------------------------------------------------------------------------- */
+/*                              // TCP Transport                              */
+/* -------------------------------------------------------------------------- */
 cfg_if! {
     if #[cfg(all(
         any(feature = "async_std_runtime", feature = "tokio_runtime"),
@@ -76,7 +88,7 @@ cfg_if! {
             )
         )
     ))] {
-        use crate::transport::frame::{Frame, PayloadType, FrameRead, FrameWrite};
+        use crate::transport::frame::{PayloadType, FrameRead, FrameWrite, FrameHeader};
 
         #[async_trait]
         impl<R, C> CodecRead for CodecReadHalf<R, C, ConnTypeReadWrite>
@@ -84,32 +96,11 @@ cfg_if! {
             R: FrameRead + Send + Unpin,
             C: Unmarshal + EraseDeserializer + Send
         {
-            async fn read_header<H>(&mut self) -> Option<Result<H, Error>>
-            where
-                H: serde::de::DeserializeOwned,
-            {
-                let reader = &mut self.reader;
-
-                Some(
-                    reader
-                        .read_frame()
-                        .await?
-                        .and_then(|frame| Self::unmarshal(&frame.payload)),
-                )
-            }
-
-            async fn read_body(
-                &mut self,
-            ) -> Option<Result<RequestDeserializer, Error>> {
-                let reader = &mut self.reader;
-
-                match reader.read_frame().await? {
-                    Ok(frame) => {
-                        let de = C::from_bytes(frame.payload);
-                        Some(Ok(de))
-                    }
-                    Err(e) => return Some(Err(e)),
-                }
+            async fn read_bytes(&mut self) -> Option<Result<Vec<u8>, Error>> {
+                self.reader.read_frame().await
+                    .map(|res| {
+                        res.map(|f| f.payload)
+                    })
             }
         }
 
@@ -127,33 +118,66 @@ cfg_if! {
 
                 let id = header.get_id();
                 let buf = Self::marshal(&header)?;
-                let frame = Frame::new(id, 0, PayloadType::Header, buf);
+                // let frame = Frame::new(id, 0, PayloadType::Header, buf);
+                let frame_header = FrameHeader::new(id, 0, PayloadType::Header, buf.len() as u32);
 
-                writer.write_frame(frame).await
+                writer.write_frame(frame_header, &buf).await
             }
 
             async fn write_body(
                 &mut self,
-                id: &MessageId,
+                id: MessageId,
                 body: &(dyn erased::Serialize + Send + Sync),
             ) -> Result<(), Error> {
                 let writer = &mut self.writer;
                 let buf = Self::marshal(&body)?;
-                let frame = Frame::new(id.to_owned(), 1, PayloadType::Data, buf.to_owned());
-                writer.write_frame(frame).await
+                // let frame = Frame::new(id.to_owned(), 1, PayloadType::Data, buf.to_owned());
+                let frame_header = FrameHeader::new(id, 1, PayloadType::Data, buf.len() as u32);
+                writer.write_frame(frame_header, &buf).await
+            }
+
+            async fn write_body_bytes(&mut self, id: MessageId, bytes: &[u8]) -> Result<(), Error> {
+                // let frame = Frame::new(*id, 1, PayloadType::Data, bytes);
+                let frame_header = FrameHeader::new(id, 1, PayloadType::Data, bytes.len() as u32);
+                self.writer.write_frame(frame_header, bytes).await
+            }
+        }
+
+        impl<R, W> SplittableCodec for Codec<R, W, ConnTypeReadWrite>
+        where 
+            R: FrameRead + Send + Unpin,
+            W: FrameWrite + GracefulShutdown + Send + Unpin
+        {
+            type Writer = CodecWriteHalf::<W, Self, ConnTypeReadWrite>;
+            type Reader = CodecReadHalf::<R, Self, ConnTypeReadWrite>;
+
+            fn split(self) -> (Self::Writer, Self::Reader) {
+                (
+                    CodecWriteHalf::<W, Self, ConnTypeReadWrite> {
+                        writer: self.writer,
+                        marker: PhantomData,
+                        conn_type: PhantomData,
+                    },
+                    CodecReadHalf::<R, Self, ConnTypeReadWrite> {
+                        reader: self.reader,
+                        marker: PhantomData,
+                        conn_type: PhantomData
+                    }
+                )
             }
         }
     }
 }
 
+
+/* -------------------------------------------------------------------------- */
+/*                           // WebSocket Transport                           */
+/* -------------------------------------------------------------------------- */
 cfg_if! {
     if #[cfg(all(
         any(
             feature = "async_std_runtime",
             feature = "tokio_runtime",
-            feature = "http_tide",
-            feature = "http_warp",
-            feature = "http_actix_web"
         ),
         any(
             all(
@@ -183,7 +207,6 @@ cfg_if! {
         )
     ))] {
         use crate::transport::{PayloadRead, PayloadWrite};
-        use crate::util::GracefulShutdown;
 
         #[async_trait]
         impl<R, C> CodecRead for CodecReadHalf<R, C, ConnTypePayload>
@@ -191,32 +214,8 @@ cfg_if! {
             R: PayloadRead + Send,
             C: Unmarshal + EraseDeserializer + Send
         {
-            async fn read_header<H>(&mut self) -> Option<Result<H, Error>>
-            where
-                H: serde::de::DeserializeOwned,
-            {
-                let reader = &mut self.reader;
-
-                Some(
-                    reader
-                        .read_payload()
-                        .await?
-                        .and_then(|payload| Self::unmarshal(&payload)),
-                )
-            }
-
-            async fn read_body(
-                &mut self,
-            ) -> Option<Result<RequestDeserializer, Error>> {
-                let reader = &mut self.reader;
-
-                match reader.read_payload().await? {
-                    Ok(payload) => {
-                        let de = Self::from_bytes(payload);
-                        Some(Ok(de))
-                    }
-                    Err(e) => return Some(Err(e)),
-                }
+            async fn read_bytes(&mut self) -> Option<Result<Vec<u8>, Error>> {
+                self.reader.read_payload().await
             }
         }
 
@@ -232,17 +231,21 @@ cfg_if! {
             {
                 let writer = &mut self.writer;
                 let buf = Self::marshal(&header)?;
-                writer.write_payload(buf).await
+                writer.write_payload(&buf).await
             }
 
             async fn write_body(
                 &mut self,
-                _: &MessageId,
+                _: MessageId,
                 body: &(dyn erased::Serialize + Send + Sync),
             ) -> Result<(), Error> {
                 let buf = Self::marshal(&body)?;
                 let writer = &mut self.writer;
-                writer.write_payload(buf).await
+                writer.write_payload(&buf).await
+            }
+
+            async fn write_body_bytes(&mut self, _: MessageId, bytes: &[u8]) -> Result<(), Error> {
+                self.writer.write_payload(bytes).await
             }
         }
 
@@ -257,5 +260,30 @@ cfg_if! {
                 self.writer.close().await;
             }
         }
+
+        impl<R, W> SplittableCodec for Codec<R, W, ConnTypePayload>
+        where 
+            R: PayloadRead + Send,
+            W: PayloadWrite + GracefulShutdown + Send,
+        {
+            type Writer = CodecWriteHalf::<W, Self, ConnTypePayload>;
+            type Reader = CodecReadHalf::<R, Self, ConnTypePayload>;
+
+            fn split(self) -> (Self::Writer, Self::Reader) {
+                (
+                    CodecWriteHalf::<W, Self, ConnTypePayload> {
+                        writer: self.writer,
+                        marker: PhantomData,
+                        conn_type: PhantomData,
+                    },
+                    CodecReadHalf::<R, Self, ConnTypePayload> {
+                        reader: self.reader,
+                        marker: PhantomData,
+                        conn_type: PhantomData
+                    }
+                )
+            }
+        }
     }
 }
+
