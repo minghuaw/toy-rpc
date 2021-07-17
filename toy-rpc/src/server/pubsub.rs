@@ -1,3 +1,5 @@
+//! PubSub impl on the server side
+
 use flume::r#async::{RecvStream, SendSink};
 use flume::{Receiver, Sender};
 use futures::{Sink, Stream};
@@ -149,6 +151,7 @@ impl PubSubBroker {
 /*                                 Public API                                 */
 /* -------------------------------------------------------------------------- */
 
+/// Publisher on the server side
 #[pin_project]
 pub struct Publisher<T: Topic, C: Marshal> {
     #[pin]
@@ -211,6 +214,7 @@ impl<T: Topic, C: Marshal> Sink<T::Item> for Publisher<T, C> {
     }
 }
 
+/// Subscriber on the client side
 #[pin_project]
 pub struct Subscriber<T: Topic, C: Unmarshal> {
     #[pin]

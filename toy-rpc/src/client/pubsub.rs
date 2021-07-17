@@ -1,4 +1,5 @@
-//! PubSub integration for client
+//! PubSub impl on the client side
+
 use flume::r#async::{RecvStream, SendSink};
 use flume::{Receiver, Sender};
 use futures::{Sink, Stream};
@@ -15,7 +16,7 @@ use crate::{
     pubsub::Topic,
 };
 
-/// Publisher of topic T
+/// Publisher of topic T on the client side
 #[pin_project]
 pub struct Publisher<T: Topic> {
     #[pin]
@@ -59,7 +60,7 @@ impl<T: Topic> Sink<T::Item> for Publisher<T> {
     }
 }
 
-/// Subscriber of topic T
+/// Subscriber of topic T on the client side
 #[pin_project]
 pub struct Subscriber<T: Topic> {
     #[pin]
