@@ -4,6 +4,7 @@
 
 // #[cfg(any(feature = "server", feature = "client"))]
 mod util;
+#[cfg(all(feature = "client", feature = "runtime"))]
 use darling::FromMeta;
 // #[cfg(any(feature = "server", feature = "client"))]
 use util::item_impl::*;
@@ -387,11 +388,14 @@ struct MacroArgs {
 /// }
 /// ```
 #[proc_macro_attribute]
-pub fn export_trait(attr: proc_macro::TokenStream, item: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    let attr_args = syn::parse_macro_input!(attr as syn::AttributeArgs);
-    let args = match MacroArgs::from_list(&attr_args) {
-        Ok(v) => v,
-        Err(err) => { return proc_macro::TokenStream::from(err.write_errors()); }
+pub fn export_trait(_attr: proc_macro::TokenStream, item: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    #[cfg(all(feature = "client", feature = "runtime"))]
+    let args = {
+        let attr_args = syn::parse_macro_input!(_attr as syn::AttributeArgs);
+        match MacroArgs::from_list(&attr_args) {
+            Ok(v) => v,
+            Err(err) => { return proc_macro::TokenStream::from(err.write_errors()); }
+        }
     };
 
     let input = syn::parse_macro_input!(item as syn::ItemTrait);

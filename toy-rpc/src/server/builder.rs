@@ -3,7 +3,13 @@
 use erased_serde as erased;
 use std::{collections::HashMap, sync::Arc};
 
+#[cfg(any(
+    feature = "docs",
+    all(feature = "async_std_runtime", not(feature = "tokio_runtime")),
+    all(feature = "tokio_runtime", not(feature = "async_std_runtime")),
+))]
 use super::Server;
+
 use crate::{
     service::{build_service, AsyncServiceMap, HandleService, HandlerResultFut, Service},
     util::RegisterService,

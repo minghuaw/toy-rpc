@@ -1,5 +1,5 @@
 use cfg_if::cfg_if;
-use std::{sync::atomic::Ordering, time::Duration};
+use std::{time::Duration};
 use flume::Sender;
 use futures::{channel::oneshot};
 
@@ -8,15 +8,17 @@ cfg_if!{
         all(feature = "tokio_runtime", not(feature = "async_std_runtime")),
         all(feature = "async_std_runtime", not(feature = "tokio_runtime"))
     ))] {
-        use std::{sync::Arc, collections::HashMap};
+        use std::{sync::{Arc, atomic::Ordering}, collections::HashMap};
         use brw::{Context, Running};
         use futures::{Sink, SinkExt};
         
+        use crate::message::AtomicMessageId;
+
         use super::{writer::ClientWriterItem};
     }
 }
 
-use crate::{Error, message::{AtomicMessageId, MessageId}, protocol::{InboundBody, OutboundBody}};
+use crate::{Error, message::{MessageId}, protocol::{InboundBody, OutboundBody}};
 
 
 #[cfg_attr(all(not(feature = "tokio_runtime"), not(feature = "async_std_runtime")), allow(dead_code))]

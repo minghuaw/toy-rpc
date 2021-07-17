@@ -9,11 +9,15 @@ use flume::{Sender, Receiver};
 use futures::{Stream, Sink};
 use pin_project::pin_project;
 
+#[cfg(feature = "http_actix_web")]
+use actix::Recipient;
+
 use crate::codec::{Marshal, Reserved, Unmarshal};
 use crate::message::{AtomicMessageId, MessageId};
 use crate::pubsub::{Topic};
 use crate::error::Error;
 
+#[cfg(not(feature = "http_actix_web"))]
 use super::RESERVED_CLIENT_ID;
 use super::{broker::ServerBrokerItem, ClientId, Server};
 
@@ -26,7 +30,10 @@ pub(crate) enum PubSubItem {
     Subscribe {
         client_id: ClientId,
         topic: String,
-        sender: Sender<ServerBrokerItem>
+        #[cfg(not(feature = "http_actix_web"))]
+        sender: Sender<ServerBrokerItem>,
+        #[cfg(feature = "http_actix_web")]
+        sender: Recipient<ServerBrokerItem>,
     },
     Unsubscribe {
         client_id: ClientId,
@@ -37,7 +44,12 @@ pub(crate) enum PubSubItem {
 
 pub(crate) struct PubSubBroker {
     listener: Receiver<PubSubItem>,
-    subscriptions: HashMap<String, BTreeMap<ClientId, Sender<ServerBrokerItem>>>
+    
+    #[cfg(feature = "http_actix_web")]
+    subscriptions: HashMap<String, BTreeMap<ClientId, Recipient<ServerBrokerItem>>>,
+    
+    #[cfg(not(feature = "http_actix_web"))]
+    subscriptions: HashMap<String, BTreeMap<ClientId, Sender<ServerBrokerItem>>>,
 }
 
 impl PubSubBroker {
@@ -74,8 +86,18 @@ impl PubSubBroker {
                                 content: content.clone()
                             };
                             if let Err(err) = sender.try_send(msg) {
+                                #[cfg(not(feature = "http_actix_web"))]
                                 match err {
                                     flume::TrySendError::Disconnected(_) => {
+                                        log::error!("Client is disconnected, removing from subscriptions");
+                                        return false
+                                    }
+                                    e @ _ => log::error!("{}", e)
+                                }
+                                
+                                #[cfg(feature = "http_actix_web")]
+                                match err {
+                                    actix::prelude::SendError::Closed(_) => {
                                         log::error!("Client is disconnected, removing from subscriptions");
                                         return false
                                     }
@@ -269,6 +291,8 @@ cfg_if::cfg_if!{
             /// Creates a new subscriber on a topic
             ///
             /// Multiple subscribers can be created on the server side
+            #[cfg(not(feature = "http_actix_web"))]
+            #[cfg_attr(feature = "docs", doc(cfg(not(feature = "http_actix_web"))))]
             pub fn subscriber<T: Topic>(&self, cap: usize) -> Result<Subscriber<T, PhantomCodec>, Error> {
                 let (sender, rx) = flume::bounded(cap);
                 let client_id = RESERVED_CLIENT_ID;

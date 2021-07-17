@@ -22,7 +22,7 @@ use crate::server::{broker::execute_call};
 /// actor. Upon reception of a request, the
 pub struct WsMessageActor<C> {
     client_id: ClientId,
-    _pubsub_broker: Sender<PubSubItem>,
+    pubsub_broker: Sender<PubSubItem>,
     services: Arc<AsyncServiceMap>,
     manager: Option<Recipient<ServerBrokerItem>>,
     req_header: Option<Header>,
@@ -51,6 +51,7 @@ where
         let manager = ExecutionBroker {
             client_id: self.client_id,
             responder,
+            pubsub_broker: self.pubsub_broker.clone(),
             executions: HashMap::new(),
         };
         let addr = manager.start();
@@ -268,7 +269,7 @@ where
 struct ExecutionBroker {
     client_id: ClientId,
     responder: Recipient<ServerWriterItem>,
-    // durations: HashMap<MessageId, Duration>,
+    pubsub_broker: Sender<PubSubItem>,
     executions: HashMap<MessageId, Sender<()>>,
 }
 
@@ -335,18 +336,33 @@ impl actix::Handler<ServerBrokerItem> for ExecutionBroker {
                         .unwrap_or_else(|e| log::error!("{}", e));
                 }
             },
-            ServerBrokerItem::Publish { .. } => {
-                log::debug!("Publish client_id: {}", self.client_id);
-                log::error!("PubSub on actix not implemented");
+            ServerBrokerItem::Publish {id, topic, content} => {
+                let content = Arc::new(content);
+                let msg = PubSubItem::Publish{msg_id: id, topic, content};
+                self.pubsub_broker.send(msg)
+                    .unwrap_or_else(|err| log::error!("{}", err));
             },
-            ServerBrokerItem::Subscribe { .. } => {
-                log::error!("PubSub on actix not implemented");
+            ServerBrokerItem::Subscribe {id, topic} => {
+                log::debug!("Message ID: {}, Subscribe to topic: {}", &id, &topic);
+                let msg = PubSubItem::Subscribe {
+                    client_id: self.client_id,
+                    topic, 
+                    sender: ctx.address().recipient()
+                };
+                self.pubsub_broker.send(msg)
+                    .unwrap_or_else(|err| log::error!("{}", err));
             },
-            ServerBrokerItem::Unsubscribe { .. } => {
-                log::error!("PubSub on actix not implemented");
+            ServerBrokerItem::Unsubscribe {id, topic} => {
+                log::debug!("Message ID: {}, Unsubscribe from topic: {}", &id, &topic);
+                let msg = PubSubItem::Unsubscribe{client_id: self.client_id, topic};
+                self.pubsub_broker.send(msg)
+                    .unwrap_or_else(|err| log::error!("{}", err));
             },
-            ServerBrokerItem::Publication{ .. } => {
-                log::error!("PubSub on actix not implemented");
+            ServerBrokerItem::Publication{id, topic, content} => {
+                let msg = ServerWriterItem::Publication{id, topic, content};
+                self.responder
+                    .do_send(msg)
+                    .unwrap_or_else(|err| log::error!("{}", err));
             },
             ServerBrokerItem::Stop => {
                 ctx.stop();
@@ -411,11 +427,11 @@ cfg_if! {
         ) -> Result<HttpResponse, actix_web::Error> {
             let services = state.services.clone();
             let client_id = state.client_counter.fetch_add(1, Ordering::Relaxed);
-            let _pubsub_broker = state.pubsub_tx.clone();
+            let pubsub_broker = state.pubsub_tx.clone();
             let ws_actor: WsMessageActor<DefaultCodec<Vec<u8>, Vec<u8>, ConnTypePayload>>
                 = WsMessageActor {
                     client_id,
-                    _pubsub_broker,
+                    pubsub_broker,
                     services,
                     manager: None,
                     req_header: None,

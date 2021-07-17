@@ -24,7 +24,9 @@ pub(crate) enum ServerWriterItem {
 pub(crate) struct ServerWriter<W> {
     writer: W,
 }
+
 impl<W: CodecWrite> ServerWriter<W> {
+    #[cfg(not(feature = "http_actix_web"))]
     pub fn new(writer: W) -> Self {
         Self {
             writer

@@ -275,33 +275,5 @@ cfg_if! {
             }
             log::info!("Client disconnected from WebSocket connection");
         }
-
-        // fn serve_ws_connection(
-        //     ws_stream: async_tungstenite::WebSocketStream<TokioAdapter<tokio::net::TcpStream>>,
-        //     services: Arc<AsyncServiceMap>,
-        //     client_id: ClientId, 
-        //     pubsub_broker: Sender<PubSubItem>
-        // ) -> Result<(), Error> {
-        //     let ws_stream = WebSocketConn::new(ws_stream);
-        //     let codec = DefaultCodec::with_websocket(ws_stream);
-
-        //     let ret = super::start_broker_reader_writer(codec, services, client_id, pubsub_broker);
-        //     log::info!("Client disconnected from WebSocket connection");
-        //     ret
-        // }
-
-        // #[inline]
-        // fn serve_readwrite_stream<T>(
-        //     stream: T, 
-        //     services: Arc<AsyncServiceMap>, 
-        //     client_id: ClientId, 
-        //     pubsub_broker: Sender<PubSubItem>
-        // ) -> Result<(), Error> 
-        // where 
-        //     T: AsyncRead + AsyncWrite + Send + Unpin + 'static,
-        // {
-        //     let codec = DefaultCodec::new(stream);
-        //     super::start_broker_reader_writer(codec, services, client_id, pubsub_broker)
-        // }
     }
 }

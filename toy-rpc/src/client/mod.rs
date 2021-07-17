@@ -3,19 +3,32 @@
 use cfg_if::cfg_if;
 use crossbeam::atomic::AtomicCell;
 use flume::Sender;
-use futures::channel::oneshot;
-use std::{any::TypeId, marker::PhantomData, sync::Arc};
+use std::{any::TypeId, collections::HashMap, sync::Arc, time::Duration};
 
-use crate::{Error, message::{AtomicMessageId, MessageId}, protocol::OutboundBody};
+use crate::message::AtomicMessageId;
 
 pub(crate) mod broker;
 mod reader;
 mod writer;
 mod pubsub;
 
-use broker::*;
+use broker::ClientBrokerItem;
 
-const DEFAULT_TIMEOUT_SECONDS: u64 = 10;
+cfg_if!{
+    if #[cfg(any(
+        all(feature = "tokio_runtime", not(feature = "async_std_runtime")),
+        all(feature = "async_std_runtime", not(feature = "tokio_runtime"))
+    ))] {
+        use futures::channel::oneshot;
+        use std::marker::PhantomData;
+        use crate::{Error, message::{MessageId}, protocol::OutboundBody};
+
+        #[cfg(feature = "tls")]
+        use crate::transport::ws::WebSocketConn;
+
+        const DEFAULT_TIMEOUT_SECONDS: u64 = 10;
+    }
+}
 
 cfg_if! {
     if #[cfg(any(
@@ -46,13 +59,6 @@ cfg_if! {
     ))] {
         #[cfg(any(feature = "async_std_runtime", feature = "tokio_runtime"))]
         use crate::codec::DefaultCodec;
-
-        #[cfg(feature = "tls")]
-        use rustls::{ClientConfig};
-        #[cfg(feature = "tls")]
-        use webpki::DNSNameRef;
-        #[cfg(feature = "tls")]
-        use crate::transport::ws::WebSocketConn;
 
         #[cfg(all(
             feature = "tls",
@@ -86,25 +92,37 @@ cfg_if! {
         ))]
         use async_tungstenite::client_async;
 
-        #[cfg(feature = "tls")]
+        #[cfg(all(
+            feature = "tls",
+            any(
+                all(feature = "tokio_runtime", not(feature = "async_std_runtime")),
+                all(feature = "async_std_runtime", not(feature = "tokio_runtime"))
+            )
+        ))]
         async fn tcp_client_with_tls_config(
             addr: impl ToSocketAddrs,
             domain: &str,
-            config: ClientConfig
+            config: rustls::ClientConfig
         ) -> Result<Client, Error> {
             let stream = TcpStream::connect(addr).await?;
             let connector = TlsConnector::from(std::sync::Arc::new(config));
-            let domain = DNSNameRef::try_from_ascii_str(domain)?;
+            let domain = webpki::DNSNameRef::try_from_ascii_str(domain)?;
             let tls_stream = connector.connect(domain, stream).await?;
 
             Ok(Client::with_stream(tls_stream))
         }
 
-        #[cfg(feature = "tls")]
+        #[cfg(all(
+            feature = "tls",
+            any(
+                all(feature = "tokio_runtime", not(feature = "async_std_runtime")),
+                all(feature = "async_std_runtime", not(feature = "tokio_runtime"))
+            )
+        ))]
         async fn websocket_client_with_tls_config(
             url: url::Url,
             domain: &str,
-            config: ClientConfig,
+            config: rustls::ClientConfig,
         ) -> Result<Client, Error> {
             let host = url.host_str()
                 .ok_or(Error::Internal("Invalid host address".into()))?;
@@ -113,7 +131,7 @@ cfg_if! {
             let addr = (host, port);
             let stream = TcpStream::connect(addr).await?;
             let connector = TlsConnector::from(std::sync::Arc::new(config));
-            let domain = DNSNameRef::try_from_ascii_str(domain)?;
+            let domain = webpki::DNSNameRef::try_from_ascii_str(domain)?;
             let tls_stream = connector.connect(domain, stream).await?;
             let (ws_stream, _) = client_async(url, tls_stream).await?;
             let ws_stream = WebSocketConn::new(ws_stream);
@@ -159,13 +177,11 @@ pub struct Client {
 // seems like it still works even without this impl
 impl Drop for Client {
     fn drop(&mut self) {
-        log::debug!("Unsunscribe all");
         for (topic, _) in self.subscriptions.drain() {
             self.broker.try_send(broker::ClientBrokerItem::Unsubscribe{topic})
                 .unwrap_or_else(|err| log::error!("{}", err));
         }
 
-        log::debug!("Stopping broker");
         if let Err(err) = self.broker.try_send(broker::ClientBrokerItem::Stop) {
             log::error!("Failed to send stop signal to writer loop: {}", err);
         }
@@ -199,8 +215,6 @@ cfg_if! {
         all(feature = "tokio_runtime", not(feature = "async_std_runtime"))
     ))] {
         use std::sync::atomic::Ordering;
-        use std::collections::HashMap;
-        use std::time::Duration;
 
         use crate::{
             codec::split::SplittableCodec,
@@ -235,7 +249,7 @@ cfg_if! {
                 let writer = ClientWriter { writer };
                 let count = Arc::new(AtomicMessageId::new(0));
 
-                let broker = ClientBroker {
+                let broker = broker::ClientBroker {
                     count: count.clone(),
                     pending: HashMap::new(),
                     next_timeout: None,

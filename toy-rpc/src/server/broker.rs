@@ -1,12 +1,8 @@
 /// Broker on the server side
 
 use std::sync::Arc;
-use brw::{Running, Broker};
-use futures::sink::{Sink, SinkExt};
 use std::future::Future;
 use std::time::Duration;
-use std::collections::HashMap;
-use flume::Sender;
 
 use crate::protocol::InboundBody;
 use crate::service::{ArcAsyncServiceCall, HandlerResult};
@@ -15,24 +11,37 @@ use crate::{
     message::{MessageId},
     error::Error,
 };
-use super::ClientId;
-use super::pubsub::PubSubItem;
-use super::writer::ServerWriterItem;
+
+cfg_if::cfg_if! {
+    if #[cfg(not(feature = "http_actix_web"))] {
+        use std::collections::HashMap;
+        
+        use flume::Sender;
+        use brw::{Running, Broker};
+        use futures::sink::{Sink, SinkExt};
+
+        use super::ClientId;
+        use super::pubsub::PubSubItem;
+        use super::writer::ServerWriterItem;
+    }
+}
 
 #[cfg(any(
     feature = "docs",
-    all(feature = "tokio_runtime", not(feature = "async_std_runtime"))
+    all(feature = "tokio_runtime", not(feature = "async_std_runtime"), not(feature = "http_actix_web"))
 ))]
 use ::tokio::task::JoinHandle;
 #[cfg(all(feature = "async_std_runtime", not(feature = "tokio_runtime")))]
 use ::async_std::task::JoinHandle;
 
+#[cfg(not(feature = "http_actix_web"))]
 pub(crate) struct ServerBroker { 
     pub client_id: ClientId,
     pub executions: HashMap<MessageId, JoinHandle<()>>,
     pub pubsub_broker: Sender<PubSubItem>
 }
 
+#[cfg(not(feature = "http_actix_web"))]
 impl ServerBroker {
     pub fn new(client_id: ClientId, pubsub_broker: Sender<PubSubItem>) -> Self {
         Self {
@@ -82,6 +91,7 @@ pub(crate) enum ServerBrokerItem {
     Stop
 }
 
+#[cfg(not(feature = "http_actix_web"))]
 #[async_trait::async_trait]
 impl Broker for ServerBroker {
     type Item = ServerBrokerItem;
@@ -199,7 +209,8 @@ fn handle_request(
 /// Spawn the execution in a tokio task and return the JoinHandle
 #[cfg(all(
     feature = "tokio_runtime",
-    not(feature = "async_std_runtime")
+    not(feature = "async_std_runtime"),
+    not(feature = "http_actix_web")
 ))]
 fn handle_request(
     broker: Sender<ServerBrokerItem>,
@@ -236,6 +247,7 @@ pub(crate) async fn execute_call(
     result
 }
 
+#[cfg(not(feature = "http_actix_web"))]
 pub(crate) async fn execute_timed_call(
     id: MessageId,
     duration: Duration,

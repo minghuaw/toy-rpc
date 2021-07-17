@@ -2,15 +2,25 @@ use env_logger;
 use toy_rpc::client::{Client, Call};
 use toy_rpc::error::Error;
 use std::time::Duration;
+use futures::StreamExt;
 
-use actix_v3_integration::rpc::{BarRequest, BarResponse, FooRequest, FooResponse};
+use actix_v3_integration::{
+    Count,
+    rpc::{BarRequest, BarResponse, FooRequest, FooResponse}
+};
 
 #[tokio::main]
 async fn main() {
     env_logger::init();
 
     let addr = "ws://127.0.0.1:23333/rpc/";
-    let client = Client::dial_http(addr).await.unwrap();
+    let mut client = Client::dial_http(addr).await.unwrap();
+    let mut subscriber = client.subscriber::<Count>(10).unwrap();;
+    let handle = tokio::spawn(async move {
+        while let Some(item) = subscriber.next().await {
+            println!("{:?}", item)
+        }
+    });
 
     let args = FooRequest { a: 1, b: 3 };
     let reply: Result<FooResponse, Error> = client.call_blocking("FooService.echo", args.clone());
@@ -54,4 +64,6 @@ async fn main() {
     let reply: u32 = call.await.unwrap();
     println!("{:?}", reply);
     // client.close().await;
+
+        handle.await;
 }
