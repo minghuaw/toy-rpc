@@ -30,7 +30,7 @@ use crate::{
 )]
 pub(crate) enum ClientBrokerItem {
     Request {
-        // id: MessageId,
+        id: MessageId,
         service_method: String,
         duration: Duration,
         body: Box<OutboundBody>,
@@ -113,14 +113,14 @@ impl brw::Broker for ClientBroker {
     {
         let res = match item {
             ClientBrokerItem::Request {
-                // id,
+                id,
                 service_method,
                 duration,
                 body,
                 resp_tx,
             } => {
                 // fetch_add returns the previous value
-                let id = self.count.fetch_add(1, Ordering::Relaxed);
+                // let id = self.count.fetch_add(1, Ordering::Relaxed);
                 let (tx, rx) = oneshot::channel();
                 let fut = async move {
                     // takes care of receiving/cancel  error
@@ -129,7 +129,7 @@ impl brw::Broker for ClientBroker {
                         Err(_) => Err(Error::Canceled(Some(id))),
                     }
                 };
-                let res = writer
+                let request_result = writer
                     .send(ClientWriterItem::Request(
                         id,
                         service_method,
@@ -140,28 +140,28 @@ impl brw::Broker for ClientBroker {
 
                 task::spawn(async move {
                     #[cfg(all(feature = "tokio_runtime", not(feature = "async_std_runtime")))]
-                    let res = ::tokio::time::timeout(duration, fut).await;
+                    let timout_result = ::tokio::time::timeout(duration, fut).await;
                     #[cfg(all(feature = "async_std_runtime", not(feature = "tokio_runtime")))]
-                    let res = ::async_std::future::timeout(duration, fut).await;
+                    let timout_result = ::async_std::future::timeout(duration, fut).await;
 
-                    let res = match res {
+                    let response_result = match timout_result {
                         Ok(res) => res,
                         Err(_) => {
                             resp_tx
                                 .send(Err(Error::Timeout(Some(id))))
                                 .unwrap_or_else(|_| {
-                                    log::error!("Error sending over response sender")
+                                    log::error!("InternalError: Unable to send Error::Timeout(Some({})) over response channel", id);
                                 });
                             return;
                         }
                     };
                     resp_tx
-                        .send(res)
-                        .unwrap_or_else(|_| log::error!("Error sending over response sender"));
+                        .send(response_result)
+                        .unwrap_or_else(|_| log::error!("InternalError: Unable to send RPC response over response channel"));
                 });
 
                 self.pending.insert(id, tx);
-                res.map_err(|err| err.into())
+                request_result.map_err(|err| err.into())
             }
             ClientBrokerItem::Response { id, result } => {
                 if let Some(tx) = self.pending.remove(&id) {
@@ -242,8 +242,13 @@ impl brw::Broker for ClientBroker {
             }
             ClientBrokerItem::Cancel(id) => {
                 if let Some(tx) = self.pending.remove(&id) {
-                    tx.send(Err(Error::Canceled(Some(id))))
-                        .unwrap_or_else(|_| log::error!("Error sending over response sender"));
+                    if let Err(_) = tx.send(Err(Error::Canceled(Some(id)))) {
+                        return Running::Continue(
+                            Err(Error::Internal(
+                                format!("Unable to send Error::Canceled(Some({})) over response channel", id).into()
+                            ))
+                        )
+                    }
                 }
                 writer
                     .send(ClientWriterItem::Cancel(id))

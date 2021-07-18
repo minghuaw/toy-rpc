@@ -22,7 +22,7 @@ cfg_if! {
     ))] {
         use futures::channel::oneshot;
         use std::marker::PhantomData;
-        use crate::{Error, message::{MessageId}, protocol::OutboundBody};
+        use crate::{Error, protocol::OutboundBody};
 
         #[cfg(feature = "tls")]
         use crate::transport::ws::WebSocketConn;
@@ -379,7 +379,8 @@ cfg_if! {
                 Res: serde::de::DeserializeOwned + Send + 'static,
             {
                 // Prepare RPC request
-                let id = self.count.load(Ordering::Relaxed) as MessageId;
+                // let id = self.count.load(Ordering::Relaxed) as MessageId;
+                let id = self.count.fetch_add(1, Ordering::Relaxed);
                 let service_method = service_method.to_string();
                 let duration = match self.next_timeout.swap(None) {
                     Some(dur) => dur,
@@ -390,6 +391,7 @@ cfg_if! {
 
                 if let Err(err) = self.broker.send(
                     ClientBrokerItem::Request{
+                        id,
                         service_method,
                         duration,
                         body,
