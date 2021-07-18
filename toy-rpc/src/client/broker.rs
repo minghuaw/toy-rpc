@@ -24,6 +24,8 @@ use crate::{
     Error,
 };
 
+use super::ResponseResult;
+
 #[cfg_attr(
     all(not(feature = "tokio_runtime"), not(feature = "async_std_runtime")),
     allow(dead_code)
@@ -34,11 +36,11 @@ pub(crate) enum ClientBrokerItem {
         service_method: String,
         duration: Duration,
         body: Box<OutboundBody>,
-        resp_tx: oneshot::Sender<Result<Result<Box<InboundBody>, Box<InboundBody>>, Error>>,
+        resp_tx: oneshot::Sender<Result<ResponseResult, Error>>,
     },
     Response {
         id: MessageId,
-        result: Result<Box<InboundBody>, Box<InboundBody>>,
+        result: ResponseResult,
     },
     Cancel(MessageId),
     /// New publication to the server
@@ -85,7 +87,7 @@ pub(crate) struct ClientBroker {
     pub count: Arc<AtomicMessageId>,
     pub pending: HashMap<
         MessageId,
-        oneshot::Sender<Result<Result<Box<InboundBody>, Box<InboundBody>>, Error>>,
+        oneshot::Sender<Result<ResponseResult, Error>>,
     >,
     pub next_timeout: Option<Duration>,
     pub subscriptions: HashMap<String, Sender<Box<InboundBody>>>,
@@ -144,17 +146,26 @@ impl brw::Broker for ClientBroker {
                     #[cfg(all(feature = "async_std_runtime", not(feature = "tokio_runtime")))]
                     let timout_result = ::async_std::future::timeout(duration, fut).await;
 
-                    let response_result = match timout_result {
+                    let cancellation_result = match timout_result {
                         Ok(res) => res,
                         Err(_) => {
                             if let Err(_) = resp_tx.send(Err(Error::Timeout(Some(id)))) {
-                                log::error!("InternalError: Unable to send Error::Timeout(Some({})) over response channel, response receiver is dropped", id);
+                                log::trace!("InternalError: Unable to send Error::Timeout(Some({})) over response channel, response receiver is dropped", id);
                             }
                             return;
                         }
                     };
-                    resp_tx.send(response_result)
-                        .unwrap_or_else(|_| log::error!("InternalError: Unable to send RPC response over response channel, response receiver is dropped"));
+                    match cancellation_result {
+                        Ok(res) => {
+                            let response_result = Ok(res);
+                            resp_tx.send(response_result)
+                                .unwrap_or_else(|_| log::trace!("InternalError: Unable to send RPC response over response channel, response receiver is dropped"));
+                        },
+                        Err(_) => {
+                            // RPC request is already canceled, simply return
+                            return
+                        }
+                    };
                 });
 
                 self.pending.insert(id, tx);

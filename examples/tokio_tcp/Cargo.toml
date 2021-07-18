@@ -23,6 +23,6 @@ async-trait = "0.1.50"
 
 [dependencies.toy-rpc]
 path = "../../toy-rpc/"
-version = "0.8.0-alpha"
+version = "=0.8.0-alpha.2"
 default-features = false
 features = [ "serde_bincode", "tokio_runtime", "server", "client"]

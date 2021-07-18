@@ -23,10 +23,16 @@ async fn run() {
     println!("{:?}", reply);
 
     println!("Calling finite loop");
-    let call: Call<()> = client.call("Echo.finite_loop", ());
+    let mut call: Call<()> = client.call("Echo.finite_loop", ());
     time::sleep(Duration::from_secs(2)).await;
     println!("Calling cancellation");
     call.cancel();
+
+    println!("Calling finite loop again");
+    let call: Call<()> = client.call("Echo.finite_loop", ());
+    time::sleep(Duration::from_secs(2)).await;
+    println!("Just dropping call");
+    drop(call);
 
     // let call: Call<i32> = client.call("Echo.echo_i32", 13i32);
     let call = client.echo().echo_i32(13i32);
@@ -36,5 +42,5 @@ async fn run() {
     let reply = Arith::add(&client, (3i32, 4i32)).await;
     println!("{:?}", reply);
 
-    // client.close().await;
+    client.close().await;
 }

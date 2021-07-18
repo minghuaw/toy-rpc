@@ -20,7 +20,7 @@ impl Echo {
 
     #[export_method]
     pub async fn finite_loop(&self, _: ()) -> Result<(), String> {
-        for counter in 0i32..500 {
+        for counter in 0i32..10 {
             time::sleep(Duration::from_millis(500)).await;
             println!("finite_loop counter: {}", &counter);
         }

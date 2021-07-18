@@ -5,7 +5,7 @@ use crossbeam::atomic::AtomicCell;
 use flume::Sender;
 use std::{any::TypeId, collections::HashMap, sync::Arc, time::Duration};
 
-use crate::message::AtomicMessageId;
+use crate::{message::AtomicMessageId, protocol::InboundBody};
 
 pub(crate) mod broker;
 pub mod pubsub;
@@ -14,6 +14,8 @@ mod writer;
 
 use broker::ClientBrokerItem;
 
+type ResponseResult = Result<Box<InboundBody>, Box<InboundBody>>;
+
 cfg_if! {
     if #[cfg(any(
         feature = "docs",
@@ -21,7 +23,6 @@ cfg_if! {
         all(feature = "async_std_runtime", not(feature = "tokio_runtime"))
     ))] {
         use futures::channel::oneshot;
-        use std::marker::PhantomData;
         use crate::{Error, protocol::OutboundBody};
 
         #[cfg(feature = "tls")]
@@ -402,12 +403,7 @@ cfg_if! {
                 }
 
                 // Creates Call
-                Call::<Res> {
-                    id,
-                    cancel: self.broker.clone(),
-                    done: resp_rx,
-                    marker: PhantomData
-                }
+                Call::<Res>::new(id, self.broker.clone(), resp_rx)
             }
         }
     }

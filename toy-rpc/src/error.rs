@@ -38,7 +38,7 @@ pub enum Error {
     /// Cancellation error when an RPC call is cancelled
     #[error("Request is canceled")]
     Canceled(Option<MessageId>),
-
+    
     /// Timeout error when an RPC request timesout
     ///
     /// The timeout is tracked independently on the client and the server.
