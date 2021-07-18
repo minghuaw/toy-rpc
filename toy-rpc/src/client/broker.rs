@@ -147,22 +147,14 @@ impl brw::Broker for ClientBroker {
                     let response_result = match timout_result {
                         Ok(res) => res,
                         Err(_) => {
-                            if resp_tx.is_canceled() {
-                                log::error!("InternalError: Response receiver is dropped");
-                            } else {
-                                if let Err(_) = resp_tx.send(Err(Error::Timeout(Some(id)))) {
-                                    log::error!("InternalError: Unable to send Error::Timeout(Some({})) over response channel", id);
-                                }
+                            if let Err(_) = resp_tx.send(Err(Error::Timeout(Some(id)))) {
+                                log::error!("InternalError: Unable to send Error::Timeout(Some({})) over response channel, response receiver is dropped", id);
                             }
                             return;
                         }
                     };
-                    if resp_tx.is_canceled() {
-                        log::error!("InternalError: Response receiver is dropped");
-                    } else {
-                        resp_tx.send(response_result)
-                            .unwrap_or_else(|_| log::error!("InternalError: Unable to send RPC response over response channel"));
-                    }
+                    resp_tx.send(response_result)
+                        .unwrap_or_else(|_| log::error!("InternalError: Unable to send RPC response over response channel, response receiver is dropped"));
                 });
 
                 self.pending.insert(id, tx);
@@ -176,7 +168,9 @@ impl brw::Broker for ClientBroker {
                         )
                     })
                 } else {
-                    Err(Error::Internal("Done channel not found".into()))
+                    Err(Error::Internal(
+                        format!("InternalError: Response channel not found for id: {}", id).into()
+                    ))
                 }
             }
             ClientBrokerItem::Publish { topic, body } => {
