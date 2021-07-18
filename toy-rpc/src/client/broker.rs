@@ -147,17 +147,22 @@ impl brw::Broker for ClientBroker {
                     let response_result = match timout_result {
                         Ok(res) => res,
                         Err(_) => {
-                            resp_tx
-                                .send(Err(Error::Timeout(Some(id))))
-                                .unwrap_or_else(|_| {
+                            if resp_tx.is_canceled() {
+                                log::error!("InternalError: Response receiver is dropped");
+                            } else {
+                                if let Err(_) = resp_tx.send(Err(Error::Timeout(Some(id)))) {
                                     log::error!("InternalError: Unable to send Error::Timeout(Some({})) over response channel", id);
-                                });
+                                }
+                            }
                             return;
                         }
                     };
-                    resp_tx
-                        .send(response_result)
-                        .unwrap_or_else(|_| log::error!("InternalError: Unable to send RPC response over response channel"));
+                    if resp_tx.is_canceled() {
+                        log::error!("InternalError: Response receiver is dropped");
+                    } else {
+                        resp_tx.send(response_result)
+                            .unwrap_or_else(|_| log::error!("InternalError: Unable to send RPC response over response channel"));
+                    }
                 });
 
                 self.pending.insert(id, tx);
