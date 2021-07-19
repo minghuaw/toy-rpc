@@ -1,6 +1,6 @@
 [package]
 name = "toy-rpc-macros"
-version = "0.6.0-alpha"
+version = "0.6.0-beta"
 authors = ["Minghua Wu <michael.wu1107@gmail.com>"]
 edition = "2018"
 description = "Macros for toy-rpc"

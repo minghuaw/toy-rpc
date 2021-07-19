@@ -198,9 +198,9 @@ dependencies = [
 
 [[package]]
 name = "brw"
-version = "0.1.4"
+version = "0.1.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "95dc83ae48d2db4f067b68eaec884b40481f21fb2fbba3abe26d70fcc3848ced"
+checksum = "611cfcbc347a65916292dd824f95efa57ae47838f531693bd01fb267867af29f"
 dependencies = [
  "async-std",
  "async-trait",
@@ -1220,7 +1220,7 @@ dependencies = [
 
 [[package]]
 name = "toy-rpc"
-version = "0.8.0-alpha"
+version = "0.8.0-alpha.2"
 dependencies = [
  "async-std",
  "async-trait",
@@ -1247,6 +1247,8 @@ dependencies = [
 [[package]]
 name = "toy-rpc-macros"
 version = "0.6.0-alpha"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f3f217c8d556de30daadb65c56b8513ed7590cb74e482aec391870827f8920db"
 dependencies = [
  "darling",
  "quote",

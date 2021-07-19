@@ -30,11 +30,17 @@ impl Echo {
 }
 
 #[async_trait]
-#[export_trait(impl_for_client)]
+#[export_trait(impl_for_client)] // All methods must be exported if client trait impl generation is enabled
 pub trait Arith {
     #[export_method]
     async fn add(&self, args: (i32, i32)) -> Result<i32, Error>;
 
     #[export_method]
     async fn subtract(&self, args: (i32, i32)) -> Result<i32, Error>;
+
+    #[export_method]
+    async fn get_num_anyhow(&self, args:()) -> anyhow::Result<u32>;
+
+    #[export_method]
+    async fn get_str_anyhow(&self, args:()) -> Result<String, Error>;
 }

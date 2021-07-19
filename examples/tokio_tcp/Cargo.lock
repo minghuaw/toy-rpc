@@ -12,6 +12,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "anyhow"
+version = "1.0.42"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "595d3cfa7a60d4555cb5067b99f07142a08ea778de5cf993f7b75c7d8fabc486"
+
+[[package]]
 name = "async-trait"
 version = "0.1.50"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1041,6 +1047,7 @@ dependencies = [
 name = "tokio_tcp"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "async-trait",
  "env_logger",
  "log",
@@ -1052,6 +1059,7 @@ dependencies = [
 name = "toy-rpc"
 version = "0.8.0-alpha.2"
 dependencies = [
+ "anyhow",
  "async-trait",
  "async-tungstenite",
  "bincode",
@@ -1076,8 +1084,6 @@ dependencies = [
 [[package]]
 name = "toy-rpc-macros"
 version = "0.6.0-alpha"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f3f217c8d556de30daadb65c56b8513ed7590cb74e482aec391870827f8920db"
 dependencies = [
  "darling",
  "quote",

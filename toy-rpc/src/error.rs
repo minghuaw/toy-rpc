@@ -221,3 +221,36 @@ impl From<i64> for Error {
         Self::ExecutionError(val.to_string())
     }
 }
+
+#[cfg(feature = "anyhow")]
+impl From<anyhow::Error> for Error {
+    fn from(val: anyhow::Error) -> Self {
+        Self::ExecutionError(val.to_string())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #[cfg(feature = "anyhow")]
+    use super::*;
+
+    #[test]
+    fn test_conversion_to_anyhow() {
+        
+    }
+
+    #[cfg(feature = "anyhow")]
+    fn return_std_result() -> Result<(), Error> {
+        let a: anyhow::Result<u32> = Ok(1);
+        a?;
+
+        let result: Result<(), Error> = Err(Error::MethodNotFound);
+        result
+    }
+
+    #[cfg(feature = "anyhow")]
+    fn return_anyhow_result() -> anyhow::Result<()> {
+        let r = return_std_result()?;
+        Ok(r)
+    }
+}

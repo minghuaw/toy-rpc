@@ -9,7 +9,7 @@ use async_trait::async_trait;
 // =============================================================================
 
 #[async_trait]
-#[export_trait]
+#[export_trait(impl_for_client)]
 pub trait AnotherExample {
     #[export_method]
     async fn one(&self, args: i32) -> Result<i32, Error>;

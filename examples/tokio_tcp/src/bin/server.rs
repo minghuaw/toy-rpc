@@ -9,6 +9,9 @@ use toy_rpc::Error;
 
 use tokio_tcp::rpc::*;
 
+fn return_anyhow_result() -> anyhow::Result<u32> {
+    Ok(7)
+}
 struct Abacus { }
 
 #[async_trait]
@@ -20,6 +23,16 @@ impl Arith for Abacus {
 
     async fn subtract(&self, args: (i32, i32)) -> Result<i32, Error> {
         Ok(args.0 - args.1)
+    }
+
+    async fn get_num_anyhow(&self, _:()) -> anyhow::Result<u32> {
+        let success = return_anyhow_result()?;
+        Ok(success)
+    }
+
+    async fn get_str_anyhow(&self, _:()) -> Result<String, Error> {
+        let success = return_anyhow_result()?;
+        Ok(success.to_string())
     }
 }
 

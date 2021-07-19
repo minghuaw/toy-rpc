@@ -18,7 +18,6 @@ pub(crate) fn transform_trait(
     input.items.iter().for_each(|item| {
         if let syn::TraitItem::Method(f) = item {
             names.push(f.sig.ident.to_string());
-            // transform_trait_item(f);
             idents.push(f.sig.ident.clone());
         }
     });
@@ -355,7 +354,8 @@ fn generate_trait_method_impl_for_client(
         {
             Box::pin(
                 async move {
-                    self.call(#service_method, #arg_ident).await.into()
+                    let success = self.call(#service_method, #arg_ident).await?;
+                    Ok(success)
                 }
             )
         }
