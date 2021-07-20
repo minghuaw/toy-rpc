@@ -67,6 +67,10 @@ TLS support
 
 - `tls`: enables TLS support
 
+Convenience conversion to `anyhow::Error`
+
+- `anyhow`: enables using `anyhow::Error` in RPC methods
+
 Other trivial feature flags are listed below, and they are likely of no actual usage for you.
 - `docs`
 - `std`: `serde/std`. There is no actual usage right now.

@@ -292,6 +292,35 @@ pub trait Arith {
 }
 </code></pre>
 <p>We will continue to use this example in the <a href="https://minghuaw.github.io/toy-rpc/04_server.html">Server</a> and <a href="https://minghuaw.github.io/toy-rpc/06_client.html">Client</a> chapters.</p>
+<p>If you want to the <code>Client</code> implements the RPC trait and don't care about cancelling the RPC call, the implementation can be conveniently generated with an argument <code>(impl_for_client)</code> in the attribute macro <code>#[export_trait]</code>. The usage will demonstrated below.</p>
+<pre><pre class="playground"><code class="language-rust edition2018">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>#[async_trait]
+#[export_trait(impl_for_client)] // This will generate `Arith` trait implementation for `toy_rpc::Client`
+pub trait Arith {
+    // let's mark both `add(...)` and `subtract(...)` as RPC method
+    #[export_method]
+    async fn add(&amp;self, args: (i32, i32)) -&gt; Result&lt;i32, anyhow::Error&gt;;
+
+    #[export_method]
+    async fn subtract(&amp;self, args: (i32, i32)) -&gt; Result&lt;i32, toy_rpc::Error&gt;;
+
+    // All methods must be exported if trait implementation generation is enabled
+    // fn say_hi(&amp;self);
+}
+<span class="boring">}
+</span></code></pre></pre>
+<p>This will allow convenient client usage like</p>
+<pre><pre class="playground"><code class="language-rust edition2018">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// client.rs
+
+let reply = Arith::add(&amp;client, (3,4)).await.unwrap();
+<span class="boring">}
+</span></code></pre></pre>
+<p>More can be found <a href="https://github.com/minghuaw/toy-rpc/tree/main/examples/tokio_tcp">here in the <code>tokio_tcp</code> example</a></p>
 
                     </main>
 

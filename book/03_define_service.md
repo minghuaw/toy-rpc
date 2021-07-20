@@ -150,6 +150,30 @@ pub trait Arith {
 
 We will continue to use this example in the [Server](https://minghuaw.github.io/toy-rpc/04_server.html) and [Client](https://minghuaw.github.io/toy-rpc/06_client.html) chapters.
 
+If you want to the `Client` implements the RPC trait and don't care about cancelling the RPC call, the implementation can be conveniently generated with an argument `(impl_for_client)` in the attribute macro `#[export_trait]`. The usage will demonstrated below.
 
+```rust
+#[async_trait]
+#[export_trait(impl_for_client)] // This will generate `Arith` trait implementation for `toy_rpc::Client`
+pub trait Arith {
+    // let's mark both `add(...)` and `subtract(...)` as RPC method
+    #[export_method]
+    async fn add(&self, args: (i32, i32)) -> Result<i32, anyhow::Error>;
 
+    #[export_method]
+    async fn subtract(&self, args: (i32, i32)) -> Result<i32, toy_rpc::Error>;
 
+    // All methods must be exported if trait implementation generation is enabled
+    // fn say_hi(&self);
+}
+```
+
+This will allow convenient client usage like
+
+```rust
+// client.rs
+
+let reply = Arith::add(&client, (3,4)).await.unwrap();
+```
+
+More can be found [here in the `tokio_tcp` example](https://github.com/minghuaw/toy-rpc/tree/main/examples/tokio_tcp)
