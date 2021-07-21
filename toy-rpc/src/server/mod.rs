@@ -91,8 +91,6 @@ cfg_if! {
         all(feature = "async_std_runtime", not(feature = "tokio_runtime")),
         all(feature = "tokio_runtime", not(feature = "async_std_runtime")),
     ))] {
-        // use crate::error::Error;
-
         impl<AckMode> Server<AckMode> {
             /// Builds a Server from a ServerBuilder
             pub fn from_builder(builder: ServerBuilder<AckMode>) -> Self {
