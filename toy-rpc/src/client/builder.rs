@@ -8,7 +8,8 @@ use crate::pubsub::{AckModeAuto, AckModeManual, AckModeNone};
 
 /// Client builder
 pub struct ClientBuilder<AckMode> {
-    ack_mode: PhantomData<AckMode>,
+    /// Marker for AckMode
+    pub ack_mode: PhantomData<AckMode>,
 }
 
 impl Default for ClientBuilder<AckModeNone> {
@@ -20,6 +21,11 @@ impl Default for ClientBuilder<AckModeNone> {
 }
 
 impl<AckMode> ClientBuilder<AckMode> {
+    /// Creates a new ClientBuilder
+    pub fn new() -> ClientBuilder<AckModeNone> {
+        ClientBuilder::default()
+    }
+
     /// Set the AckMode to None
     pub fn set_ack_mode_none(self) -> ClientBuilder<AckModeNone> {
         ClientBuilder::<AckModeNone> {
@@ -43,41 +49,50 @@ impl<AckMode> ClientBuilder<AckMode> {
 }
 
 cfg_if! {
+    if #[cfg(all(feature = "tokio_runtime", not(feature = "async_std_runtime")))] {
+        use ::tokio::io::{AsyncRead, AsyncWrite};
+    } else if #[cfg(all(feature = "async_std_runtime", not(feature = "tokio_runtime")))] {
+        use futures::{AsyncRead, AsyncWrite};
+    }
+}
+
+cfg_if! {
     if #[cfg(any(
         feature = "docs",
         all(
             feature = "serde_bincode",
-            not(feature = "serde_json"),
-            not(feature = "serde_cbor"),
-            not(feature = "serde_rmp"),
+            not(any(feature = "serde_json", feature = "serde_cbor", feature = "serde_rmp"))
         ),
         all(
             feature = "serde_cbor",
-            not(feature = "serde_json"),
-            not(feature = "serde_bincode"),
-            not(feature = "serde_rmp"),
+            not(any(feature = "serde_json", feature = "serde_bincode", feature = "serde_rmp")),
         ),
         all(
             feature = "serde_json",
-            not(feature = "serde_bincode"),
-            not(feature = "serde_cbor"),
-            not(feature = "serde_rmp"),
+            not(any(feature = "serde_bincode", feature = "serde_cbor", feature = "serde_rmp")),
         ),
         all(
             feature = "serde_rmp",
-            not(feature = "serde_cbor"),
-            not(feature = "serde_json"),
-            not(feature = "serde_bincode"),
+            not(any(feature = "serde_cbor", feature = "serde_json", feature = "serde_bincode")),
         )
     ))] {
+        use std::{
+            sync::Arc, collections::HashMap, time::Duration,
+        };
+
         #[cfg(feature = "tls")]
         use rustls::ClientConfig;
+        use crossbeam::atomic::AtomicCell;
 
         use crate::{
             DEFAULT_RPC_PATH,
             client::Client,
             error::Error,
+            codec::{split::SplittableCodec, DefaultCodec},
+            message::AtomicMessageId,
         };
+
+        use super::{reader::ClientReader, writer::ClientWriter, broker};
 
         #[cfg(feature = "tls")]
         use crate::client::{tcp_client_with_tls_config, websocket_client_with_tls_config};
@@ -140,12 +155,55 @@ cfg_if! {
             /// Similar to `dial_websocket` but with TLS enabled
             #[cfg(feature = "tls")]
             pub async fn dial_websocket_with_tls_config(
+                self,
                 addr: &str,
                 domain: &str,
                 config: ClientConfig,
             ) -> Result<Client<AckMode>, Error> {
                 let url = url::Url::parse(addr)?;
                 websocket_client_with_tls_config(url, domain, config).await
+            }
+
+            /// Creates an RPC `Client` over a stream
+            ///
+            #[cfg_attr(feature = "docs", doc(cfg(feature = "tokio_runtime")))]
+            pub fn with_stream<T>(self, stream: T) -> Client<AckMode>
+            where
+                T: AsyncRead + AsyncWrite + Send + Unpin + 'static,
+            {
+                let codec = DefaultCodec::new(stream);
+                self.with_codec(codec)
+            }
+
+            /// Creates an RPC 'Client` over socket with a specified codec
+            #[cfg_attr(feature = "docs", doc(cfg(all(feature = "async_std_runtime", not(feature = "tokio_runtime")))))]
+            #[cfg_attr(feature = "docs", doc(cfg(all(feature = "tokio_runtime", not(feature = "async_std_runtime")))))]
+            pub fn with_codec<C>(self, codec: C) -> Client<AckMode>
+            where
+                C: SplittableCodec + Send + 'static,
+            {
+                let (writer, reader) = codec.split();
+                let reader = ClientReader { reader };
+                let writer = ClientWriter { writer };
+                let count = Arc::new(AtomicMessageId::new(0));
+
+                let broker = broker::ClientBroker {
+                    count: count.clone(),
+                    pending: HashMap::new(),
+                    next_timeout: None,
+                    subscriptions: HashMap::new(),
+                };
+                let (_, broker) = brw::spawn(broker, reader, writer);
+
+                Client {
+                    count,
+                    default_timeout: Duration::from_secs(super::DEFAULT_TIMEOUT_SECONDS),
+                    next_timeout: AtomicCell::new(None),
+                    broker,
+                    subscriptions: HashMap::new(),
+
+                    ack_mode: PhantomData
+                }
             }
         }
     }

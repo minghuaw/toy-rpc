@@ -14,6 +14,7 @@ mod reader;
 mod writer;
 
 use broker::ClientBrokerItem;
+use builder::ClientBuilder;
 
 type ResponseResult = Result<Box<InboundBody>, Box<InboundBody>>;
 
@@ -39,8 +40,10 @@ cfg_if! {
         use tokio_rustls::TlsConnector;
         #[cfg(feature = "tls")]
         use async_tungstenite::tokio::client_async;
+        #[cfg(feature = "tls")]
+        use tokio::net::TcpStream;
 
-        use tokio::net::{TcpStream, ToSocketAddrs};
+        use tokio::net::ToSocketAddrs;
         use async_tungstenite::tokio::connect_async;
         use ::tokio::io::{AsyncRead, AsyncWrite};
     } else if #[cfg(all(feature = "async_std_runtime", not(feature = "tokio_runtime")))] {
@@ -48,8 +51,10 @@ cfg_if! {
         use async_rustls::TlsConnector;
         #[cfg(feature = "tls")]
         use async_tungstenite::client_async;
+        #[cfg(feature = "tls")]
+        use async_std::net::TcpStream;
 
-        use async_std::net::{TcpStream, ToSocketAddrs};
+        use async_std::net::ToSocketAddrs;
         use async_tungstenite::async_std::connect_async;
         use futures::{AsyncRead, AsyncWrite};
     }
@@ -76,8 +81,6 @@ cfg_if! {
     ))] {
         #[cfg(feature = "tls")]
         use rustls::{ClientConfig};
-
-        use crate::DEFAULT_RPC_PATH;
 
         #[cfg(all(
             feature = "tls",
@@ -154,8 +157,32 @@ cfg_if! {
             where
                 T: AsyncRead + AsyncWrite + Send + Unpin + 'static,
             {
-                let codec = DefaultCodec::new(stream);
-                Self::with_codec(codec)
+                let builder = ClientBuilder::<AckMode> {ack_mode: PhantomData};
+                builder.with_stream(stream)
+            }
+
+            /// Creates an RPC 'Client` over socket with a specified codec
+            ///
+            /// Example
+            ///
+            /// ```rust
+            /// let addr = "127.0.0.1:8080";
+            /// let stream = TcpStream::connect(addr).await.unwrap();
+            /// let codec = Codec::new(stream);
+            /// let client = Client::with_codec(codec);
+            /// ```
+            // #[cfg(any(
+            //     all(feature = "async_std_runtime", not(feature = "tokio_runtime")),
+            //     all(feature = "tokio_runtime", not(feature = "async_std_runtime"))
+            // ))]
+            #[cfg_attr(feature = "docs", doc(cfg(all(feature = "async_std_runtime", not(feature = "tokio_runtime")))))]
+            #[cfg_attr(feature = "docs", doc(cfg(all(feature = "tokio_runtime", not(feature = "async_std_runtime")))))]
+            pub fn with_codec<C>(codec: C) -> Self
+            where
+                C: SplittableCodec + Send + 'static,
+            {
+                let builder = ClientBuilder::<AckMode> {ack_mode: PhantomData};
+                builder.with_codec(codec)
             }
         }
 
@@ -185,8 +212,7 @@ cfg_if! {
             pub async fn dial(addr: impl ToSocketAddrs)
                 -> Result<Self, Error>
             {
-                let stream = TcpStream::connect(addr).await?;
-                Ok(Self::with_stream(stream))
+                ClientBuilder::default().dial(addr).await
             }
 
             /// Connects to an RPC server with TLS enabled
@@ -200,7 +226,8 @@ cfg_if! {
                 domain: &str,
                 config: ClientConfig
             ) -> Result<Self, Error> {
-                tcp_client_with_tls_config(addr, domain, config).await
+                // tcp_client_with_tls_config(addr, domain, config).await
+                ClientBuilder::default().dial_with_tls_config(addr, domain, config).await
             }
 
             /// Connects to an HTTP RPC server at the specified network address using WebSocket and the defatul codec.
@@ -231,10 +258,7 @@ cfg_if! {
             ///
             #[cfg_attr(feature = "docs", doc(cfg(feature = "tokio_runtime")))]
             pub async fn dial_http(addr: &str) -> Result<Self, Error> {
-                let mut url = url::Url::parse(addr)?.join(DEFAULT_RPC_PATH)?;
-                url.set_scheme("ws").expect("Failed to change scheme to ws");
-
-                Self::dial_websocket_url(url).await
+                ClientBuilder::default().dial_http(addr).await
             }
 
             /// Connects to an HTTP RPC server with TLS enabled
@@ -248,10 +272,7 @@ cfg_if! {
                 domain: &str,
                 config: ClientConfig,
             ) -> Result<Self, Error> {
-                let mut url = url::Url::parse(addr)?.join(DEFAULT_RPC_PATH)?;
-                url.set_scheme("ws").expect("Failed to change scheme to ws");
-
-                websocket_client_with_tls_config(url, domain, config).await
+                ClientBuilder::default().dial_http_with_tls_config(addr, domain, config).await
             }
 
             /// Similar to `dial`, this connects to an WebSocket RPC server at the specified network address using the defatul codec
@@ -275,8 +296,7 @@ cfg_if! {
             ///
             #[cfg_attr(feature = "docs", doc(cfg(feature = "tokio_runtime")))]
             pub async fn dial_websocket(addr: &str) -> Result<Self, Error> {
-                let url = url::Url::parse(addr)?;
-                Self::dial_websocket_url(url).await
+                ClientBuilder::default().dial_websocket(addr).await
             }
 
             /// Similar to `dial_websocket` but with TLS enabled
@@ -287,8 +307,7 @@ cfg_if! {
                 domain: &str,
                 config: ClientConfig,
             ) -> Result<Self, Error> {
-                let url = url::Url::parse(addr)?;
-                websocket_client_with_tls_config(url, domain, config).await
+                ClientBuilder::default().dial_websocket_with_tls_config(addr, domain, config).await
             }
         }
     }
@@ -330,8 +349,8 @@ impl<AckMode> Drop for Client<AckMode> {
 
 impl<AckMode> Client<AckMode> {
     /// Creates a `ClientBuilder`.
-    pub fn builder() -> builder::ClientBuilder<AckModeNone> {
-        builder::ClientBuilder::default()
+    pub fn builder() -> ClientBuilder<AckModeNone> {
+        ClientBuilder::default()
     }
 
     /// Closes connection with the server
@@ -365,58 +384,7 @@ cfg_if! {
     ))] {
         use std::sync::atomic::Ordering;
 
-        use crate::{
-            codec::split::SplittableCodec,
-            // message::{ClientRequestBody, RequestHeader},
-        };
-        use reader::*;
-        use writer::*;
-
-        impl<AckMode> Client<AckMode> {
-            /// Creates an RPC 'Client` over socket with a specified codec
-            ///
-            /// Example
-            ///
-            /// ```rust
-            /// let addr = "127.0.0.1:8080";
-            /// let stream = TcpStream::connect(addr).await.unwrap();
-            /// let codec = Codec::new(stream);
-            /// let client = Client::with_codec(codec);
-            /// ```
-            // #[cfg(any(
-            //     all(feature = "async_std_runtime", not(feature = "tokio_runtime")),
-            //     all(feature = "tokio_runtime", not(feature = "async_std_runtime"))
-            // ))]
-            #[cfg_attr(feature = "docs", doc(cfg(all(feature = "async_std_runtime", not(feature = "tokio_runtime")))))]
-            #[cfg_attr(feature = "docs", doc(cfg(all(feature = "tokio_runtime", not(feature = "async_std_runtime")))))]
-            pub fn with_codec<C>(codec: C) -> Self
-            where
-                C: SplittableCodec + Send + 'static,
-            {
-                let (writer, reader) = codec.split();
-                let reader = ClientReader { reader };
-                let writer = ClientWriter { writer };
-                let count = Arc::new(AtomicMessageId::new(0));
-
-                let broker = broker::ClientBroker {
-                    count: count.clone(),
-                    pending: HashMap::new(),
-                    next_timeout: None,
-                    subscriptions: HashMap::new(),
-                };
-                let (_, broker) = brw::spawn(broker, reader, writer);
-
-                Self {
-                    count,
-                    default_timeout: Duration::from_secs(DEFAULT_TIMEOUT_SECONDS),
-                    next_timeout: AtomicCell::new(None),
-                    broker,
-                    subscriptions: HashMap::new(),
-
-                    ack_mode: PhantomData
-                }
-            }
-        }
+        use crate::{codec::split::SplittableCodec};
 
         impl<AckMode> Client<AckMode> {
             /// Sets the default timeout duration for this client
@@ -529,7 +497,6 @@ cfg_if! {
                 Res: serde::de::DeserializeOwned + Send + 'static,
             {
                 // Prepare RPC request
-                // let id = self.count.load(Ordering::Relaxed) as MessageId;
                 let id = self.count.fetch_add(1, Ordering::Relaxed);
                 let service_method = service_method.to_string();
                 let duration = match self.next_timeout.swap(None) {
