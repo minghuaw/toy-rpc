@@ -22,7 +22,6 @@ pub trait AnotherExample {
     async fn one(&self, args: i32) -> Result<i32, Error>;
     #[export_method]
     async fn two(&self, req: bool) -> Result<bool, Error>;
-    fn three();
 }
 
 // =============================================================================

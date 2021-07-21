@@ -3,7 +3,7 @@
 use cfg_if::cfg_if;
 use crossbeam::atomic::AtomicCell;
 use flume::Sender;
-use std::{any::TypeId, collections::HashMap, sync::Arc, time::Duration};
+use std::{any::TypeId, collections::HashMap, marker::PhantomData, sync::Arc, time::Duration};
 
 use crate::{message::AtomicMessageId, protocol::InboundBody};
 
@@ -23,7 +23,7 @@ cfg_if! {
         all(feature = "async_std_runtime", not(feature = "tokio_runtime"))
     ))] {
         use futures::channel::oneshot;
-        use crate::{Error, protocol::OutboundBody};
+        use crate::{Error, protocol::{OutboundBody}};
 
         #[cfg(feature = "tls")]
         use crate::transport::ws::WebSocketConn;
@@ -101,11 +101,11 @@ cfg_if! {
                 all(feature = "async_std_runtime", not(feature = "tokio_runtime"))
             )
         ))]
-        async fn tcp_client_with_tls_config(
+        async fn tcp_client_with_tls_config<AckMode>(
             addr: impl ToSocketAddrs,
             domain: &str,
             config: rustls::ClientConfig
-        ) -> Result<Client, Error> {
+        ) -> Result<Client<AckMode>, Error> {
             let stream = TcpStream::connect(addr).await?;
             let connector = TlsConnector::from(std::sync::Arc::new(config));
             let domain = webpki::DNSNameRef::try_from_ascii_str(domain)?;
@@ -121,11 +121,11 @@ cfg_if! {
                 all(feature = "async_std_runtime", not(feature = "tokio_runtime"))
             )
         ))]
-        async fn websocket_client_with_tls_config(
+        async fn websocket_client_with_tls_config<AckMode>(
             url: url::Url,
             domain: &str,
             config: rustls::ClientConfig,
-        ) -> Result<Client, Error> {
+        ) -> Result<Client<AckMode>, Error> {
             let host = url.host_str()
                 .ok_or(Error::Internal("Invalid host address".into()))?;
             let port = url.port_or_known_default()
@@ -163,16 +163,18 @@ pub use call::Call;
     not(any(feature = "async_std_runtime", feature = "tokio_runtime")),
     allow(dead_code)
 )]
-pub struct Client {
+pub struct Client<AckMode> {
     count: Arc<AtomicMessageId>,
     default_timeout: Duration,
     next_timeout: AtomicCell<Option<Duration>>,
     broker: Sender<ClientBrokerItem>,
     subscriptions: HashMap<String, TypeId>,
+
+    ack_mode: PhantomData<AckMode>,
 }
 
 // seems like it still works even without this impl
-impl Drop for Client {
+impl<AckMode> Drop for Client<AckMode> {
     fn drop(&mut self) {
         for (topic, _) in self.subscriptions.drain() {
             self.broker
@@ -186,7 +188,7 @@ impl Drop for Client {
     }
 }
 
-impl Client {
+impl<AckMode> Client<AckMode> {
     /// Closes connection with the server
     ///
     /// Dropping the client will close the connection as well
@@ -225,7 +227,7 @@ cfg_if! {
         use reader::*;
         use writer::*;
 
-        impl Client {
+        impl<AckMode> Client<AckMode> {
             /// Creates an RPC 'Client` over socket with a specified codec
             ///
             /// Example
@@ -242,7 +244,7 @@ cfg_if! {
             // ))]
             #[cfg_attr(feature = "docs", doc(cfg(all(feature = "async_std_runtime", not(feature = "tokio_runtime")))))]
             #[cfg_attr(feature = "docs", doc(cfg(all(feature = "tokio_runtime", not(feature = "async_std_runtime")))))]
-            pub fn with_codec<C>(codec: C) -> Client
+            pub fn with_codec<C>(codec: C) -> Self
             where
                 C: SplittableCodec + Send + 'static,
             {
@@ -259,17 +261,19 @@ cfg_if! {
                 };
                 let (_, broker) = brw::spawn(broker, reader, writer);
 
-                Client {
+                Self {
                     count,
                     default_timeout: Duration::from_secs(DEFAULT_TIMEOUT_SECONDS),
                     next_timeout: AtomicCell::new(None),
                     broker,
                     subscriptions: HashMap::new(),
+
+                    ack_mode: PhantomData
                 }
             }
         }
 
-        impl Client {
+        impl<AckMode> Client<AckMode> {
             /// Sets the default timeout duration for this client
             ///
             /// Example

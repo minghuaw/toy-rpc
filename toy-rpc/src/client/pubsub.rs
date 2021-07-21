@@ -10,6 +10,7 @@ use std::pin::Pin;
 use std::task::{Context, Poll};
 
 use super::{broker::ClientBrokerItem, Client};
+use crate::pubsub::AckModeNone;
 use crate::{
     error::Error,
     protocol::{InboundBody, OutboundBody},
@@ -95,7 +96,7 @@ impl<T: Topic> Stream for Subscriber<T> {
     }
 }
 
-impl Client {
+impl Client<AckModeNone> {
     /// Creates a new publisher on a topic.
     ///
     /// Multiple local publishers on the same topic are allowed.
