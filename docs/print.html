@@ -1173,12 +1173,22 @@ async fn main() {
 <p>More detailed documentations are underway.</p>
 <div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><h1 id="pubsub"><a class="header" href="#pubsub">PubSub</a></h1>
 <p>A simple PubSub support is added in 0.8.0. A simple example can be found <a href="https://github.com/minghuaw/toy-rpc/tree/main/examples/tokio_pubsub">here</a>.</p>
-<p>A publisher can be created on the server side or the client side using the <code>publisher::&lt;T: Topic&gt;()</code> method, and a subscriber can be created using the <code>subscriber::&lt;T: Topic&gt;(cap: usize)</code> method. They both take one type parameter <code>T</code> that must implements the <code>toy_rpc::pubsub::Topic</code> trait. (TODO: add derive trait). </p>
-<p>A topic can be defined by implementing the <code>Topic</code> trait.</p>
+<p>A publisher can be created on the server side or the client side using the <code>publisher::&lt;T: Topic&gt;()</code> method, and a subscriber can be created using the <code>subscriber::&lt;T: Topic&gt;(cap: usize)</code> method. They both take one type parameter <code>T</code> that must implements the <code>toy_rpc::pubsub::Topic</code> trait. You can use the provided derive macro <code>#[derive(toy_rpc::macros::Topic)]</code> to define a struct as the pubsub message or by manually implementing the <code>toy_rpc::pubsub::Topic</code> trait on a type.</p>
+<pre><pre class="playground"><code class="language-rust edition2018">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use toy_rpc::macros::Topic;
+use serde::{Serializer, Deserialize};
+
+#[derive(Topic, Serialize, Deserialize)]
+pub struct Count(pub u32);
+<span class="boring">}
+</span></code></pre></pre>
+<p>Or manually implement the <code>Topic</code> trait</p>
 <pre><code class="language-rust noplaypen">#[derive(Serialize, Deserialize)]
 pub struct Count(pub u32);
 
-impl Topic for Count {
+impl toy_rpc::pubsub::Topic for Count {
     type Item = Count; // The Item type must implement `Serialize` and `Deserialize`
 
     // A String identifier for the topic. The user must ensure it is unique

@@ -1059,6 +1059,7 @@ dependencies = [
 name = "toy-rpc"
 version = "0.8.0-alpha.3"
 dependencies = [
+ "anyhow",
  "async-trait",
  "async-tungstenite",
  "bincode",
@@ -1083,8 +1084,6 @@ dependencies = [
 [[package]]
 name = "toy-rpc-macros"
 version = "0.6.0-beta"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "39a6a63b809ce1e7f7584a063af966d5559619daa3c69406df403dc08c9956a2"
 dependencies = [
  "darling",
  "quote",

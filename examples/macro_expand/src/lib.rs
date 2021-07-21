@@ -1,8 +1,15 @@
 #![allow(dead_code)]
 
-use toy_rpc::macros::{export_impl, export_trait};
+use toy_rpc::macros::{export_impl, export_trait, Topic};
 use toy_rpc::Error;
 use async_trait::async_trait;
+use serde::{Serialize, Deserialize};
+/* -------------------------------------------------------------------------- */
+/*                                #[derive(Topic)]                            */
+/* -------------------------------------------------------------------------- */
+#[derive(Serialize, Deserialize, Topic)]
+pub struct MyTopic(u32);
+
 
 // =============================================================================
 // #[export_trait]

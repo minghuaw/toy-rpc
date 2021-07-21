@@ -530,3 +530,28 @@ pub fn export_trait_impl(
     };
     output.into()
 }
+
+/* -------------------------------------------------------------------------- */
+/*                              #[derive(Topic)]                              */
+/* -------------------------------------------------------------------------- */
+
+/// Implements `toy_rpc::pubsub::Topic` trait for a type. The type will also be
+/// the  associated type `Topic::Item`, and thus the derived type must implement
+/// both `serde::Serialize` and `serde::Deserialize`.
+#[proc_macro_derive(Topic)]
+pub fn derive_topic(item: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    let input = syn::parse_macro_input!(item as syn::DeriveInput);
+    let ident = input.ident;
+    let topic = ident.to_string();
+
+    let output = quote::quote! {
+        impl toy_rpc::pubsub::Topic for #ident {
+            type Item = #ident;
+
+            fn topic() -> String {
+                String::from(#topic)
+            }
+        }
+    };
+    output.into()
+}
