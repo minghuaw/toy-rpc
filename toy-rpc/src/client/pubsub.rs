@@ -10,7 +10,7 @@ use std::pin::Pin;
 use std::task::{Context, Poll};
 
 use super::{broker::ClientBrokerItem, Client};
-use crate::pubsub::AckModeNone;
+use crate::pubsub::{AckModeAuto, AckModeNone};
 use crate::{
     error::Error,
     protocol::{InboundBody, OutboundBody},
@@ -63,22 +63,24 @@ impl<T: Topic> Sink<T::Item> for Publisher<T> {
 
 /// Subscriber of topic T on the client side
 #[pin_project]
-pub struct Subscriber<T: Topic> {
+pub struct Subscriber<T: Topic, AckMode> {
     #[pin]
     inner: RecvStream<'static, Box<InboundBody>>,
     marker: PhantomData<T>,
+    ack_mode: PhantomData<AckMode>
 }
 
-impl<T: Topic> From<Receiver<Box<InboundBody>>> for Subscriber<T> {
+impl<T: Topic, AckMode> From<Receiver<Box<InboundBody>>> for Subscriber<T, AckMode> {
     fn from(rx: Receiver<Box<InboundBody>>) -> Self {
         Self {
             inner: rx.into_stream(),
             marker: PhantomData,
+            ack_mode: PhantomData,
         }
     }
 }
 
-impl<T: Topic> Stream for Subscriber<T> {
+impl<T: Topic> Stream for Subscriber<T, AckModeNone> {
     type Item = Result<T::Item, Error>;
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
@@ -96,7 +98,25 @@ impl<T: Topic> Stream for Subscriber<T> {
     }
 }
 
-impl Client<AckModeNone> {
+impl<T: Topic> Stream for Subscriber<T, AckModeAuto> {
+    type Item = Result<T::Item, Error>;
+
+    fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        let this = self.project();
+        match this.inner.poll_next(cx) {
+            Poll::Pending => Poll::Pending,
+            Poll::Ready(val) => match val {
+                Some(mut body) => {
+                    let result = erased_serde::deserialize(&mut body).map_err(|err| err.into());
+                    Poll::Ready(Some(result))
+                }
+                None => Poll::Ready(None),
+            },
+        }
+    }
+}
+
+impl<AckMode> Client<AckMode> {
     /// Creates a new publisher on a topic.
     ///
     /// Multiple local publishers on the same topic are allowed.
@@ -104,10 +124,12 @@ impl Client<AckModeNone> {
         let tx = self.broker.clone();
         Publisher::from(tx)
     }
+}
 
+impl Client<AckModeNone> {
     /// Creates a new subscriber on a topic
     ///
-    pub fn subscriber<T: Topic + 'static>(&mut self, cap: usize) -> Result<Subscriber<T>, Error> {
+    pub fn subscriber<T: Topic + 'static>(&mut self, cap: usize) -> Result<Subscriber<T, AckModeNone>, Error> {
         let (tx, rx) = flume::bounded(cap);
         let topic = T::topic();
 
@@ -137,7 +159,7 @@ impl Client<AckModeNone> {
     pub fn replace_local_subscriber<T: Topic + 'static>(
         &mut self,
         cap: usize,
-    ) -> Result<Subscriber<T>, Error> {
+    ) -> Result<Subscriber<T, AckModeNone>, Error> {
         let topic = T::topic();
         match self.subscriptions.get(&topic) {
             Some(entry) => match &TypeId::of::<T>() == entry {
