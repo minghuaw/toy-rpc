@@ -49,6 +49,7 @@ cfg_if! {
         use crate::codec::split::SplittableCodec;
         use crate::codec::DefaultCodec;
         use super::{AsyncServiceMap, Server, ClientId, pubsub::PubSubItem};
+        use crate::pubsub::AckModeNone;
 
         /// The following impl block is controlled by feature flag. It is enabled
         /// if and only if **exactly one** of the the following feature flag is turned on
@@ -56,7 +57,7 @@ cfg_if! {
         /// - `serde_json`
         /// - `serde_cbor`
         /// - `serde_rmp`
-        impl Server {
+        impl Server<AckModeNone> {
 
             /// Accepts connections on an `tokio::net::TcpListener` and serves requests to default
             /// server for each incoming connection

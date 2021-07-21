@@ -1,7 +1,7 @@
 //! Builder of the Server
 
 use erased_serde as erased;
-use std::{collections::HashMap, sync::Arc};
+use std::{collections::HashMap, marker::PhantomData, sync::Arc};
 
 #[cfg(any(
     feature = "docs",
@@ -10,22 +10,22 @@ use std::{collections::HashMap, sync::Arc};
 ))]
 use super::Server;
 
-use crate::{
-    service::{build_service, AsyncServiceMap, HandleService, HandlerResultFut, Service},
-    util::RegisterService,
-};
+use crate::{pubsub::AckModeNone, service::{build_service, AsyncServiceMap, HandleService, HandlerResultFut, Service}, util::RegisterService};
 
 /// Server builder
-pub struct ServerBuilder {
+pub struct ServerBuilder<AckMode> {
     /// Registered services
     pub services: AsyncServiceMap,
+    
+    ack_mode: PhantomData<AckMode>
 }
 
-impl ServerBuilder {
+impl ServerBuilder<AckModeNone> {
     /// Creates a new `ServerBuilder`
     pub fn new() -> Self {
         ServerBuilder {
             services: HashMap::new(),
+            ack_mode: PhantomData
         }
     }
 
@@ -107,7 +107,7 @@ impl ServerBuilder {
     all(feature = "async_std_runtime", not(feature = "tokio_runtime")),
     all(feature = "tokio_runtime", not(feature = "async_std_runtime")),
 ))]
-impl ServerBuilder {
+impl<AckMode> ServerBuilder<AckMode> {
     /// Builds an RPC `Server`
     ///
     /// # Example
@@ -118,13 +118,13 @@ impl ServerBuilder {
     ///     .register(echo_service);
     /// let server: Server = builder.build();        
     /// ```
-    pub fn build(self) -> Server {
+    pub fn build(self) -> Server<AckMode> {
         Server::from_builder(self)
     }
 }
 
-impl Default for ServerBuilder {
-    fn default() -> Self {
-        Self::new()
+impl Default for ServerBuilder<AckModeNone> {
+    fn default() -> ServerBuilder<AckModeNone> {
+        ServerBuilder::<AckModeNone>::new()
     }
 }

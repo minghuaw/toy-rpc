@@ -35,6 +35,7 @@ cfg_if! {
         use crate::{server::Server};
         use crate::codec::DefaultCodec;
         use crate::server::start_broker_reader_writer;
+        use crate::pubsub::AckModeNone;
 
         /// The following impl block is controlled by feature flag. It is enabled
         /// if and only if **exactly one** of the the following feature flag is turned on
@@ -42,7 +43,7 @@ cfg_if! {
         /// - `serde_json`
         /// - `serde_cbor`
         /// - `serde_rmp`
-        impl Server {
+        impl Server<AckModeNone> {
             /// WebSocket handler for integration with `warp`
             fn warp_websocket_handler(state: Arc<Self>, ws: warp::ws::Ws) -> impl warp::Reply {
                 ws.on_upgrade(|websocket| async move {

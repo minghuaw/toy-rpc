@@ -410,9 +410,10 @@ cfg_if! {
     ))] {
         use crate::codec::{DefaultCodec, ConnTypePayload};
         use crate::server::Server;
+        use crate::pubsub::AckModeNone;
 
         async fn index(
-            state: web::Data<Server>,
+            state: web::Data<Server<AckModeNone>>,
             req: HttpRequest,
             stream: web::Payload,
         ) -> Result<HttpResponse, actix_web::Error> {
@@ -431,7 +432,7 @@ cfg_if! {
             ws::start(ws_actor, &req, stream)
         }
 
-        impl Server {
+        impl Server<AckModeNone> {
             /// Configuration for integration with an actix-web scope.
             /// A convenient funciont "handle_http" may be used to achieve the same thing
             /// with the `actix-web` feature turned on.

@@ -38,6 +38,7 @@ cfg_if! {
         use crate::codec::DefaultCodec;
         use crate::DEFAULT_RPC_PATH;
         use crate::server::start_broker_reader_writer;
+        use crate::pubsub::AckModeNone;
 
         /// The following impl block is controlled by feature flag. It is enabled
         /// if and only if **exactly one** of the the following feature flag is turned on
@@ -45,7 +46,7 @@ cfg_if! {
         /// - `serde_json`
         /// - `serde_cbor`
         /// - `serde_rmp`
-        impl Server {
+        impl Server<AckModeNone> {
             #[cfg(any(feature = "http_tide", feature = "docs"))]
             #[cfg_attr(feature = "docs", doc(cfg(feature = "http_tide")))]
             /// Creates a `tide::Endpoint` that handles http connections.
@@ -77,13 +78,13 @@ cfg_if! {
             /// app.listen("127.0.0.1:8080").await?;
             /// ```
             ///
-            pub fn into_endpoint(self) -> tide::Server<Server> {
+            pub fn into_endpoint(self) -> tide::Server<Server<AckModeNone>> {
                 let mut app = tide::Server::with_state(self);
                 // let mut app = tide::Server::new();
                 app.at(DEFAULT_RPC_PATH)
                     // .connect(|_| async move { Ok("CONNECT request is received") })
                     .get(tide_ws::WebSocket::new(
-                        |req: tide::Request<Server>, ws_stream| async move {
+                        |req: tide::Request<Server<AckModeNone>>, ws_stream| async move {
                             let ws_stream = WebSocketConn::new_without_sink(ws_stream);
                             let codec = DefaultCodec::with_tide_websocket(ws_stream);
                             let services = req.state().services.clone();
@@ -146,7 +147,7 @@ cfg_if! {
             /// app.at("/rpc/").nest(server.handle_http());
             /// app.listen("127.0.0.1:8080").await?;
             /// ```
-            pub fn handle_http(self) -> tide::Server<Server> {
+            pub fn handle_http(self) -> tide::Server<Server<AckModeNone>> {
                 self.into_endpoint()
             }
         }

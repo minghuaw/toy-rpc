@@ -3,9 +3,9 @@
 //!
 
 use cfg_if::cfg_if;
-use std::sync::{atomic::AtomicU64, Arc};
+use std::{marker::PhantomData, sync::{atomic::AtomicU64, Arc}};
 
-use crate::service::AsyncServiceMap;
+use crate::{pubsub::AckModeNone, service::AsyncServiceMap};
 
 cfg_if! {
     if #[cfg(any(
@@ -58,7 +58,7 @@ pub const RESERVED_CLIENT_ID: ClientId = 0;
 /// const DEFAULT_RPC_PATH: &str = "_rpc_";
 /// ```
 #[derive(Clone)]
-pub struct Server {
+pub struct Server<AckMode> {
     services: Arc<AsyncServiceMap>,
     client_counter: Arc<AtomicClientId>, // monotomically increase counter
 
@@ -68,6 +68,8 @@ pub struct Server {
         all(feature = "tokio_runtime", not(feature = "async_std_runtime")),
     ))]
     pubsub_tx: Sender<PubSubItem>,
+
+    ack_mode: PhantomData<AckMode>
 }
 
 #[cfg(any(
@@ -75,7 +77,7 @@ pub struct Server {
     all(feature = "async_std_runtime", not(feature = "tokio_runtime")),
     all(feature = "tokio_runtime", not(feature = "async_std_runtime")),
 ))]
-impl Drop for Server {
+impl<AckMode> Drop for Server<AckMode> {
     fn drop(&mut self) {
         if let Err(err) = self.pubsub_tx.send(PubSubItem::Stop) {
             log::error!("{}", err);
@@ -83,7 +85,7 @@ impl Drop for Server {
     }
 }
 
-impl Server {
+impl Server<AckModeNone> {
     /// Creates a `ServerBuilder`
     ///
     /// Example
@@ -93,7 +95,7 @@ impl Server {
     ///
     /// let builder: ServerBuilder = Server::builder();
     /// ```
-    pub fn builder() -> ServerBuilder {
+    pub fn builder() -> ServerBuilder<AckModeNone> {
         ServerBuilder::new()
     }
 }
@@ -106,9 +108,9 @@ cfg_if! {
     ))] {
         // use crate::error::Error;
 
-        impl Server {
+        impl<AckMode> Server<AckMode> {
             /// Builds a Server from a ServerBuilder
-            pub fn from_builder(builder: ServerBuilder) -> Self {
+            pub fn from_builder(builder: ServerBuilder<AckMode>) -> Self {
                 let services = Arc::new(builder.services);
                 let (tx, rx) = flume::unbounded();
 
@@ -118,7 +120,8 @@ cfg_if! {
                 Self {
                     client_counter: Arc::new(AtomicClientId::new(RESERVED_CLIENT_ID + 1)),
                     services,
-                    pubsub_tx: tx
+                    pubsub_tx: tx,
+                    ack_mode: PhantomData,
                 }
             }
         }

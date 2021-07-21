@@ -3,6 +3,8 @@
 
 use cfg_if::cfg_if;
 
+use crate::pubsub::AckModeNone;
+
 cfg_if! {
     if #[cfg(any(
         any(feature = "docs", doc),
@@ -57,7 +59,7 @@ cfg_if! {
         /// - `serde_json`
         /// - `serde_cbor`
         /// - `serde_rmp`
-        impl Server {
+        impl Server<AckModeNone> {
             /// Accepts connections on an `async_std::net::TcpListner` and serves requests to default
             /// server for each incoming connection.
             ///

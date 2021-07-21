@@ -295,10 +295,11 @@ cfg_if::cfg_if! {
         ),
     ))] {
         use crate::codec::DefaultCodec;
+        use crate::pubsub::AckModeNone;
 
         type PhantomCodec = DefaultCodec<Reserved, Reserved, Reserved>;
 
-        impl Server {
+        impl Server<AckModeNone> {
             /// Creates a new publihser on a topic
             pub fn publisher<T: Topic>(&self) -> Publisher<T, PhantomCodec> {
                 let tx = self.pubsub_tx.clone();
