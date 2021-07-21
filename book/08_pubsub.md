@@ -2,15 +2,23 @@
 
 A simple PubSub support is added in 0.8.0. A simple example can be found [here](https://github.com/minghuaw/toy-rpc/tree/main/examples/tokio_pubsub).
 
-A publisher can be created on the server side or the client side using the `publisher::<T: Topic>()` method, and a subscriber can be created using the `subscriber::<T: Topic>(cap: usize)` method. They both take one type parameter `T` that must implements the `toy_rpc::pubsub::Topic` trait. (TODO: add derive trait). 
+A publisher can be created on the server side or the client side using the `publisher::<T: Topic>()` method, and a subscriber can be created using the `subscriber::<T: Topic>(cap: usize)` method. They both take one type parameter `T` that must implements the `toy_rpc::pubsub::Topic` trait. You can use the provided derive macro `#[derive(toy_rpc::macros::Topic)]` to define a struct as the pubsub message or by manually implementing the `toy_rpc::pubsub::Topic` trait on a type.
 
-A topic can be defined by implementing the `Topic` trait.
+```rust
+use toy_rpc::macros::Topic;
+use serde::{Serializer, Deserialize};
+
+#[derive(Topic, Serialize, Deserialize)]
+pub struct Count(pub u32);
+```
+
+Or manually implement the `Topic` trait
 
 ```rust,noplaypen
 #[derive(Serialize, Deserialize)]
 pub struct Count(pub u32);
 
-impl Topic for Count {
+impl toy_rpc::pubsub::Topic for Count {
     type Item = Count; // The Item type must implement `Serialize` and `Deserialize`
 
     // A String identifier for the topic. The user must ensure it is unique
