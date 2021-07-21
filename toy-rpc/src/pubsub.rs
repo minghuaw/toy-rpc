@@ -9,3 +9,12 @@ pub trait Topic {
     /// Name of the topic
     fn topic() -> String;
 }
+
+/// Type state of AckMode. No Ack will be sent back.
+pub struct AckModeNone { }
+
+/// Type state of AckMode. One Ack message will be sent back automatically upon recving the Publish message
+pub struct AckModeAuto { }
+
+/// Type state of AckMode. The user need to manually acknowledge delivery of a Publish message
+pub struct AckModeManual { }
