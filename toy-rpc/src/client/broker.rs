@@ -70,6 +70,8 @@ pub(crate) enum ClientBrokerItem {
         topic: String,
         item: Box<InboundBody>,
     },
+    /// (Manual) Ack for incoming Publish message
+    Ack,
     /// Stops the broker
     Stop,
 }
@@ -180,7 +182,24 @@ impl brw::Broker for ClientBroker {
                         format!("InternalError: Response channel not found for id: {}", id).into(),
                     ))
                 }
-            }
+            },
+            ClientBrokerItem::Cancel(id) => {
+                if let Some(tx) = self.pending.remove(&id) {
+                    if let Err(_) = tx.send(Err(Error::Canceled(Some(id)))) {
+                        return Running::Continue(Err(Error::Internal(
+                            format!(
+                                "Unable to send Error::Canceled(Some({})) over response channel",
+                                id
+                            )
+                            .into(),
+                        )));
+                    }
+                }
+                writer
+                    .send(ClientWriterItem::Cancel(id))
+                    .await
+                    .map_err(|err| err.into())
+            },
             ClientBrokerItem::Publish { topic, body } => {
                 let id = self.count.fetch_add(1, Ordering::Relaxed);
                 // TODO: QoS check? at least once?
@@ -194,7 +213,7 @@ impl brw::Broker for ClientBroker {
 
                 // });
                 res
-            }
+            },
             ClientBrokerItem::Subscribe { topic, item_sink } => {
                 let id = self.count.fetch_add(1, Ordering::Relaxed);
                 // NOTE: Only one local subscriber is allowed
@@ -206,14 +225,14 @@ impl brw::Broker for ClientBroker {
                     .map_err(|err| err.into());
                 // TODO: Spawn a timed task to check Ack?
                 res
-            }
+            },
             ClientBrokerItem::NewLocalSubscriber {
                 topic,
                 new_item_sink,
             } => {
                 self.subscriptions.insert(topic, new_item_sink);
                 Ok(())
-            }
+            },
             ClientBrokerItem::Unsubscribe { topic } => {
                 let id = self.count.fetch_add(1, Ordering::Relaxed);
                 // NOTE: the sender should be dropped on the Client side
@@ -223,7 +242,7 @@ impl brw::Broker for ClientBroker {
                     .map_err(|err| err.into());
                 // TODO: Spawn  timed task to check Ack?
                 res
-            }
+            },
             ClientBrokerItem::Subscription { id, topic, item } => {
                 log::info!(
                     "Received subscription message {{id: {}, topic: {}}}",
@@ -247,23 +266,9 @@ impl brw::Broker for ClientBroker {
                     Err(Error::Internal("Topic is not found locally".into()))
                 }
             }
-            ClientBrokerItem::Cancel(id) => {
-                if let Some(tx) = self.pending.remove(&id) {
-                    if let Err(_) = tx.send(Err(Error::Canceled(Some(id)))) {
-                        return Running::Continue(Err(Error::Internal(
-                            format!(
-                                "Unable to send Error::Canceled(Some({})) over response channel",
-                                id
-                            )
-                            .into(),
-                        )));
-                    }
-                }
-                writer
-                    .send(ClientWriterItem::Cancel(id))
-                    .await
-                    .map_err(|err| err.into())
-            }
+            ClientBrokerItem::Ack => {
+                unimplemented!()
+            },
             ClientBrokerItem::Stop => {
                 if let Err(err) = writer.send(ClientWriterItem::Stop).await {
                     log::error!("{:?}", err);

@@ -10,12 +10,33 @@ use std::pin::Pin;
 use std::task::{Context, Poll};
 
 use super::{broker::ClientBrokerItem, Client};
-use crate::pubsub::{AckModeAuto, AckModeNone};
+use crate::pubsub::{AckModeAuto, AckModeManual, AckModeNone};
 use crate::{
     error::Error,
     protocol::{InboundBody, OutboundBody},
     pubsub::Topic,
 };
+
+/// Delivery of a PubSub item that requires manual Ack
+pub struct Delivery<Item> {
+    ack_sender: Sender<ClientBrokerItem>,
+    item: Item
+}
+
+impl<Item> Delivery<Item> {
+    fn new(sender: Sender<ClientBrokerItem>, item: Item) -> Self {
+        Self {
+            ack_sender: sender,
+            item
+        }
+    }
+
+    /// Manually Ack the receiving of the PubSub item
+    pub async fn ack(self) -> Result<Item, Error> {
+        self.ack_sender.send_async(ClientBrokerItem::Ack).await?;
+        Ok(self.item)
+    }
+}
 
 /// Publisher of topic T on the client side
 #[pin_project]
@@ -66,19 +87,31 @@ impl<T: Topic> Sink<T::Item> for Publisher<T> {
 pub struct Subscriber<T: Topic, AckMode> {
     #[pin]
     inner: RecvStream<'static, Box<InboundBody>>,
+    broker: Sender<ClientBrokerItem>,
     marker: PhantomData<T>,
     ack_mode: PhantomData<AckMode>
 }
 
-impl<T: Topic, AckMode> From<Receiver<Box<InboundBody>>> for Subscriber<T, AckMode> {
-    fn from(rx: Receiver<Box<InboundBody>>) -> Self {
+impl<T: Topic, AckMode> Subscriber<T, AckMode> {
+    fn new(broker: Sender<ClientBrokerItem>, rx: Receiver<Box<InboundBody>>) -> Self {
         Self {
             inner: rx.into_stream(),
+            broker,
             marker: PhantomData,
-            ack_mode: PhantomData,
+            ack_mode: PhantomData
         }
     }
 }
+
+// impl<T: Topic, AckMode> From<Receiver<Box<InboundBody>>> for Subscriber<T, AckMode> {
+//     fn from(rx: Receiver<Box<InboundBody>>) -> Self {
+//         Self {
+//             inner: rx.into_stream(),
+//             marker: PhantomData,
+//             ack_mode: PhantomData,
+//         }
+//     }
+// }
 
 impl<T: Topic> Stream for Subscriber<T, AckModeNone> {
     type Item = Result<T::Item, Error>;
@@ -116,6 +149,26 @@ impl<T: Topic> Stream for Subscriber<T, AckModeAuto> {
     }
 }
 
+impl<T: Topic> Stream for Subscriber<T, AckModeManual> {
+    type Item = Result<Delivery<T::Item>, Error>;
+
+    fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        let this = self.project();
+        match this.inner.poll_next(cx) {
+            Poll::Pending => Poll::Pending,
+            Poll::Ready(val) => match val {
+                Some(mut body) => {
+                    let sender = this.broker.clone();
+                    let result = erased_serde::deserialize(&mut body).map_err(|err| err.into());
+                    let result = result.map(|item| Delivery::new(sender, item));
+                    Poll::Ready(Some(result))
+                }
+                None => Poll::Ready(None),
+            },
+        }
+    }
+}
+
 impl<AckMode> Client<AckMode> {
     /// Creates a new publisher on a topic.
     ///
@@ -124,12 +177,25 @@ impl<AckMode> Client<AckMode> {
         let tx = self.broker.clone();
         Publisher::from(tx)
     }
-}
 
-impl Client<AckModeNone> {
-    /// Creates a new subscriber on a topic
-    ///
-    pub fn subscriber<T: Topic + 'static>(&mut self, cap: usize) -> Result<Subscriber<T, AckModeNone>, Error> {
+    /// Unsubscribe from a topic
+    pub async fn unsubscribe<T: Topic + 'static>(&mut self) -> Result<(), Error> {
+        let topic = T::topic();
+        if let Some(type_id) = self.subscriptions.get(&topic) {
+            if type_id == &TypeId::of::<T>() {
+                self.subscriptions.remove(&topic);
+                self.broker
+                    .send_async(ClientBrokerItem::Unsubscribe { topic })
+                    .await?;
+                return Ok(());
+            }
+        }
+        Err(Error::Internal(
+            format!("Not registered to topic: {}", topic).into(),
+        ))
+    }
+
+    fn create_subscriber_rx<T: Topic + 'static>(&mut self, cap: usize) -> Result<Receiver<Box<InboundBody>>, Error> {
         let (tx, rx) = flume::bounded(cap);
         let topic = T::topic();
 
@@ -149,17 +215,12 @@ impl Client<AckModeNone> {
             return Err(err.into());
         };
 
-        let sub = Subscriber::from(rx);
-        Ok(sub)
+        // let sub = Subscriber::from(rx);
+        // Ok(sub)
+        Ok(rx)
     }
 
-    /// Replaces the local subscriber without sending any message to the server
-    ///
-    /// The previous subscriber will no longer receive any message.
-    pub fn replace_local_subscriber<T: Topic + 'static>(
-        &mut self,
-        cap: usize,
-    ) -> Result<Subscriber<T, AckModeNone>, Error> {
+    fn replace_local_subscriber_rx<T: Topic + 'static>(&mut self, cap: usize) -> Result<Receiver<Box<InboundBody>>, Error> {
         let topic = T::topic();
         match self.subscriptions.get(&topic) {
             Some(entry) => match &TypeId::of::<T>() == entry {
@@ -171,8 +232,8 @@ impl Client<AckModeNone> {
                     }) {
                         return Err(err.into());
                     }
-                    let sub = Subscriber::from(rx);
-                    Ok(sub)
+                    // let sub = Subscriber::from(rx);
+                    Ok(rx)
                 }
                 false => Err(Error::Internal("TypeId mismatch".into())),
             },
@@ -181,21 +242,64 @@ impl Client<AckModeNone> {
             )),
         }
     }
+}
 
-    /// Unsubscribe from a topic
-    pub async fn unsubscribe<T: Topic + 'static>(&mut self) -> Result<(), Error> {
-        let topic = T::topic();
-        if let Some(type_id) = self.subscriptions.get(&topic) {
-            if type_id == &TypeId::of::<T>() {
-                self.subscriptions.remove(&topic);
-                self.broker
-                    .send_async(ClientBrokerItem::Unsubscribe { topic })
-                    .await?;
-                return Ok(());
-            }
-        }
-        Err(Error::Internal(
-            format!("Not registered to topic: {}", topic).into(),
-        ))
+impl Client<AckModeNone> {
+    /// Creates a new subscriber on a topic
+    ///
+    pub fn subscriber<T: Topic + 'static>(&mut self, cap: usize) -> Result<Subscriber<T, AckModeNone>, Error> {
+        self.create_subscriber_rx::<T>(cap)
+            .map(|rx| Subscriber::<T, AckModeNone>::new(self.broker.clone(), rx))
+    }
+
+    /// Replaces the local subscriber without sending any message to the server
+    ///
+    /// The previous subscriber will no longer receive any message.
+    pub fn replace_local_subscriber<T: Topic + 'static>(
+        &mut self,
+        cap: usize,
+    ) -> Result<Subscriber<T, AckModeNone>, Error> {
+        self.replace_local_subscriber_rx::<T>(cap)
+            .map(|rx| Subscriber::<T, AckModeNone>::new(self.broker.clone(), rx))
+    }
+}
+
+impl Client<AckModeAuto> {
+    /// Creates a new subscriber on a topic
+    ///
+    pub fn subscriber<T: Topic + 'static>(&mut self, cap: usize) -> Result<Subscriber<T, AckModeAuto>, Error> {
+        self.create_subscriber_rx::<T>(cap)
+            .map(|rx| Subscriber::<T, AckModeAuto>::new(self.broker.clone(), rx))
+    }
+
+    /// Replaces the local subscriber without sending any message to the server
+    ///
+    /// The previous subscriber will no longer receive any message.
+    pub fn replace_local_subscriber<T: Topic + 'static>(
+        &mut self,
+        cap: usize,
+    ) -> Result<Subscriber<T, AckModeAuto>, Error> {
+        self.replace_local_subscriber_rx::<T>(cap)
+            .map(|rx| Subscriber::<T, AckModeAuto>::new(self.broker.clone(), rx))
+    }
+}
+
+impl Client<AckModeManual> {
+    /// Creates a new subscriber on a topic
+    ///
+    pub fn subscriber<T: Topic + 'static>(&mut self, cap: usize) -> Result<Subscriber<T, AckModeManual>, Error> {
+        self.create_subscriber_rx::<T>(cap)
+            .map(|rx| Subscriber::<T, AckModeManual>::new(self.broker.clone(), rx))
+    }
+
+    /// Replaces the local subscriber without sending any message to the server
+    ///
+    /// The previous subscriber will no longer receive any message.
+    pub fn replace_local_subscriber<T: Topic + 'static>(
+        &mut self,
+        cap: usize,
+    ) -> Result<Subscriber<T, AckModeManual>, Error> {
+        self.replace_local_subscriber_rx::<T>(cap)
+            .map(|rx| Subscriber::<T, AckModeManual>::new(self.broker.clone(), rx))
     }
 }
