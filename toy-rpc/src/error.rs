@@ -38,7 +38,7 @@ pub enum Error {
     /// Cancellation error when an RPC call is cancelled
     #[error("Request is canceled")]
     Canceled(Option<MessageId>),
-    
+
     /// Timeout error when an RPC request timesout
     ///
     /// The timeout is tracked independently on the client and the server.
@@ -235,9 +235,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_conversion_to_anyhow() {
-        
-    }
+    fn test_conversion_to_anyhow() {}
 
     #[cfg(feature = "anyhow")]
     fn return_std_result() -> Result<(), Error> {

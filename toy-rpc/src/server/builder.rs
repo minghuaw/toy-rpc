@@ -10,14 +10,18 @@ use std::{collections::HashMap, marker::PhantomData, sync::Arc};
 ))]
 use super::Server;
 
-use crate::{pubsub::AckModeNone, service::{build_service, AsyncServiceMap, HandleService, HandlerResultFut, Service}, util::RegisterService};
+use crate::{
+    pubsub::AckModeNone,
+    service::{build_service, AsyncServiceMap, HandleService, HandlerResultFut, Service},
+    util::RegisterService,
+};
 
 /// Server builder
 pub struct ServerBuilder<AckMode> {
     /// Registered services
     pub services: AsyncServiceMap,
-    
-    ack_mode: PhantomData<AckMode>
+
+    ack_mode: PhantomData<AckMode>,
 }
 
 impl ServerBuilder<AckModeNone> {
@@ -25,7 +29,7 @@ impl ServerBuilder<AckModeNone> {
     pub fn new() -> Self {
         ServerBuilder {
             services: HashMap::new(),
-            ack_mode: PhantomData
+            ack_mode: PhantomData,
         }
     }
 

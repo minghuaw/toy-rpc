@@ -85,10 +85,7 @@ use ::tokio::task::{self};
 ))]
 pub(crate) struct ClientBroker {
     pub count: Arc<AtomicMessageId>,
-    pub pending: HashMap<
-        MessageId,
-        oneshot::Sender<Result<ResponseResult, Error>>,
-    >,
+    pub pending: HashMap<MessageId, oneshot::Sender<Result<ResponseResult, Error>>>,
     pub next_timeout: Option<Duration>,
     pub subscriptions: HashMap<String, Sender<Box<InboundBody>>>,
 }
@@ -160,10 +157,10 @@ impl brw::Broker for ClientBroker {
                             let response_result = Ok(res);
                             resp_tx.send(response_result)
                                 .unwrap_or_else(|_| log::trace!("InternalError: Unable to send RPC response over response channel, response receiver is dropped"));
-                        },
+                        }
                         Err(_) => {
                             // RPC request is already canceled, simply return
-                            return
+                            return;
                         }
                     };
                 });
@@ -180,7 +177,7 @@ impl brw::Broker for ClientBroker {
                     })
                 } else {
                     Err(Error::Internal(
-                        format!("InternalError: Response channel not found for id: {}", id).into()
+                        format!("InternalError: Response channel not found for id: {}", id).into(),
                     ))
                 }
             }
@@ -253,11 +250,13 @@ impl brw::Broker for ClientBroker {
             ClientBrokerItem::Cancel(id) => {
                 if let Some(tx) = self.pending.remove(&id) {
                     if let Err(_) = tx.send(Err(Error::Canceled(Some(id)))) {
-                        return Running::Continue(
-                            Err(Error::Internal(
-                                format!("Unable to send Error::Canceled(Some({})) over response channel", id).into()
-                            ))
-                        )
+                        return Running::Continue(Err(Error::Internal(
+                            format!(
+                                "Unable to send Error::Canceled(Some({})) over response channel",
+                                id
+                            )
+                            .into(),
+                        )));
                     }
                 }
                 writer

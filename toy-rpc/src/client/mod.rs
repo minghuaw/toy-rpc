@@ -8,10 +8,10 @@ use std::{any::TypeId, collections::HashMap, marker::PhantomData, sync::Arc, tim
 use crate::{message::AtomicMessageId, protocol::InboundBody, pubsub::AckModeNone};
 
 pub(crate) mod broker;
+pub mod builder;
 pub mod pubsub;
 mod reader;
 mod writer;
-pub mod builder;
 
 use broker::ClientBrokerItem;
 
@@ -33,22 +33,22 @@ cfg_if! {
     }
 }
 
-cfg_if!{
+cfg_if! {
     if #[cfg(all(feature = "tokio_runtime", not(feature = "async_std_runtime")))] {
         #[cfg(feature = "tls")]
         use tokio_rustls::TlsConnector;
-        #[cfg(feature = "tls")]        
+        #[cfg(feature = "tls")]
         use async_tungstenite::tokio::client_async;
-        
+
         use tokio::net::{TcpStream, ToSocketAddrs};
         use async_tungstenite::tokio::connect_async;
         use ::tokio::io::{AsyncRead, AsyncWrite};
     } else if #[cfg(all(feature = "async_std_runtime", not(feature = "tokio_runtime")))] {
         #[cfg(feature = "tls")]
         use async_rustls::TlsConnector;
-        #[cfg(feature = "tls")]        
+        #[cfg(feature = "tls")]
         use async_tungstenite::client_async;
-        
+
         use async_std::net::{TcpStream, ToSocketAddrs};
         use async_tungstenite::async_std::connect_async;
         use futures::{AsyncRead, AsyncWrite};
@@ -133,7 +133,7 @@ cfg_if! {
                 let codec = DefaultCodec::with_websocket(ws_stream);
                 Ok(Self::with_codec(codec))
             }
-        
+
             /// Creates an RPC `Client` over a stream that implements `tokio::io::AsyncRead`
             /// and `tokio::io::AsyncWrite`
             ///
@@ -329,7 +329,7 @@ impl<AckMode> Drop for Client<AckMode> {
 }
 
 impl<AckMode> Client<AckMode> {
-    /// Creates a `ClientBuilder`. 
+    /// Creates a `ClientBuilder`.
     pub fn builder() -> builder::ClientBuilder<AckModeNone> {
         builder::ClientBuilder::default()
     }

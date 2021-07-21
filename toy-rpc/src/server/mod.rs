@@ -3,7 +3,10 @@
 //!
 
 use cfg_if::cfg_if;
-use std::{marker::PhantomData, sync::{atomic::AtomicU64, Arc}};
+use std::{
+    marker::PhantomData,
+    sync::{atomic::AtomicU64, Arc},
+};
 
 use crate::{pubsub::AckModeNone, service::AsyncServiceMap};
 
@@ -51,7 +54,7 @@ pub struct Server<AckMode> {
     ))]
     pubsub_tx: Sender<PubSubItem>,
 
-    ack_mode: PhantomData<AckMode>
+    ack_mode: PhantomData<AckMode>,
 }
 
 #[cfg(any(
@@ -110,7 +113,7 @@ cfg_if! {
     }
 }
 
-cfg_if!{
+cfg_if! {
     if #[cfg(all(feature = "tokio_runtime", not(feature = "async_std_runtime"), not(feature = "http_actix_web")))] {
         #[cfg(feature = "tls")]
         use tokio_rustls::{TlsAcceptor};
@@ -156,10 +159,7 @@ cfg_if! {
         use futures::{StreamExt};
         use std::sync::atomic::Ordering;
 
-        use crate::error::Error;
-        use crate::transport::ws::WebSocketConn;
-        use crate::codec::split::SplittableCodec;
-        use crate::codec::DefaultCodec;
+        use crate::{error::Error, transport::ws::WebSocketConn, codec::{split::SplittableCodec, DefaultCodec}};
 
         pub(crate) async fn start_broker_reader_writer(
             codec: impl crate::codec::split::SplittableCodec + 'static,
