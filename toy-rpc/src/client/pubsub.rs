@@ -103,16 +103,6 @@ impl<T: Topic, AckMode> Subscriber<T, AckMode> {
     }
 }
 
-// impl<T: Topic, AckMode> From<Receiver<Box<InboundBody>>> for Subscriber<T, AckMode> {
-//     fn from(rx: Receiver<Box<InboundBody>>) -> Self {
-//         Self {
-//             inner: rx.into_stream(),
-//             marker: PhantomData,
-//             ack_mode: PhantomData,
-//         }
-//     }
-// }
-
 impl<T: Topic> Stream for Subscriber<T, AckModeNone> {
     type Item = Result<T::Item, Error>;
 
