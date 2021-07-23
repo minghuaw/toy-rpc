@@ -169,6 +169,34 @@
 <p>Support for TLS is implemented with <code>rustls</code> and its <code>async</code> derivatives <code>async-rustls</code> and <code>tokio-rustls</code>. </p>
 <p>An example using a self-signed certificate can be found in the <a href="https://github.com/minghuaw/toy-rpc/tree/main/examples/tokio_tls">GitHub repo</a>.</p>
 <p>More detailed documentations are underway.</p>
+<h2 id="a-hrefhttpsitnextiopractical-guide-to-securing-grpc-connections-with-go-and-tls-part-1-f63058e9d6d1how-to-generate-self-signed-ca-and-certsa-an-example"><a class="header" href="#a-hrefhttpsitnextiopractical-guide-to-securing-grpc-connections-with-go-and-tls-part-1-f63058e9d6d1how-to-generate-self-signed-ca-and-certsa-an-example"><a href="https://itnext.io/practical-guide-to-securing-grpc-connections-with-go-and-tls-part-1-f63058e9d6d1">How to generate self-signed CA and certs</a> (an example)</a></h2>
+<ol>
+<li>Create Root signing key: <code>openssl genrsa -out ca.key 4096</code></li>
+<li>Generate self-signed Root certificate: <code>openssl req -new -x509 -key ca.key -sha256 -subj &quot;/C=CA/ST=BC/L=Vancouver/O=Example, Inc.&quot; -days 365 -out ca.cert</code></li>
+<li>Create a key for server: <code>openssl genrsa -out service.key 4096</code></li>
+<li>Create a signing request (CSR): <code>openssl req -new -key service.key -out service.csr -config certificate.conf</code> (see section below for details of <code>certificate.conf</code>)</li>
+<li>Generate a certificate for the server: <code>openssl x509 -req -in service.csr -CA ca.cert -CAkey ca.key -CAcreateserial -out service.pem -days 365 -sha256 -extfile certificate.conf -extensions req_ext</code></li>
+</ol>
+<p><code>certificate.conf</code></p>
+<pre><code class="language-bash">[req]
+default_bits = 4096
+prompt = no
+default_md = sha256
+req_extensions = req_ext
+distinguished_name = dn
+[dn]
+C = CA
+ST = BC
+L = Vancouver
+O = Example, Inc.
+CN = localhost
+[req_ext]
+subjectAltName = @alt_names
+[alt_names]
+DNS.1 = localhost
+IP.1 = ::1
+IP.2 = 127.0.0.1
+</code></pre>
 
                     </main>
 
