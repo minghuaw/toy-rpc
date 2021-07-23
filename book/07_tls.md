@@ -5,6 +5,7 @@ Support for TLS is implemented with `rustls` and its `async` derivatives `async-
 An example using a self-signed certificate can be found in the [GitHub repo](https://github.com/minghuaw/toy-rpc/tree/main/examples/tokio_tls).
 
 More detailed documentations are underway.
+
 ## [How to generate self-signed CA and certs](https://itnext.io/practical-guide-to-securing-grpc-connections-with-go-and-tls-part-1-f63058e9d6d1) (an example)
 
 1. Create Root signing key: `openssl genrsa -out ca.key 4096`
@@ -35,4 +36,3 @@ DNS.1 = localhost
 IP.1 = ::1
 IP.2 = 127.0.0.1
 ```
-
