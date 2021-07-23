@@ -18,7 +18,6 @@ async fn main() -> Result<()> {
         .add_pem_file(&mut pem)
         .map_err(|_| io::Error::new(io::ErrorKind::InvalidInput, "invalid cert"))?;
 
-    // let client = Client::dial(ADDR).await?;
     let client = Client::dial_with_tls_config(ADDR, "localhost", config).await?;
 
     let result = client.echo().echo_i32(3).await?;
