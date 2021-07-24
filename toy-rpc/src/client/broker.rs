@@ -1,7 +1,7 @@
 use cfg_if::cfg_if;
 use flume::Sender;
 use futures::channel::oneshot;
-use std::time::Duration;
+use std::{marker::PhantomData, time::Duration};
 
 cfg_if! {
     if #[cfg(any(
@@ -18,11 +18,7 @@ cfg_if! {
     }
 }
 
-use crate::{
-    message::MessageId,
-    protocol::{InboundBody, OutboundBody},
-    Error,
-};
+use crate::{Error, message::MessageId, protocol::{InboundBody, OutboundBody}, pubsub::{AckModeAuto, AckModeManual, AckModeNone}};
 
 use super::ResponseResult;
 
@@ -85,18 +81,20 @@ use ::tokio::task::{self};
     all(feature = "tokio_runtime", not(feature = "async_std_runtime")),
     all(feature = "async_std_runtime", not(feature = "tokio_runtime"))
 ))]
-pub(crate) struct ClientBroker {
+pub(crate) struct ClientBroker<AckMode> {
     pub count: Arc<AtomicMessageId>,
     pub pending: HashMap<MessageId, oneshot::Sender<Result<ResponseResult, Error>>>,
     pub next_timeout: Option<Duration>,
     pub subscriptions: HashMap<String, Sender<Box<InboundBody>>>,
+    
+    pub ack_mode: PhantomData<AckMode>
 }
 
 #[cfg(any(
     all(feature = "tokio_runtime", not(feature = "async_std_runtime")),
     all(feature = "async_std_runtime", not(feature = "tokio_runtime"))
 ))]
-impl ClientBroker {
+impl<AckMode> ClientBroker<AckMode> {
     async fn handle_request<'w, W>(
         &'w mut self, 
         writer: &'w mut W,
@@ -242,7 +240,13 @@ impl ClientBroker {
         // TODO: Spawn  timed task to check Ack?
         res
     }
+}
 
+#[cfg(any(
+    all(feature = "tokio_runtime", not(feature = "async_std_runtime")),
+    all(feature = "async_std_runtime", not(feature = "tokio_runtime"))
+))]
+impl ClientBroker<AckModeNone> {
     fn handle_subscription(&mut self, _: MessageId, topic: String, item: Box<InboundBody>) -> Result<(), Error> {
         if let Some(sub) = self.subscriptions.get(&topic) {
             match sub.try_send(item) {
@@ -271,67 +275,99 @@ impl ClientBroker {
     all(feature = "tokio_runtime", not(feature = "async_std_runtime")),
     all(feature = "async_std_runtime", not(feature = "tokio_runtime"))
 ))]
-#[async_trait::async_trait]
-impl brw::Broker for ClientBroker {
-    type Item = ClientBrokerItem;
-    type WriterItem = ClientWriterItem;
-    type Ok = ();
-    type Error = Error;
+impl ClientBroker<AckModeAuto> {
+    fn handle_subscription(&mut self, _: MessageId, topic: String, item: Box<InboundBody>) -> Result<(), Error> {
+        unimplemented!()
+    }
 
-    async fn op<W>(
-        &mut self,
-        _: &Arc<Context<Self::Item>>,
-        item: Self::Item,
-        mut writer: W,
-    ) -> Running<Result<Self::Ok, Self::Error>>
-    where
-        W: Sink<Self::WriterItem, Error = flume::SendError<Self::WriterItem>> + Send + Unpin,
-    {
-        let res = match item {
-            ClientBrokerItem::Request {
-                id,
-                service_method,
-                duration,
-                body,
-                resp_tx,
-            } => {
-                self.handle_request(&mut writer, id, service_method, duration, body, resp_tx).await
-            }
-            ClientBrokerItem::Response { id, result } => {
-                self.handle_response(id, result).await
-            },
-            ClientBrokerItem::Cancel(id) => {
-                self.handle_cancel(&mut writer, id).await
-            },
-            ClientBrokerItem::Publish { topic, body } => {
-                self.handle_publish(&mut writer, topic, body).await
-            },
-            ClientBrokerItem::Subscribe { topic, item_sink } => {
-                self.handle_subscribe(&mut writer, topic, item_sink).await
-            },
-            ClientBrokerItem::NewLocalSubscriber {
-                topic,
-                new_item_sink,
-            } => {
-                self.handle_new_local_subscriber(topic, new_item_sink)
-            },
-            ClientBrokerItem::Unsubscribe { topic } => {
-                self.handle_unsubscribe(&mut writer, topic).await
-            },
-            ClientBrokerItem::Subscription { id, topic, item } => {
-                self.handle_subscription(id, topic, item)
-            }
-            ClientBrokerItem::Ack => {
-                self.handle_ack().await
-            },
-            ClientBrokerItem::Stop => {
-                if let Err(err) = writer.send(ClientWriterItem::Stop).await {
-                    log::error!("{:?}", err);
-                }
-                return Running::Stop;
-            }
-        };
-
-        Running::Continue(res)
+    async fn handle_ack(&mut self) -> Result<(), Error> {
+        unimplemented!()
     }
 }
+
+#[cfg(any(
+    all(feature = "tokio_runtime", not(feature = "async_std_runtime")),
+    all(feature = "async_std_runtime", not(feature = "tokio_runtime"))
+))]
+impl ClientBroker<AckModeManual> {
+    fn handle_subscription(&mut self, _: MessageId, topic: String, item: Box<InboundBody>) -> Result<(), Error> {
+        unimplemented!()
+    }
+
+    async fn handle_ack(&mut self) -> Result<(), Error> {
+        unimplemented!()
+    }
+}
+
+macro_rules! impl_broker_for_ack_modes {
+    ($($ack_mode:ty),*) => {
+        $(
+            #[async_trait::async_trait]
+            impl brw::Broker for ClientBroker<$ack_mode> {
+                type Item = ClientBrokerItem;
+                type WriterItem = ClientWriterItem;
+                type Ok = ();
+                type Error = Error;
+
+                async fn op<W>(
+                    &mut self,
+                    _: &Arc<Context<Self::Item>>,
+                    item: Self::Item,
+                    mut writer: W,
+                ) -> Running<Result<Self::Ok, Self::Error>>
+                where
+                    W: Sink<Self::WriterItem, Error = flume::SendError<Self::WriterItem>> + Send + Unpin,
+                {
+                    let res = match item {
+                        ClientBrokerItem::Request {
+                            id,
+                            service_method,
+                            duration,
+                            body,
+                            resp_tx,
+                        } => {
+                            self.handle_request(&mut writer, id, service_method, duration, body, resp_tx).await
+                        }
+                        ClientBrokerItem::Response { id, result } => {
+                            self.handle_response(id, result).await
+                        },
+                        ClientBrokerItem::Cancel(id) => {
+                            self.handle_cancel(&mut writer, id).await
+                        },
+                        ClientBrokerItem::Publish { topic, body } => {
+                            self.handle_publish(&mut writer, topic, body).await
+                        },
+                        ClientBrokerItem::Subscribe { topic, item_sink } => {
+                            self.handle_subscribe(&mut writer, topic, item_sink).await
+                        },
+                        ClientBrokerItem::NewLocalSubscriber {
+                            topic,
+                            new_item_sink,
+                        } => {
+                            self.handle_new_local_subscriber(topic, new_item_sink)
+                        },
+                        ClientBrokerItem::Unsubscribe { topic } => {
+                            self.handle_unsubscribe(&mut writer, topic).await
+                        },
+                        ClientBrokerItem::Subscription { id, topic, item } => {
+                            self.handle_subscription(id, topic, item)
+                        }
+                        ClientBrokerItem::Ack => {
+                            self.handle_ack().await
+                        },
+                        ClientBrokerItem::Stop => {
+                            if let Err(err) = writer.send(ClientWriterItem::Stop).await {
+                                log::error!("{:?}", err);
+                            }
+                            return Running::Stop;
+                        }
+                    };
+
+                    Running::Continue(res)
+                }
+            }
+        )*
+    };
+}
+
+impl_broker_for_ack_modes!(AckModeNone, AckModeAuto, AckModeManual);

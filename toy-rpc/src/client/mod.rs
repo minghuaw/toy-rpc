@@ -27,8 +27,6 @@ cfg_if! {
         use futures::channel::oneshot;
 
         use crate::{Error, protocol::{OutboundBody}};
-        use crate::transport::ws::WebSocketConn;
-        use crate::codec::DefaultCodec;
 
         const DEFAULT_TIMEOUT_SECONDS: u64 = 10;
     }
@@ -36,26 +34,10 @@ cfg_if! {
 
 cfg_if! {
     if #[cfg(all(feature = "tokio_runtime", not(feature = "async_std_runtime")))] {
-        #[cfg(feature = "tls")]
-        use tokio_rustls::TlsConnector;
-        #[cfg(feature = "tls")]
-        use async_tungstenite::tokio::client_async;
-        #[cfg(feature = "tls")]
-        use tokio::net::TcpStream;
-
         use tokio::net::ToSocketAddrs;
-        use async_tungstenite::tokio::connect_async;
         use ::tokio::io::{AsyncRead, AsyncWrite};
     } else if #[cfg(all(feature = "async_std_runtime", not(feature = "tokio_runtime")))] {
-        #[cfg(feature = "tls")]
-        use async_rustls::TlsConnector;
-        #[cfg(feature = "tls")]
-        use async_tungstenite::client_async;
-        #[cfg(feature = "tls")]
-        use async_std::net::TcpStream;
-
         use async_std::net::ToSocketAddrs;
-        use async_tungstenite::async_std::connect_async;
         use futures::{AsyncRead, AsyncWrite};
     }
 }
@@ -81,110 +63,6 @@ cfg_if! {
     ))] {
         #[cfg(feature = "tls")]
         use rustls::{ClientConfig};
-
-        #[cfg(all(
-            feature = "tls",
-            any(
-                all(feature = "tokio_runtime", not(feature = "async_std_runtime")),
-                all(feature = "async_std_runtime", not(feature = "tokio_runtime"))
-            )
-        ))]
-        async fn tcp_client_with_tls_config<AckMode>(
-            addr: impl ToSocketAddrs,
-            domain: &str,
-            config: rustls::ClientConfig
-        ) -> Result<Client<AckMode>, Error> {
-            let stream = TcpStream::connect(addr).await?;
-            let connector = TlsConnector::from(std::sync::Arc::new(config));
-            let domain = webpki::DNSNameRef::try_from_ascii_str(domain)?;
-            let tls_stream = connector.connect(domain, stream).await?;
-
-            Ok(Client::with_stream(tls_stream))
-        }
-
-        #[cfg(all(
-            feature = "tls",
-            any(
-                all(feature = "tokio_runtime", not(feature = "async_std_runtime")),
-                all(feature = "async_std_runtime", not(feature = "tokio_runtime"))
-            )
-        ))]
-        async fn websocket_client_with_tls_config<AckMode>(
-            url: url::Url,
-            domain: &str,
-            config: rustls::ClientConfig,
-        ) -> Result<Client<AckMode>, Error> {
-            let host = url.host_str()
-                .ok_or(Error::Internal("Invalid host address".into()))?;
-            let port = url.port_or_known_default()
-                .ok_or(Error::Internal("Invalid port".into()))?;
-            let addr = (host, port);
-            let stream = TcpStream::connect(addr).await?;
-            let connector = TlsConnector::from(std::sync::Arc::new(config));
-            let domain = webpki::DNSNameRef::try_from_ascii_str(domain)?;
-            let tls_stream = connector.connect(domain, stream).await?;
-            let (ws_stream, _) = client_async(url, tls_stream).await?;
-            let ws_stream = WebSocketConn::new(ws_stream);
-            let codec = DefaultCodec::with_websocket(ws_stream);
-            Ok(Client::with_codec(codec))
-        }
-
-        impl<AckMode> Client<AckMode> {
-            pub(crate) async fn dial_websocket_url(url: url::Url) -> Result<Self, Error> {
-                let (ws_stream, _) = connect_async(&url).await?;
-                let ws_stream = WebSocketConn::new(ws_stream);
-                let codec = DefaultCodec::with_websocket(ws_stream);
-                Ok(Self::with_codec(codec))
-            }
-
-            /// Creates an RPC `Client` over a stream that implements `tokio::io::AsyncRead`
-            /// and `tokio::io::AsyncWrite`
-            ///
-            /// This is enabled
-            /// if and only if **exactly one** of the the following feature flag is turned on
-            /// - `serde_bincode`
-            /// - `serde_json`
-            /// - `serde_cbor`
-            /// - `serde_rmp`
-            ///
-            /// # Example
-            /// ```
-            /// let stream = TcpStream::connect("127.0.0.1:8080").await.unwrap();
-            /// let client = Client::with_stream(stream);
-            /// ```
-            #[cfg_attr(feature = "docs", doc(cfg(feature = "tokio_runtime")))]
-            pub fn with_stream<T>(stream: T) -> Self
-            where
-                T: AsyncRead + AsyncWrite + Send + Unpin + 'static,
-            {
-                let builder = ClientBuilder::<AckMode> {ack_mode: PhantomData};
-                builder.with_stream(stream)
-            }
-
-            /// Creates an RPC 'Client` over socket with a specified codec
-            ///
-            /// Example
-            ///
-            /// ```rust
-            /// let addr = "127.0.0.1:8080";
-            /// let stream = TcpStream::connect(addr).await.unwrap();
-            /// let codec = Codec::new(stream);
-            /// let client = Client::with_codec(codec);
-            /// ```
-            // #[cfg(any(
-            //     all(feature = "async_std_runtime", not(feature = "tokio_runtime")),
-            //     all(feature = "tokio_runtime", not(feature = "async_std_runtime"))
-            // ))]
-            #[cfg_attr(feature = "docs", doc(cfg(all(feature = "async_std_runtime", not(feature = "tokio_runtime")))))]
-            #[cfg_attr(feature = "docs", doc(cfg(all(feature = "tokio_runtime", not(feature = "async_std_runtime")))))]
-            pub fn with_codec<C>(codec: C) -> Self
-            where
-                C: SplittableCodec + Send + 'static,
-            {
-                let builder = ClientBuilder::<AckMode> {ack_mode: PhantomData};
-                builder.with_codec(codec)
-            }
-        }
 
         /// The following impl block is controlled by feature flag. It is enabled
         /// if and only if **exactly one** of the the following feature flag is turned on
@@ -226,7 +104,6 @@ cfg_if! {
                 domain: &str,
                 config: ClientConfig
             ) -> Result<Self, Error> {
-                // tcp_client_with_tls_config(addr, domain, config).await
                 ClientBuilder::default().dial_with_tls_config(addr, domain, config).await
             }
 
@@ -308,6 +185,54 @@ cfg_if! {
                 config: ClientConfig,
             ) -> Result<Self, Error> {
                 ClientBuilder::default().dial_websocket_with_tls_config(addr, domain, config).await
+            }
+
+            /// Creates an RPC `Client` over a stream that implements `tokio::io::AsyncRead`
+            /// and `tokio::io::AsyncWrite`
+            ///
+            /// This is enabled
+            /// if and only if **exactly one** of the the following feature flag is turned on
+            /// - `serde_bincode`
+            /// - `serde_json`
+            /// - `serde_cbor`
+            /// - `serde_rmp`
+            ///
+            /// # Example
+            /// ```
+            /// let stream = TcpStream::connect("127.0.0.1:8080").await.unwrap();
+            /// let client = Client::with_stream(stream);
+            /// ```
+            #[cfg_attr(feature = "docs", doc(cfg(feature = "tokio_runtime")))]
+            pub fn with_stream<T>(stream: T) -> Self
+            where
+                T: AsyncRead + AsyncWrite + Send + Unpin + 'static,
+            {
+                let builder = ClientBuilder::<AckModeNone> {ack_mode: PhantomData};
+                builder.with_stream(stream)
+            }
+
+            /// Creates an RPC 'Client` over socket with a specified codec
+            ///
+            /// Example
+            ///
+            /// ```rust
+            /// let addr = "127.0.0.1:8080";
+            /// let stream = TcpStream::connect(addr).await.unwrap();
+            /// let codec = Codec::new(stream);
+            /// let client = Client::with_codec(codec);
+            /// ```
+            // #[cfg(any(
+            //     all(feature = "async_std_runtime", not(feature = "tokio_runtime")),
+            //     all(feature = "tokio_runtime", not(feature = "async_std_runtime"))
+            // ))]
+            #[cfg_attr(feature = "docs", doc(cfg(all(feature = "async_std_runtime", not(feature = "tokio_runtime")))))]
+            #[cfg_attr(feature = "docs", doc(cfg(all(feature = "tokio_runtime", not(feature = "async_std_runtime")))))]
+            pub fn with_codec<C>(codec: C) -> Self
+            where
+                C: SplittableCodec + Send + 'static,
+            {
+                let builder = ClientBuilder::<AckModeNone> {ack_mode: PhantomData};
+                builder.with_codec(codec)
             }
         }
     }
