@@ -4,6 +4,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use crate::protocol::InboundBody;
+use crate::pubsub::SeqId;
 use crate::service::{ArcAsyncServiceCall, HandlerResult};
 
 use crate::{error::Error, message::MessageId};
@@ -86,7 +87,7 @@ pub(crate) enum ServerBrokerItem {
     },
     // A publication message to the client subscriber
     Publication {
-        id: MessageId,
+        seq_id: SeqId,
         topic: String,
         content: Arc<Vec<u8>>,
     },
@@ -144,6 +145,7 @@ impl Broker for ServerBroker {
                 // Publish is the PubSub message from client to server
                 let content = Arc::new(content);
                 let msg = PubSubItem::Publish {
+                    client_id: self.client_id,
                     msg_id: id,
                     topic,
                     content,
@@ -183,9 +185,9 @@ impl Broker for ServerBroker {
                         .map_err(|err| err.into()),
                 )
             }
-            ServerBrokerItem::Publication { id, topic, content } => {
+            ServerBrokerItem::Publication { seq_id, topic, content } => {
                 // Publication is the PubSub message from server to client
-                let msg = ServerWriterItem::Publication { id, topic, content };
+                let msg = ServerWriterItem::Publication { seq_id, topic, content };
                 Running::Continue(writer.send(msg).await.map_err(|err| err.into()))
             }
             ServerBrokerItem::Stop => {

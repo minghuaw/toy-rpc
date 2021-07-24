@@ -2,12 +2,7 @@ use std::sync::Arc;
 
 use brw::{Running, Writer};
 
-use crate::{
-    codec::CodecWrite,
-    error::Error,
-    message::{ErrorMessage, MessageId},
-    service::HandlerResult,
-};
+use crate::{codec::CodecWrite, error::Error, message::{ErrorMessage, MessageId}, pubsub::SeqId, service::HandlerResult};
 
 use crate::protocol::Header;
 
@@ -20,7 +15,7 @@ pub(crate) enum ServerWriterItem {
     },
     /// Publish subscription item to client
     Publication {
-        id: MessageId,
+        seq_id: SeqId,
         topic: String,
         content: Arc<Vec<u8>>,
     },
@@ -75,7 +70,8 @@ impl<W: CodecWrite> Writer for ServerWriter<W> {
     async fn op(&mut self, item: Self::Item) -> Running<Result<Self::Ok, Self::Error>> {
         let res = match item {
             ServerWriterItem::Response { id, result } => self.write_response(id, result).await,
-            ServerWriterItem::Publication { id, topic, content } => {
+            ServerWriterItem::Publication { seq_id, topic, content } => {
+                let id = seq_id.0;
                 self.write_publication(id, topic, &content).await
             }
         };

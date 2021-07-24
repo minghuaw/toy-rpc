@@ -1,6 +1,8 @@
 //! PubSub support
 use serde::{de::DeserializeOwned, Serialize};
 
+use crate::message::MessageId;
+
 /// Trait for PubSub Topic
 pub trait Topic {
     /// Message type of the topic
@@ -8,6 +10,17 @@ pub trait Topic {
 
     /// Name of the topic
     fn topic() -> String;
+}
+
+/// PubSub Sequence ID that is tracked by the PubSub server
+#[derive(Debug, Clone)]
+pub struct SeqId(pub MessageId);
+
+impl SeqId {
+    /// Creates a new sequence ID
+    pub fn new(val: MessageId) -> Self {
+        Self(val)
+    }
 }
 
 /// Type state of AckMode. No Ack will be sent back.

@@ -17,7 +17,7 @@ use actix::Recipient;
 use crate::codec::{Marshal, Reserved, Unmarshal};
 use crate::error::Error;
 use crate::message::{AtomicMessageId, MessageId};
-use crate::pubsub::Topic;
+use crate::pubsub::{SeqId, Topic};
 
 #[cfg(not(feature = "http_actix_web"))]
 use super::RESERVED_CLIENT_ID;
@@ -31,7 +31,9 @@ pub(crate) enum PubSubResponder {
 }
 
 pub(crate) enum PubSubItem {
+    /// A new publish request from publisher
     Publish {
+        client_id: ClientId,
         msg_id: MessageId,
         topic: String,
         content: Arc<Vec<u8>>,
@@ -49,6 +51,7 @@ pub(crate) enum PubSubItem {
 }
 
 pub(crate) struct PubSubBroker {
+    seq_counter: AtomicMessageId,
     listener: Receiver<PubSubItem>,
     subscriptions: HashMap<String, BTreeMap<ClientId, PubSubResponder>>,
 }
@@ -56,6 +59,7 @@ pub(crate) struct PubSubBroker {
 impl PubSubBroker {
     pub fn new(listener: Receiver<PubSubItem>) -> Self {
         Self {
+            seq_counter: AtomicMessageId::new(0),
             listener,
             subscriptions: HashMap::new(),
         }
@@ -83,14 +87,19 @@ impl PubSubBroker {
         while let Ok(item) = self.listener.recv_async().await {
             match item {
                 PubSubItem::Publish {
+                    client_id,
                     msg_id,
                     topic,
                     content,
                 } => {
+                    let seq_id = self.seq_counter.fetch_add(1, Ordering::Relaxed);
+                    let seq_id = SeqId::new(seq_id);
+                    log::info!("{:?} assigned to Publish message {} from client {}", &seq_id, &msg_id, &client_id);
+
                     if let Some(entry) = self.subscriptions.get_mut(&topic) {
                         entry.retain(|_, sender| {
                             let msg = ServerBrokerItem::Publication{
-                                id: msg_id,
+                                seq_id: seq_id.clone(),
                                 topic: topic.clone(),
                                 content: content.clone()
                             };
@@ -190,6 +199,7 @@ impl<T: Topic, C: Marshal> Sink<T::Item> for Publisher<T, C> {
         let body = C::marshal(&item)?;
         let content = Arc::new(body);
         let item = PubSubItem::Publish {
+            client_id: RESERVED_CLIENT_ID,
             msg_id,
             topic,
             content,
@@ -245,7 +255,7 @@ impl<T: Topic, C: Unmarshal> Stream for Subscriber<T, C> {
             Poll::Ready(opt) => match opt {
                 Some(item) => match item {
                     ServerBrokerItem::Publication {
-                        id: _,
+                        seq_id: _,
                         topic,
                         content,
                     } => {
