@@ -2,12 +2,7 @@ use brw::{Reader, Running};
 use futures::sink::{Sink, SinkExt};
 use std::sync::Arc;
 
-use crate::{
-    codec::CodecRead,
-    error::Error,
-    message::{MessageId, CANCELLATION_TOKEN, CANCELLATION_TOKEN_DELIM},
-    service::{ArcAsyncServiceCall, AsyncServiceMap},
-};
+use crate::{codec::CodecRead, error::Error, message::{MessageId, CANCELLATION_TOKEN, CANCELLATION_TOKEN_DELIM}, pubsub::SeqId, service::{ArcAsyncServiceCall, AsyncServiceMap}};
 
 use super::broker::ServerBrokerItem;
 use crate::protocol::{Header, InboundBody};
@@ -190,10 +185,16 @@ impl<T: CodecRead> Reader for ServerReader<T> {
                             .map_err(|err| err.into()),
                     )
                 }
-                Header::Ack(_) => Running::Continue(Err(Error::Internal(
+                Header::Ack(id) => {
                     // There is no body frame for unsubscribe message
-                    "Unexpected Header type (Header::Ack)".into(),
-                ))),
+                    let seq_id = SeqId::new(id);
+                    Running::Continue(
+                        broker
+                            .send(ServerBrokerItem::InboundAck{seq_id})
+                            .await
+                            .map_err(|err| err.into())
+                    )
+                },
                 Header::Produce {
                     id: _,
                     topic: _,

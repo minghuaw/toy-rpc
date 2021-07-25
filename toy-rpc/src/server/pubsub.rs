@@ -46,6 +46,9 @@ pub(crate) enum PubSubItem {
         client_id: ClientId,
         topic: String,
     },
+    Ack {
+        seq_id: SeqId
+    },
     Stop,
 }
 
@@ -148,7 +151,11 @@ impl PubSubBroker {
                         }
                         None => {}
                     }
-                }
+                },
+                PubSubItem::Ack{seq_id} => {
+                    log::debug!("Received Ack for seq_id: {:?}", &seq_id);
+                    // unimplemented!()
+                },
                 PubSubItem::Stop => return,
             }
         }

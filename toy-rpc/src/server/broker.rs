@@ -92,6 +92,10 @@ pub(crate) enum ServerBrokerItem {
         topic: String,
         content: Arc<Vec<u8>>,
     },
+    // The server broker should only receive Ack from the client
+    InboundAck {
+        seq_id: SeqId
+    },
     Stop,
 }
 
@@ -125,13 +129,13 @@ impl Broker for ServerBroker {
                 let handle = handle_request(_broker, duration, id, fut);
                 self.executions.insert(id, handle);
                 Running::Continue(Ok(()))
-            }
+            },
             ServerBrokerItem::Response { id, result } => {
                 self.executions.remove(&id);
                 let msg = ServerWriterItem::Response { id, result };
                 let res: Result<(), Error> = writer.send(msg).await.map_err(|err| err.into());
                 Running::Continue(res)
-            }
+            },
             ServerBrokerItem::Cancel(id) => {
                 if let Some(handle) = self.executions.remove(&id) {
                     #[cfg(all(feature = "tokio_runtime", not(feature = "async_std_runtime")))]
@@ -141,7 +145,7 @@ impl Broker for ServerBroker {
                 }
 
                 Running::Continue(Ok(()))
-            }
+            },
             ServerBrokerItem::Publish { id, topic, content } => {
                 // Publish is the PubSub message from client to server
                 let content = Arc::new(content);
@@ -157,7 +161,7 @@ impl Broker for ServerBroker {
                         .await
                         .map_err(|err| err.into()),
                 )
-            }
+            },
             ServerBrokerItem::Subscribe { id, topic } => {
                 log::debug!("Message ID: {}, Subscribe to topic: {}", &id, &topic);
                 let sender = PubSubResponder::Sender(ctx.broker.clone());
@@ -172,7 +176,7 @@ impl Broker for ServerBroker {
                         .await
                         .map_err(|err| err.into()),
                 )
-            }
+            },
             ServerBrokerItem::Unsubscribe { id, topic } => {
                 log::debug!("Message ID: {}, Unsubscribe from topic: {}", &id, &topic);
                 let msg = PubSubItem::Unsubscribe {
@@ -185,12 +189,21 @@ impl Broker for ServerBroker {
                         .await
                         .map_err(|err| err.into()),
                 )
-            }
+            },
             ServerBrokerItem::Publication { seq_id, topic, content } => {
                 // Publication is the PubSub message from server to client
                 let msg = ServerWriterItem::Publication { seq_id, topic, content };
                 Running::Continue(writer.send(msg).await.map_err(|err| err.into()))
-            }
+            },
+            ServerBrokerItem::InboundAck {seq_id} => {
+                let item = PubSubItem::Ack{seq_id};
+                Running::Continue(
+                    self.pubsub_broker
+                        .send_async(item)
+                        .await
+                        .map_err(|err| err.into())
+                )
+            },
             ServerBrokerItem::Stop => {
                 for (_, handle) in self.executions.drain() {
                     log::debug!("Stopping execution as client is disconnected");
