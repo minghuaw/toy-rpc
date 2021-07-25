@@ -42,6 +42,22 @@ cfg_if! {
     }
 }
 
+/// RPC client
+///
+#[cfg_attr(
+    not(any(feature = "async_std_runtime", feature = "tokio_runtime")),
+    allow(dead_code)
+)]
+pub struct Client<AckMode> {
+    count: Arc<AtomicMessageId>,
+    default_timeout: Duration,
+    next_timeout: AtomicCell<Option<Duration>>,
+    broker: Sender<ClientBrokerItem>,
+    subscriptions: HashMap<String, TypeId>,
+
+    ack_mode: PhantomData<AckMode>,
+}
+
 cfg_if! {
     if #[cfg(any(
         all(
@@ -241,22 +257,6 @@ cfg_if! {
 pub mod call;
 pub use call::Call;
 
-/// RPC client
-///
-#[cfg_attr(
-    not(any(feature = "async_std_runtime", feature = "tokio_runtime")),
-    allow(dead_code)
-)]
-pub struct Client<AckMode> {
-    count: Arc<AtomicMessageId>,
-    default_timeout: Duration,
-    next_timeout: AtomicCell<Option<Duration>>,
-    broker: Sender<ClientBrokerItem>,
-    subscriptions: HashMap<String, TypeId>,
-
-    ack_mode: PhantomData<AckMode>,
-}
-
 // seems like it still works even without this impl
 impl<AckMode> Drop for Client<AckMode> {
     fn drop(&mut self) {
@@ -272,12 +272,14 @@ impl<AckMode> Drop for Client<AckMode> {
     }
 }
 
-impl<AckMode> Client<AckMode> {
+impl Client<AckModeNone> {
     /// Creates a `ClientBuilder`.
     pub fn builder() -> ClientBuilder<AckModeNone> {
         ClientBuilder::default()
     }
+}
 
+impl<AckMode> Client<AckMode> {
     /// Closes connection with the server
     ///
     /// Dropping the client will close the connection as well

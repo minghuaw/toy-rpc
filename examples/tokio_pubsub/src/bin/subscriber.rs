@@ -1,5 +1,5 @@
 
-use toy_rpc::Client;
+use toy_rpc::{Client};
 use futures::StreamExt;
 
 use tokio_pubsub::*;
@@ -8,7 +8,10 @@ use tokio_pubsub::*;
 async fn main() {
 
     env_logger::init();
-    let mut client = Client::dial(ADDR).await.unwrap();
+    let mut client = Client::builder()
+        .set_ack_mode_auto()
+        .dial(ADDR).await.unwrap();
+    // let mut client = Client::dial(ADDR).await.unwrap();
     let mut count_sub = client.subscriber::<Count>(10).unwrap();
 
     for _ in 0..30 {

@@ -11,16 +11,15 @@ cfg_if! {
         use async_trait::async_trait;
         use brw::Running;
 
-        use crate::{message::Metadata, util::GracefulShutdown};
-
         use crate::{
             Error, codec::CodecWrite,
             message::{
-                CANCELLATION_TOKEN, CANCELLATION_TOKEN_DELIM, MessageId
+                Metadata, CANCELLATION_TOKEN, CANCELLATION_TOKEN_DELIM, MessageId
             },
             protocol::{
                 Header, OutboundBody
-            }
+            },
+            util:: GracefulShutdown
         };
 
         pub enum ClientWriterItem {
@@ -80,14 +79,12 @@ cfg_if! {
                     ClientWriterItem::Subscribe(id, topic) => {
                         let header = Header::Subscribe{id, topic};
                         log::debug!("{:?}", &header);
-                        // self.write_request(header, &()).await
                         // There is no body frame for Subscribe message
                         self.writer.write_header(header).await
                     },
                     ClientWriterItem::Unsubscribe(id, topic) => {
                         let header = Header::Unsubscribe{id, topic};
                         log::debug!("{:?}", &header);
-                        // self.write_request(header, &()).await
                         // There is no body frame for Unsubscribe message
                         self.writer.write_header(header).await
                     },

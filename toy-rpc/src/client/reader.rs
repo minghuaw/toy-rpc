@@ -5,6 +5,7 @@ use futures::SinkExt;
 
 use super::broker::ClientBrokerItem;
 use crate::protocol::{Header, InboundBody};
+use crate::pubsub::SeqId;
 use crate::{codec::CodecRead, Error};
 
 pub(crate) struct ClientReader<R> {
@@ -59,7 +60,7 @@ impl<R: CodecRead> brw::Reader for ClientReader<R> {
                     Running::Continue(
                         broker
                             .send(ClientBrokerItem::Subscription {
-                                id,
+                                id: SeqId::new(id),
                                 topic,
                                 item: deserializer,
                             })

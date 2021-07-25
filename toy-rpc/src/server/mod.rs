@@ -86,32 +86,6 @@ impl Server<AckModeNone> {
 }
 
 cfg_if! {
-    if #[cfg(any(
-        feature = "docs",
-        all(feature = "async_std_runtime", not(feature = "tokio_runtime")),
-        all(feature = "tokio_runtime", not(feature = "async_std_runtime")),
-    ))] {
-        impl<AckMode> Server<AckMode> {
-            /// Builds a Server from a ServerBuilder
-            pub fn from_builder(builder: ServerBuilder<AckMode>) -> Self {
-                let services = Arc::new(builder.services);
-                let (tx, rx) = flume::unbounded();
-
-                let pubsub_broker = PubSubBroker::new(rx);
-                pubsub_broker.spawn();
-
-                Self {
-                    client_counter: Arc::new(AtomicClientId::new(RESERVED_CLIENT_ID + 1)),
-                    services,
-                    pubsub_tx: tx,
-                    ack_mode: PhantomData,
-                }
-            }
-        }
-    }
-}
-
-cfg_if! {
     if #[cfg(all(feature = "tokio_runtime", not(feature = "async_std_runtime"), not(feature = "http_actix_web")))] {
         #[cfg(feature = "tls")]
         use tokio_rustls::{TlsAcceptor};

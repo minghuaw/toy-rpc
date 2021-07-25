@@ -18,9 +18,9 @@ cfg_if! {
     }
 }
 
-use crate::{Error, message::MessageId, protocol::{InboundBody, OutboundBody}, pubsub::{AckModeAuto, AckModeManual, AckModeNone}};
+use crate::{Error, message::MessageId, protocol::{InboundBody, OutboundBody}, pubsub::{AckModeAuto, AckModeManual, AckModeNone, SeqId}};
 
-use super::ResponseResult;
+use super::{ResponseResult, pubsub::SubscriptionItem};
 
 #[cfg_attr(
     all(not(feature = "tokio_runtime"), not(feature = "async_std_runtime")),
@@ -50,11 +50,11 @@ pub(crate) enum ClientBrokerItem {
         topic: String,
 
         // message is deserialized as it is read on the subscriber
-        item_sink: Sender<Box<InboundBody>>,
+        item_sink: Sender<SubscriptionItem>,
     },
     NewLocalSubscriber {
         topic: String,
-        new_item_sink: Sender<Box<InboundBody>>,
+        new_item_sink: Sender<SubscriptionItem>,
     },
     Unsubscribe {
         // id: MessageId,
@@ -62,12 +62,12 @@ pub(crate) enum ClientBrokerItem {
     },
     /// Subscription from the server
     Subscription {
-        id: MessageId,
+        id: SeqId,
         topic: String,
         item: Box<InboundBody>,
     },
     /// (Manual) Ack for incoming Publish message
-    Ack,
+    Ack(SeqId),
     /// Stops the broker
     Stop,
 }
@@ -85,7 +85,7 @@ pub(crate) struct ClientBroker<AckMode> {
     pub count: Arc<AtomicMessageId>,
     pub pending: HashMap<MessageId, oneshot::Sender<Result<ResponseResult, Error>>>,
     pub next_timeout: Option<Duration>,
-    pub subscriptions: HashMap<String, Sender<Box<InboundBody>>>,
+    pub subscriptions: HashMap<String, Sender<SubscriptionItem>>,
     
     pub ack_mode: PhantomData<AckMode>
 }
@@ -206,7 +206,7 @@ impl<AckMode> ClientBroker<AckMode> {
         res
     }
 
-    async fn handle_subscribe<'w, W>(&'w mut self, writer: &'w mut W, topic: String, item_sink: Sender<Box<InboundBody>>) -> Result<(), Error> 
+    async fn handle_subscribe<'w, W>(&'w mut self, writer: &'w mut W, topic: String, item_sink: Sender<SubscriptionItem>) -> Result<(), Error> 
     where 
         W: Sink<ClientWriterItem, Error = flume::SendError<ClientWriterItem>> + Send + Unpin,
     {
@@ -222,7 +222,7 @@ impl<AckMode> ClientBroker<AckMode> {
         res
     }
 
-    fn handle_new_local_subscriber(&mut self, topic: String, new_item_sink: Sender<Box<InboundBody>>) -> Result<(), Error> {
+    fn handle_new_local_subscriber(&mut self, topic: String, new_item_sink: Sender<SubscriptionItem>) -> Result<(), Error> {
         self.subscriptions.insert(topic, new_item_sink);
         Ok(())
     }
@@ -240,14 +240,16 @@ impl<AckMode> ClientBroker<AckMode> {
         // TODO: Spawn  timed task to check Ack?
         res
     }
-}
 
-#[cfg(any(
-    all(feature = "tokio_runtime", not(feature = "async_std_runtime")),
-    all(feature = "async_std_runtime", not(feature = "tokio_runtime"))
-))]
-impl ClientBroker<AckModeNone> {
-    fn handle_subscription(&mut self, _: MessageId, topic: String, item: Box<InboundBody>) -> Result<(), Error> {
+    async fn handle_ack<'w, W>(&'w mut self, writer: &'w mut W, seq_id: SeqId) -> Result<(), Error> 
+    where 
+        W: Sink<ClientWriterItem, Error = flume::SendError<ClientWriterItem>> + Send + Unpin,
+    {
+        writer.send(ClientWriterItem::Ack(seq_id)).await
+            .map_err(|err| err.into())
+    }
+
+    fn handle_subscription_inner(&mut self, topic: String, item: SubscriptionItem) -> Result<(), Error> {
         if let Some(sub) = self.subscriptions.get(&topic) {
             match sub.try_send(item) {
                 Ok(_) => Ok(()),
@@ -265,9 +267,22 @@ impl ClientBroker<AckModeNone> {
             Err(Error::Internal("Topic is not found locally".into()))
         }
     }
+}
 
-    async fn handle_ack(&mut self) -> Result<(), Error> {
-        unimplemented!()
+#[cfg(any(
+    all(feature = "tokio_runtime", not(feature = "async_std_runtime")),
+    all(feature = "async_std_runtime", not(feature = "tokio_runtime"))
+))]
+impl ClientBroker<AckModeNone> {
+    async fn handle_subscription<'w, W>(&'w mut self, _: &'w mut W, id: SeqId, topic: String, item: Box<InboundBody>) -> Result<(), Error> 
+    where 
+        W: Sink<ClientWriterItem, Error = flume::SendError<ClientWriterItem>> + Send + Unpin,
+    {
+        log::debug!("Handling subscription with AckModeNone");
+
+        let item = SubscriptionItem::new(id, item);
+        self.handle_subscription_inner(topic, item)
+        // No Ack will be sent
     }
 }
 
@@ -276,12 +291,19 @@ impl ClientBroker<AckModeNone> {
     all(feature = "async_std_runtime", not(feature = "tokio_runtime"))
 ))]
 impl ClientBroker<AckModeAuto> {
-    fn handle_subscription(&mut self, _: MessageId, topic: String, item: Box<InboundBody>) -> Result<(), Error> {
-        unimplemented!()
-    }
-
-    async fn handle_ack(&mut self) -> Result<(), Error> {
-        unimplemented!()
+    async fn handle_subscription<'w, W>(&'w mut self, writer: &'w mut W, id: SeqId, topic: String, item: Box<InboundBody>) -> Result<(), Error> 
+    where 
+        W: Sink<ClientWriterItem, Error = flume::SendError<ClientWriterItem>> + Send + Unpin, 
+    {
+        log::debug!("Handling subscription with AckModeAuto");
+        
+        let item = SubscriptionItem::new(id.clone(), item);
+        self.handle_subscription_inner(topic, item)?;
+        // Automatically send back Ack
+        writer.send(
+            ClientWriterItem::Ack(id)
+        ).await
+        .map_err(|err| err.into())
     }
 }
 
@@ -290,12 +312,15 @@ impl ClientBroker<AckModeAuto> {
     all(feature = "async_std_runtime", not(feature = "tokio_runtime"))
 ))]
 impl ClientBroker<AckModeManual> {
-    fn handle_subscription(&mut self, _: MessageId, topic: String, item: Box<InboundBody>) -> Result<(), Error> {
-        unimplemented!()
-    }
+    async fn handle_subscription<'w, W>(&'w mut self, _: &'w mut W, id: SeqId, topic: String, item: Box<InboundBody>) -> Result<(), Error> 
+    where 
+        W: Sink<ClientWriterItem, Error = flume::SendError<ClientWriterItem>> + Send + Unpin, 
+    {
+        log::debug!("Handling subscription with AckModeManual");
 
-    async fn handle_ack(&mut self) -> Result<(), Error> {
-        unimplemented!()
+        let item = SubscriptionItem::new(id, item);
+        self.handle_subscription_inner(topic, item)
+        // The user needs to manually Ack
     }
 }
 
@@ -350,10 +375,10 @@ macro_rules! impl_broker_for_ack_modes {
                             self.handle_unsubscribe(&mut writer, topic).await
                         },
                         ClientBrokerItem::Subscription { id, topic, item } => {
-                            self.handle_subscription(id, topic, item)
+                            self.handle_subscription(&mut writer, id, topic, item).await
                         }
-                        ClientBrokerItem::Ack => {
-                            self.handle_ack().await
+                        ClientBrokerItem::Ack(seq_id) => {
+                            self.handle_ack(&mut writer, seq_id).await
                         },
                         ClientBrokerItem::Stop => {
                             if let Err(err) = writer.send(ClientWriterItem::Stop).await {

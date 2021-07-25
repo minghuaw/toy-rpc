@@ -123,7 +123,20 @@ impl<AckMode> ServerBuilder<AckMode> {
     /// let server: Server = builder.build();        
     /// ```
     pub fn build(self) -> Server<AckMode> {
-        Server::from_builder(self)
+        use super::{AtomicClientId, RESERVED_CLIENT_ID, PubSubBroker};
+
+        let services = Arc::new(self.services);
+        let (tx, rx) = flume::unbounded();
+
+        let pubsub_broker = PubSubBroker::new(rx);
+        pubsub_broker.spawn();
+
+        Server::<AckMode> {
+            client_counter: Arc::new(AtomicClientId::new(RESERVED_CLIENT_ID + 1)),
+            services,
+            pubsub_tx: tx,
+            ack_mode: PhantomData,
+        }
     }
 }
 
