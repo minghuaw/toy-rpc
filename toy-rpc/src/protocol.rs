@@ -47,7 +47,7 @@ pub enum Header {
     /// Header of a subscribe message
     /// Message will be pushed to the subscriber
     ///
-    /// The body should be an unit type ie. `()`
+    /// There will be no body message in order to reduce traffic
     Subscribe {
         /// Message id
         id: MessageId,
@@ -57,7 +57,7 @@ pub enum Header {
 
     /// Header of a unsubscribe message
     ///
-    /// The body should be an unit type ie. `()`
+    /// There will be no body message in order to reduce traffic
     Unsubscribe {
         /// Message Id
         id: MessageId,
@@ -79,7 +79,7 @@ pub enum Header {
     /// - Publish
     /// - Subscribe
     ///
-    /// The body should be an unit type `()`
+    /// There will be no body message in order to reduce traffic
     Ack(MessageId),
 
     /// Reserved for a potential message queue like design

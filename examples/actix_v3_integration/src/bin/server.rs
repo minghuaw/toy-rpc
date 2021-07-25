@@ -84,17 +84,16 @@ async fn main() -> std::io::Result<()> {
         .register(foo_service)
         .register(bar_service)
         .build();
-    let mut publisher = server.publisher::<Count>();
+    // let mut publisher = server.publisher::<Count>();
 
-    actix::spawn(async move {
-        let mut count: u32 = 1;
-        loop {
-            println!("Send to publisher");
-            publisher.send(Count(count)).await.unwrap();
-            count += 1;
-            delay_for(Duration::from_millis(1000)).await;
-        }
-    });
+    // actix::spawn(async move {
+    //     let mut count: u32 = 1;
+    //     loop {
+    //         publisher.send(Count(count)).await.unwrap();
+    //         count += 1;
+    //         delay_for(Duration::from_millis(1000)).await;
+    //     }
+    // });
 
     let app_data = web::Data::new(server);
 

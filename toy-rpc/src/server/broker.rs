@@ -1,5 +1,6 @@
+//! Broker on the server side
+
 use std::future::Future;
-/// Broker on the server side
 use std::sync::Arc;
 use std::time::Duration;
 

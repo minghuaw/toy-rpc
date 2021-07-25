@@ -19,7 +19,6 @@ use crate::error::Error;
 use crate::message::{AtomicMessageId, MessageId};
 use crate::pubsub::{SeqId, Topic};
 
-#[cfg(not(feature = "http_actix_web"))]
 use super::RESERVED_CLIENT_ID;
 use super::{broker::ServerBrokerItem, ClientId, Server};
 

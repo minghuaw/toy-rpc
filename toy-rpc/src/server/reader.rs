@@ -173,7 +173,7 @@ impl<T: CodecRead> Reader for ServerReader<T> {
                     )
                 }
                 Header::Subscribe { id, topic } => {
-                    let _ = self.reader.read_bytes().await;
+                    // There is no body frame for subscribe message
                     Running::Continue(
                         broker
                             .send(ServerBrokerItem::Subscribe { id, topic })
@@ -182,7 +182,7 @@ impl<T: CodecRead> Reader for ServerReader<T> {
                     )
                 }
                 Header::Unsubscribe { id, topic } => {
-                    let _ = self.reader.read_bytes().await;
+                    // There is no body frame for unsubscribe message
                     Running::Continue(
                         broker
                             .send(ServerBrokerItem::Unsubscribe { id, topic })
@@ -191,6 +191,7 @@ impl<T: CodecRead> Reader for ServerReader<T> {
                     )
                 }
                 Header::Ack(_) => Running::Continue(Err(Error::Internal(
+                    // There is no body frame for unsubscribe message
                     "Unexpected Header type (Header::Ack)".into(),
                 ))),
                 Header::Produce {

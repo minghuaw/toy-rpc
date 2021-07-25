@@ -2,7 +2,8 @@ use env_logger;
 use toy_rpc::client::{Client, Call};
 use toy_rpc::error::Error;
 use std::time::Duration;
-use futures::StreamExt;
+use futures::{StreamExt, SinkExt};
+use tokio::time::sleep;
 
 use actix_v3_integration::{
     Count,
@@ -15,10 +16,21 @@ async fn main() {
 
     let addr = "ws://127.0.0.1:23333/rpc/";
     let mut client = Client::dial_http(addr).await.unwrap();
+    let mut publisher = client.publisher::<Count>();
+    let handle = tokio::spawn(async move {
+        let mut count: u32 = 1;
+        loop {
+            println!("Publisher: {:?}", &count);
+            publisher.send(Count(count)).await.unwrap();
+            count += 1;
+            sleep(Duration::from_millis(1000)).await;
+        }
+    });
+
     let mut subscriber = client.subscriber::<Count>(10).unwrap();
     let handle = tokio::spawn(async move {
         while let Some(item) = subscriber.next().await {
-            println!("{:?}", item)
+            println!("Subscriber: {:?}", item)
         }
     });
 
@@ -44,7 +56,7 @@ async fn main() {
     let reply: BarResponse = client.call("BarService.exclaim", args.clone()).await.unwrap();
     println!("{:?}", reply);
 
-    let call: Call<()> = client.call("BarService.finite_loop", ());
+    let mut call: Call<()> = client.call("BarService.finite_loop", ());
     tokio::time::sleep(std::time::Duration::from_secs(2)).await;
     println!("Calling cancellation");
     call.cancel();
@@ -60,7 +72,7 @@ async fn main() {
 
     // third request, get_counter
     let args = ();
-    let call: Call<u32> = client.call("FooService.get_counter", args);
+    let mut call: Call<u32> = client.call("FooService.get_counter", args);
     let reply: u32 = call.await.unwrap();
     println!("{:?}", reply);
     // client.close().await;

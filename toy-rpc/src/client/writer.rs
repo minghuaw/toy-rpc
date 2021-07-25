@@ -1,5 +1,7 @@
 use cfg_if::cfg_if;
 
+use crate::pubsub::SeqId;
+
 cfg_if! {
     if #[cfg(any(
         all(feature = "async_std_runtime", not(feature = "tokio_runtime")),
@@ -26,6 +28,9 @@ cfg_if! {
             Publish(MessageId, String, Box<OutboundBody>),
             Subscribe(MessageId, String),
             Unsubscribe(MessageId, String),
+            // Client will respond to Publish message sent from the server
+            // Thus needs to reply with the seq_id
+            Ack(SeqId),
             Cancel(MessageId),
             Stop,
         }
@@ -75,13 +80,23 @@ cfg_if! {
                     ClientWriterItem::Subscribe(id, topic) => {
                         let header = Header::Subscribe{id, topic};
                         log::debug!("{:?}", &header);
-                        self.write_request(header, &()).await
+                        // self.write_request(header, &()).await
+                        // There is no body frame for Subscribe message
+                        self.writer.write_header(header).await
                     },
                     ClientWriterItem::Unsubscribe(id, topic) => {
                         let header = Header::Unsubscribe{id, topic};
                         log::debug!("{:?}", &header);
-                        self.write_request(header, &()).await
-                    }
+                        // self.write_request(header, &()).await
+                        // There is no body frame for Unsubscribe message
+                        self.writer.write_header(header).await
+                    },
+                    ClientWriterItem::Ack(seq_id) => {
+                        let header = Header::Ack(seq_id.0);
+                        log::debug!("{:?}", &header);
+                        // There is no body frame for Ack message
+                        self.writer.write_header(header).await
+                    },
                     ClientWriterItem::Stop => {
                         self.writer.close().await;
                         return Running::Stop
