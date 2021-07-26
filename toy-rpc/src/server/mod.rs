@@ -57,6 +57,8 @@ pub struct Server<AckMode> {
     ack_mode: PhantomData<AckMode>,
 }
 
+// Drop is implemented here because only **ONE** PubSub broker is available
+// on one server
 #[cfg(any(
     feature = "docs",
     all(feature = "async_std_runtime", not(feature = "tokio_runtime")),

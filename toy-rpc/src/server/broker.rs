@@ -4,7 +4,6 @@ use std::future::Future;
 use std::sync::Arc;
 use std::time::Duration;
 
-use crate::message;
 use crate::protocol::InboundBody;
 use crate::pubsub::SeqId;
 use crate::service::{ArcAsyncServiceCall, HandlerResult};
@@ -108,7 +107,11 @@ impl ServerBroker {
         duration: Duration,
         deserializer: Box<InboundBody>
     ) -> Result<(), Error> {
-        unimplemented!()
+        let fut = call(method, deserializer);
+        let _broker = ctx.broker.clone();
+        let handle = spawn_timed_request_execution(_broker, duration, id, fut);
+        self.executions.insert(id, handle);
+        Ok(())
     }
 
     async fn handle_response<'w, W>(
@@ -120,14 +123,22 @@ impl ServerBroker {
     where
         W: Sink<ServerWriterItem, Error = flume::SendError<ServerWriterItem>> + Send + Unpin,
     {
-        unimplemented!()
+        self.executions.remove(&id);
+        let msg = ServerWriterItem::Response { id, result };
+        writer.send(msg).await.map_err(|err| err.into())
     }
 
     async fn handle_cancel(
         &mut self,
         id: MessageId
     ) -> Result<(), Error> {
-        unimplemented!()
+        if let Some(handle) = self.executions.remove(&id) {
+            #[cfg(all(feature = "tokio_runtime", not(feature = "async_std_runtime")))]
+            handle.abort();
+            #[cfg(all(feature = "async_std_runtime", not(feature = "tokio_runtime")))]
+            handle.cancel().await;
+        }
+        Ok(())
     }
 
     // TODO: implementation auto ack
@@ -137,15 +148,38 @@ impl ServerBroker {
         topic: String,
         content: Vec<u8>
     ) -> Result<(), Error> {
-        unimplemented!()
+        // Publish is the PubSub message from client to server
+        let content = Arc::new(content);
+        let msg = PubSubItem::Publish {
+            client_id: self.client_id,
+            msg_id: id,
+            topic,
+            content,
+        };
+        self.pubsub_broker
+            .send_async(msg)
+            .await
+            .map_err(|err| err.into())
     }
 
-    async fn handle_subscribe(
-        &mut self,
+    async fn handle_subscribe<'a>(
+        &'a mut self,
+        ctx: &'a Arc<brw::Context<ServerBrokerItem>>,
         id: MessageId,
         topic: String
     ) -> Result<(), Error> {
-        unimplemented!()
+        log::debug!("Message ID: {}, Subscribe to topic: {}", &id, &topic);
+        let sender = PubSubResponder::Sender(ctx.broker.clone());
+        let msg = PubSubItem::Subscribe {
+            client_id: self.client_id,
+            topic,
+            sender,
+        };
+
+        self.pubsub_broker
+            .send_async(msg)
+            .await
+            .map_err(|err| err.into())
     }
 
     async fn handle_unsubscribe(
@@ -153,7 +187,16 @@ impl ServerBroker {
         id: MessageId,
         topic: String
     ) -> Result<(), Error> {
-        unimplemented!()
+        log::debug!("Message ID: {}, Unsubscribe from topic: {}", &id, &topic);
+        let msg = PubSubItem::Unsubscribe {
+            client_id: self.client_id,
+            topic,
+        };
+
+        self.pubsub_broker
+            .send_async(msg)
+            .await
+            .map_err(|err| err.into())
     }
 
     async fn handle_publication<'w, W>(
@@ -166,11 +209,20 @@ impl ServerBroker {
     where
         W: Sink<ServerWriterItem, Error = flume::SendError<ServerWriterItem>> + Send + Unpin,
     {
-        unimplemented!()
+        // Publication is the PubSub message from server to client
+        let msg = ServerWriterItem::Publication { seq_id, topic, content };
+        writer
+            .send(msg)
+            .await
+            .map_err(|err| err.into())
     }
 
     async fn handle_inbound_ack(&mut self, seq_id: SeqId) -> Result<(), Error> {
-        unimplemented!()
+        let item = PubSubItem::Ack{seq_id};
+        self.pubsub_broker
+            .send_async(item)
+            .await
+            .map_err(|err| err.into())
     }
 }
 
@@ -191,7 +243,7 @@ impl Broker for ServerBroker {
     where
         W: Sink<Self::WriterItem, Error = flume::SendError<Self::WriterItem>> + Send + Unpin,
     {
-        match item {
+        let result = match item {
             ServerBrokerItem::Request {
                 call,
                 id,
@@ -199,85 +251,28 @@ impl Broker for ServerBroker {
                 duration,
                 deserializer,
             } => {
-                let fut = call(method, deserializer);
-                let _broker = ctx.broker.clone();
-                let handle = spawn_timed_request_execution(_broker, duration, id, fut);
-                self.executions.insert(id, handle);
-                Running::Continue(Ok(()))
+                self.handle_request(ctx, call, id, method, duration, deserializer)
             },
             ServerBrokerItem::Response { id, result } => {
-                self.executions.remove(&id);
-                let msg = ServerWriterItem::Response { id, result };
-                let res: Result<(), Error> = writer.send(msg).await.map_err(|err| err.into());
-                Running::Continue(res)
+               self.handle_response(&mut writer, id, result).await
             },
             ServerBrokerItem::Cancel(id) => {
-                if let Some(handle) = self.executions.remove(&id) {
-                    #[cfg(all(feature = "tokio_runtime", not(feature = "async_std_runtime")))]
-                    handle.abort();
-                    #[cfg(all(feature = "async_std_runtime", not(feature = "tokio_runtime")))]
-                    handle.cancel().await;
-                }
-
-                Running::Continue(Ok(()))
+                self.handle_cancel(id).await
             },
             ServerBrokerItem::Publish { id, topic, content } => {
-                // Publish is the PubSub message from client to server
-                let content = Arc::new(content);
-                let msg = PubSubItem::Publish {
-                    client_id: self.client_id,
-                    msg_id: id,
-                    topic,
-                    content,
-                };
-                Running::Continue(
-                    self.pubsub_broker
-                        .send_async(msg)
-                        .await
-                        .map_err(|err| err.into()),
-                )
+                self.handle_publish(id, topic, content).await
             },
             ServerBrokerItem::Subscribe { id, topic } => {
-                log::debug!("Message ID: {}, Subscribe to topic: {}", &id, &topic);
-                let sender = PubSubResponder::Sender(ctx.broker.clone());
-                let msg = PubSubItem::Subscribe {
-                    client_id: self.client_id,
-                    topic,
-                    sender,
-                };
-                Running::Continue(
-                    self.pubsub_broker
-                        .send_async(msg)
-                        .await
-                        .map_err(|err| err.into()),
-                )
+                self.handle_subscribe(ctx, id, topic).await
             },
             ServerBrokerItem::Unsubscribe { id, topic } => {
-                log::debug!("Message ID: {}, Unsubscribe from topic: {}", &id, &topic);
-                let msg = PubSubItem::Unsubscribe {
-                    client_id: self.client_id,
-                    topic,
-                };
-                Running::Continue(
-                    self.pubsub_broker
-                        .send_async(msg)
-                        .await
-                        .map_err(|err| err.into()),
-                )
+                self.handle_unsubscribe(id, topic).await
             },
             ServerBrokerItem::Publication { seq_id, topic, content } => {
-                // Publication is the PubSub message from server to client
-                let msg = ServerWriterItem::Publication { seq_id, topic, content };
-                Running::Continue(writer.send(msg).await.map_err(|err| err.into()))
+                self.handle_publication(&mut writer, seq_id, topic, content).await
             },
             ServerBrokerItem::InboundAck {seq_id} => {
-                let item = PubSubItem::Ack{seq_id};
-                Running::Continue(
-                    self.pubsub_broker
-                        .send_async(item)
-                        .await
-                        .map_err(|err| err.into())
-                )
+                self.handle_inbound_ack(seq_id).await
             },
             ServerBrokerItem::Stop => {
                 for (_, handle) in self.executions.drain() {
@@ -288,9 +283,11 @@ impl Broker for ServerBroker {
                     handle.cancel().await;
                 }
                 log::debug!("Client connection is closed");
-                Running::Stop
+                return Running::Stop
             }
-        }
+        };
+
+        Running::Continue(result)
     }
 }
 
