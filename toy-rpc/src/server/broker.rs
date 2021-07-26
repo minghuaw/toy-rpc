@@ -6,7 +6,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use crate::protocol::InboundBody;
-use crate::pubsub::{AckModeAuto, AckModeManual, AckModeNone, SeqId};
+use crate::pubsub::{AckModeAuto, AckModeNone, SeqId};
 use crate::service::{ArcAsyncServiceCall, HandlerResult};
 
 use crate::{error::Error, message::MessageId};
@@ -164,15 +164,6 @@ impl<AckMode> ServerBroker<AckMode> {
             .map_err(|err| err.into())
     }
 
-    async fn auto_ack<'w, W>(&'w self, writer: &'w mut W, id: MessageId) -> Result<(), Error> 
-    where 
-        W: Sink<ServerWriterItem, Error = flume::SendError<ServerWriterItem>> + Send + Unpin,
-    {
-        writer.send(ServerWriterItem::Ack{id})
-            .await
-            .map_err(|err| err.into())
-    }
-
     async fn handle_subscribe<'a>(
         &'a mut self,
         ctx: &'a Arc<brw::Context<ServerBrokerItem>>,
@@ -257,6 +248,15 @@ impl ServerBroker<AckModeNone> {
 
 #[cfg(not(feature = "http_actix_web"))]
 impl ServerBroker<AckModeAuto> {
+    async fn auto_ack<'w, W>(&'w self, writer: &'w mut W, id: MessageId) -> Result<(), Error> 
+    where 
+        W: Sink<ServerWriterItem, Error = flume::SendError<ServerWriterItem>> + Send + Unpin,
+    {
+        writer.send(ServerWriterItem::Ack{id})
+            .await
+            .map_err(|err| err.into())
+    }
+
     // Publish is the PubSub message from client to server
     // TODO: implementation auto ack
     async fn handle_publish<'w, W>(
@@ -268,25 +268,6 @@ impl ServerBroker<AckModeAuto> {
     ) -> Result<(), Error> 
     where 
         W: Sink<ServerWriterItem, Error = flume::SendError<ServerWriterItem>> + Send + Unpin,
-    {
-        self.handle_publish_inner(id, topic, content).await?;
-        self.auto_ack(writer, id).await
-    }
-}
-
-#[cfg(not(feature = "http_actix_web"))]
-impl ServerBroker<AckModeManual> {
-    // Publish is the PubSub message from client to server
-    // TODO: implementation auto ack
-    async fn handle_publish<'w, W>(
-        &'w mut self,
-        writer: &'w mut W,
-        id: MessageId,
-        topic: String,
-        content: Vec<u8>
-    ) -> Result<(), Error> 
-    where 
-        W: Sink<ServerWriterItem, Error = flume::SendError<ServerWriterItem>> + Send + Unpin, 
     {
         self.handle_publish_inner(id, topic, content).await?;
         self.auto_ack(writer, id).await

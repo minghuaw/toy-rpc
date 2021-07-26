@@ -4,7 +4,7 @@ use flume::r#async::{RecvStream, SendSink};
 use flume::{Receiver, Sender};
 use futures::{Sink, Stream};
 use pin_project::pin_project;
-use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::marker::PhantomData;
 use std::pin::Pin;
 use std::sync::atomic::Ordering;
@@ -18,7 +18,7 @@ use actix::Recipient;
 use crate::codec::{Marshal, Reserved, Unmarshal};
 use crate::error::Error;
 use crate::message::{AtomicMessageId, MessageId};
-use crate::pubsub::{AckModeAuto, AckModeManual, SeqId, Topic};
+use crate::pubsub::{AckModeAuto, SeqId, Topic};
 
 use super::RESERVED_CLIENT_ID;
 use super::{broker::ServerBrokerItem, ClientId, Server};
@@ -100,7 +100,6 @@ impl<AckMode: Send + 'static> PubSubBroker<AckMode> {
 
     pub fn handle_publish_inner(
         &mut self, 
-        client_id: ClientId, 
         seq_id: SeqId, 
         topic: &String,
         content: Arc<Vec<u8>>
@@ -181,7 +180,7 @@ impl PubSubBroker<AckModeNone> {
         content: Arc<Vec<u8>>
     ) {
         let seq_id = self.get_seq_id(&client_id, &msg_id);
-        self.handle_publish_inner(client_id, seq_id, &topic, content)
+        self.handle_publish_inner(seq_id, &topic, content)
     }
 }
 
@@ -242,7 +241,7 @@ impl PubSubBroker<AckModeAuto> {
         content: Arc<Vec<u8>>
     ) {
         let seq_id = self.get_seq_id(&client_id, &msg_id);
-        self.handle_publish_inner(client_id, seq_id.clone(), &topic, content.clone());
+        self.handle_publish_inner(seq_id.clone(), &topic, content.clone());
         self.spawn_timed_task_waiting_for_acks(topic, seq_id, content)
     }
 }

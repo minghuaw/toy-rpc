@@ -10,11 +10,7 @@ use std::{collections::HashMap, marker::PhantomData, sync::Arc};
 ))]
 use super::Server;
 
-use crate::{
-    pubsub::AckModeNone,
-    service::{build_service, AsyncServiceMap, HandleService, HandlerResultFut, Service},
-    util::RegisterService,
-};
+use crate::{pubsub::{AckModeAuto, AckModeNone}, service::{build_service, AsyncServiceMap, HandleService, HandlerResultFut, Service}, util::RegisterService};
 
 /// Server builder
 pub struct ServerBuilder<AckMode> {
@@ -146,7 +142,7 @@ macro_rules! impl_server_builder_for_ack_modes {
     };
 }
 
-impl_server_builder_for_ack_modes!(AckModeNone);
+impl_server_builder_for_ack_modes!(AckModeNone, AckModeAuto);
 
 impl Default for ServerBuilder<AckModeNone> {
     fn default() -> ServerBuilder<AckModeNone> {
