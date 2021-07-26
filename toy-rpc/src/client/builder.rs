@@ -4,7 +4,7 @@ use std::marker::PhantomData;
 
 use cfg_if::cfg_if;
 
-use crate::{pubsub::{AckModeAuto, AckModeManual, AckModeNone}, transport::ws::WebSocketConn};
+use crate::{pubsub::{AckModeAuto, AckModeManual, AckModeNone, DEFAULT_PUB_RETRY_TIMEOUT}, transport::ws::WebSocketConn};
 
 cfg_if! {
     if #[cfg(all(feature = "tokio_runtime", not(feature = "async_std_runtime")))] {
@@ -34,12 +34,14 @@ cfg_if! {
 pub struct ClientBuilder<AckMode> {
     /// Marker for AckMode
     pub ack_mode: PhantomData<AckMode>,
+    pub pub_retry_timeout: Duration,
 }
 
 impl Default for ClientBuilder<AckModeNone> {
     fn default() -> Self {
         Self {
             ack_mode: PhantomData,
+            pub_retry_timeout: DEFAULT_PUB_RETRY_TIMEOUT
         }
     }
 }
@@ -48,7 +50,8 @@ impl<AckMode> ClientBuilder<AckMode> {
     /// Creates a new ClientBuilder
     pub fn new() -> ClientBuilder<AckMode> {
         ClientBuilder::<AckMode> {
-            ack_mode: PhantomData
+            ack_mode: PhantomData,
+            pub_retry_timeout: DEFAULT_PUB_RETRY_TIMEOUT
         }
     }
 
@@ -56,6 +59,7 @@ impl<AckMode> ClientBuilder<AckMode> {
     pub fn set_ack_mode_none(self) -> ClientBuilder<AckModeNone> {
         ClientBuilder::<AckModeNone> {
             ack_mode: PhantomData,
+            pub_retry_timeout: self.pub_retry_timeout
         }
     }
 
@@ -63,6 +67,7 @@ impl<AckMode> ClientBuilder<AckMode> {
     pub fn set_ack_mode_auto(self) -> ClientBuilder<AckModeAuto> {
         ClientBuilder::<AckModeAuto> {
             ack_mode: PhantomData,
+            pub_retry_timeout: self.pub_retry_timeout
         }
     }
 
@@ -70,6 +75,7 @@ impl<AckMode> ClientBuilder<AckMode> {
     pub fn set_ack_mode_manual(self) -> ClientBuilder<AckModeManual> {
         ClientBuilder::<AckModeManual> {
             ack_mode: PhantomData,
+            pub_retry_timeout: self.pub_retry_timeout
         }
     }
 }
@@ -282,7 +288,7 @@ cfg_if! {
 
                             let reader = ClientReader { reader };
                             let writer = ClientWriter { writer };
-                            let broker = broker::ClientBroker::<$ack_mode, C>::new(count.clone());
+                            let broker = broker::ClientBroker::<$ack_mode, C>::new(count.clone(), self.pub_retry_timeout);
                             let (_, broker) = brw::spawn(broker, reader, writer);
             
                             Client {

@@ -223,7 +223,7 @@ cfg_if! {
             where
                 T: AsyncRead + AsyncWrite + Send + Unpin + 'static,
             {
-                let builder = ClientBuilder::<AckModeNone> {ack_mode: PhantomData};
+                let builder = ClientBuilder::default();
                 builder.with_stream(stream)
             }
 
@@ -247,7 +247,7 @@ cfg_if! {
             where
                 C: SplittableCodec + Send + 'static,
             {
-                let builder = ClientBuilder::<AckModeNone> {ack_mode: PhantomData};
+                let builder = ClientBuilder::default();
                 builder.with_codec(codec)
             }
         }

@@ -1,7 +1,11 @@
 //! PubSub support
+use std::time::Duration;
+
 use serde::{de::DeserializeOwned, Serialize};
 
 use crate::message::MessageId;
+
+pub const DEFAULT_PUB_RETRY_TIMEOUT: Duration = Duration::from_secs(10);
 
 /// Trait for PubSub Topic
 pub trait Topic {
