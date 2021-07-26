@@ -34,6 +34,10 @@ cfg_if! {
 pub struct ClientBuilder<AckMode> {
     /// Marker for AckMode
     pub ack_mode: PhantomData<AckMode>,
+    /// The duration a publisher waits for the Ack
+    /// Waiting is non-blocking, and thus the publisher can still
+    /// send out new Publish messages while waiting for the Ack of previous 
+    /// Publish message
     pub pub_retry_timeout: Duration,
 }
 
@@ -77,6 +81,24 @@ impl<AckMode> ClientBuilder<AckMode> {
             ack_mode: PhantomData,
             pub_retry_timeout: self.pub_retry_timeout
         }
+    }
+}
+
+impl ClientBuilder<AckModeAuto> {
+    /// Sets the duration that a publisher waits for the Ack from the server. If an Ack is not 
+    /// received before the duration expires, the publisher will try to re-send the Publish message.
+    pub fn set_publisher_retry_timeout(mut self, duration: Duration) -> Self {
+        self.pub_retry_timeout = duration;
+        self
+    }
+}
+
+impl ClientBuilder<AckModeManual> {
+    /// Sets the duration that a publisher waits for the Ack from the server. If an Ack is not 
+    /// received before the duration expires, the publisher will try to re-send the Publish message.
+    pub fn set_publisher_retry_timeout(mut self, duration: Duration) -> Self {
+        self.pub_retry_timeout = duration;
+        self
     }
 }
 

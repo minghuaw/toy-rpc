@@ -18,7 +18,7 @@ cfg_if! {
     }
 }
 
-use crate::{Error, codec::Marshal, message::MessageId, protocol::{InboundBody, OutboundBody}, pubsub::{AckModeAuto, AckModeManual, AckModeNone, SeqId}, util::GracefulShutdown};
+use crate::{Error, codec::Marshal, message::MessageId, protocol::{InboundBody, OutboundBody}, pubsub::{AckModeAuto, AckModeManual, AckModeNone, SeqId}};
 
 use super::{ResponseResult, pubsub::SubscriptionItem};
 
@@ -223,7 +223,7 @@ impl<AckMode, C> ClientBroker<AckMode, C> {
             .map_err(|err| err.into())
     }
 
-    fn spawn_timed_task_for_ack(&mut self, broker: Sender<ClientBrokerItem>, id: MessageId, topic: String, body: Arc<Vec<u8>>, duration: Duration) {
+    fn spawn_timed_task_waiting_for_ack(&mut self, broker: Sender<ClientBrokerItem>, id: MessageId, topic: String, body: Arc<Vec<u8>>, duration: Duration) {
         // fetch_add returns the previous value
         let (tx, rx) = oneshot::channel::<()>();
         task::spawn(async move {
@@ -256,7 +256,7 @@ impl<AckMode, C> ClientBroker<AckMode, C> {
     {
         let result = Self::handle_publish_inner(writer, id, topic.clone(), body.clone()).await;
         let broker = ctx.broker.clone();
-        self.spawn_timed_task_for_ack(broker, id, topic, body, self.pub_retry_timeout);
+        self.spawn_timed_task_waiting_for_ack(broker, id, topic, body, self.pub_retry_timeout);
         result
     }
 
@@ -372,7 +372,7 @@ impl<C: Marshal + Send> ClientBroker<AckModeAuto, C> {
         let body = Arc::new(C::marshal(&body)?);
         let res = Self::handle_publish_inner(writer, id, topic.clone(), body.clone()).await;
         let broker = ctx.broker.clone();
-        self.spawn_timed_task_for_ack(broker, id, topic, body, self.pub_retry_timeout);
+        self.spawn_timed_task_waiting_for_ack(broker, id, topic, body, self.pub_retry_timeout);
         res
     }
 
@@ -411,7 +411,7 @@ impl<C: Marshal + Send> ClientBroker<AckModeManual, C> {
         let body = Arc::new(C::marshal(&body)?);
         let res = Self::handle_publish_inner(writer, id, topic.clone(), body.clone()).await;
         let broker = ctx.broker.clone();
-        self.spawn_timed_task_for_ack(broker, id, topic, body, self.pub_retry_timeout);
+        self.spawn_timed_task_waiting_for_ack(broker, id, topic, body, self.pub_retry_timeout);
         res
     }
 

@@ -145,14 +145,12 @@ impl<AckMode> ServerBroker<AckMode> {
         Ok(())
     }
 
-    // TODO: implementation auto ack
-    async fn handle_publish(
+    async fn handle_publish_inner(
         &mut self,
         id: MessageId,
         topic: String,
         content: Vec<u8>
     ) -> Result<(), Error> {
-        // Publish is the PubSub message from client to server
         let content = Arc::new(content);
         let msg = PubSubItem::Publish {
             client_id: self.client_id,
@@ -162,6 +160,15 @@ impl<AckMode> ServerBroker<AckMode> {
         };
         self.pubsub_broker
             .send_async(msg)
+            .await
+            .map_err(|err| err.into())
+    }
+
+    async fn auto_ack<'w, W>(&'w self, writer: &'w mut W, id: MessageId) -> Result<(), Error> 
+    where 
+        W: Sink<ServerWriterItem, Error = flume::SendError<ServerWriterItem>> + Send + Unpin,
+    {
+        writer.send(ServerWriterItem::Ack{id})
             .await
             .map_err(|err| err.into())
     }
@@ -230,12 +237,68 @@ impl<AckMode> ServerBroker<AckMode> {
     }
 }
 
-// macro_rules! impl_server_broker_for_ack_modes {
-//     ($($ack_mode:ty),*) => {
-//         $(
+#[cfg(not(feature = "http_actix_web"))]
+impl ServerBroker<AckModeNone> {
+    // Publish is the PubSub message from client to server
+    // TODO: implementation auto ack
+    async fn handle_publish<'w, W>(
+        &'w mut self,
+        _: &'w mut W,
+        id: MessageId,
+        topic: String,
+        content: Vec<u8>
+    ) -> Result<(), Error> 
+    where 
+        W: Sink<ServerWriterItem, Error = flume::SendError<ServerWriterItem>> + Send + Unpin,
+    {
+        self.handle_publish_inner(id, topic, content).await
+    }
+}
+
+#[cfg(not(feature = "http_actix_web"))]
+impl ServerBroker<AckModeAuto> {
+    // Publish is the PubSub message from client to server
+    // TODO: implementation auto ack
+    async fn handle_publish<'w, W>(
+        &'w mut self,
+        writer: &'w mut W,
+        id: MessageId,
+        topic: String,
+        content: Vec<u8>
+    ) -> Result<(), Error> 
+    where 
+        W: Sink<ServerWriterItem, Error = flume::SendError<ServerWriterItem>> + Send + Unpin,
+    {
+        self.handle_publish_inner(id, topic, content).await?;
+        self.auto_ack(writer, id).await
+    }
+}
+
+#[cfg(not(feature = "http_actix_web"))]
+impl ServerBroker<AckModeManual> {
+    // Publish is the PubSub message from client to server
+    // TODO: implementation auto ack
+    async fn handle_publish<'w, W>(
+        &'w mut self,
+        writer: &'w mut W,
+        id: MessageId,
+        topic: String,
+        content: Vec<u8>
+    ) -> Result<(), Error> 
+    where 
+        W: Sink<ServerWriterItem, Error = flume::SendError<ServerWriterItem>> + Send + Unpin, 
+    {
+        self.handle_publish_inner(id, topic, content).await?;
+        self.auto_ack(writer, id).await
+    }
+}
+
+macro_rules! impl_server_broker_for_ack_modes {
+    ($($ack_mode:ty),*) => {
+        $(
             #[cfg(not(feature = "http_actix_web"))]
             #[async_trait::async_trait]
-            impl<AckMode: Send> Broker for ServerBroker<AckMode> {
+            impl Broker for ServerBroker<$ack_mode> {
                 type Item = ServerBrokerItem;
                 type WriterItem = ServerWriterItem;
                 type Ok = ();
@@ -267,7 +330,7 @@ impl<AckMode> ServerBroker<AckMode> {
                             self.handle_cancel(id).await
                         },
                         ServerBrokerItem::Publish { id, topic, content } => {
-                            self.handle_publish(id, topic, content).await
+                            self.handle_publish(&mut writer, id, topic, content).await
                         },
                         ServerBrokerItem::Subscribe { id, topic } => {
                             self.handle_subscribe(ctx, id, topic).await
@@ -297,11 +360,11 @@ impl<AckMode> ServerBroker<AckMode> {
                     Running::Continue(result)
                 }
             }
-//         )*
-//     };
-// }
+        )*
+    };
+}
 
-// impl_server_broker_for_ack_modes!(AckModeNone, AckModeAuto, AckModeManual);
+impl_server_broker_for_ack_modes!(AckModeNone, AckModeAuto, AckModeManual);
 
 /// Spawn the execution in a async_std task and return the JoinHandle
 #[cfg(all(feature = "async_std_runtime", not(feature = "tokio_runtime")))]
