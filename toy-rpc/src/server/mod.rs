@@ -391,6 +391,6 @@ cfg_if! {
             }
         }
 
-        impl_server_for_ack_modes!(AckModeNone, AckModeAuto, AckModeManual);
+        impl_server_for_ack_modes!(AckModeNone, AckModeAuto);
     }
 }

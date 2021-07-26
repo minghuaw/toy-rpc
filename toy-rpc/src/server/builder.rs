@@ -127,17 +127,17 @@ macro_rules! impl_server_builder_for_ack_modes {
                 /// ```
                 pub fn build(self) -> Server<$ack_mode> {
                     use super::{AtomicClientId, RESERVED_CLIENT_ID, PubSubBroker};
+                    use crate::pubsub::DEFAULT_PUB_RETRY_TIMEOUT;
             
                     let services = Arc::new(self.services);
-                    let (tx, rx) = flume::unbounded();
             
-                    let pubsub_broker = PubSubBroker::<$ack_mode>::new(rx);
+                    let (pubsub_broker, pubsub_tx) = PubSubBroker::<$ack_mode>::new(DEFAULT_PUB_RETRY_TIMEOUT);
                     pubsub_broker.spawn();
             
                     Server::<$ack_mode> {
                         client_counter: Arc::new(AtomicClientId::new(RESERVED_CLIENT_ID + 1)),
                         services,
-                        pubsub_tx: tx,
+                        pubsub_tx,
                         ack_mode: PhantomData,
                     }
                 }

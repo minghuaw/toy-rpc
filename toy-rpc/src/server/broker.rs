@@ -364,7 +364,7 @@ macro_rules! impl_server_broker_for_ack_modes {
     };
 }
 
-impl_server_broker_for_ack_modes!(AckModeNone, AckModeAuto, AckModeManual);
+impl_server_broker_for_ack_modes!(AckModeNone, AckModeAuto);
 
 /// Spawn the execution in a async_std task and return the JoinHandle
 #[cfg(all(feature = "async_std_runtime", not(feature = "tokio_runtime")))]

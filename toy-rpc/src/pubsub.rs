@@ -17,7 +17,7 @@ pub trait Topic {
 }
 
 /// PubSub Sequence ID that is tracked by the PubSub server
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct SeqId(pub MessageId);
 
 impl SeqId {
