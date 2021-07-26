@@ -35,7 +35,7 @@ impl<Item> Delivery<Item> {
 
     /// Manually Ack the receiving of the PubSub item
     pub async fn ack(self) -> Result<Item, Error> {
-        self.ack_sender.send_async(ClientBrokerItem::Ack(self.seq_id)).await?;
+        self.ack_sender.send_async(ClientBrokerItem::OutboundAck(self.seq_id)).await?;
         Ok(self.item)
     }
 }

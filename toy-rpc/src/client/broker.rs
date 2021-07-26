@@ -66,8 +66,10 @@ pub(crate) enum ClientBrokerItem {
         topic: String,
         item: Box<InboundBody>,
     },
-    /// (Manual) Ack for incoming Publish message
-    Ack(SeqId),
+    /// Ack reply from server
+    InboundAck(SeqId),
+    /// (Manual) Ack reply for incoming Publish message
+    OutboundAck(SeqId),
     /// Stops the broker
     Stop,
 }
@@ -376,8 +378,11 @@ macro_rules! impl_broker_for_ack_modes {
                         },
                         ClientBrokerItem::Subscription { id, topic, item } => {
                             self.handle_subscription(&mut writer, id, topic, item).await
+                        },
+                        ClientBrokerItem::InboundAck(seq_id) => {
+                            unimplemented!()
                         }
-                        ClientBrokerItem::Ack(seq_id) => {
+                        ClientBrokerItem::OutboundAck(seq_id) => {
                             self.handle_ack(&mut writer, seq_id).await
                         },
                         ClientBrokerItem::Stop => {

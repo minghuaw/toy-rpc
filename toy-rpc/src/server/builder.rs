@@ -111,7 +111,7 @@ impl ServerBuilder<AckModeNone> {
     all(feature = "async_std_runtime", not(feature = "tokio_runtime")),
     all(feature = "tokio_runtime", not(feature = "async_std_runtime")),
 ))]
-impl<AckMode> ServerBuilder<AckMode> {
+impl<AckMode: Send + 'static> ServerBuilder<AckMode> {
     /// Builds an RPC `Server`
     ///
     /// # Example
@@ -128,7 +128,7 @@ impl<AckMode> ServerBuilder<AckMode> {
         let services = Arc::new(self.services);
         let (tx, rx) = flume::unbounded();
 
-        let pubsub_broker = PubSubBroker::new(rx);
+        let pubsub_broker = PubSubBroker::<AckMode>::new(rx);
         pubsub_broker.spawn();
 
         Server::<AckMode> {

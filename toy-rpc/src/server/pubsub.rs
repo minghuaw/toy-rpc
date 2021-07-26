@@ -52,18 +52,20 @@ pub(crate) enum PubSubItem {
     Stop,
 }
 
-pub(crate) struct PubSubBroker {
+pub(crate) struct PubSubBroker<AckMode> {
     seq_counter: AtomicMessageId,
     listener: Receiver<PubSubItem>,
     subscriptions: HashMap<String, BTreeMap<ClientId, PubSubResponder>>,
+    ack_mode: PhantomData<AckMode>
 }
 
-impl PubSubBroker {
+impl<AckMode: Send + 'static> PubSubBroker<AckMode> {
     pub fn new(listener: Receiver<PubSubItem>) -> Self {
         Self {
             seq_counter: AtomicMessageId::new(0),
             listener,
             subscriptions: HashMap::new(),
+            ack_mode: PhantomData
         }
     }
 
