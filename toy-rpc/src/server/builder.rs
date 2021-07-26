@@ -20,12 +20,28 @@ pub struct ServerBuilder<AckMode> {
     ack_mode: PhantomData<AckMode>,
 }
 
-impl ServerBuilder<AckModeNone> {
+impl<AckMode> ServerBuilder<AckMode> {
     /// Creates a new `ServerBuilder`
     pub fn new() -> Self {
         ServerBuilder {
             services: HashMap::new(),
             ack_mode: PhantomData,
+        }
+    }
+
+    /// Sets the AckMode to None
+    pub fn set_ack_mode_none(self) -> ServerBuilder<AckModeNone> {
+        ServerBuilder::<AckModeNone> {
+            services: self.services,
+            ack_mode: PhantomData,
+        }
+    }
+
+    /// Sets the AckMode to Auto
+    pub fn set_ack_mode_auto(self) -> ServerBuilder<AckModeAuto> {
+        ServerBuilder::<AckModeAuto> {
+            services: self.services,
+            ack_mode: PhantomData
         }
     }
 
@@ -102,6 +118,12 @@ impl ServerBuilder<AckModeNone> {
     }
 }
 
+impl Default for ServerBuilder<AckModeNone> {
+    fn default() -> ServerBuilder<AckModeNone> {
+        ServerBuilder::<AckModeNone>::new()
+    }
+}
+
 macro_rules! impl_server_builder_for_ack_modes {
     ($($ack_mode:ty),*) => {
         $(
@@ -143,9 +165,3 @@ macro_rules! impl_server_builder_for_ack_modes {
 }
 
 impl_server_builder_for_ack_modes!(AckModeNone, AckModeAuto);
-
-impl Default for ServerBuilder<AckModeNone> {
-    fn default() -> ServerBuilder<AckModeNone> {
-        ServerBuilder::<AckModeNone>::new()
-    }
-}

@@ -83,7 +83,7 @@ impl Server<AckModeNone> {
     /// let builder: ServerBuilder = Server::builder();
     /// ```
     pub fn builder() -> ServerBuilder<AckModeNone> {
-        ServerBuilder::new()
+        ServerBuilder::default()
     }
 }
 

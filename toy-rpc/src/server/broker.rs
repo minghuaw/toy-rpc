@@ -258,7 +258,6 @@ impl ServerBroker<AckModeAuto> {
     }
 
     // Publish is the PubSub message from client to server
-    // TODO: implementation auto ack
     async fn handle_publish<'w, W>(
         &'w mut self,
         writer: &'w mut W,
