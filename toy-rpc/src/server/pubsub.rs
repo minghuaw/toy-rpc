@@ -23,6 +23,11 @@ use crate::pubsub::{AckModeAuto, AckModeManual, SeqId, Topic};
 use super::RESERVED_CLIENT_ID;
 use super::{broker::ServerBrokerItem, ClientId, Server};
 
+#[cfg(all(feature = "async_std_runtime", not(feature = "tokio_runtime")))]
+use async_std::task;
+#[cfg(all(feature = "tokio_runtime", not(feature = "async_std_runtime")))]
+use tokio::task;
+
 pub(crate) enum PubSubResponder {
     #[cfg(not(feature = "http_actix_web"))]
     Sender(Sender<ServerBrokerItem>),
@@ -113,53 +118,7 @@ impl<AckMode: Send + 'static> PubSubBroker<AckMode> {
         }
     }
 
-    fn spawn_timed_task_waiting_for_acks(
-        &mut self,
-        topic: String,
-        seq_id: SeqId,
-        content: Arc<Vec<u8>>
-    ) {
-        use tokio::task;
-
-        let (tx, rx) = flume::unbounded::<ClientId>();
-        let duration = self.pub_retry_timeout;
-        self.pending_acks.insert(seq_id.clone(), tx);
-        if let Some(entry) = self.subscriptions.get(&topic) {
-            let set: BTreeSet<ClientId> = entry.keys().map(|val| *val).collect();
-            let len = set.len();
-            let pubsub_tx = self.pubsub_tx.clone();
-            
-            task::spawn(async move {
-                let mut set = set;
-                let fut = async {
-                    let _set = &mut set;
-                    for _ in 0..len {
-                        if let Ok(client_id) = rx.recv_async().await {
-                            if _set.remove(&client_id) == false {
-                                log::error!("Client ID {} is not found in subscription ack set", client_id);
-                            }
-                        }
-                    }
-                };
-
-                let timed_result = tokio::time::timeout(duration, fut).await;
-
-                if let Err(err) = timed_result {
-                    log::error!("{:?}", err);
-                    // TODO:
-                    let msg = PubSubItem::PublishRetry {
-                        client_ids: set, 
-                        seq_id, 
-                        topic: topic, 
-                        content
-                    };
-                    pubsub_tx.send_async(msg)
-                        .await
-                        .unwrap_or_else(|_| log::error!("Error found sending PubSubItem::PublishRetry"))
-                }
-            });
-        }
-    }
+    
 
     async fn handle_publish_retry(
         &mut self,
@@ -227,6 +186,54 @@ impl PubSubBroker<AckModeNone> {
 }
 
 impl PubSubBroker<AckModeAuto> {
+    fn spawn_timed_task_waiting_for_acks(
+        &mut self,
+        topic: String,
+        seq_id: SeqId,
+        content: Arc<Vec<u8>>
+    ) {
+        #[cfg(all(feature = "tokio_runtime", not(feature = "async_std_runtime")))]
+        use tokio::time::timeout;        
+        #[cfg(all(feature = "async_std_runtime", not(feature = "tokio_runtime")))]
+        use async_std::future::timeout;
+
+        let (tx, rx) = flume::unbounded::<ClientId>();
+        let duration = self.pub_retry_timeout;
+        self.pending_acks.insert(seq_id.clone(), tx);
+        if let Some(entry) = self.subscriptions.get(&topic) {
+            let set: BTreeSet<ClientId> = entry.keys().map(|val| *val).collect();
+            let len = set.len();
+            let pubsub_tx = self.pubsub_tx.clone();
+            
+            task::spawn(async move {
+                let mut set = set;
+                let fut = async {
+                    let _set = &mut set;
+                    for _ in 0..len {
+                        if let Ok(client_id) = rx.recv_async().await {
+                            if _set.remove(&client_id) == false {
+                                log::error!("Client ID {} is not found in subscription ack set", client_id);
+                            }
+                        }
+                    }
+                };
+
+                if let Err(err) = timeout(duration, fut).await {
+                    log::error!("{:?}", err);
+                    let msg = PubSubItem::PublishRetry {
+                        client_ids: set, 
+                        seq_id, 
+                        topic: topic, 
+                        content
+                    };
+                    pubsub_tx.send_async(msg)
+                        .await
+                        .unwrap_or_else(|_| log::error!("Error found sending PubSubItem::PublishRetry"))
+                }
+            });
+        }
+    }
+
     pub fn handle_publish(
         &mut self,
         client_id: ClientId,
@@ -250,15 +257,9 @@ macro_rules! impl_pubsub_broker_for_ack_modes {
                     all(feature = "tokio_runtime", not(feature = "async_std_runtime")),
                 ))]
                 pub fn spawn(self) {
-                    #[cfg(all(feature = "async_std_runtime", not(feature = "tokio_runtime")))]
-                    ::async_std::task::spawn(self.pubsub_loop());
-                    #[cfg(all(
-                        feature = "tokio_runtime",
-                        not(feature = "async_std_runtime"),
-                        not(feature = "http_actix_web")
-                    ))]
-                    ::tokio::task::spawn(self.pubsub_loop());
-                    #[cfg(all(feature = "http_actix_web", not(feature = "async_std_runtime")))]
+                    #[cfg(not(feature = "http_actix_web"))]
+                    task::spawn(self.pubsub_loop());
+                    #[cfg(all(feature = "http_actix_web"))]
                     actix::spawn(self.pubsub_loop());
                 }
 

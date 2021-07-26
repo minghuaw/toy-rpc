@@ -5,6 +5,7 @@ use serde::{de::DeserializeOwned, Serialize};
 
 use crate::message::MessageId;
 
+/// Default publisher retry timeout
 pub const DEFAULT_PUB_RETRY_TIMEOUT: Duration = Duration::from_secs(10);
 
 /// Trait for PubSub Topic
