@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use cfg_if::cfg_if;
 
 use crate::pubsub::SeqId;
@@ -24,7 +26,7 @@ cfg_if! {
 
         pub enum ClientWriterItem {
             Request(MessageId, String, Duration, Box<OutboundBody>),
-            Publish(MessageId, String, Box<OutboundBody>),
+            Publish(MessageId, String, Arc<Vec<u8>>),
             Subscribe(MessageId, String),
             Unsubscribe(MessageId, String),
             // Client will respond to Publish message sent from the server
@@ -47,6 +49,16 @@ cfg_if! {
                 let id = header.get_id();
                 self.writer.write_header(header).await?;
                 self.writer.write_body(id, body).await
+            }
+
+            pub async fn write_publish_item(
+                &mut self,
+                header: Header,
+                bytes: &[u8]
+            ) -> Result<(), Error> {
+                let id = header.get_id();
+                self.writer.write_header(header).await?;
+                self.writer.write_body_bytes(id, bytes).await
             }
         }
 
@@ -74,7 +86,7 @@ cfg_if! {
                     ClientWriterItem::Publish(id, topic, body) => {
                         let header = Header::Publish{id, topic};
                         log::debug!("{:?}", &header);
-                        self.write_request(header, &body).await
+                        self.write_publish_item(header, &body).await
                     },
                     ClientWriterItem::Subscribe(id, topic) => {
                         let header = Header::Subscribe{id, topic};

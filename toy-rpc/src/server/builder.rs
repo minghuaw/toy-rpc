@@ -106,39 +106,47 @@ impl ServerBuilder<AckModeNone> {
     }
 }
 
-#[cfg(any(
-    feature = "docs",
-    all(feature = "async_std_runtime", not(feature = "tokio_runtime")),
-    all(feature = "tokio_runtime", not(feature = "async_std_runtime")),
-))]
-impl<AckMode: Send + 'static> ServerBuilder<AckMode> {
-    /// Builds an RPC `Server`
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// let echo_service = Arc::new(EchoService { });
-    /// let builder: ServerBuilder = Server::builder()
-    ///     .register(echo_service);
-    /// let server: Server = builder.build();        
-    /// ```
-    pub fn build(self) -> Server<AckMode> {
-        use super::{AtomicClientId, RESERVED_CLIENT_ID, PubSubBroker};
-
-        let services = Arc::new(self.services);
-        let (tx, rx) = flume::unbounded();
-
-        let pubsub_broker = PubSubBroker::<AckMode>::new(rx);
-        pubsub_broker.spawn();
-
-        Server::<AckMode> {
-            client_counter: Arc::new(AtomicClientId::new(RESERVED_CLIENT_ID + 1)),
-            services,
-            pubsub_tx: tx,
-            ack_mode: PhantomData,
-        }
-    }
+macro_rules! impl_server_builder_for_ack_modes {
+    ($($ack_mode:ty),*) => {
+        $(
+            #[cfg(any(
+                feature = "docs",
+                all(feature = "async_std_runtime", not(feature = "tokio_runtime")),
+                all(feature = "tokio_runtime", not(feature = "async_std_runtime")),
+            ))]
+            impl ServerBuilder<$ack_mode> {
+                /// Builds an RPC `Server`
+                ///
+                /// # Example
+                ///
+                /// ```
+                /// let echo_service = Arc::new(EchoService { });
+                /// let builder: ServerBuilder = Server::builder()
+                ///     .register(echo_service);
+                /// let server: Server = builder.build();        
+                /// ```
+                pub fn build(self) -> Server<$ack_mode> {
+                    use super::{AtomicClientId, RESERVED_CLIENT_ID, PubSubBroker};
+            
+                    let services = Arc::new(self.services);
+                    let (tx, rx) = flume::unbounded();
+            
+                    let pubsub_broker = PubSubBroker::<$ack_mode>::new(rx);
+                    pubsub_broker.spawn();
+            
+                    Server::<$ack_mode> {
+                        client_counter: Arc::new(AtomicClientId::new(RESERVED_CLIENT_ID + 1)),
+                        services,
+                        pubsub_tx: tx,
+                        ack_mode: PhantomData,
+                    }
+                }
+            }
+        )*
+    };
 }
+
+impl_server_builder_for_ack_modes!(AckModeNone);
 
 impl Default for ServerBuilder<AckModeNone> {
     fn default() -> ServerBuilder<AckModeNone> {

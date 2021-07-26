@@ -179,6 +179,7 @@ impl<AckMode> Client<AckMode> {
     /// Creates a new publisher on a topic.
     ///
     /// Multiple local publishers on the same topic are allowed.
+    /// `AckModeAuto` and `AckModeManual` behave the same for the publisher
     pub fn publisher<T: Topic>(&self) -> Publisher<T> {
         let tx = self.broker.clone();
         Publisher::from(tx)

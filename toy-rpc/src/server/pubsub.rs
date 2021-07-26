@@ -17,7 +17,7 @@ use actix::Recipient;
 use crate::codec::{Marshal, Reserved, Unmarshal};
 use crate::error::Error;
 use crate::message::{AtomicMessageId, MessageId};
-use crate::pubsub::{SeqId, Topic};
+use crate::pubsub::{AckModeAuto, AckModeManual, SeqId, Topic};
 
 use super::RESERVED_CLIENT_ID;
 use super::{broker::ServerBrokerItem, ClientId, Server};
@@ -69,7 +69,7 @@ impl<AckMode: Send + 'static> PubSubBroker<AckMode> {
         }
     }
 
-    pub fn handle_publish(
+    pub fn handle_publish_inner(
         &mut self, 
         client_id: ClientId, 
         msg_id: MessageId, 
@@ -139,55 +139,101 @@ impl<AckMode: Send + 'static> PubSubBroker<AckMode> {
 
     pub fn handle_ack(&mut self, seq_id: SeqId) {
         log::debug!("Received Ack for seq_id: {:?}", &seq_id);
-    }
+    }   
+}
 
-    /// Spawn PubSubBroker loop in a task
-    #[cfg(any(
-        all(feature = "async_std_runtime", not(feature = "tokio_runtime")),
-        all(feature = "tokio_runtime", not(feature = "async_std_runtime")),
-    ))]
-    pub fn spawn(self) {
-        #[cfg(all(feature = "async_std_runtime", not(feature = "tokio_runtime")))]
-        ::async_std::task::spawn(self.pubsub_loop());
-        #[cfg(all(
-            feature = "tokio_runtime",
-            not(feature = "async_std_runtime"),
-            not(feature = "http_actix_web")
-        ))]
-        ::tokio::task::spawn(self.pubsub_loop());
-        #[cfg(all(feature = "http_actix_web", not(feature = "async_std_runtime")))]
-        actix::spawn(self.pubsub_loop());
-    }
-
-    pub async fn pubsub_loop(mut self) {
-        while let Ok(item) = self.listener.recv_async().await {
-            match item {
-                PubSubItem::Publish {
-                    client_id,
-                    msg_id,
-                    topic,
-                    content,
-                } => {
-                    self.handle_publish(client_id, msg_id, topic, content)
-                }
-                PubSubItem::Subscribe {
-                    client_id,
-                    topic,
-                    sender,
-                } => {
-                    self.handle_subscribe(client_id, topic, sender)
-                },
-                PubSubItem::Unsubscribe { client_id, topic } => {
-                    self.handle_unsubscribe(client_id, topic)
-                },
-                PubSubItem::Ack{seq_id} => {
-                    self.handle_ack(seq_id)
-                },
-                PubSubItem::Stop => return,
-            }
-        }
+impl PubSubBroker<AckModeNone> {
+    pub fn handle_publish(
+        &mut self,
+        client_id: ClientId,
+        msg_id: MessageId,
+        topic: String,
+        content: Arc<Vec<u8>>
+    ) {
+        self.handle_publish_inner(client_id, msg_id, topic, content)
     }
 }
+
+impl PubSubBroker<AckModeAuto> {
+    pub fn handle_publish(
+        &mut self,
+        client_id: ClientId,
+        msg_id: MessageId,
+        topic: String,
+        content: Arc<Vec<u8>>
+    ) {
+        self.handle_publish_inner(client_id, msg_id, topic, content)
+    }
+}
+
+impl PubSubBroker<AckModeManual> {
+    pub fn handle_publish(
+        &mut self,
+        client_id: ClientId,
+        msg_id: MessageId,
+        topic: String,
+        content: Arc<Vec<u8>>
+    ) {
+        self.handle_publish_inner(client_id, msg_id, topic, content)
+    }
+}
+
+macro_rules! impl_pubsub_broker_for_ack_modes {
+    ($($ack_mode:ty),*) => {
+        $(
+            impl PubSubBroker<$ack_mode> {
+                /// Spawn PubSubBroker loop in a task
+                #[cfg(any(
+                    all(feature = "async_std_runtime", not(feature = "tokio_runtime")),
+                    all(feature = "tokio_runtime", not(feature = "async_std_runtime")),
+                ))]
+                pub fn spawn(self) {
+                    #[cfg(all(feature = "async_std_runtime", not(feature = "tokio_runtime")))]
+                    ::async_std::task::spawn(self.pubsub_loop());
+                    #[cfg(all(
+                        feature = "tokio_runtime",
+                        not(feature = "async_std_runtime"),
+                        not(feature = "http_actix_web")
+                    ))]
+                    ::tokio::task::spawn(self.pubsub_loop());
+                    #[cfg(all(feature = "http_actix_web", not(feature = "async_std_runtime")))]
+                    actix::spawn(self.pubsub_loop());
+                }
+
+                pub async fn pubsub_loop(mut self) {
+                    while let Ok(item) = self.listener.recv_async().await {
+                        match item {
+                            PubSubItem::Publish {
+                                client_id,
+                                msg_id,
+                                topic,
+                                content,
+                            } => {
+                                self.handle_publish(client_id, msg_id, topic, content)
+                            }
+                            PubSubItem::Subscribe {
+                                client_id,
+                                topic,
+                                sender,
+                            } => {
+                                self.handle_subscribe(client_id, topic, sender)
+                            },
+                            PubSubItem::Unsubscribe { client_id, topic } => {
+                                self.handle_unsubscribe(client_id, topic)
+                            },
+                            PubSubItem::Ack{seq_id} => {
+                                self.handle_ack(seq_id)
+                            },
+                            PubSubItem::Stop => return,
+                        }
+                    }
+                }
+            }
+        )*
+    };
+}
+
+impl_pubsub_broker_for_ack_modes!(AckModeNone, AckModeAuto, AckModeManual);
 
 /* -------------------------------------------------------------------------- */
 /*                                 Public API                                 */

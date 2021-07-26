@@ -12,7 +12,6 @@ cfg_if! {
         use tokio_rustls::TlsConnector;
         #[cfg(feature = "tls")]
         use async_tungstenite::tokio::client_async;
-        // #[cfg(feature = "tls")]
         use tokio::net::TcpStream;
 
         use tokio::net::ToSocketAddrs;
@@ -23,7 +22,6 @@ cfg_if! {
         use async_rustls::TlsConnector;
         #[cfg(feature = "tls")]
         use async_tungstenite::client_async;
-        // #[cfg(feature = "tls")]
         use async_std::net::TcpStream;
 
         use async_std::net::ToSocketAddrs;
@@ -279,20 +277,12 @@ cfg_if! {
                         where
                             C: SplittableCodec + Send + 'static,
                         {
+                            let count = Arc::new(AtomicMessageId::new(0));
                             let (writer, reader) = codec.split();
+
                             let reader = ClientReader { reader };
                             let writer = ClientWriter { writer };
-                            let count = Arc::new(AtomicMessageId::new(0));
-            
-                            // TODO: change to generic AckMode
-                            let broker = broker::ClientBroker::<$ack_mode> {
-                                count: count.clone(),
-                                pending: HashMap::new(),
-                                next_timeout: None,
-                                subscriptions: HashMap::new(),
-            
-                                ack_mode: PhantomData
-                            };
+                            let broker = broker::ClientBroker::<$ack_mode, C>::new(count.clone());
                             let (_, broker) = brw::spawn(broker, reader, writer);
             
                             Client {

@@ -10,7 +10,7 @@ run_task = [
         "test_tokio_ws",
         "test_tide_integration",
         "test_warp_integration",
-        "test_actix_web_integration",
+        # "test_actix_web_integration",
     ] },
 ]
 

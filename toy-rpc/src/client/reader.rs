@@ -68,6 +68,15 @@ impl<R: CodecRead> brw::Reader for ClientReader<R> {
                             .map_err(|err| err.into()),
                     )
                 },
+                Header::Ack(id) => {
+                    let seq_id = SeqId::new(id);
+                    Running::Continue(
+                        broker
+                            .send(ClientBrokerItem::InboundAck(seq_id))
+                            .await
+                            .map_err(|err| err.into())
+                    )
+                }
                 _ => Running::Continue(Err(Error::Internal("Unexpected Header type".into()))),
             }
         } else {
