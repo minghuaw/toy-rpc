@@ -9,7 +9,7 @@ async fn main() {
     env_logger::init();
     // let client = Client::dial(ADDR).await.unwrap();
     let client = Client::builder()
-        .set_ack_mode_auto()
+        .set_ack_mode_none()
         .dial(ADDR).await.unwrap();
     let mut count_pub = client.publisher::<Count>();
     count_pub.send(Count(3)).await.unwrap();

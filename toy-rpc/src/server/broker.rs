@@ -4,6 +4,7 @@ use std::future::Future;
 use std::sync::Arc;
 use std::time::Duration;
 
+use crate::message;
 use crate::protocol::InboundBody;
 use crate::pubsub::SeqId;
 use crate::service::{ArcAsyncServiceCall, HandlerResult};
@@ -37,24 +38,6 @@ use ::async_std::task::JoinHandle;
     )
 ))]
 use ::tokio::task::JoinHandle;
-
-#[cfg(not(feature = "http_actix_web"))]
-pub(crate) struct ServerBroker {
-    pub client_id: ClientId,
-    pub executions: HashMap<MessageId, JoinHandle<()>>,
-    pub pubsub_broker: Sender<PubSubItem>,
-}
-
-#[cfg(not(feature = "http_actix_web"))]
-impl ServerBroker {
-    pub fn new(client_id: ClientId, pubsub_broker: Sender<PubSubItem>) -> Self {
-        Self {
-            client_id,
-            executions: HashMap::new(),
-            pubsub_broker,
-        }
-    }
-}
 
 #[cfg_attr(feature = "http_actix_web", derive(actix::Message))]
 #[cfg_attr(feature = "http_actix_web", rtype(result = "()"))]
@@ -100,6 +83,98 @@ pub(crate) enum ServerBrokerItem {
 }
 
 #[cfg(not(feature = "http_actix_web"))]
+pub(crate) struct ServerBroker {
+    pub client_id: ClientId,
+    pub executions: HashMap<MessageId, JoinHandle<()>>,
+    pub pubsub_broker: Sender<PubSubItem>,
+}
+
+#[cfg(not(feature = "http_actix_web"))]
+impl ServerBroker {
+    pub fn new(client_id: ClientId, pubsub_broker: Sender<PubSubItem>) -> Self {
+        Self {
+            client_id,
+            executions: HashMap::new(),
+            pubsub_broker,
+        }
+    }
+
+    fn handle_request<'a>(
+        &'a mut self, 
+        ctx: &'a Arc<brw::Context<ServerBrokerItem>>,
+        call: ArcAsyncServiceCall,
+        id: MessageId,
+        method: String,
+        duration: Duration,
+        deserializer: Box<InboundBody>
+    ) -> Result<(), Error> {
+        unimplemented!()
+    }
+
+    async fn handle_response<'w, W>(
+        &'w mut self,
+        writer: &'w mut W,
+        id: MessageId, 
+        result: HandlerResult
+    ) -> Result<(), Error> 
+    where
+        W: Sink<ServerWriterItem, Error = flume::SendError<ServerWriterItem>> + Send + Unpin,
+    {
+        unimplemented!()
+    }
+
+    async fn handle_cancel(
+        &mut self,
+        id: MessageId
+    ) -> Result<(), Error> {
+        unimplemented!()
+    }
+
+    // TODO: implementation auto ack
+    async fn handle_publish(
+        &mut self,
+        id: MessageId,
+        topic: String,
+        content: Vec<u8>
+    ) -> Result<(), Error> {
+        unimplemented!()
+    }
+
+    async fn handle_subscribe(
+        &mut self,
+        id: MessageId,
+        topic: String
+    ) -> Result<(), Error> {
+        unimplemented!()
+    }
+
+    async fn handle_unsubscribe(
+        &mut self,
+        id: MessageId,
+        topic: String
+    ) -> Result<(), Error> {
+        unimplemented!()
+    }
+
+    async fn handle_publication<'w, W>(
+        &'w mut self,
+        writer: &'w mut W,
+        seq_id: SeqId,
+        topic: String,
+        content: Arc<Vec<u8>>,
+    ) -> Result<(), Error>
+    where
+        W: Sink<ServerWriterItem, Error = flume::SendError<ServerWriterItem>> + Send + Unpin,
+    {
+        unimplemented!()
+    }
+
+    async fn handle_inbound_ack(&mut self, seq_id: SeqId) -> Result<(), Error> {
+        unimplemented!()
+    }
+}
+
+#[cfg(not(feature = "http_actix_web"))]
 #[async_trait::async_trait]
 impl Broker for ServerBroker {
     type Item = ServerBrokerItem;
@@ -126,7 +201,7 @@ impl Broker for ServerBroker {
             } => {
                 let fut = call(method, deserializer);
                 let _broker = ctx.broker.clone();
-                let handle = handle_request(_broker, duration, id, fut);
+                let handle = spawn_timed_request_execution(_broker, duration, id, fut);
                 self.executions.insert(id, handle);
                 Running::Continue(Ok(()))
             },
@@ -221,7 +296,7 @@ impl Broker for ServerBroker {
 
 /// Spawn the execution in a async_std task and return the JoinHandle
 #[cfg(all(feature = "async_std_runtime", not(feature = "tokio_runtime")))]
-fn handle_request(
+fn spawn_timed_request_execution(
     broker: Sender<ServerBrokerItem>,
     duration: Duration,
     id: MessageId,
@@ -242,7 +317,7 @@ fn handle_request(
     not(feature = "async_std_runtime"),
     not(feature = "http_actix_web")
 ))]
-fn handle_request(
+fn spawn_timed_request_execution(
     broker: Sender<ServerBrokerItem>,
     duration: Duration,
     id: MessageId,
