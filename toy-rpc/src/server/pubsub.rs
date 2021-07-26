@@ -67,6 +67,78 @@ impl PubSubBroker {
         }
     }
 
+    pub fn handle_publish(
+        &mut self, 
+        client_id: ClientId, 
+        msg_id: MessageId, 
+        topic: String,
+        content: Arc<Vec<u8>>
+    ) {
+        let seq_id = self.seq_counter.fetch_add(1, Ordering::Relaxed);
+        let seq_id = SeqId::new(seq_id);
+        log::info!("{:?} assigned to Publish message {} from client {}", &seq_id, &msg_id, &client_id);
+
+        if let Some(entry) = self.subscriptions.get_mut(&topic) {
+            entry.retain(|_, sender| {
+                let msg = ServerBrokerItem::Publication{
+                    seq_id: seq_id.clone(),
+                    topic: topic.clone(),
+                    content: content.clone()
+                };
+
+                match sender {
+                    #[cfg(not(feature = "http_actix_web"))]
+                    PubSubResponder::Sender(tx) => {
+                        if let Err(err) = tx.try_send(msg) {
+                            if let flume::TrySendError::Disconnected(_) = err {
+                                log::error!("Client is disconnected, removing from subscriptions");
+                                return false
+                            }
+                        }
+                    },
+                    #[cfg(feature = "http_actix_web")]
+                    PubSubResponder::Recipient(tx) => {
+                        if let Err(err) = tx.try_send(msg) {
+                            if let actix::prelude::SendError::Closed(_) = err {
+                                log::error!("Client is disconnected, removing from subscriptions");
+                                return false
+                            }
+                        }
+                    }
+                }
+                true
+            })
+        }
+    }
+
+    pub fn handle_subscribe(
+        &mut self,
+        client_id: ClientId,
+        topic: String,
+        sender: PubSubResponder
+    ) {
+        match self.subscriptions.get_mut(&topic) {
+            Some(entry) => {
+                entry.insert(client_id, sender);
+            }
+            None => {
+                let mut entry = BTreeMap::new();
+                entry.insert(client_id, sender);
+                self.subscriptions.insert(topic, entry);
+            }
+        }
+    }
+
+    pub fn handle_unsubscribe(&mut self, client_id: ClientId, topic: String) {
+        if let Some(entry) = self.subscriptions.get_mut(&topic) {
+            entry.remove(&client_id);
+        }
+    }
+
+    pub fn handle_ack(&mut self, seq_id: SeqId) {
+        log::debug!("Received Ack for seq_id: {:?}", &seq_id);
+    }
+
     /// Spawn PubSubBroker loop in a task
     #[cfg(any(
         all(feature = "async_std_runtime", not(feature = "tokio_runtime")),
@@ -94,67 +166,20 @@ impl PubSubBroker {
                     topic,
                     content,
                 } => {
-                    let seq_id = self.seq_counter.fetch_add(1, Ordering::Relaxed);
-                    let seq_id = SeqId::new(seq_id);
-                    log::info!("{:?} assigned to Publish message {} from client {}", &seq_id, &msg_id, &client_id);
-
-                    if let Some(entry) = self.subscriptions.get_mut(&topic) {
-                        entry.retain(|_, sender| {
-                            let msg = ServerBrokerItem::Publication{
-                                seq_id: seq_id.clone(),
-                                topic: topic.clone(),
-                                content: content.clone()
-                            };
-
-                            match sender {
-                                #[cfg(not(feature = "http_actix_web"))]
-                                PubSubResponder::Sender(tx) => {
-                                    if let Err(err) = tx.try_send(msg) {
-                                        if let flume::TrySendError::Disconnected(_) = err {
-                                            log::error!("Client is disconnected, removing from subscriptions");
-                                            return false
-                                        }
-                                    }
-                                },
-                                #[cfg(feature = "http_actix_web")]
-                                PubSubResponder::Recipient(tx) => {
-                                    if let Err(err) = tx.try_send(msg) {
-                                        if let actix::prelude::SendError::Closed(_) = err {
-                                            log::error!("Client is disconnected, removing from subscriptions");
-                                            return false
-                                        }
-                                    }
-                                }
-                            }
-                            true
-                        })
-                    }
+                    self.handle_publish(client_id, msg_id, topic, content)
                 }
                 PubSubItem::Subscribe {
                     client_id,
                     topic,
                     sender,
-                } => match self.subscriptions.get_mut(&topic) {
-                    Some(entry) => {
-                        entry.insert(client_id, sender);
-                    }
-                    None => {
-                        let mut entry = BTreeMap::new();
-                        entry.insert(client_id, sender);
-                        self.subscriptions.insert(topic, entry);
-                    }
+                } => {
+                    self.handle_subscribe(client_id, topic, sender)
                 },
                 PubSubItem::Unsubscribe { client_id, topic } => {
-                    match self.subscriptions.get_mut(&topic) {
-                        Some(entry) => {
-                            entry.remove(&client_id);
-                        }
-                        None => {}
-                    }
+                    self.handle_unsubscribe(client_id, topic)
                 },
                 PubSubItem::Ack{seq_id} => {
-                    log::debug!("Received Ack for seq_id: {:?}", &seq_id);
-                    // unimplemented!()
+                    self.handle_ack(seq_id)
                 },
                 PubSubItem::Stop => return,
             }
