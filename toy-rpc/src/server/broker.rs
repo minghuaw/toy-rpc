@@ -1,11 +1,12 @@
 //! Broker on the server side
 
 use std::future::Future;
+use std::marker::PhantomData;
 use std::sync::Arc;
 use std::time::Duration;
 
 use crate::protocol::InboundBody;
-use crate::pubsub::SeqId;
+use crate::pubsub::{AckModeAuto, AckModeManual, AckModeNone, SeqId};
 use crate::service::{ArcAsyncServiceCall, HandlerResult};
 
 use crate::{error::Error, message::MessageId};
@@ -82,19 +83,22 @@ pub(crate) enum ServerBrokerItem {
 }
 
 #[cfg(not(feature = "http_actix_web"))]
-pub(crate) struct ServerBroker {
+pub(crate) struct ServerBroker<AckMode> {
     pub client_id: ClientId,
     pub executions: HashMap<MessageId, JoinHandle<()>>,
     pub pubsub_broker: Sender<PubSubItem>,
+
+    ack_mode: PhantomData<AckMode>
 }
 
 #[cfg(not(feature = "http_actix_web"))]
-impl ServerBroker {
+impl<AckMode> ServerBroker<AckMode> {
     pub fn new(client_id: ClientId, pubsub_broker: Sender<PubSubItem>) -> Self {
         Self {
             client_id,
             executions: HashMap::new(),
             pubsub_broker,
+            ack_mode: PhantomData
         }
     }
 
@@ -226,70 +230,78 @@ impl ServerBroker {
     }
 }
 
-#[cfg(not(feature = "http_actix_web"))]
-#[async_trait::async_trait]
-impl Broker for ServerBroker {
-    type Item = ServerBrokerItem;
-    type WriterItem = ServerWriterItem;
-    type Ok = ();
-    type Error = Error;
-
-    async fn op<W>(
-        &mut self,
-        ctx: &Arc<brw::Context<Self::Item>>,
-        item: Self::Item,
-        mut writer: W,
-    ) -> Running<Result<Self::Ok, Self::Error>>
-    where
-        W: Sink<Self::WriterItem, Error = flume::SendError<Self::WriterItem>> + Send + Unpin,
-    {
-        let result = match item {
-            ServerBrokerItem::Request {
-                call,
-                id,
-                method,
-                duration,
-                deserializer,
-            } => {
-                self.handle_request(ctx, call, id, method, duration, deserializer)
-            },
-            ServerBrokerItem::Response { id, result } => {
-               self.handle_response(&mut writer, id, result).await
-            },
-            ServerBrokerItem::Cancel(id) => {
-                self.handle_cancel(id).await
-            },
-            ServerBrokerItem::Publish { id, topic, content } => {
-                self.handle_publish(id, topic, content).await
-            },
-            ServerBrokerItem::Subscribe { id, topic } => {
-                self.handle_subscribe(ctx, id, topic).await
-            },
-            ServerBrokerItem::Unsubscribe { id, topic } => {
-                self.handle_unsubscribe(id, topic).await
-            },
-            ServerBrokerItem::Publication { seq_id, topic, content } => {
-                self.handle_publication(&mut writer, seq_id, topic, content).await
-            },
-            ServerBrokerItem::InboundAck {seq_id} => {
-                self.handle_inbound_ack(seq_id).await
-            },
-            ServerBrokerItem::Stop => {
-                for (_, handle) in self.executions.drain() {
-                    log::debug!("Stopping execution as client is disconnected");
-                    #[cfg(all(feature = "tokio_runtime", not(feature = "async_std_runtime")))]
-                    handle.abort();
-                    #[cfg(all(feature = "async_std_runtime", not(feature = "tokio_runtime")))]
-                    handle.cancel().await;
+// macro_rules! impl_server_broker_for_ack_modes {
+//     ($($ack_mode:ty),*) => {
+//         $(
+            #[cfg(not(feature = "http_actix_web"))]
+            #[async_trait::async_trait]
+            impl<AckMode: Send> Broker for ServerBroker<AckMode> {
+                type Item = ServerBrokerItem;
+                type WriterItem = ServerWriterItem;
+                type Ok = ();
+                type Error = Error;
+            
+                async fn op<W>(
+                    &mut self,
+                    ctx: &Arc<brw::Context<Self::Item>>,
+                    item: Self::Item,
+                    mut writer: W,
+                ) -> Running<Result<Self::Ok, Self::Error>>
+                where
+                    W: Sink<Self::WriterItem, Error = flume::SendError<Self::WriterItem>> + Send + Unpin,
+                {
+                    let result = match item {
+                        ServerBrokerItem::Request {
+                            call,
+                            id,
+                            method,
+                            duration,
+                            deserializer,
+                        } => {
+                            self.handle_request(ctx, call, id, method, duration, deserializer)
+                        },
+                        ServerBrokerItem::Response { id, result } => {
+                           self.handle_response(&mut writer, id, result).await
+                        },
+                        ServerBrokerItem::Cancel(id) => {
+                            self.handle_cancel(id).await
+                        },
+                        ServerBrokerItem::Publish { id, topic, content } => {
+                            self.handle_publish(id, topic, content).await
+                        },
+                        ServerBrokerItem::Subscribe { id, topic } => {
+                            self.handle_subscribe(ctx, id, topic).await
+                        },
+                        ServerBrokerItem::Unsubscribe { id, topic } => {
+                            self.handle_unsubscribe(id, topic).await
+                        },
+                        ServerBrokerItem::Publication { seq_id, topic, content } => {
+                            self.handle_publication(&mut writer, seq_id, topic, content).await
+                        },
+                        ServerBrokerItem::InboundAck {seq_id} => {
+                            self.handle_inbound_ack(seq_id).await
+                        },
+                        ServerBrokerItem::Stop => {
+                            for (_, handle) in self.executions.drain() {
+                                log::debug!("Stopping execution as client is disconnected");
+                                #[cfg(all(feature = "tokio_runtime", not(feature = "async_std_runtime")))]
+                                handle.abort();
+                                #[cfg(all(feature = "async_std_runtime", not(feature = "tokio_runtime")))]
+                                handle.cancel().await;
+                            }
+                            log::debug!("Client connection is closed");
+                            return Running::Stop
+                        }
+                    };
+            
+                    Running::Continue(result)
                 }
-                log::debug!("Client connection is closed");
-                return Running::Stop
             }
-        };
+//         )*
+//     };
+// }
 
-        Running::Continue(result)
-    }
-}
+// impl_server_broker_for_ack_modes!(AckModeNone, AckModeAuto, AckModeManual);
 
 /// Spawn the execution in a async_std task and return the JoinHandle
 #[cfg(all(feature = "async_std_runtime", not(feature = "tokio_runtime")))]

@@ -37,7 +37,6 @@ cfg_if! {
 
         use crate::codec::DefaultCodec;
         use crate::DEFAULT_RPC_PATH;
-        use crate::server::start_broker_reader_writer;
         use crate::pubsub::AckModeNone;
 
         /// The following impl block is controlled by feature flag. It is enabled
@@ -91,7 +90,7 @@ cfg_if! {
                             let client_id = req.state().client_counter.fetch_add(1, Ordering::Relaxed);
                             let pubsub_broker = req.state().pubsub_tx.clone();
 
-                            let fut = start_broker_reader_writer(codec, services, client_id, pubsub_broker);
+                            let fut = Self::start_broker_reader_writer(codec, services, client_id, pubsub_broker);
                             log::trace!("Client disconnected.");
                             fut.await?;
                             Ok(())

@@ -135,23 +135,6 @@ cfg_if! {
 
         use crate::{error::Error, transport::ws::WebSocketConn, codec::{split::SplittableCodec, DefaultCodec}};
 
-        pub(crate) async fn start_broker_reader_writer(
-            codec: impl crate::codec::split::SplittableCodec + 'static,
-            services: Arc<AsyncServiceMap>,
-            client_id: ClientId,
-            pubsub_tx: Sender<PubSubItem>,
-        ) -> Result<(), crate::Error> {
-            let (writer, reader) = codec.split();
-
-            let reader = reader::ServerReader::new(reader, services);
-            let writer = writer::ServerWriter::new(writer);
-            let broker = broker::ServerBroker::new(client_id, pubsub_tx);
-
-            let (broker_handle, _) = brw::spawn(broker, reader, writer);
-            let _ = broker_handle.await;
-            Ok(())
-        }
-
         /// The following impl block is controlled by feature flag. It is enabled
         /// if and only if **exactly one** of the the following feature flag is turned on
         /// - `serde_bincode`
@@ -195,7 +178,7 @@ cfg_if! {
                     let client_id = self.client_counter.fetch_add(1, Ordering::Relaxed);
                     let pubsub_broker = self.pubsub_tx.clone();
                     task::spawn(
-                        serve_tcp_connection(stream, self.services.clone(), client_id, pubsub_broker)
+                        Self::serve_tcp_connection(stream, self.services.clone(), client_id, pubsub_broker)
                     );
                 }
 
@@ -263,7 +246,7 @@ cfg_if! {
                     let client_id = self.client_counter.fetch_add(1, Ordering::Relaxed);
                     let pubsub_broker = self.pubsub_tx.clone();
                     task::spawn(
-                        accept_ws_connection(stream, self.services.clone(), client_id, pubsub_broker)
+                        Self::accept_ws_connection(stream, self.services.clone(), client_id, pubsub_broker)
                     );
                 }
 
@@ -328,59 +311,80 @@ cfg_if! {
             {
                 let client_id = self.client_counter.fetch_add(1, Ordering::Relaxed);
                 let pubsub_broker = self.pubsub_tx.clone();
-                start_broker_reader_writer(codec, self.services.clone(), client_id, pubsub_broker).await
+                Self::start_broker_reader_writer(codec, self.services.clone(), client_id, pubsub_broker).await
             }
         }
 
-        #[cfg(feature = "tls")]
-        async fn serve_tls_connection(
-            stream: TcpStream,
-            acceptor: TlsAcceptor,
-            services: Arc<AsyncServiceMap>,
-            client_id: ClientId,
-            pubsub_broker: Sender<PubSubItem>
-        ) -> Result<(), Error> {
-            let peer_addr = stream.peer_addr()?;
-            let tls_stream = acceptor.accept(stream).await?;
-            // let ret = serve_readwrite_stream(tls_stream, services).await;
-            let codec = DefaultCodec::new(tls_stream);
-            let ret = start_broker_reader_writer(codec, services, client_id, pubsub_broker).await;
-            log::info!("Client disconnected from {}", peer_addr);
-            ret
-        }
-
-        /// Serves a single connection
-        async fn serve_tcp_connection(
-            stream: TcpStream,
-            services: Arc<AsyncServiceMap>,
-            client_id: ClientId,
-            pubsub_broker: Sender<PubSubItem>
-        ) -> Result<(), Error> {
-            let _peer_addr = stream.peer_addr()?;
-            // let ret = serve_readwrite_stream(stream, services, client_id, pubsub_broker);
-            let codec = DefaultCodec::new(stream);
-            let ret = start_broker_reader_writer(codec, services, client_id, pubsub_broker).await;
-            log::info!("Client disconnected from {}", _peer_addr);
-            ret
-        }
-
-        async fn accept_ws_connection(
-            stream: TcpStream,
-            services: Arc<AsyncServiceMap>,
-            client_id: ClientId,
-            pubsub_broker: Sender<PubSubItem>
-        ) {
-            let ws_stream = accept_async(stream).await
-                    .expect("Error during the websocket handshake occurred");
-                log::debug!("Established WebSocket connection.");
-
-            let ws_stream = WebSocketConn::new(ws_stream);
-            let codec = DefaultCodec::with_websocket(ws_stream);
-
-            if let Err(err) = start_broker_reader_writer(codec, services, client_id, pubsub_broker).await {
-                log::error!("{}", err);
+        impl<AckMode: Send + 'static> Server<AckMode> {
+            pub(crate) async fn start_broker_reader_writer(
+                codec: impl crate::codec::split::SplittableCodec + 'static,
+                services: Arc<AsyncServiceMap>,
+                client_id: ClientId,
+                pubsub_tx: Sender<PubSubItem>,
+            ) -> Result<(), crate::Error> {
+                let (writer, reader) = codec.split();
+    
+                let reader = reader::ServerReader::new(reader, services);
+                let writer = writer::ServerWriter::new(writer);
+                let broker = broker::ServerBroker::<AckMode>::new(client_id, pubsub_tx);
+    
+                let (broker_handle, _) = brw::spawn(broker, reader, writer);
+                let _ = broker_handle.await;
+                Ok(())
             }
-            log::info!("Client disconnected from WebSocket connection");
+
+            #[cfg(feature = "tls")]
+            async fn serve_tls_connection(
+                stream: TcpStream,
+                acceptor: TlsAcceptor,
+                services: Arc<AsyncServiceMap>,
+                client_id: ClientId,
+                pubsub_broker: Sender<PubSubItem>
+            ) -> Result<(), Error> {
+                let peer_addr = stream.peer_addr()?;
+                let tls_stream = acceptor.accept(stream).await?;
+                // let ret = serve_readwrite_stream(tls_stream, services).await;
+                let codec = DefaultCodec::new(tls_stream);
+                let ret = start_broker_reader_writer(codec, services, client_id, pubsub_broker).await;
+                log::info!("Client disconnected from {}", peer_addr);
+                ret
+            }
+
+            /// Serves a single connection
+            async fn serve_tcp_connection(
+                stream: TcpStream,
+                services: Arc<AsyncServiceMap>,
+                client_id: ClientId,
+                pubsub_broker: Sender<PubSubItem>
+            ) -> Result<(), Error> {
+                let _peer_addr = stream.peer_addr()?;
+                // let ret = serve_readwrite_stream(stream, services, client_id, pubsub_broker);
+                let codec = DefaultCodec::new(stream);
+                let ret = Self::start_broker_reader_writer(codec, services, client_id, pubsub_broker).await;
+                log::info!("Client disconnected from {}", _peer_addr);
+                ret
+            }
+    
+            async fn accept_ws_connection(
+                stream: TcpStream,
+                services: Arc<AsyncServiceMap>,
+                client_id: ClientId,
+                pubsub_broker: Sender<PubSubItem>
+            ) {
+                let ws_stream = accept_async(stream).await
+                        .expect("Error during the websocket handshake occurred");
+                    log::debug!("Established WebSocket connection.");
+    
+                let ws_stream = WebSocketConn::new(ws_stream);
+                let codec = DefaultCodec::with_websocket(ws_stream);
+    
+                if let Err(err) = Self::start_broker_reader_writer(codec, services, client_id, pubsub_broker).await {
+                    log::error!("{}", err);
+                }
+                log::info!("Client disconnected from WebSocket connection");
+            }
         }
+
+
     }
 }
