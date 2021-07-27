@@ -103,6 +103,7 @@ impl<T: Topic, C: Unmarshal> Stream for Subscriber<T, C, AckModeAuto> {
                         content,
                     } => {
                         // Send back Ack first
+                        log::debug!("Auto Ack");
                         if let Err(err) = this.pubsub_tx.send(PubSubItem::Ack{seq_id, client_id: RESERVED_CLIENT_ID})
                             .map_err(|err| err.into()) 
                         {
@@ -134,7 +135,7 @@ macro_rules! impl_server_pubsub_for_ack_modes {
                 /// Creating a new subscriber will drop the sender of the old subscriber.
                 #[cfg(not(feature = "http_actix_web"))]
                 #[cfg_attr(feature = "docs", doc(cfg(not(feature = "http_actix_web"))))]
-                pub fn subscriber<T: Topic>(&self, cap: usize) -> Result<Subscriber<T, PhantomCodec, AckModeNone>, Error> {
+                pub fn subscriber<T: Topic>(&self, cap: usize) -> Result<Subscriber<T, PhantomCodec, $ack_mode>, Error> {
                     let (sender, rx) = flume::bounded(cap);
                     let client_id = RESERVED_CLIENT_ID;
                     let topic = T::topic();

@@ -113,8 +113,6 @@ impl<AckMode: Send + 'static> PubSubBroker<AckMode> {
         }
     }
 
-    
-
     async fn handle_publish_retry(
         &mut self,
         client_ids: BTreeSet<ClientId>,
@@ -162,9 +160,13 @@ impl<AckMode: Send + 'static> PubSubBroker<AckMode> {
         }
     }
 
-    pub fn handle_ack(&mut self, seq_id: SeqId, client_id: ClientId) {
+    pub async fn handle_ack(&mut self, seq_id: SeqId, client_id: ClientId) {
         log::debug!("Received Ack for seq_id: {:?} from client {:?}", &seq_id, &client_id);
-
+        if let Some(sender) = self.pending_acks.get_mut(&seq_id) {
+            sender.send_async(client_id)
+                .await
+                .unwrap_or_else(|_| log::error!("Pending Ack entry for seq_id: {:?} is not found", seq_id))
+        }
     }   
 }
 
@@ -192,6 +194,8 @@ impl PubSubBroker<AckModeAuto> {
         use tokio::time::timeout;        
         #[cfg(all(feature = "async_std_runtime", not(feature = "tokio_runtime")))]
         use async_std::future::timeout;
+
+        log::debug!("Spawning timed task");
 
         let (tx, rx) = flume::unbounded::<ClientId>();
         let duration = self.pub_retry_timeout;
@@ -295,7 +299,7 @@ macro_rules! impl_pubsub_broker_for_ack_modes {
                                 self.handle_unsubscribe(client_id, topic)
                             },
                             PubSubItem::Ack{seq_id, client_id} => {
-                                self.handle_ack(seq_id, client_id)
+                                self.handle_ack(seq_id, client_id).await
                             },
                             PubSubItem::Stop => return,
                         }
