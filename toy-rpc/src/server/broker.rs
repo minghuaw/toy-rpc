@@ -220,7 +220,7 @@ impl<AckMode> ServerBroker<AckMode> {
     }
 
     async fn handle_inbound_ack(&mut self, seq_id: SeqId) -> Result<(), Error> {
-        let item = PubSubItem::Ack{seq_id};
+        let item = PubSubItem::Ack{seq_id, client_id: self.client_id};
         self.pubsub_broker
             .send_async(item)
             .await
@@ -231,7 +231,6 @@ impl<AckMode> ServerBroker<AckMode> {
 #[cfg(not(feature = "http_actix_web"))]
 impl ServerBroker<AckModeNone> {
     // Publish is the PubSub message from client to server
-    // TODO: implementation auto ack
     async fn handle_publish<'w, W>(
         &'w mut self,
         _: &'w mut W,

@@ -98,7 +98,7 @@ cfg-if = "1.0"
 tungstenite = "0.13"
 async-tungstenite = { version = "0.13"}
 thiserror = "1.0"
-flume = "0.10"
+flume = "0.10.7"
 pin-project = "1.0"
 crossbeam = "0.8"
 brw = { version = "^0.1.6" }
