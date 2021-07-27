@@ -20,9 +20,6 @@ use async_std::task;
 #[cfg(all(feature = "tokio_runtime", not(feature = "async_std_runtime")))]
 use tokio::task;
 
-pub mod publisher;
-pub mod subscriber;
-
 pub(crate) enum PubSubResponder {
     #[cfg(not(feature = "http_actix_web"))]
     Sender(Sender<ServerBrokerItem>),
@@ -338,38 +335,39 @@ fn send_broker_item_publication(
     true
 }
 
-// /* -------------------------------------------------------------------------- */
-// /*                                 Public API                                 */
-// /* -------------------------------------------------------------------------- */
+/* -------------------------------------------------------------------------- */
+/*                                 Public API                                 */
+/* -------------------------------------------------------------------------- */
 
-// cfg_if::cfg_if! {
-//     if #[cfg(any(
-//         any(feature = "docs", doc),
-//         all(
-//             feature = "serde_bincode",
-//             not(feature = "serde_json"),
-//             not(feature = "serde_cbor"),
-//             not(feature = "serde_rmp"),
-//         ),
-//         all(
-//             feature = "serde_cbor",
-//             not(feature = "serde_json"),
-//             not(feature = "serde_bincode"),
-//             not(feature = "serde_rmp"),
-//         ),
-//         all(
-//             feature = "serde_json",
-//             not(feature = "serde_bincode"),
-//             not(feature = "serde_cbor"),
-//             not(feature = "serde_rmp"),
-//         ),
-//         all(
-//             feature = "serde_rmp",
-//             not(feature = "serde_cbor"),
-//             not(feature = "serde_json"),
-//             not(feature = "serde_bincode"),
-//         ),
-//     ))] {
-        
-//     }
-// }
+cfg_if::cfg_if! {
+    if #[cfg(any(
+        any(feature = "docs", doc),
+        all(
+            feature = "serde_bincode",
+            not(feature = "serde_json"),
+            not(feature = "serde_cbor"),
+            not(feature = "serde_rmp"),
+        ),
+        all(
+            feature = "serde_cbor",
+            not(feature = "serde_json"),
+            not(feature = "serde_bincode"),
+            not(feature = "serde_rmp"),
+        ),
+        all(
+            feature = "serde_json",
+            not(feature = "serde_bincode"),
+            not(feature = "serde_cbor"),
+            not(feature = "serde_rmp"),
+        ),
+        all(
+            feature = "serde_rmp",
+            not(feature = "serde_cbor"),
+            not(feature = "serde_json"),
+            not(feature = "serde_bincode"),
+        ),
+    ))] {
+    pub mod publisher;
+    pub mod subscriber;
+    }
+}
