@@ -45,6 +45,7 @@ pub(crate) enum ClientBrokerItem {
         body: Box<OutboundBody>,
     },
     PublishRetry {
+        count: u32,
         id: MessageId,
         topic: String,
         body: Arc<Vec<u8>>,
@@ -93,6 +94,7 @@ pub(crate) struct ClientBroker<AckMode, C> {
     pub subscriptions: HashMap<String, Sender<SubscriptionItem>>,
     pub pending_acks: BTreeMap<MessageId, oneshot::Sender<()>>,
     pub pub_retry_timeout: Duration,
+    pub max_num_retries: u32,
 
     pub ack_mode: PhantomData<AckMode>,
     pub codec: PhantomData<C>,
@@ -103,7 +105,7 @@ pub(crate) struct ClientBroker<AckMode, C> {
     all(feature = "async_std_runtime", not(feature = "tokio_runtime"))
 ))]
 impl<AckMode, C> ClientBroker<AckMode, C> {
-    pub fn new(count: Arc<AtomicMessageId>, pub_retry_timeout: Duration) -> Self {
+    pub fn new(count: Arc<AtomicMessageId>, pub_retry_timeout: Duration, max_num_retries: u32) -> Self {
         Self {
             count,
             pending: HashMap::new(),
@@ -111,6 +113,7 @@ impl<AckMode, C> ClientBroker<AckMode, C> {
             subscriptions: HashMap::new(),
             pending_acks: BTreeMap::new(),
             pub_retry_timeout,
+            max_num_retries,
 
             ack_mode: PhantomData,
             codec: PhantomData,
@@ -223,7 +226,15 @@ impl<AckMode, C> ClientBroker<AckMode, C> {
             .map_err(|err| err.into())
     }
 
-    fn spawn_timed_task_waiting_for_ack(&mut self, broker: Sender<ClientBrokerItem>, id: MessageId, topic: String, body: Arc<Vec<u8>>, duration: Duration) {
+    fn spawn_timed_task_waiting_for_ack(
+        &mut self, 
+        broker: Sender<ClientBrokerItem>, 
+        count: u32,
+        id: MessageId, 
+        topic: String, 
+        body: Arc<Vec<u8>>, 
+        duration: Duration
+    ) {
         // fetch_add returns the previous value
         let (tx, rx) = oneshot::channel::<()>();
         task::spawn(async move {
@@ -235,7 +246,7 @@ impl<AckMode, C> ClientBroker<AckMode, C> {
             // retry 
             if let Err(_) = timeout_result {
                 log::debug!("Publish ack timedout");
-                broker.send_async(ClientBrokerItem::PublishRetry{id, topic, body})
+                broker.send_async(ClientBrokerItem::PublishRetry{count, id, topic, body})
                     .await
                     .unwrap_or_else(|_| log::error!("Error found sending PublishRetry"))
             }
@@ -247,6 +258,7 @@ impl<AckMode, C> ClientBroker<AckMode, C> {
         &mut self, 
         writer: &mut W, 
         ctx: &'w Arc<Context<ClientBrokerItem>>, 
+        mut count: u32, 
         id: MessageId, 
         topic: String, 
         body: Arc<Vec<u8>>
@@ -254,10 +266,15 @@ impl<AckMode, C> ClientBroker<AckMode, C> {
     where 
         W: Sink<ClientWriterItem, Error = flume::SendError<ClientWriterItem>> + Send + Unpin,
     {
-        let result = Self::handle_publish_inner(writer, id, topic.clone(), body.clone()).await;
-        let broker = ctx.broker.clone();
-        self.spawn_timed_task_waiting_for_ack(broker, id, topic, body, self.pub_retry_timeout);
-        result
+        if count < self.max_num_retries {
+            count += 1;
+            let result = Self::handle_publish_inner(writer, id, topic.clone(), body.clone()).await;
+            let broker = ctx.broker.clone();
+            self.spawn_timed_task_waiting_for_ack(broker, count, id, topic, body, self.pub_retry_timeout);
+            result
+        } else {
+            Err(Error::MaxRetriesReached(id))
+        }
     }
 
     async fn handle_subscribe<'w, W>(&'w mut self, writer: &'w mut W, topic: String, item_sink: Sender<SubscriptionItem>) -> Result<(), Error> 
@@ -368,11 +385,12 @@ impl<C: Marshal + Send> ClientBroker<AckModeAuto, C> {
     where 
         W: Sink<ClientWriterItem, Error = flume::SendError<ClientWriterItem>> + Send + Unpin,
     {
+        let count = 0;
         let id = self.count.fetch_add(1, Ordering::Relaxed);
         let body = Arc::new(C::marshal(&body)?);
         let res = Self::handle_publish_inner(writer, id, topic.clone(), body.clone()).await;
         let broker = ctx.broker.clone();
-        self.spawn_timed_task_waiting_for_ack(broker, id, topic, body, self.pub_retry_timeout);
+        self.spawn_timed_task_waiting_for_ack(broker, count, id, topic, body, self.pub_retry_timeout);
         res
     }
 
@@ -407,11 +425,12 @@ impl<C: Marshal + Send> ClientBroker<AckModeManual, C> {
     where 
         W: Sink<ClientWriterItem, Error = flume::SendError<ClientWriterItem>> + Send + Unpin,
     {
+        let count = 0;
         let id = self.count.fetch_add(1, Ordering::Relaxed);
         let body = Arc::new(C::marshal(&body)?);
         let res = Self::handle_publish_inner(writer, id, topic.clone(), body.clone()).await;
         let broker = ctx.broker.clone();
-        self.spawn_timed_task_waiting_for_ack(broker, id, topic, body, self.pub_retry_timeout);
+        self.spawn_timed_task_waiting_for_ack(broker, count, id, topic, body, self.pub_retry_timeout);
         res
     }
 
@@ -465,8 +484,8 @@ macro_rules! impl_broker_for_ack_modes {
                         ClientBrokerItem::Publish { topic, body } => {
                             self.handle_publish(&mut writer, ctx, topic, body).await
                         },
-                        ClientBrokerItem::PublishRetry { id, topic, body } => {
-                            self.handle_publish_retry(&mut writer, ctx, id, topic, body).await
+                        ClientBrokerItem::PublishRetry { count, id, topic, body } => {
+                            self.handle_publish_retry(&mut writer, ctx, count, id, topic, body).await
                         },
                         ClientBrokerItem::Subscribe { topic, item_sink } => {
                             self.handle_subscribe(&mut writer, topic, item_sink).await

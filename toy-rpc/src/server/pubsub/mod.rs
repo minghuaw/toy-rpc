@@ -10,6 +10,7 @@ use std::time::Duration;
 #[cfg(feature = "http_actix_web")]
 use actix::Recipient;
 
+use crate::Error;
 use crate::message::{AtomicMessageId, MessageId};
 use crate::pubsub::{AckModeAuto, AckModeNone, SeqId};
 
@@ -36,6 +37,7 @@ pub(crate) enum PubSubItem {
         content: Arc<Vec<u8>>,
     },
     PublishRetry {
+        count: u32,
         client_ids: BTreeSet<ClientId>,
         seq_id: SeqId,
         topic: String,
@@ -67,11 +69,12 @@ pub(crate) struct PubSubBroker<AckMode> {
     subscriptions: HashMap<String, BTreeMap<ClientId, PubSubResponder>>,
     pending_acks: BTreeMap<SeqId, Sender<ClientId>>,
     pub_retry_timeout: Duration,
+    max_num_retries: u32,
     ack_mode: PhantomData<AckMode>
 }
 
 impl<AckMode: Send + 'static> PubSubBroker<AckMode> {
-    pub fn new(retry_timeout: Duration) -> (Self, Sender<PubSubItem>) {
+    pub fn new(retry_timeout: Duration, max_num_retries: u32) -> (Self, Sender<PubSubItem>) {
         let (pubsub_tx, listener) = flume::unbounded();
         (
             Self {
@@ -81,6 +84,7 @@ impl<AckMode: Send + 'static> PubSubBroker<AckMode> {
                 subscriptions: HashMap::new(),
                 pending_acks: BTreeMap::new(),
                 pub_retry_timeout: retry_timeout,
+                max_num_retries,
                 ack_mode: PhantomData
             },
             pubsub_tx
@@ -113,26 +117,85 @@ impl<AckMode: Send + 'static> PubSubBroker<AckMode> {
         }
     }
 
+    fn spawn_timed_task_waiting_for_acks(
+        &mut self,
+        count: u32,
+        set: BTreeSet<ClientId>,
+        topic: String,
+        seq_id: SeqId,
+        content: Arc<Vec<u8>>
+    ) {
+        #[cfg(all(feature = "tokio_runtime", not(feature = "async_std_runtime")))]
+        use tokio::time::timeout;        
+        #[cfg(all(feature = "async_std_runtime", not(feature = "tokio_runtime")))]
+        use async_std::future::timeout;
+
+        let (tx, rx) = flume::unbounded::<ClientId>();
+        let duration = self.pub_retry_timeout;
+        self.pending_acks.insert(seq_id.clone(), tx);
+        let len = set.len();
+        let pubsub_tx = self.pubsub_tx.clone();
+        
+        task::spawn(async move {
+            let mut set = set;
+            let fut = async {
+                let _set = &mut set;
+                for _ in 0..len {
+                    if let Ok(client_id) = rx.recv_async().await {
+                        if _set.remove(&client_id) == false {
+                            log::error!("Client ID {} is not found in subscription ack set", client_id);
+                        }
+                    }
+                }
+            };
+
+            let msg = match timeout(duration, fut).await {
+                Ok(_) => PubSubItem::RemovePendingAcks { seq_id },
+                Err(err) => {
+                    log::error!("{:?}", err);
+                    PubSubItem::PublishRetry {
+                        count,
+                        client_ids: set, 
+                        seq_id, 
+                        topic: topic, 
+                        content
+                    }
+                }
+            };
+            pubsub_tx.send_async(msg)
+                    .await
+                    .unwrap_or_else(|err| log::error!("{:?}", err))
+        });
+    }
+
     async fn handle_publish_retry(
         &mut self,
-        client_ids: BTreeSet<ClientId>,
+        mut count: u32,
+        set: BTreeSet<ClientId>,
         seq_id: SeqId,
         topic: String,
         content: Arc<Vec<u8>>,
     ) {
         log::debug!("Retry publish");
-        if let Some(entry) = self.subscriptions.get_mut(&topic) {
-            
-            for client_id in client_ids {
-                let msg = ServerBrokerItem::Publication {
-                    seq_id: seq_id.clone(),
-                    topic: topic.clone(),
-                    content: content.clone()
-                };
-                if let Some(responder) = entry.get_mut(&client_id) {
-                    send_broker_item_publication(responder, msg);
+        if count < self.max_num_retries {
+            count += 1;
+
+            if let Some(entry) = self.subscriptions.get_mut(&topic) {
+                for client_id in set.iter() {
+                    let msg = ServerBrokerItem::Publication {
+                        seq_id: seq_id.clone(),
+                        topic: topic.clone(),
+                        content: content.clone()
+                    };
+                    if let Some(responder) = entry.get_mut(&client_id) {
+                        send_broker_item_publication(responder, msg);
+                    }
                 }
+
+                self.spawn_timed_task_waiting_for_acks(count, set, topic, seq_id, content)
             }
+        } else {
+            log::error!("{}", Error::MaxRetriesReached(seq_id.0))
         }
     }
 
@@ -184,59 +247,6 @@ impl PubSubBroker<AckModeNone> {
 }
 
 impl PubSubBroker<AckModeAuto> {
-    fn spawn_timed_task_waiting_for_acks(
-        &mut self,
-        topic: String,
-        seq_id: SeqId,
-        content: Arc<Vec<u8>>
-    ) {
-        #[cfg(all(feature = "tokio_runtime", not(feature = "async_std_runtime")))]
-        use tokio::time::timeout;        
-        #[cfg(all(feature = "async_std_runtime", not(feature = "tokio_runtime")))]
-        use async_std::future::timeout;
-
-        log::debug!("Spawning timed task");
-
-        let (tx, rx) = flume::unbounded::<ClientId>();
-        let duration = self.pub_retry_timeout;
-        self.pending_acks.insert(seq_id.clone(), tx);
-        if let Some(entry) = self.subscriptions.get(&topic) {
-            let set: BTreeSet<ClientId> = entry.keys().map(|val| *val).collect();
-            let len = set.len();
-            let pubsub_tx = self.pubsub_tx.clone();
-            
-            task::spawn(async move {
-                let mut set = set;
-                let fut = async {
-                    let _set = &mut set;
-                    for _ in 0..len {
-                        if let Ok(client_id) = rx.recv_async().await {
-                            if _set.remove(&client_id) == false {
-                                log::error!("Client ID {} is not found in subscription ack set", client_id);
-                            }
-                        }
-                    }
-                };
-
-                let msg = match timeout(duration, fut).await {
-                    Ok(_) => PubSubItem::RemovePendingAcks { seq_id },
-                    Err(err) => {
-                        log::error!("{:?}", err);
-                        PubSubItem::PublishRetry {
-                            client_ids: set, 
-                            seq_id, 
-                            topic: topic, 
-                            content
-                        }
-                    }
-                };
-                pubsub_tx.send_async(msg)
-                        .await
-                        .unwrap_or_else(|err| log::error!("{:?}", err))
-            });
-        }
-    }
-
     pub fn handle_publish(
         &mut self,
         client_id: ClientId,
@@ -245,8 +255,12 @@ impl PubSubBroker<AckModeAuto> {
         content: Arc<Vec<u8>>
     ) {
         let seq_id = self.get_seq_id(&client_id, &msg_id);
+        let count = 0;
         self.handle_publish_inner(seq_id.clone(), &topic, content.clone());
-        self.spawn_timed_task_waiting_for_acks(topic, seq_id, content)
+        if let Some(entry) = self.subscriptions.get(&topic) {
+            let set: BTreeSet<ClientId> = entry.keys().map(|val| *val).collect();
+            self.spawn_timed_task_waiting_for_acks(count, set, topic, seq_id, content)
+        }
     }
 }
 
@@ -278,14 +292,16 @@ macro_rules! impl_pubsub_broker_for_ack_modes {
                                 self.handle_publish(client_id, msg_id, topic, content)
                             },
                             PubSubItem::PublishRetry {
+                                count,
                                 client_ids,
                                 seq_id,
                                 topic,
                                 content
                             } => {
-                                self.handle_publish_retry(client_ids, seq_id, topic, content).await
+                                self.handle_publish_retry(count, client_ids, seq_id, topic, content).await
                             },
                             PubSubItem::RemovePendingAcks{ seq_id } => {
+                                log::debug!("Removing pending acks");
                                 self.pending_acks.remove(&seq_id);
                             },
                             PubSubItem::Subscribe {

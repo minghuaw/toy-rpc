@@ -1,7 +1,7 @@
 //! Builder of the Server
 
 use erased_serde as erased;
-use std::{collections::HashMap, marker::PhantomData, sync::Arc};
+use std::{collections::HashMap, marker::PhantomData, sync::Arc, time::Duration};
 
 #[cfg(any(
     feature = "docs",
@@ -10,13 +10,16 @@ use std::{collections::HashMap, marker::PhantomData, sync::Arc};
 ))]
 use super::Server;
 
-use crate::{pubsub::{AckModeAuto, AckModeNone}, service::{build_service, AsyncServiceMap, HandleService, HandlerResultFut, Service}, util::RegisterService};
+use crate::{pubsub::{AckModeAuto, AckModeNone, DEFAULT_PUB_RETRIES, DEFAULT_PUB_RETRY_TIMEOUT}, service::{build_service, AsyncServiceMap, HandleService, HandlerResultFut, Service}, util::RegisterService};
 
 /// Server builder
 pub struct ServerBuilder<AckMode> {
     /// Registered services
     pub services: AsyncServiceMap,
-
+    /// Timeout for receiving the Ack from subscriber
+    pub pub_retry_timeout: Duration,
+    /// Max number of retries for publishing
+    pub max_num_retries: u32,
     ack_mode: PhantomData<AckMode>,
 }
 
@@ -25,6 +28,8 @@ impl<AckMode> ServerBuilder<AckMode> {
     pub fn new() -> Self {
         ServerBuilder {
             services: HashMap::new(),
+            pub_retry_timeout: DEFAULT_PUB_RETRY_TIMEOUT,
+            max_num_retries: DEFAULT_PUB_RETRIES,
             ack_mode: PhantomData,
         }
     }
@@ -33,6 +38,8 @@ impl<AckMode> ServerBuilder<AckMode> {
     pub fn set_ack_mode_none(self) -> ServerBuilder<AckModeNone> {
         ServerBuilder::<AckModeNone> {
             services: self.services,
+            pub_retry_timeout: self.pub_retry_timeout,
+            max_num_retries: self.max_num_retries,
             ack_mode: PhantomData,
         }
     }
@@ -41,6 +48,8 @@ impl<AckMode> ServerBuilder<AckMode> {
     pub fn set_ack_mode_auto(self) -> ServerBuilder<AckModeAuto> {
         ServerBuilder::<AckModeAuto> {
             services: self.services,
+            pub_retry_timeout: self.pub_retry_timeout,
+            max_num_retries: self.max_num_retries,
             ack_mode: PhantomData
         }
     }
@@ -145,11 +154,10 @@ macro_rules! impl_server_builder_for_ack_modes {
                 /// ```
                 pub fn build(self) -> Server<$ack_mode> {
                     use super::{AtomicClientId, RESERVED_CLIENT_ID, PubSubBroker};
-                    use crate::pubsub::DEFAULT_PUB_RETRY_TIMEOUT;
             
                     let services = Arc::new(self.services);
             
-                    let (pubsub_broker, pubsub_tx) = PubSubBroker::<$ack_mode>::new(DEFAULT_PUB_RETRY_TIMEOUT);
+                    let (pubsub_broker, pubsub_tx) = PubSubBroker::<$ack_mode>::new(self.pub_retry_timeout, self.max_num_retries);
                     pubsub_broker.spawn();
             
                     Server::<$ack_mode> {

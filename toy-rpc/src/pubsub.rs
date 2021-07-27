@@ -8,6 +8,9 @@ use crate::message::MessageId;
 /// Default publisher retry timeout
 pub const DEFAULT_PUB_RETRY_TIMEOUT: Duration = Duration::from_secs(10);
 
+/// Default number of retries
+pub const DEFAULT_PUB_RETRIES: u32 = 5;
+
 /// Trait for PubSub Topic
 pub trait Topic {
     /// Message type of the topic

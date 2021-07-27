@@ -4,7 +4,7 @@ use std::marker::PhantomData;
 
 use cfg_if::cfg_if;
 
-use crate::{pubsub::{AckModeAuto, AckModeManual, AckModeNone, DEFAULT_PUB_RETRY_TIMEOUT}, transport::ws::WebSocketConn};
+use crate::{pubsub::{AckModeAuto, AckModeManual, AckModeNone, DEFAULT_PUB_RETRY_TIMEOUT, DEFAULT_PUB_RETRIES}, transport::ws::WebSocketConn};
 
 cfg_if! {
     if #[cfg(all(feature = "tokio_runtime", not(feature = "async_std_runtime")))] {
@@ -39,13 +39,17 @@ pub struct ClientBuilder<AckMode> {
     /// send out new Publish messages while waiting for the Ack of previous 
     /// Publish message
     pub pub_retry_timeout: Duration,
+    /// The number of retries that a publisher will attempt if Ack is not received.
+    /// This only affects when Ack is enabled (ie. AckModeAuto, AckModeManual)
+    pub max_num_retries: u32
 }
 
 impl Default for ClientBuilder<AckModeNone> {
     fn default() -> Self {
         Self {
             ack_mode: PhantomData,
-            pub_retry_timeout: DEFAULT_PUB_RETRY_TIMEOUT
+            pub_retry_timeout: DEFAULT_PUB_RETRY_TIMEOUT,
+            max_num_retries: DEFAULT_PUB_RETRIES
         }
     }
 }
@@ -55,7 +59,16 @@ impl<AckMode> ClientBuilder<AckMode> {
     pub fn new() -> ClientBuilder<AckMode> {
         ClientBuilder::<AckMode> {
             ack_mode: PhantomData,
-            pub_retry_timeout: DEFAULT_PUB_RETRY_TIMEOUT
+            pub_retry_timeout: DEFAULT_PUB_RETRY_TIMEOUT,
+            max_num_retries: DEFAULT_PUB_RETRIES
+        }
+    }
+
+    /// Set the number of retries
+    pub fn set_max_num_retries(self, val: u32) -> Self {
+        Self {
+            max_num_retries: val,
+            ..self
         }
     }
 
@@ -63,7 +76,8 @@ impl<AckMode> ClientBuilder<AckMode> {
     pub fn set_ack_mode_none(self) -> ClientBuilder<AckModeNone> {
         ClientBuilder::<AckModeNone> {
             ack_mode: PhantomData,
-            pub_retry_timeout: self.pub_retry_timeout
+            pub_retry_timeout: self.pub_retry_timeout,
+            max_num_retries: self.max_num_retries
         }
     }
 
@@ -71,7 +85,8 @@ impl<AckMode> ClientBuilder<AckMode> {
     pub fn set_ack_mode_auto(self) -> ClientBuilder<AckModeAuto> {
         ClientBuilder::<AckModeAuto> {
             ack_mode: PhantomData,
-            pub_retry_timeout: self.pub_retry_timeout
+            pub_retry_timeout: self.pub_retry_timeout,
+            max_num_retries: self.max_num_retries
         }
     }
 
@@ -79,7 +94,8 @@ impl<AckMode> ClientBuilder<AckMode> {
     pub fn set_ack_mode_manual(self) -> ClientBuilder<AckModeManual> {
         ClientBuilder::<AckModeManual> {
             ack_mode: PhantomData,
-            pub_retry_timeout: self.pub_retry_timeout
+            pub_retry_timeout: self.pub_retry_timeout,
+            max_num_retries: self.max_num_retries
         }
     }
 }
@@ -101,14 +117,6 @@ impl ClientBuilder<AckModeManual> {
         self
     }
 }
-
-// cfg_if! {
-//     if #[cfg(all(feature = "tokio_runtime", not(feature = "async_std_runtime")))] {
-//         use ::tokio::io::{AsyncRead, AsyncWrite};
-//     } else if #[cfg(all(feature = "async_std_runtime", not(feature = "tokio_runtime")))] {
-//         use futures::{AsyncRead, AsyncWrite};
-//     }
-// }
 
 cfg_if! {
     if #[cfg(any(
@@ -310,7 +318,9 @@ cfg_if! {
 
                             let reader = ClientReader { reader };
                             let writer = ClientWriter { writer };
-                            let broker = broker::ClientBroker::<$ack_mode, C>::new(count.clone(), self.pub_retry_timeout);
+                            let broker = broker::ClientBroker::<$ack_mode, C>::new(
+                                count.clone(), self.pub_retry_timeout, self.max_num_retries
+                            );
                             let (_, broker) = brw::spawn(broker, reader, writer);
             
                             Client {

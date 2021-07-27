@@ -47,6 +47,10 @@ pub enum Error {
     /// error.
     #[error("Request reached timeout")]
     Timeout(Option<MessageId>),
+
+    /// Maximum number of retries is reached before an Ack is received
+    #[error("Maximum number of retries is reached for message {0}")]
+    MaxRetriesReached(MessageId),
 }
 
 impl Error {
