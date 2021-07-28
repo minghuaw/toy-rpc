@@ -8,7 +8,10 @@ use std::{
     sync::{atomic::AtomicU64, Arc},
 };
 
-use crate::{pubsub::{AckModeAuto, AckModeNone}, service::AsyncServiceMap};
+use crate::{
+    pubsub::{AckModeAuto, AckModeNone},
+    service::AsyncServiceMap,
+};
 
 cfg_if! {
     if #[cfg(any(
@@ -135,7 +138,7 @@ cfg_if! {
 
         use crate::{error::Error, transport::ws::WebSocketConn, codec::{split::SplittableCodec, DefaultCodec}};
 
-        
+
 
         macro_rules! impl_server_for_ack_modes {
             ($($ack_mode:ty),*) => {
@@ -327,16 +330,16 @@ cfg_if! {
                             pubsub_tx: Sender<PubSubItem>,
                         ) -> Result<(), crate::Error> {
                             let (writer, reader) = codec.split();
-                
+
                             let reader = reader::ServerReader::new(reader, services);
                             let writer = writer::ServerWriter::new(writer);
                             let broker = broker::ServerBroker::<$ack_mode>::new(client_id, pubsub_tx);
-                
+
                             let (broker_handle, _) = brw::spawn(broker, reader, writer);
                             let _ = broker_handle.await;
                             Ok(())
                         }
-            
+
                         #[cfg(feature = "tls")]
                         async fn serve_tls_connection(
                             stream: TcpStream,
@@ -353,7 +356,7 @@ cfg_if! {
                             log::info!("Client disconnected from {}", peer_addr);
                             ret
                         }
-            
+
                         /// Serves a single connection
                         async fn serve_tcp_connection(
                             stream: TcpStream,
@@ -368,7 +371,7 @@ cfg_if! {
                             log::info!("Client disconnected from {}", _peer_addr);
                             ret
                         }
-                
+
                         async fn accept_ws_connection(
                             stream: TcpStream,
                             services: Arc<AsyncServiceMap>,
@@ -378,10 +381,10 @@ cfg_if! {
                             let ws_stream = accept_async(stream).await
                                     .expect("Error during the websocket handshake occurred");
                                 log::debug!("Established WebSocket connection.");
-                
+
                             let ws_stream = WebSocketConn::new(ws_stream);
                             let codec = DefaultCodec::with_websocket(ws_stream);
-                
+
                             if let Err(err) = Self::start_broker_reader_writer(codec, services, client_id, pubsub_broker).await {
                                 log::error!("{}", err);
                             }

@@ -4,7 +4,12 @@ use std::marker::PhantomData;
 
 use cfg_if::cfg_if;
 
-use crate::{pubsub::{AckModeAuto, AckModeManual, AckModeNone, DEFAULT_PUB_RETRY_TIMEOUT, DEFAULT_PUB_RETRIES}, transport::ws::WebSocketConn};
+use crate::{
+    pubsub::{
+        AckModeAuto, AckModeManual, AckModeNone, DEFAULT_PUB_RETRIES, DEFAULT_PUB_RETRY_TIMEOUT,
+    },
+    transport::ws::WebSocketConn,
+};
 
 cfg_if! {
     if #[cfg(all(feature = "tokio_runtime", not(feature = "async_std_runtime")))] {
@@ -36,12 +41,12 @@ pub struct ClientBuilder<AckMode> {
     pub ack_mode: PhantomData<AckMode>,
     /// The duration a publisher waits for the Ack
     /// Waiting is non-blocking, and thus the publisher can still
-    /// send out new Publish messages while waiting for the Ack of previous 
+    /// send out new Publish messages while waiting for the Ack of previous
     /// Publish message
     pub pub_retry_timeout: Duration,
     /// The number of retries that a publisher will attempt if Ack is not received.
     /// This only affects when Ack is enabled (ie. AckModeAuto, AckModeManual)
-    pub max_num_retries: u32
+    pub max_num_retries: u32,
 }
 
 impl Default for ClientBuilder<AckModeNone> {
@@ -49,7 +54,7 @@ impl Default for ClientBuilder<AckModeNone> {
         Self {
             ack_mode: PhantomData,
             pub_retry_timeout: DEFAULT_PUB_RETRY_TIMEOUT,
-            max_num_retries: DEFAULT_PUB_RETRIES
+            max_num_retries: DEFAULT_PUB_RETRIES,
         }
     }
 }
@@ -60,7 +65,7 @@ impl<AckMode> ClientBuilder<AckMode> {
         ClientBuilder::<AckMode> {
             ack_mode: PhantomData,
             pub_retry_timeout: DEFAULT_PUB_RETRY_TIMEOUT,
-            max_num_retries: DEFAULT_PUB_RETRIES
+            max_num_retries: DEFAULT_PUB_RETRIES,
         }
     }
 
@@ -77,7 +82,7 @@ impl<AckMode> ClientBuilder<AckMode> {
         ClientBuilder::<AckModeNone> {
             ack_mode: PhantomData,
             pub_retry_timeout: self.pub_retry_timeout,
-            max_num_retries: self.max_num_retries
+            max_num_retries: self.max_num_retries,
         }
     }
 
@@ -86,7 +91,7 @@ impl<AckMode> ClientBuilder<AckMode> {
         ClientBuilder::<AckModeAuto> {
             ack_mode: PhantomData,
             pub_retry_timeout: self.pub_retry_timeout,
-            max_num_retries: self.max_num_retries
+            max_num_retries: self.max_num_retries,
         }
     }
 
@@ -95,13 +100,13 @@ impl<AckMode> ClientBuilder<AckMode> {
         ClientBuilder::<AckModeManual> {
             ack_mode: PhantomData,
             pub_retry_timeout: self.pub_retry_timeout,
-            max_num_retries: self.max_num_retries
+            max_num_retries: self.max_num_retries,
         }
     }
 }
 
 impl ClientBuilder<AckModeAuto> {
-    /// Sets the duration that a publisher waits for the Ack from the server. If an Ack is not 
+    /// Sets the duration that a publisher waits for the Ack from the server. If an Ack is not
     /// received before the duration expires, the publisher will try to re-send the Publish message.
     pub fn set_publisher_retry_timeout(mut self, duration: Duration) -> Self {
         self.pub_retry_timeout = duration;
@@ -110,7 +115,7 @@ impl ClientBuilder<AckModeAuto> {
 }
 
 impl ClientBuilder<AckModeManual> {
-    /// Sets the duration that a publisher waits for the Ack from the server. If an Ack is not 
+    /// Sets the duration that a publisher waits for the Ack from the server. If an Ack is not
     /// received before the duration expires, the publisher will try to re-send the Publish message.
     pub fn set_publisher_retry_timeout(mut self, duration: Duration) -> Self {
         self.pub_retry_timeout = duration;
@@ -186,13 +191,13 @@ cfg_if! {
                             let connector = TlsConnector::from(std::sync::Arc::new(config));
                             let domain = webpki::DNSNameRef::try_from_ascii_str(domain)?;
                             let tls_stream = connector.connect(domain, stream).await?;
-                            
+
                             Ok(
                                 ClientBuilder::<$ack_mode>::new()
                                     .with_stream(tls_stream)
                             )
                         }
-                
+
                         #[cfg(all(
                             feature = "tls",
                             any(
@@ -239,7 +244,7 @@ cfg_if! {
                                     .with_stream(stream)
                             )
                         }
-            
+
                         /// Connects to an RPC server with TLS enabled
                         #[cfg(feature = "tls")]
                         pub async fn dial_with_tls_config(
@@ -250,16 +255,16 @@ cfg_if! {
                         ) -> Result<Client<$ack_mode>, Error> {
                             self.tcp_client_with_tls_config(addr, domain, config).await
                         }
-            
+
                         /// Connects to an HTTP RPC server at the specified network address using WebSocket and the defatul codec.
                         pub async fn dial_http(self, addr: &str) -> Result<Client<$ack_mode>, Error> {
                             let mut url = url::Url::parse(addr)?.join(DEFAULT_RPC_PATH)?;
                             url.set_scheme("ws").expect("Failed to change scheme to ws");
-            
+
                             ClientBuilder::<$ack_mode>::new()
                                 .dial_websocket_url(url).await
                         }
-            
+
                         /// Connects to an HTTP RPC server with TLS enabled
                         #[cfg(feature = "tls")]
                         pub async fn dial_http_with_tls_config(
@@ -270,10 +275,10 @@ cfg_if! {
                         ) -> Result<Client<$ack_mode>, Error> {
                             let mut url = url::Url::parse(addr)?.join(DEFAULT_RPC_PATH)?;
                             url.set_scheme("ws").expect("Failed to change scheme to ws");
-            
+
                             self.websocket_client_with_tls_config(url, domain, config).await
                         }
-            
+
                         /// Similar to `dial`, this connects to an WebSocket RPC server at the specified network address using the defatul codec
                         ///
                         /// The difference between `dial_websocket` and `dial_http` is that, `dial_websocket` does not
@@ -282,7 +287,7 @@ cfg_if! {
                             let url = url::Url::parse(addr)?;
                             self.dial_websocket_url(url).await
                         }
-            
+
                         /// Similar to `dial_websocket` but with TLS enabled
                         #[cfg(feature = "tls")]
                         pub async fn dial_websocket_with_tls_config(
@@ -294,7 +299,7 @@ cfg_if! {
                             let url = url::Url::parse(addr)?;
                             self.websocket_client_with_tls_config(url, domain, config).await
                         }
-            
+
                         /// Creates an RPC `Client` over a stream
                         ///
                         #[cfg_attr(feature = "docs", doc(cfg(feature = "tokio_runtime")))]
@@ -305,7 +310,7 @@ cfg_if! {
                             let codec = DefaultCodec::new(stream);
                             self.with_codec(codec)
                         }
-            
+
                         /// Creates an RPC 'Client` over socket with a specified codec
                         #[cfg_attr(feature = "docs", doc(cfg(all(feature = "async_std_runtime", not(feature = "tokio_runtime")))))]
                         #[cfg_attr(feature = "docs", doc(cfg(all(feature = "tokio_runtime", not(feature = "async_std_runtime")))))]
@@ -322,14 +327,14 @@ cfg_if! {
                                 count.clone(), self.pub_retry_timeout, self.max_num_retries
                             );
                             let (_, broker) = brw::spawn(broker, reader, writer);
-            
+
                             Client {
                                 count,
                                 default_timeout: Duration::from_secs(super::DEFAULT_TIMEOUT_SECONDS),
                                 next_timeout: AtomicCell::new(None),
                                 broker,
                                 subscriptions: HashMap::new(),
-            
+
                                 ack_mode: PhantomData
                             }
                         }

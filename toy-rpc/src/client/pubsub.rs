@@ -21,7 +21,7 @@ use crate::{
 pub struct Delivery<Item> {
     seq_id: SeqId,
     ack_sender: Sender<ClientBrokerItem>,
-    item: Item
+    item: Item,
 }
 
 impl<Item> Delivery<Item> {
@@ -29,13 +29,15 @@ impl<Item> Delivery<Item> {
         Self {
             seq_id,
             ack_sender: sender,
-            item
+            item,
         }
     }
 
     /// Manually Ack the receiving of the PubSub item
     pub async fn ack(self) -> Result<Item, Error> {
-        self.ack_sender.send_async(ClientBrokerItem::OutboundAck(self.seq_id)).await?;
+        self.ack_sender
+            .send_async(ClientBrokerItem::OutboundAck(self.seq_id))
+            .await?;
         Ok(self.item)
     }
 }
@@ -86,15 +88,12 @@ impl<T: Topic> Sink<T::Item> for Publisher<T> {
 
 pub(crate) struct SubscriptionItem {
     pub seq_id: SeqId,
-    pub body: Box<InboundBody>
+    pub body: Box<InboundBody>,
 }
 
 impl SubscriptionItem {
     pub fn new(seq_id: SeqId, body: Box<InboundBody>) -> Self {
-        Self {
-            seq_id,
-            body
-        }
+        Self { seq_id, body }
     }
 }
 
@@ -105,7 +104,7 @@ pub struct Subscriber<T: Topic, AckMode> {
     inner: RecvStream<'static, SubscriptionItem>,
     broker: Sender<ClientBrokerItem>,
     marker: PhantomData<T>,
-    ack_mode: PhantomData<AckMode>
+    ack_mode: PhantomData<AckMode>,
 }
 
 impl<T: Topic, AckMode> Subscriber<T, AckMode> {
@@ -114,7 +113,7 @@ impl<T: Topic, AckMode> Subscriber<T, AckMode> {
             inner: rx.into_stream(),
             broker,
             marker: PhantomData,
-            ack_mode: PhantomData
+            ack_mode: PhantomData,
         }
     }
 }
@@ -128,7 +127,8 @@ impl<T: Topic> Stream for Subscriber<T, AckModeNone> {
             Poll::Pending => Poll::Pending,
             Poll::Ready(val) => match val {
                 Some(mut item) => {
-                    let result = erased_serde::deserialize(&mut item.body).map_err(|err| err.into());
+                    let result =
+                        erased_serde::deserialize(&mut item.body).map_err(|err| err.into());
                     Poll::Ready(Some(result))
                 }
                 None => Poll::Ready(None),
@@ -146,7 +146,8 @@ impl<T: Topic> Stream for Subscriber<T, AckModeAuto> {
             Poll::Pending => Poll::Pending,
             Poll::Ready(val) => match val {
                 Some(mut item) => {
-                    let result = erased_serde::deserialize(&mut item.body).map_err(|err| err.into());
+                    let result =
+                        erased_serde::deserialize(&mut item.body).map_err(|err| err.into());
                     Poll::Ready(Some(result))
                 }
                 None => Poll::Ready(None),
@@ -165,7 +166,8 @@ impl<T: Topic> Stream for Subscriber<T, AckModeManual> {
             Poll::Ready(val) => match val {
                 Some(mut item) => {
                     let sender = this.broker.clone();
-                    let result = erased_serde::deserialize(&mut item.body).map_err(|err| err.into());
+                    let result =
+                        erased_serde::deserialize(&mut item.body).map_err(|err| err.into());
                     let result = result.map(|content| Delivery::new(item.seq_id, sender, content));
                     Poll::Ready(Some(result))
                 }
@@ -202,7 +204,10 @@ impl<AckMode> Client<AckMode> {
         ))
     }
 
-    fn create_subscriber_rx<T: Topic + 'static>(&mut self, cap: usize) -> Result<Receiver<SubscriptionItem>, Error> {
+    fn create_subscriber_rx<T: Topic + 'static>(
+        &mut self,
+        cap: usize,
+    ) -> Result<Receiver<SubscriptionItem>, Error> {
         let (tx, rx) = flume::bounded(cap);
         let topic = T::topic();
 
@@ -227,7 +232,10 @@ impl<AckMode> Client<AckMode> {
         Ok(rx)
     }
 
-    fn replace_local_subscriber_rx<T: Topic + 'static>(&mut self, cap: usize) -> Result<Receiver<SubscriptionItem>, Error> {
+    fn replace_local_subscriber_rx<T: Topic + 'static>(
+        &mut self,
+        cap: usize,
+    ) -> Result<Receiver<SubscriptionItem>, Error> {
         let topic = T::topic();
         match self.subscriptions.get(&topic) {
             Some(entry) => match &TypeId::of::<T>() == entry {
@@ -253,7 +261,10 @@ impl<AckMode> Client<AckMode> {
 impl Client<AckModeNone> {
     /// Creates a new subscriber on a topic
     ///
-    pub fn subscriber<T: Topic + 'static>(&mut self, cap: usize) -> Result<Subscriber<T, AckModeNone>, Error> {
+    pub fn subscriber<T: Topic + 'static>(
+        &mut self,
+        cap: usize,
+    ) -> Result<Subscriber<T, AckModeNone>, Error> {
         self.create_subscriber_rx::<T>(cap)
             .map(|rx| Subscriber::<T, AckModeNone>::new(self.broker.clone(), rx))
     }
@@ -273,7 +284,10 @@ impl Client<AckModeNone> {
 impl Client<AckModeAuto> {
     /// Creates a new subscriber on a topic
     ///
-    pub fn subscriber<T: Topic + 'static>(&mut self, cap: usize) -> Result<Subscriber<T, AckModeAuto>, Error> {
+    pub fn subscriber<T: Topic + 'static>(
+        &mut self,
+        cap: usize,
+    ) -> Result<Subscriber<T, AckModeAuto>, Error> {
         self.create_subscriber_rx::<T>(cap)
             .map(|rx| Subscriber::<T, AckModeAuto>::new(self.broker.clone(), rx))
     }
@@ -293,7 +307,10 @@ impl Client<AckModeAuto> {
 impl Client<AckModeManual> {
     /// Creates a new subscriber on a topic
     ///
-    pub fn subscriber<T: Topic + 'static>(&mut self, cap: usize) -> Result<Subscriber<T, AckModeManual>, Error> {
+    pub fn subscriber<T: Topic + 'static>(
+        &mut self,
+        cap: usize,
+    ) -> Result<Subscriber<T, AckModeManual>, Error> {
         self.create_subscriber_rx::<T>(cap)
             .map(|rx| Subscriber::<T, AckModeManual>::new(self.broker.clone(), rx))
     }

@@ -2,7 +2,13 @@ use brw::{Reader, Running};
 use futures::sink::{Sink, SinkExt};
 use std::sync::Arc;
 
-use crate::{codec::CodecRead, error::Error, message::{MessageId, CANCELLATION_TOKEN, CANCELLATION_TOKEN_DELIM}, pubsub::SeqId, service::{ArcAsyncServiceCall, AsyncServiceMap}};
+use crate::{
+    codec::CodecRead,
+    error::Error,
+    message::{MessageId, CANCELLATION_TOKEN, CANCELLATION_TOKEN_DELIM},
+    pubsub::SeqId,
+    service::{ArcAsyncServiceCall, AsyncServiceMap},
+};
 
 use super::broker::ServerBrokerItem;
 use crate::protocol::{Header, InboundBody};
@@ -168,7 +174,7 @@ impl<T: CodecRead> Reader for ServerReader<T> {
                     )
                 }
                 Header::Subscribe { id, topic } => {
-                    // There is no body frame for subscribe message
+                    let _ = self.reader.read_bytes().await;
                     Running::Continue(
                         broker
                             .send(ServerBrokerItem::Subscribe { id, topic })
@@ -177,7 +183,7 @@ impl<T: CodecRead> Reader for ServerReader<T> {
                     )
                 }
                 Header::Unsubscribe { id, topic } => {
-                    // There is no body frame for unsubscribe message
+                    let _ = self.reader.read_bytes().await;
                     Running::Continue(
                         broker
                             .send(ServerBrokerItem::Unsubscribe { id, topic })
@@ -190,11 +196,11 @@ impl<T: CodecRead> Reader for ServerReader<T> {
                     let seq_id = SeqId::new(id);
                     Running::Continue(
                         broker
-                            .send(ServerBrokerItem::InboundAck{seq_id})
+                            .send(ServerBrokerItem::InboundAck { seq_id })
                             .await
-                            .map_err(|err| err.into())
+                            .map_err(|err| err.into()),
                     )
-                },
+                }
                 Header::Produce {
                     id: _,
                     topic: _,

@@ -1,17 +1,22 @@
 //! Publisher on the server side
 
-use std::{marker::PhantomData, pin::Pin, sync::{Arc, atomic::Ordering}, task::Poll};
+use std::{
+    marker::PhantomData,
+    pin::Pin,
+    sync::{atomic::Ordering, Arc},
+    task::Poll,
+};
 
-use flume::{Sender, r#async::SendSink};
+use flume::{r#async::SendSink, Sender};
 use futures::Sink;
 use pin_project::pin_project;
 
 use crate::{
-    error::Error, 
-    codec::{Marshal, Reserved, DefaultCodec}, 
-    message::AtomicMessageId, 
-    pubsub::{AckModeAuto, AckModeNone, Topic}, 
-    server::{Server, RESERVED_CLIENT_ID}
+    codec::{DefaultCodec, Marshal, Reserved},
+    error::Error,
+    message::AtomicMessageId,
+    pubsub::{AckModeAuto, AckModeNone, Topic},
+    server::{Server, RESERVED_CLIENT_ID},
 };
 
 use super::PubSubItem;

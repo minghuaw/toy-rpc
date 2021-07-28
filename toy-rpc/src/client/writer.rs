@@ -91,14 +91,12 @@ cfg_if! {
                     ClientWriterItem::Subscribe(id, topic) => {
                         let header = Header::Subscribe{id, topic};
                         log::debug!("{:?}", &header);
-                        // There is no body frame for Subscribe message
-                        self.writer.write_header(header).await
+                        self.write_request(header, &()).await
                     },
                     ClientWriterItem::Unsubscribe(id, topic) => {
                         let header = Header::Unsubscribe{id, topic};
                         log::debug!("{:?}", &header);
-                        // There is no body frame for Unsubscribe message
-                        self.writer.write_header(header).await
+                        self.write_request(header, &()).await
                     },
                     ClientWriterItem::Ack(seq_id) => {
                         let header = Header::Ack(seq_id.0);

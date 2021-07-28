@@ -77,7 +77,7 @@ pub(crate) enum ServerBrokerItem {
     },
     // The server broker should only receive Ack from the client
     InboundAck {
-        seq_id: SeqId
+        seq_id: SeqId,
     },
     Stop,
 }
@@ -88,7 +88,7 @@ pub(crate) struct ServerBroker<AckMode> {
     pub executions: HashMap<MessageId, JoinHandle<()>>,
     pub pubsub_broker: Sender<PubSubItem>,
 
-    ack_mode: PhantomData<AckMode>
+    ack_mode: PhantomData<AckMode>,
 }
 
 #[cfg(not(feature = "http_actix_web"))]
@@ -98,18 +98,18 @@ impl<AckMode> ServerBroker<AckMode> {
             client_id,
             executions: HashMap::new(),
             pubsub_broker,
-            ack_mode: PhantomData
+            ack_mode: PhantomData,
         }
     }
 
     fn handle_request<'a>(
-        &'a mut self, 
+        &'a mut self,
         ctx: &'a Arc<brw::Context<ServerBrokerItem>>,
         call: ArcAsyncServiceCall,
         id: MessageId,
         method: String,
         duration: Duration,
-        deserializer: Box<InboundBody>
+        deserializer: Box<InboundBody>,
     ) -> Result<(), Error> {
         let fut = call(method, deserializer);
         let _broker = ctx.broker.clone();
@@ -121,9 +121,9 @@ impl<AckMode> ServerBroker<AckMode> {
     async fn handle_response<'w, W>(
         &'w mut self,
         writer: &'w mut W,
-        id: MessageId, 
-        result: HandlerResult
-    ) -> Result<(), Error> 
+        id: MessageId,
+        result: HandlerResult,
+    ) -> Result<(), Error>
     where
         W: Sink<ServerWriterItem, Error = flume::SendError<ServerWriterItem>> + Send + Unpin,
     {
@@ -132,10 +132,7 @@ impl<AckMode> ServerBroker<AckMode> {
         writer.send(msg).await.map_err(|err| err.into())
     }
 
-    async fn handle_cancel(
-        &mut self,
-        id: MessageId
-    ) -> Result<(), Error> {
+    async fn handle_cancel(&mut self, id: MessageId) -> Result<(), Error> {
         if let Some(handle) = self.executions.remove(&id) {
             #[cfg(all(feature = "tokio_runtime", not(feature = "async_std_runtime")))]
             handle.abort();
@@ -149,7 +146,7 @@ impl<AckMode> ServerBroker<AckMode> {
         &mut self,
         id: MessageId,
         topic: String,
-        content: Vec<u8>
+        content: Vec<u8>,
     ) -> Result<(), Error> {
         let content = Arc::new(content);
         let msg = PubSubItem::Publish {
@@ -168,7 +165,7 @@ impl<AckMode> ServerBroker<AckMode> {
         &'a mut self,
         ctx: &'a Arc<brw::Context<ServerBrokerItem>>,
         id: MessageId,
-        topic: String
+        topic: String,
     ) -> Result<(), Error> {
         log::debug!("Message ID: {}, Subscribe to topic: {}", &id, &topic);
         let sender = PubSubResponder::Sender(ctx.broker.clone());
@@ -184,11 +181,7 @@ impl<AckMode> ServerBroker<AckMode> {
             .map_err(|err| err.into())
     }
 
-    async fn handle_unsubscribe(
-        &mut self,
-        id: MessageId,
-        topic: String
-    ) -> Result<(), Error> {
+    async fn handle_unsubscribe(&mut self, id: MessageId, topic: String) -> Result<(), Error> {
         log::debug!("Message ID: {}, Unsubscribe from topic: {}", &id, &topic);
         let msg = PubSubItem::Unsubscribe {
             client_id: self.client_id,
@@ -212,15 +205,19 @@ impl<AckMode> ServerBroker<AckMode> {
         W: Sink<ServerWriterItem, Error = flume::SendError<ServerWriterItem>> + Send + Unpin,
     {
         // Publication is the PubSub message from server to client
-        let msg = ServerWriterItem::Publication { seq_id, topic, content };
-        writer
-            .send(msg)
-            .await
-            .map_err(|err| err.into())
+        let msg = ServerWriterItem::Publication {
+            seq_id,
+            topic,
+            content,
+        };
+        writer.send(msg).await.map_err(|err| err.into())
     }
 
     async fn handle_inbound_ack(&mut self, seq_id: SeqId) -> Result<(), Error> {
-        let item = PubSubItem::Ack{seq_id, client_id: self.client_id};
+        let item = PubSubItem::Ack {
+            seq_id,
+            client_id: self.client_id,
+        };
         self.pubsub_broker
             .send_async(item)
             .await
@@ -236,9 +233,9 @@ impl ServerBroker<AckModeNone> {
         _: &'w mut W,
         id: MessageId,
         topic: String,
-        content: Vec<u8>
-    ) -> Result<(), Error> 
-    where 
+        content: Vec<u8>,
+    ) -> Result<(), Error>
+    where
         W: Sink<ServerWriterItem, Error = flume::SendError<ServerWriterItem>> + Send + Unpin,
     {
         self.handle_publish_inner(id, topic, content).await
@@ -247,11 +244,12 @@ impl ServerBroker<AckModeNone> {
 
 #[cfg(not(feature = "http_actix_web"))]
 impl ServerBroker<AckModeAuto> {
-    async fn auto_ack<'w, W>(&'w self, writer: &'w mut W, id: MessageId) -> Result<(), Error> 
-    where 
+    async fn auto_ack<'w, W>(&'w self, writer: &'w mut W, id: MessageId) -> Result<(), Error>
+    where
         W: Sink<ServerWriterItem, Error = flume::SendError<ServerWriterItem>> + Send + Unpin,
     {
-        writer.send(ServerWriterItem::Ack{id})
+        writer
+            .send(ServerWriterItem::Ack { id })
             .await
             .map_err(|err| err.into())
     }
@@ -262,9 +260,9 @@ impl ServerBroker<AckModeAuto> {
         writer: &'w mut W,
         id: MessageId,
         topic: String,
-        content: Vec<u8>
-    ) -> Result<(), Error> 
-    where 
+        content: Vec<u8>,
+    ) -> Result<(), Error>
+    where
         W: Sink<ServerWriterItem, Error = flume::SendError<ServerWriterItem>> + Send + Unpin,
     {
         self.handle_publish_inner(id, topic, content).await?;
@@ -282,7 +280,7 @@ macro_rules! impl_server_broker_for_ack_modes {
                 type WriterItem = ServerWriterItem;
                 type Ok = ();
                 type Error = Error;
-            
+
                 async fn op<W>(
                     &mut self,
                     ctx: &Arc<brw::Context<Self::Item>>,
@@ -335,7 +333,7 @@ macro_rules! impl_server_broker_for_ack_modes {
                             return Running::Stop
                         }
                     };
-            
+
                     Running::Continue(result)
                 }
             }

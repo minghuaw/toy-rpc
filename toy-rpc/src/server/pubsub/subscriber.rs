@@ -1,16 +1,19 @@
-
 //! Subscriber on the server side
 
-use std::{marker::PhantomData, pin::Pin, task::{Context, Poll}};
+use std::{
+    marker::PhantomData,
+    pin::Pin,
+    task::{Context, Poll},
+};
 
-use flume::{Sender, Receiver, r#async::RecvStream};
+use flume::{r#async::RecvStream, Receiver, Sender};
 use futures::Stream;
 
 use crate::{
-    error::Error, 
-    codec::{Unmarshal, Reserved, DefaultCodec}, 
-    pubsub::{AckModeAuto, AckModeNone, Topic}, 
-    server::{Server, RESERVED_CLIENT_ID, broker::ServerBrokerItem}
+    codec::{DefaultCodec, Reserved, Unmarshal},
+    error::Error,
+    pubsub::{AckModeAuto, AckModeNone, Topic},
+    server::{broker::ServerBrokerItem, Server, RESERVED_CLIENT_ID},
 };
 
 use super::{PubSubItem, PubSubResponder};
@@ -24,7 +27,7 @@ pub struct Subscriber<T: Topic, C: Unmarshal, AckMode> {
     topic: String,
     marker: PhantomData<T>,
     codec: PhantomData<C>,
-    ack_mode: PhantomData<AckMode>
+    ack_mode: PhantomData<AckMode>,
 }
 
 impl<T: Topic, C: Unmarshal, AckMode> Subscriber<T, C, AckMode> {
@@ -35,7 +38,7 @@ impl<T: Topic, C: Unmarshal, AckMode> Subscriber<T, C, AckMode> {
             topic: T::topic(),
             marker: PhantomData,
             codec: PhantomData,
-            ack_mode: PhantomData
+            ack_mode: PhantomData,
         }
     }
 }
@@ -47,12 +50,10 @@ impl<T: Topic, C: Unmarshal, AckMode> PinnedDrop for Subscriber<T, C, AckMode> {
 
         // Unsubscribe if the sender half is not dropped yet
         if !this.inner.is_disconnected() {
-            if let Err(_) = this.pubsub_tx.send(
-                PubSubItem::Unsubscribe{
-                    client_id: RESERVED_CLIENT_ID,
-                    topic: T::topic()
-                }
-            ) {
+            if let Err(_) = this.pubsub_tx.send(PubSubItem::Unsubscribe {
+                client_id: RESERVED_CLIENT_ID,
+                topic: T::topic(),
+            }) {
                 log::error!("Failed to send unsubscribe when dropping server side ")
             }
         }
@@ -87,7 +88,6 @@ impl<T: Topic, C: Unmarshal> Stream for Subscriber<T, C, AckModeNone> {
     }
 }
 
-
 impl<T: Topic, C: Unmarshal> Stream for Subscriber<T, C, AckModeAuto> {
     type Item = Result<T::Item, Error>;
 
@@ -104,10 +104,15 @@ impl<T: Topic, C: Unmarshal> Stream for Subscriber<T, C, AckModeAuto> {
                     } => {
                         // Send back Ack first
                         log::debug!("Auto Ack");
-                        if let Err(err) = this.pubsub_tx.send(PubSubItem::Ack{seq_id, client_id: RESERVED_CLIENT_ID})
-                            .map_err(|err| err.into()) 
+                        if let Err(err) = this
+                            .pubsub_tx
+                            .send(PubSubItem::Ack {
+                                seq_id,
+                                client_id: RESERVED_CLIENT_ID,
+                            })
+                            .map_err(|err| err.into())
                         {
-                            return Poll::Ready(Some(Err(err)))
+                            return Poll::Ready(Some(Err(err)));
                         }
                         let result = C::unmarshal(&content);
                         Poll::Ready(Some(result))
@@ -128,7 +133,7 @@ type PhantomCodec = DefaultCodec<Reserved, Reserved, Reserved>;
 macro_rules! impl_server_pubsub_for_ack_modes {
     ($($ack_mode:ty),*) => {
         $(
-            impl Server<$ack_mode> {    
+            impl Server<$ack_mode> {
                 /// Creates a new subscriber on a topic
                 ///
                 /// Only one subscriber per topic can exist at the same time on the server.

@@ -18,9 +18,15 @@ cfg_if! {
     }
 }
 
-use crate::{Error, codec::Marshal, message::MessageId, protocol::{InboundBody, OutboundBody}, pubsub::{AckModeAuto, AckModeManual, AckModeNone, SeqId}};
+use crate::{
+    codec::Marshal,
+    message::MessageId,
+    protocol::{InboundBody, OutboundBody},
+    pubsub::{AckModeAuto, AckModeManual, AckModeNone, SeqId},
+    Error,
+};
 
-use super::{ResponseResult, pubsub::SubscriptionItem};
+use super::{pubsub::SubscriptionItem, ResponseResult};
 
 #[cfg_attr(
     all(not(feature = "tokio_runtime"), not(feature = "async_std_runtime")),
@@ -105,7 +111,11 @@ pub(crate) struct ClientBroker<AckMode, C> {
     all(feature = "async_std_runtime", not(feature = "tokio_runtime"))
 ))]
 impl<AckMode, C> ClientBroker<AckMode, C> {
-    pub fn new(count: Arc<AtomicMessageId>, pub_retry_timeout: Duration, max_num_retries: u32) -> Self {
+    pub fn new(
+        count: Arc<AtomicMessageId>,
+        pub_retry_timeout: Duration,
+        max_num_retries: u32,
+    ) -> Self {
         Self {
             count,
             pending: HashMap::new(),
@@ -121,15 +131,15 @@ impl<AckMode, C> ClientBroker<AckMode, C> {
     }
 
     async fn handle_request<'w, W>(
-        &'w mut self, 
+        &'w mut self,
         writer: &'w mut W,
-        id: MessageId, 
-        service_method: String, 
-        duration: Duration, 
-        body: Box<OutboundBody>, 
-        resp_tx: oneshot::Sender<Result<ResponseResult, Error>>
-    ) -> Result<(), Error> 
-    where 
+        id: MessageId,
+        service_method: String,
+        duration: Duration,
+        body: Box<OutboundBody>,
+        resp_tx: oneshot::Sender<Result<ResponseResult, Error>>,
+    ) -> Result<(), Error>
+    where
         W: Sink<ClientWriterItem, Error = flume::SendError<ClientWriterItem>> + Send + Unpin,
     {
         // fetch_add returns the previous value
@@ -185,9 +195,7 @@ impl<AckMode, C> ClientBroker<AckMode, C> {
     fn handle_response(&mut self, id: MessageId, result: ResponseResult) -> Result<(), Error> {
         if let Some(tx) = self.pending.remove(&id) {
             tx.send(Ok(result)).map_err(|_| {
-                Error::Internal(
-                    "InternalError: client failed to send response over channel".into(),
-                )
+                Error::Internal("InternalError: client failed to send response over channel".into())
             })
         } else {
             Err(Error::Internal(
@@ -196,19 +204,24 @@ impl<AckMode, C> ClientBroker<AckMode, C> {
         }
     }
 
-    async fn handle_cancel<'w, W>(&'w mut self, writer: &'w mut W, id: MessageId) -> Result<(), Error> 
-    where 
+    async fn handle_cancel<'w, W>(
+        &'w mut self,
+        writer: &'w mut W,
+        id: MessageId,
+    ) -> Result<(), Error>
+    where
         W: Sink<ClientWriterItem, Error = flume::SendError<ClientWriterItem>> + Send + Unpin,
     {
         if let Some(tx) = self.pending.remove(&id) {
-            tx.send(Err(Error::Canceled(Some(id))))
-                .map_err(|_| Error::Internal(
+            tx.send(Err(Error::Canceled(Some(id)))).map_err(|_| {
+                Error::Internal(
                     format!(
                         "Unable to send Error::Canceled(Some({})) over response channel",
                         id
                     )
                     .into(),
-                ))?;
+                )
+            })?;
         }
         writer
             .send(ClientWriterItem::Cancel(id))
@@ -216,8 +229,13 @@ impl<AckMode, C> ClientBroker<AckMode, C> {
             .map_err(|err| err.into())
     }
 
-    async fn handle_publish_inner<'w, W>(writer: &'w mut W, id: MessageId, topic: String, body: Arc<Vec<u8>>) -> Result<(), Error> 
-    where 
+    async fn handle_publish_inner<'w, W>(
+        writer: &'w mut W,
+        id: MessageId,
+        topic: String,
+        body: Arc<Vec<u8>>,
+    ) -> Result<(), Error>
+    where
         W: Sink<ClientWriterItem, Error = flume::SendError<ClientWriterItem>> + Send + Unpin,
     {
         writer
@@ -227,13 +245,13 @@ impl<AckMode, C> ClientBroker<AckMode, C> {
     }
 
     fn spawn_timed_task_waiting_for_ack(
-        &mut self, 
-        broker: Sender<ClientBrokerItem>, 
+        &mut self,
+        broker: Sender<ClientBrokerItem>,
         count: u32,
-        id: MessageId, 
-        topic: String, 
-        body: Arc<Vec<u8>>, 
-        duration: Duration
+        id: MessageId,
+        topic: String,
+        body: Arc<Vec<u8>>,
+        duration: Duration,
     ) {
         // fetch_add returns the previous value
         let (tx, rx) = oneshot::channel::<()>();
@@ -243,10 +261,16 @@ impl<AckMode, C> ClientBroker<AckMode, C> {
             #[cfg(all(feature = "async_std_runtime", not(feature = "tokio_runtime")))]
             let timeout_result = ::async_std::future::timeout(duration, rx).await;
 
-            // retry 
+            // retry
             if let Err(_) = timeout_result {
                 log::debug!("Publish ack timedout");
-                broker.send_async(ClientBrokerItem::PublishRetry{count, id, topic, body})
+                broker
+                    .send_async(ClientBrokerItem::PublishRetry {
+                        count,
+                        id,
+                        topic,
+                        body,
+                    })
                     .await
                     .unwrap_or_else(|_| log::error!("Error found sending PublishRetry"))
             }
@@ -255,30 +279,42 @@ impl<AckMode, C> ClientBroker<AckMode, C> {
     }
 
     async fn handle_publish_retry<'w, W>(
-        &mut self, 
-        writer: &mut W, 
-        ctx: &'w Arc<Context<ClientBrokerItem>>, 
-        mut count: u32, 
-        id: MessageId, 
-        topic: String, 
-        body: Arc<Vec<u8>>
-    ) -> Result<(), Error> 
-    where 
+        &mut self,
+        writer: &mut W,
+        ctx: &'w Arc<Context<ClientBrokerItem>>,
+        mut count: u32,
+        id: MessageId,
+        topic: String,
+        body: Arc<Vec<u8>>,
+    ) -> Result<(), Error>
+    where
         W: Sink<ClientWriterItem, Error = flume::SendError<ClientWriterItem>> + Send + Unpin,
     {
         if count < self.max_num_retries {
             count += 1;
             let result = Self::handle_publish_inner(writer, id, topic.clone(), body.clone()).await;
             let broker = ctx.broker.clone();
-            self.spawn_timed_task_waiting_for_ack(broker, count, id, topic, body, self.pub_retry_timeout);
+            self.spawn_timed_task_waiting_for_ack(
+                broker,
+                count,
+                id,
+                topic,
+                body,
+                self.pub_retry_timeout,
+            );
             result
         } else {
             Err(Error::MaxRetriesReached(id))
         }
     }
 
-    async fn handle_subscribe<'w, W>(&'w mut self, writer: &'w mut W, topic: String, item_sink: Sender<SubscriptionItem>) -> Result<(), Error> 
-    where 
+    async fn handle_subscribe<'w, W>(
+        &'w mut self,
+        writer: &'w mut W,
+        topic: String,
+        item_sink: Sender<SubscriptionItem>,
+    ) -> Result<(), Error>
+    where
         W: Sink<ClientWriterItem, Error = flume::SendError<ClientWriterItem>> + Send + Unpin,
     {
         let id = self.count.fetch_add(1, Ordering::Relaxed);
@@ -293,13 +329,21 @@ impl<AckMode, C> ClientBroker<AckMode, C> {
         res
     }
 
-    fn handle_new_local_subscriber(&mut self, topic: String, new_item_sink: Sender<SubscriptionItem>) -> Result<(), Error> {
+    fn handle_new_local_subscriber(
+        &mut self,
+        topic: String,
+        new_item_sink: Sender<SubscriptionItem>,
+    ) -> Result<(), Error> {
         self.subscriptions.insert(topic, new_item_sink);
         Ok(())
     }
 
-    async fn handle_unsubscribe<'w, W>(&'w mut self, writer: &'w mut W, topic: String) -> Result<(), Error> 
-    where 
+    async fn handle_unsubscribe<'w, W>(
+        &'w mut self,
+        writer: &'w mut W,
+        topic: String,
+    ) -> Result<(), Error>
+    where
         W: Sink<ClientWriterItem, Error = flume::SendError<ClientWriterItem>> + Send + Unpin,
     {
         let id = self.count.fetch_add(1, Ordering::Relaxed);
@@ -314,23 +358,39 @@ impl<AckMode, C> ClientBroker<AckMode, C> {
 
     fn handle_inbound_ack(&mut self, id: MessageId) -> Result<(), Error> {
         if let Some(tx) = self.pending_acks.remove(&id) {
-            tx.send(()).map_err(|_| Error::Internal("InternalError: Failed to send Ack to Ack timeout task".into()))
+            tx.send(()).map_err(|_| {
+                Error::Internal("InternalError: Failed to send Ack to Ack timeout task".into())
+            })
         } else {
             Err(Error::Internal(
-                format!("InternalError: Ack timeout task channel not found for id: {}", id).into()
+                format!(
+                    "InternalError: Ack timeout task channel not found for id: {}",
+                    id
+                )
+                .into(),
             ))
         }
     }
 
-    async fn handle_outbound_ack<'w, W>(&'w mut self, writer: &'w mut W, seq_id: SeqId) -> Result<(), Error> 
-    where 
+    async fn handle_outbound_ack<'w, W>(
+        &'w mut self,
+        writer: &'w mut W,
+        seq_id: SeqId,
+    ) -> Result<(), Error>
+    where
         W: Sink<ClientWriterItem, Error = flume::SendError<ClientWriterItem>> + Send + Unpin,
     {
-        writer.send(ClientWriterItem::Ack(seq_id)).await
+        writer
+            .send(ClientWriterItem::Ack(seq_id))
+            .await
             .map_err(|err| err.into())
     }
 
-    fn handle_subscription_inner(&mut self, topic: String, item: SubscriptionItem) -> Result<(), Error> {
+    fn handle_subscription_inner(
+        &mut self,
+        topic: String,
+        item: SubscriptionItem,
+    ) -> Result<(), Error> {
         if let Some(sub) = self.subscriptions.get(&topic) {
             match sub.try_send(item) {
                 Ok(_) => Ok(()),
@@ -355,8 +415,14 @@ impl<AckMode, C> ClientBroker<AckMode, C> {
     all(feature = "async_std_runtime", not(feature = "tokio_runtime"))
 ))]
 impl<C: Marshal + Send> ClientBroker<AckModeNone, C> {
-    async fn handle_publish<'w, W>(&'w mut self, writer: &'w mut W, _: &'w Arc<Context<ClientBrokerItem>>, topic: String, body: Box<OutboundBody>) -> Result<(), Error> 
-    where 
+    async fn handle_publish<'w, W>(
+        &'w mut self,
+        writer: &'w mut W,
+        _: &'w Arc<Context<ClientBrokerItem>>,
+        topic: String,
+        body: Box<OutboundBody>,
+    ) -> Result<(), Error>
+    where
         W: Sink<ClientWriterItem, Error = flume::SendError<ClientWriterItem>> + Send + Unpin,
     {
         let id = self.count.fetch_add(1, Ordering::Relaxed);
@@ -364,8 +430,14 @@ impl<C: Marshal + Send> ClientBroker<AckModeNone, C> {
         Self::handle_publish_inner(writer, id, topic, body).await
     }
 
-    async fn handle_subscription<'w, W>(&'w mut self, _: &'w mut W, id: SeqId, topic: String, item: Box<InboundBody>) -> Result<(), Error> 
-    where 
+    async fn handle_subscription<'w, W>(
+        &'w mut self,
+        _: &'w mut W,
+        id: SeqId,
+        topic: String,
+        item: Box<InboundBody>,
+    ) -> Result<(), Error>
+    where
         W: Sink<ClientWriterItem, Error = flume::SendError<ClientWriterItem>> + Send + Unpin,
     {
         log::debug!("Handling subscription with AckModeNone");
@@ -381,8 +453,14 @@ impl<C: Marshal + Send> ClientBroker<AckModeNone, C> {
     all(feature = "async_std_runtime", not(feature = "tokio_runtime"))
 ))]
 impl<C: Marshal + Send> ClientBroker<AckModeAuto, C> {
-    async fn handle_publish<'w, W>(&'w mut self, writer: &'w mut W, ctx: &'w Arc<Context<ClientBrokerItem>>, topic: String, body: Box<OutboundBody>) -> Result<(), Error> 
-    where 
+    async fn handle_publish<'w, W>(
+        &'w mut self,
+        writer: &'w mut W,
+        ctx: &'w Arc<Context<ClientBrokerItem>>,
+        topic: String,
+        body: Box<OutboundBody>,
+    ) -> Result<(), Error>
+    where
         W: Sink<ClientWriterItem, Error = flume::SendError<ClientWriterItem>> + Send + Unpin,
     {
         let count = 0;
@@ -390,23 +468,36 @@ impl<C: Marshal + Send> ClientBroker<AckModeAuto, C> {
         let body = Arc::new(C::marshal(&body)?);
         let res = Self::handle_publish_inner(writer, id, topic.clone(), body.clone()).await;
         let broker = ctx.broker.clone();
-        self.spawn_timed_task_waiting_for_ack(broker, count, id, topic, body, self.pub_retry_timeout);
+        self.spawn_timed_task_waiting_for_ack(
+            broker,
+            count,
+            id,
+            topic,
+            body,
+            self.pub_retry_timeout,
+        );
         res
     }
 
-    async fn handle_subscription<'w, W>(&'w mut self, writer: &'w mut W, id: SeqId, topic: String, item: Box<InboundBody>) -> Result<(), Error> 
-    where 
-        W: Sink<ClientWriterItem, Error = flume::SendError<ClientWriterItem>> + Send + Unpin, 
+    async fn handle_subscription<'w, W>(
+        &'w mut self,
+        writer: &'w mut W,
+        id: SeqId,
+        topic: String,
+        item: Box<InboundBody>,
+    ) -> Result<(), Error>
+    where
+        W: Sink<ClientWriterItem, Error = flume::SendError<ClientWriterItem>> + Send + Unpin,
     {
         log::debug!("Handling subscription with AckModeAuto");
-        
+
         let item = SubscriptionItem::new(id.clone(), item);
         self.handle_subscription_inner(topic, item)?;
         // Automatically send back Ack
-        writer.send(
-            ClientWriterItem::Ack(id)
-        ).await
-        .map_err(|err| err.into())
+        writer
+            .send(ClientWriterItem::Ack(id))
+            .await
+            .map_err(|err| err.into())
     }
 }
 
@@ -416,13 +507,13 @@ impl<C: Marshal + Send> ClientBroker<AckModeAuto, C> {
 ))]
 impl<C: Marshal + Send> ClientBroker<AckModeManual, C> {
     async fn handle_publish<'w, W>(
-        &'w mut self, 
-        writer: &'w mut W, 
-        ctx: &'w Arc<Context<ClientBrokerItem>>, 
-        topic: String, 
-        body: Box<OutboundBody>
-    ) -> Result<(), Error> 
-    where 
+        &'w mut self,
+        writer: &'w mut W,
+        ctx: &'w Arc<Context<ClientBrokerItem>>,
+        topic: String,
+        body: Box<OutboundBody>,
+    ) -> Result<(), Error>
+    where
         W: Sink<ClientWriterItem, Error = flume::SendError<ClientWriterItem>> + Send + Unpin,
     {
         let count = 0;
@@ -430,13 +521,26 @@ impl<C: Marshal + Send> ClientBroker<AckModeManual, C> {
         let body = Arc::new(C::marshal(&body)?);
         let res = Self::handle_publish_inner(writer, id, topic.clone(), body.clone()).await;
         let broker = ctx.broker.clone();
-        self.spawn_timed_task_waiting_for_ack(broker, count, id, topic, body, self.pub_retry_timeout);
+        self.spawn_timed_task_waiting_for_ack(
+            broker,
+            count,
+            id,
+            topic,
+            body,
+            self.pub_retry_timeout,
+        );
         res
     }
 
-    async fn handle_subscription<'w, W>(&'w mut self, _: &'w mut W, id: SeqId, topic: String, item: Box<InboundBody>) -> Result<(), Error> 
-    where 
-        W: Sink<ClientWriterItem, Error = flume::SendError<ClientWriterItem>> + Send + Unpin, 
+    async fn handle_subscription<'w, W>(
+        &'w mut self,
+        _: &'w mut W,
+        id: SeqId,
+        topic: String,
+        item: Box<InboundBody>,
+    ) -> Result<(), Error>
+    where
+        W: Sink<ClientWriterItem, Error = flume::SendError<ClientWriterItem>> + Send + Unpin,
     {
         log::debug!("Handling subscription with AckModeManual");
 

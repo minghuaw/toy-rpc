@@ -15,13 +15,21 @@ use std::{
     time::Duration,
 };
 
-use crate::{codec::{EraseDeserializer, Marshal, Unmarshal}, error::Error, message::{ErrorMessage, MessageId}, protocol::Header, pubsub::SeqId, server::{
+use crate::{
+    codec::{EraseDeserializer, Marshal, Unmarshal},
+    error::Error,
+    message::{ErrorMessage, MessageId},
+    protocol::Header,
+    pubsub::SeqId,
+    server::{
         broker::ServerBrokerItem,
         pubsub::{PubSubItem, PubSubResponder},
         reader::{get_service, handle_cancel},
         writer::ServerWriterItem,
         ClientId,
-    }, service::{AsyncServiceMap, HandlerResult}};
+    },
+    service::{AsyncServiceMap, HandlerResult},
+};
 
 use crate::server::broker::execute_call;
 
@@ -222,15 +230,19 @@ where
                         ctx.binary(buf);
                     }
                 };
-            },
-            ServerWriterItem::Publication { seq_id, topic, content } => {
+            }
+            ServerWriterItem::Publication {
+                seq_id,
+                topic,
+                content,
+            } => {
                 let id = seq_id.0;
                 let header = Header::Publish { id, topic };
                 let buf = C::marshal(&header)?;
                 ctx.binary(buf);
                 ctx.binary(content.to_vec());
-            },
-            ServerWriterItem::Ack {id} => {
+            }
+            ServerWriterItem::Ack { id } => {
                 let header = Header::Ack(id);
                 let buf = C::marshal(&header)?;
                 // There is no body frame for Ack message
@@ -352,8 +364,16 @@ impl actix::Handler<ServerBrokerItem> for ExecutionBroker {
                     .send(msg)
                     .unwrap_or_else(|err| log::error!("{}", err));
             }
-            ServerBrokerItem::Publication { seq_id, topic, content } => {
-                let msg = ServerWriterItem::Publication { seq_id, topic, content };
+            ServerBrokerItem::Publication {
+                seq_id,
+                topic,
+                content,
+            } => {
+                let msg = ServerWriterItem::Publication {
+                    seq_id,
+                    topic,
+                    content,
+                };
                 self.responder
                     .do_send(msg)
                     .unwrap_or_else(|err| log::error!("{}", err));

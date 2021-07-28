@@ -10,9 +10,9 @@ use std::time::Duration;
 #[cfg(feature = "http_actix_web")]
 use actix::Recipient;
 
-use crate::Error;
 use crate::message::{AtomicMessageId, MessageId};
 use crate::pubsub::{AckModeAuto, AckModeNone, SeqId};
+use crate::Error;
 
 use super::{broker::ServerBrokerItem, ClientId};
 
@@ -70,7 +70,7 @@ pub(crate) struct PubSubBroker<AckMode> {
     pending_acks: BTreeMap<SeqId, Sender<ClientId>>,
     pub_retry_timeout: Duration,
     max_num_retries: u32,
-    ack_mode: PhantomData<AckMode>
+    ack_mode: PhantomData<AckMode>,
 }
 
 impl<AckMode: Send + 'static> PubSubBroker<AckMode> {
@@ -85,31 +85,31 @@ impl<AckMode: Send + 'static> PubSubBroker<AckMode> {
                 pending_acks: BTreeMap::new(),
                 pub_retry_timeout: retry_timeout,
                 max_num_retries,
-                ack_mode: PhantomData
+                ack_mode: PhantomData,
             },
-            pubsub_tx
+            pubsub_tx,
         )
     }
 
     fn get_seq_id(&mut self, client_id: &ClientId, msg_id: &MessageId) -> SeqId {
         let seq_id = self.seq_counter.fetch_add(1, Ordering::Relaxed);
         let seq_id = SeqId::new(seq_id);
-        log::info!("{:?} assigned to Publish message {} from client {}", &seq_id, msg_id, client_id);
+        log::info!(
+            "{:?} assigned to Publish message {} from client {}",
+            &seq_id,
+            msg_id,
+            client_id
+        );
         seq_id
     }
 
-    pub fn handle_publish_inner(
-        &mut self, 
-        seq_id: SeqId, 
-        topic: &String,
-        content: Arc<Vec<u8>>
-    ) {
+    pub fn handle_publish_inner(&mut self, seq_id: SeqId, topic: &String, content: Arc<Vec<u8>>) {
         if let Some(entry) = self.subscriptions.get_mut(topic) {
             entry.retain(|_, responder| {
-                let msg = ServerBrokerItem::Publication{
+                let msg = ServerBrokerItem::Publication {
                     seq_id: seq_id.clone(),
                     topic: topic.clone(),
-                    content: content.clone()
+                    content: content.clone(),
                 };
 
                 send_broker_item_publication(responder, msg)
@@ -123,19 +123,19 @@ impl<AckMode: Send + 'static> PubSubBroker<AckMode> {
         set: BTreeSet<ClientId>,
         topic: String,
         seq_id: SeqId,
-        content: Arc<Vec<u8>>
+        content: Arc<Vec<u8>>,
     ) {
-        #[cfg(all(feature = "tokio_runtime", not(feature = "async_std_runtime")))]
-        use tokio::time::timeout;        
         #[cfg(all(feature = "async_std_runtime", not(feature = "tokio_runtime")))]
         use async_std::future::timeout;
+        #[cfg(all(feature = "tokio_runtime", not(feature = "async_std_runtime")))]
+        use tokio::time::timeout;
 
         let (tx, rx) = flume::unbounded::<ClientId>();
         let duration = self.pub_retry_timeout;
         self.pending_acks.insert(seq_id.clone(), tx);
         let len = set.len();
         let pubsub_tx = self.pubsub_tx.clone();
-        
+
         task::spawn(async move {
             let mut set = set;
             let fut = async {
@@ -143,7 +143,10 @@ impl<AckMode: Send + 'static> PubSubBroker<AckMode> {
                 for _ in 0..len {
                     if let Ok(client_id) = rx.recv_async().await {
                         if _set.remove(&client_id) == false {
-                            log::error!("Client ID {} is not found in subscription ack set", client_id);
+                            log::error!(
+                                "Client ID {} is not found in subscription ack set",
+                                client_id
+                            );
                         }
                     }
                 }
@@ -155,16 +158,17 @@ impl<AckMode: Send + 'static> PubSubBroker<AckMode> {
                     log::error!("{:?}", err);
                     PubSubItem::PublishRetry {
                         count,
-                        client_ids: set, 
-                        seq_id, 
-                        topic: topic, 
-                        content
+                        client_ids: set,
+                        seq_id,
+                        topic: topic,
+                        content,
                     }
                 }
             };
-            pubsub_tx.send_async(msg)
-                    .await
-                    .unwrap_or_else(|err| log::error!("{:?}", err))
+            pubsub_tx
+                .send_async(msg)
+                .await
+                .unwrap_or_else(|err| log::error!("{:?}", err))
         });
     }
 
@@ -185,7 +189,7 @@ impl<AckMode: Send + 'static> PubSubBroker<AckMode> {
                     let msg = ServerBrokerItem::Publication {
                         seq_id: seq_id.clone(),
                         topic: topic.clone(),
-                        content: content.clone()
+                        content: content.clone(),
                     };
                     if let Some(responder) = entry.get_mut(&client_id) {
                         send_broker_item_publication(responder, msg);
@@ -203,7 +207,7 @@ impl<AckMode: Send + 'static> PubSubBroker<AckMode> {
         &mut self,
         client_id: ClientId,
         topic: String,
-        sender: PubSubResponder
+        sender: PubSubResponder,
     ) {
         match self.subscriptions.get_mut(&topic) {
             Some(entry) => {
@@ -224,13 +228,17 @@ impl<AckMode: Send + 'static> PubSubBroker<AckMode> {
     }
 
     pub async fn handle_ack(&mut self, seq_id: SeqId, client_id: ClientId) {
-        log::debug!("Received Ack for seq_id: {:?} from client {:?}", &seq_id, &client_id);
+        log::debug!(
+            "Received Ack for seq_id: {:?} from client {:?}",
+            &seq_id,
+            &client_id
+        );
         if let Some(sender) = self.pending_acks.get_mut(&seq_id) {
-            sender.send_async(client_id)
-                .await
-                .unwrap_or_else(|_| log::error!("Pending Ack entry for seq_id: {:?} is not found", seq_id))
+            sender.send_async(client_id).await.unwrap_or_else(|_| {
+                log::error!("Pending Ack entry for seq_id: {:?} is not found", seq_id)
+            })
         }
-    }   
+    }
 }
 
 impl PubSubBroker<AckModeNone> {
@@ -239,7 +247,7 @@ impl PubSubBroker<AckModeNone> {
         client_id: ClientId,
         msg_id: MessageId,
         topic: String,
-        content: Arc<Vec<u8>>
+        content: Arc<Vec<u8>>,
     ) {
         let seq_id = self.get_seq_id(&client_id, &msg_id);
         self.handle_publish_inner(seq_id, &topic, content)
@@ -252,7 +260,7 @@ impl PubSubBroker<AckModeAuto> {
         client_id: ClientId,
         msg_id: MessageId,
         topic: String,
-        content: Arc<Vec<u8>>
+        content: Arc<Vec<u8>>,
     ) {
         let seq_id = self.get_seq_id(&client_id, &msg_id);
         let count = 0;
@@ -328,26 +336,23 @@ macro_rules! impl_pubsub_broker_for_ack_modes {
 
 impl_pubsub_broker_for_ack_modes!(AckModeNone, AckModeAuto);
 
-fn send_broker_item_publication(
-    responder: &mut PubSubResponder,
-    msg: ServerBrokerItem
-) -> bool {
+fn send_broker_item_publication(responder: &mut PubSubResponder, msg: ServerBrokerItem) -> bool {
     match responder {
         #[cfg(not(feature = "http_actix_web"))]
         PubSubResponder::Sender(tx) => {
             if let Err(err) = tx.try_send(msg) {
                 if let flume::TrySendError::Disconnected(_) = err {
                     log::error!("Client is disconnected, removing from subscriptions");
-                    return false
+                    return false;
                 }
             }
-        },
+        }
         #[cfg(feature = "http_actix_web")]
         PubSubResponder::Recipient(tx) => {
             if let Err(err) = tx.try_send(msg) {
                 if let actix::prelude::SendError::Closed(_) = err {
                     log::error!("Client is disconnected, removing from subscriptions");
-                    return false
+                    return false;
                 }
             }
         }

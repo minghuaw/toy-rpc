@@ -10,7 +10,11 @@ use std::{collections::HashMap, marker::PhantomData, sync::Arc, time::Duration};
 ))]
 use super::Server;
 
-use crate::{pubsub::{AckModeAuto, AckModeNone, DEFAULT_PUB_RETRIES, DEFAULT_PUB_RETRY_TIMEOUT}, service::{build_service, AsyncServiceMap, HandleService, HandlerResultFut, Service}, util::RegisterService};
+use crate::{
+    pubsub::{AckModeAuto, AckModeNone, DEFAULT_PUB_RETRIES, DEFAULT_PUB_RETRY_TIMEOUT},
+    service::{build_service, AsyncServiceMap, HandleService, HandlerResultFut, Service},
+    util::RegisterService,
+};
 
 /// Server builder
 pub struct ServerBuilder<AckMode> {
@@ -50,7 +54,7 @@ impl<AckMode> ServerBuilder<AckMode> {
             services: self.services,
             pub_retry_timeout: self.pub_retry_timeout,
             max_num_retries: self.max_num_retries,
-            ack_mode: PhantomData
+            ack_mode: PhantomData,
         }
     }
 
@@ -150,16 +154,16 @@ macro_rules! impl_server_builder_for_ack_modes {
                 /// let echo_service = Arc::new(EchoService { });
                 /// let builder: ServerBuilder = Server::builder()
                 ///     .register(echo_service);
-                /// let server: Server = builder.build();        
+                /// let server: Server = builder.build();
                 /// ```
                 pub fn build(self) -> Server<$ack_mode> {
                     use super::{AtomicClientId, RESERVED_CLIENT_ID, PubSubBroker};
-            
+
                     let services = Arc::new(self.services);
-            
+
                     let (pubsub_broker, pubsub_tx) = PubSubBroker::<$ack_mode>::new(self.pub_retry_timeout, self.max_num_retries);
                     pubsub_broker.spawn();
-            
+
                     Server::<$ack_mode> {
                         client_counter: Arc::new(AtomicClientId::new(RESERVED_CLIENT_ID + 1)),
                         services,

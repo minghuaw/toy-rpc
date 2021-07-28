@@ -11,7 +11,6 @@ repository = "https://github.com/minghuaw/toy-rpc"
 keywords = ["async", "rpc", "go", "async-std", "tokio"]
 categories = ["network-programming", "asynchronous"]
 readme = "Readme.md"
-rust = "1.53"
 exclude = [
     "examples/*",
     "transport/*",
