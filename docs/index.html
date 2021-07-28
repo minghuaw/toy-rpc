@@ -190,6 +190,7 @@ are provided.</p>
 to make them sound more &quot;rusty&quot;. Because rust does not come with runtime reflection, attribute macros <code>#[export_impl]</code>
 and <code>#[export_trait]</code> / <code>#[export_trait_impl]</code>, and attribute <code>#[export_method]</code> are used to mark functions &quot;exported&quot; in golang's 
 <code>net/rpc</code> perspective.</p>
+<p>Minimum supported Rust version: 1.53 or later</p>
 <h2 id="why"><a class="header" href="#why">Why?</a></h2>
 <p>While there are grpc implementations like <code>grpc-rs</code> and <code>tonic</code> as well as schema-free crates like <code>tarpc</code>, I didn't find 
 a crate that offers the same level of ease-of-use as that of the golang's <code>net/rpc</code> package. Other than the ease-of-use,
