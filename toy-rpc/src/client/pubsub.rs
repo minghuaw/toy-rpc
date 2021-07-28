@@ -6,6 +6,7 @@ use futures::{Sink, Stream};
 use pin_project::pin_project;
 use std::any::TypeId;
 use std::marker::PhantomData;
+use std::num::NonZeroUsize;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 
@@ -206,9 +207,12 @@ impl<AckMode> Client<AckMode> {
 
     fn create_subscriber_rx<T: Topic + 'static>(
         &mut self,
-        cap: usize,
+        cap: Option<NonZeroUsize>,
     ) -> Result<Receiver<SubscriptionItem>, Error> {
-        let (tx, rx) = flume::bounded(cap);
+        let (tx, rx) = match cap {
+            Some(n) => flume::bounded(n.get()),
+            None => flume::unbounded()
+        };
         let topic = T::topic();
 
         // Check if there is an existing subscriber
@@ -234,13 +238,16 @@ impl<AckMode> Client<AckMode> {
 
     fn replace_local_subscriber_rx<T: Topic + 'static>(
         &mut self,
-        cap: usize,
+        cap: Option<NonZeroUsize>,
     ) -> Result<Receiver<SubscriptionItem>, Error> {
         let topic = T::topic();
         match self.subscriptions.get(&topic) {
             Some(entry) => match &TypeId::of::<T>() == entry {
                 true => {
-                    let (tx, rx) = flume::bounded(cap);
+                    let (tx, rx) = match cap {
+                        Some(n) => flume::bounded(n.get()),
+                        None => flume::unbounded()
+                    };                    
                     if let Err(err) = self.broker.send(ClientBrokerItem::NewLocalSubscriber {
                         topic,
                         new_item_sink: tx,
@@ -263,7 +270,7 @@ impl Client<AckModeNone> {
     ///
     pub fn subscriber<T: Topic + 'static>(
         &mut self,
-        cap: usize,
+        cap: Option<NonZeroUsize>,
     ) -> Result<Subscriber<T, AckModeNone>, Error> {
         self.create_subscriber_rx::<T>(cap)
             .map(|rx| Subscriber::<T, AckModeNone>::new(self.broker.clone(), rx))
@@ -274,7 +281,7 @@ impl Client<AckModeNone> {
     /// The previous subscriber will no longer receive any message.
     pub fn replace_local_subscriber<T: Topic + 'static>(
         &mut self,
-        cap: usize,
+        cap: Option<NonZeroUsize>,
     ) -> Result<Subscriber<T, AckModeNone>, Error> {
         self.replace_local_subscriber_rx::<T>(cap)
             .map(|rx| Subscriber::<T, AckModeNone>::new(self.broker.clone(), rx))
@@ -286,7 +293,7 @@ impl Client<AckModeAuto> {
     ///
     pub fn subscriber<T: Topic + 'static>(
         &mut self,
-        cap: usize,
+        cap: Option<NonZeroUsize>,
     ) -> Result<Subscriber<T, AckModeAuto>, Error> {
         self.create_subscriber_rx::<T>(cap)
             .map(|rx| Subscriber::<T, AckModeAuto>::new(self.broker.clone(), rx))
@@ -297,7 +304,7 @@ impl Client<AckModeAuto> {
     /// The previous subscriber will no longer receive any message.
     pub fn replace_local_subscriber<T: Topic + 'static>(
         &mut self,
-        cap: usize,
+        cap: Option<NonZeroUsize>,
     ) -> Result<Subscriber<T, AckModeAuto>, Error> {
         self.replace_local_subscriber_rx::<T>(cap)
             .map(|rx| Subscriber::<T, AckModeAuto>::new(self.broker.clone(), rx))
@@ -309,7 +316,7 @@ impl Client<AckModeManual> {
     ///
     pub fn subscriber<T: Topic + 'static>(
         &mut self,
-        cap: usize,
+        cap: Option<NonZeroUsize>,
     ) -> Result<Subscriber<T, AckModeManual>, Error> {
         self.create_subscriber_rx::<T>(cap)
             .map(|rx| Subscriber::<T, AckModeManual>::new(self.broker.clone(), rx))
@@ -320,7 +327,7 @@ impl Client<AckModeManual> {
     /// The previous subscriber will no longer receive any message.
     pub fn replace_local_subscriber<T: Topic + 'static>(
         &mut self,
-        cap: usize,
+        cap: Option<NonZeroUsize>,
     ) -> Result<Subscriber<T, AckModeManual>, Error> {
         self.replace_local_subscriber_rx::<T>(cap)
             .map(|rx| Subscriber::<T, AckModeManual>::new(self.broker.clone(), rx))

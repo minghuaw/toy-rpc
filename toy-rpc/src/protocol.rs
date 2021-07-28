@@ -134,16 +134,6 @@ impl Metadata for Header {
 pub(crate) type OutboundBody = dyn erased_serde::Serialize + Send + Sync;
 pub(crate) type InboundBody = dyn erased_serde::Deserializer<'static> + Send;
 
-// pub(crate) struct InboundMessage {
-//     header: Header,
-//     body: InboundBody
-// }
-
-// pub(crate) struct OutboundMessage {
-//     header: Header,
-//     body: OutboundBody,
-// }
-
 #[cfg(test)]
 mod tests {
     use super::*;
