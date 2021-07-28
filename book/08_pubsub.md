@@ -4,7 +4,7 @@ A simple PubSub support is added in 0.8.0. A simple example can be found [here](
 
 A publisher can be created on the server side or the client side using the `publisher::<T: Topic>()` method, and a subscriber can be created using the `subscriber::<T: Topic>(cap: usize)` method. They both take one type parameter `T` that must implements the `toy_rpc::pubsub::Topic` trait. You can use the provided derive macro `#[derive(toy_rpc::macros::Topic)]` to define a struct as the pubsub message or by manually implementing the `toy_rpc::pubsub::Topic` trait on a type.
 
-```rust
+```rust,noplaypen
 use toy_rpc::macros::Topic;
 use serde::{Serializer, Deserialize};
 
@@ -106,7 +106,7 @@ The behavior of publisher/subscriber will be discussed in different senarios bel
 
 By default, all `Server` and `Client` start with `AckModeNone`
 
-```rust
+```rust,noplaypen
 let server = Server::builder()
     .build(); // This will create a server with `AckModeNone`
 
@@ -116,7 +116,7 @@ let client = Client::dial(ADDR)
 
 `Ack` can be enabled by setting the `Server` or `Client` into the corresponding mode using the corresponding builder.
 
-```rust
+```rust,noplaypen
 let server = Server::builder() // This will start the builder with `AckModeNone`
     .set_ack_mode_auto() // This will set the ServerBuilder to `AckModeAuto`
     .build(); // This will build the server with `AckModeAuto`
@@ -134,7 +134,7 @@ let client = Client::builder() // This will start the builder with `AckModeNone`
 
 The timeout and maximum number of retries for the publisher can also be configured
 
-```rust
+```rust,noplaypen
 let server = Server::builder()
     // Must enable Ack first
     .set_ack_mode_auto() 

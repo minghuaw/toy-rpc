@@ -168,16 +168,12 @@
                         <h1 id="pubsub"><a class="header" href="#pubsub">PubSub</a></h1>
 <p>A simple PubSub support is added in 0.8.0. A simple example can be found <a href="https://github.com/minghuaw/toy-rpc/tree/main/examples/tokio_pubsub">here</a>.</p>
 <p>A publisher can be created on the server side or the client side using the <code>publisher::&lt;T: Topic&gt;()</code> method, and a subscriber can be created using the <code>subscriber::&lt;T: Topic&gt;(cap: usize)</code> method. They both take one type parameter <code>T</code> that must implements the <code>toy_rpc::pubsub::Topic</code> trait. You can use the provided derive macro <code>#[derive(toy_rpc::macros::Topic)]</code> to define a struct as the pubsub message or by manually implementing the <code>toy_rpc::pubsub::Topic</code> trait on a type.</p>
-<pre><pre class="playground"><code class="language-rust edition2018">
-<span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>use toy_rpc::macros::Topic;
+<pre><code class="language-rust noplaypen">use toy_rpc::macros::Topic;
 use serde::{Serializer, Deserialize};
 
 #[derive(Topic, Serialize, Deserialize)]
 pub struct Count(pub u32);
-<span class="boring">}
-</span></code></pre></pre>
+</code></pre>
 <p>Or manually implement the <code>Topic</code> trait</p>
 <pre><code class="language-rust noplaypen">#[derive(Serialize, Deserialize)]
 pub struct Count(pub u32);
@@ -249,21 +245,14 @@ if let Some(result) = subscriber.next().await {
 </ol>
 <h3 id="how-to-use-ackmode"><a class="header" href="#how-to-use-ackmode">How to use <code>AckMode</code></a></h3>
 <p>By default, all <code>Server</code> and <code>Client</code> start with <code>AckModeNone</code></p>
-<pre><pre class="playground"><code class="language-rust edition2018">
-<span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>let server = Server::builder()
+<pre><code class="language-rust noplaypen">let server = Server::builder()
     .build(); // This will create a server with `AckModeNone`
 
 let client = Client::dial(ADDR)
     .await.unwrap(); // This will create a client with `AckModeNone`
-<span class="boring">}
-</span></code></pre></pre>
+</code></pre>
 <p><code>Ack</code> can be enabled by setting the <code>Server</code> or <code>Client</code> into the corresponding mode using the corresponding builder.</p>
-<pre><pre class="playground"><code class="language-rust edition2018">
-<span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>let server = Server::builder() // This will start the builder with `AckModeNone`
+<pre><code class="language-rust noplaypen">let server = Server::builder() // This will start the builder with `AckModeNone`
     .set_ack_mode_auto() // This will set the ServerBuilder to `AckModeAuto`
     .build(); // This will build the server with `AckModeAuto`
 
@@ -276,13 +265,9 @@ let client = Client::builder() // This will start the builder with `AckModeNone`
     .set_ack_mode_manual() // This will set the ClientBuilder to `AckModeManual`
     .dial(ADDR)
     .await.unwrap(); // This will create a Client with `AckModeManual`
-<span class="boring">}
-</span></code></pre></pre>
+</code></pre>
 <p>The timeout and maximum number of retries for the publisher can also be configured</p>
-<pre><pre class="playground"><code class="language-rust edition2018">
-<span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>let server = Server::builder()
+<pre><code class="language-rust noplaypen">let server = Server::builder()
     // Must enable Ack first
     .set_ack_mode_auto() 
     // Sets how long the server will wait for Ack messages.
@@ -313,8 +298,7 @@ let client = Client::builder()
     .set_publisher_max_num_retries(3)
     .dial(ADDR)
     .await.unwrap();
-<span class="boring">}
-</span></code></pre></pre>
+</code></pre>
 
                     </main>
 
