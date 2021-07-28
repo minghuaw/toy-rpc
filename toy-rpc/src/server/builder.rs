@@ -1,7 +1,7 @@
 //! Builder of the Server
 
 use erased_serde as erased;
-use std::{collections::HashMap, sync::Arc};
+use std::{collections::HashMap, marker::PhantomData, sync::Arc, time::Duration};
 
 #[cfg(any(
     feature = "docs",
@@ -11,21 +11,50 @@ use std::{collections::HashMap, sync::Arc};
 use super::Server;
 
 use crate::{
+    pubsub::{AckModeAuto, AckModeNone, DEFAULT_PUB_RETRIES, DEFAULT_PUB_RETRY_TIMEOUT},
     service::{build_service, AsyncServiceMap, HandleService, HandlerResultFut, Service},
     util::RegisterService,
 };
 
 /// Server builder
-pub struct ServerBuilder {
+pub struct ServerBuilder<AckMode> {
     /// Registered services
     pub services: AsyncServiceMap,
+    /// Timeout for receiving the Ack from subscriber
+    pub pub_retry_timeout: Duration,
+    /// Max number of retries for publishing
+    pub max_num_retries: u32,
+    ack_mode: PhantomData<AckMode>,
 }
 
-impl ServerBuilder {
+impl<AckMode> ServerBuilder<AckMode> {
     /// Creates a new `ServerBuilder`
     pub fn new() -> Self {
         ServerBuilder {
             services: HashMap::new(),
+            pub_retry_timeout: DEFAULT_PUB_RETRY_TIMEOUT,
+            max_num_retries: DEFAULT_PUB_RETRIES,
+            ack_mode: PhantomData,
+        }
+    }
+
+    /// Sets the AckMode to None
+    pub fn set_ack_mode_none(self) -> ServerBuilder<AckModeNone> {
+        ServerBuilder::<AckModeNone> {
+            services: self.services,
+            pub_retry_timeout: self.pub_retry_timeout,
+            max_num_retries: self.max_num_retries,
+            ack_mode: PhantomData,
+        }
+    }
+
+    /// Sets the AckMode to Auto
+    pub fn set_ack_mode_auto(self) -> ServerBuilder<AckModeAuto> {
+        ServerBuilder::<AckModeAuto> {
+            services: self.services,
+            pub_retry_timeout: self.pub_retry_timeout,
+            max_num_retries: self.max_num_retries,
+            ack_mode: PhantomData,
         }
     }
 
@@ -102,29 +131,71 @@ impl ServerBuilder {
     }
 }
 
-#[cfg(any(
-    feature = "docs",
-    all(feature = "async_std_runtime", not(feature = "tokio_runtime")),
-    all(feature = "tokio_runtime", not(feature = "async_std_runtime")),
-))]
-impl ServerBuilder {
-    /// Builds an RPC `Server`
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// let echo_service = Arc::new(EchoService { });
-    /// let builder: ServerBuilder = Server::builder()
-    ///     .register(echo_service);
-    /// let server: Server = builder.build();        
-    /// ```
-    pub fn build(self) -> Server {
-        Server::from_builder(self)
+impl Default for ServerBuilder<AckModeNone> {
+    fn default() -> ServerBuilder<AckModeNone> {
+        ServerBuilder::<AckModeNone>::new()
     }
 }
 
-impl Default for ServerBuilder {
-    fn default() -> Self {
-        Self::new()
+impl ServerBuilder<AckModeAuto> {
+    /// Sets the duration the server waits for Ack messages from all the subscribers. 
+    ///
+    /// This affects not only Publisher on the Server side but also Publisher on the Client
+    /// side.
+    pub fn set_publisher_retry_timeout(mut self, duration: Duration) -> Self {
+        self.pub_retry_timeout = duration;
+        self
+    }
+
+    /// Set the number of retries for the Server
+    ///
+    /// This affects not only Publisher on the Server side but also Publisher on the Client
+    /// side.
+    pub fn set_publisher_max_num_retries(self, val: u32) -> Self {
+        Self {
+            max_num_retries: val,
+            ..self
+        }
     }
 }
+
+macro_rules! impl_server_builder_for_ack_modes {
+    ($($ack_mode:ty),*) => {
+        $(
+            #[cfg(any(
+                feature = "docs",
+                all(feature = "async_std_runtime", not(feature = "tokio_runtime")),
+                all(feature = "tokio_runtime", not(feature = "async_std_runtime")),
+            ))]
+            impl ServerBuilder<$ack_mode> {
+                /// Builds an RPC `Server`
+                ///
+                /// # Example
+                ///
+                /// ```
+                /// let echo_service = Arc::new(EchoService { });
+                /// let builder: ServerBuilder = Server::builder()
+                ///     .register(echo_service);
+                /// let server: Server = builder.build();
+                /// ```
+                pub fn build(self) -> Server<$ack_mode> {
+                    use super::{AtomicClientId, RESERVED_CLIENT_ID, PubSubBroker};
+
+                    let services = Arc::new(self.services);
+
+                    let (pubsub_broker, pubsub_tx) = PubSubBroker::<$ack_mode>::new(self.pub_retry_timeout, self.max_num_retries);
+                    pubsub_broker.spawn();
+
+                    Server::<$ack_mode> {
+                        client_counter: Arc::new(AtomicClientId::new(RESERVED_CLIENT_ID + 1)),
+                        services,
+                        pubsub_tx,
+                        ack_mode: PhantomData,
+                    }
+                }
+            }
+        )*
+    };
+}
+
+impl_server_builder_for_ack_modes!(AckModeNone, AckModeAuto);

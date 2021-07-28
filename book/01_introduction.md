@@ -27,6 +27,8 @@ to make them sound more "rusty". Because rust does not come with runtime reflect
 and `#[export_trait]` / `#[export_trait_impl]`, and attribute `#[export_method]` are used to mark functions "exported" in golang's 
 `net/rpc` perspective.
 
+Minimum supported Rust version: 1.53 or later
+
 ## Why?
 
 While there are grpc implementations like `grpc-rs` and `tonic` as well as schema-free crates like `tarpc`, I didn't find 

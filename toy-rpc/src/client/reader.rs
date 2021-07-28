@@ -5,6 +5,7 @@ use futures::SinkExt;
 
 use super::broker::ClientBrokerItem;
 use crate::protocol::{Header, InboundBody};
+use crate::pubsub::SeqId;
 use crate::{codec::CodecRead, Error};
 
 pub(crate) struct ClientReader<R> {
@@ -27,16 +28,17 @@ impl<R: CodecRead> brw::Reader for ClientReader<R> {
                 Err(err) => return Running::Continue(Err(err)),
             };
             log::debug!("{:?}", &header);
-            let deserializer: Box<InboundBody> = match self.reader.read_body().await {
-                Some(res) => match res {
-                    Ok(de) => de,
-                    Err(err) => return Running::Continue(Err(err)),
-                },
-                None => return Running::Stop,
-            };
 
             match header {
                 Header::Response { id, is_ok } => {
+                    // Ack will not come with a body
+                    let deserializer: Box<InboundBody> = match self.reader.read_body().await {
+                        Some(res) => match res {
+                            Ok(de) => de,
+                            Err(err) => return Running::Continue(Err(err)),
+                        },
+                        None => return Running::Stop,
+                    };
                     let result = match is_ok {
                         true => Ok(deserializer),
                         false => Err(deserializer),
@@ -47,16 +49,34 @@ impl<R: CodecRead> brw::Reader for ClientReader<R> {
                     }
                     Running::Continue(Ok(()))
                 }
-                Header::Publish { id, topic } => Running::Continue(
-                    broker
-                        .send(ClientBrokerItem::Subscription {
-                            id,
-                            topic,
-                            item: deserializer,
-                        })
-                        .await
-                        .map_err(|err| err.into()),
-                ),
+                Header::Publish { id, topic } => {
+                    let deserializer: Box<InboundBody> = match self.reader.read_body().await {
+                        Some(res) => match res {
+                            Ok(de) => de,
+                            Err(err) => return Running::Continue(Err(err)),
+                        },
+                        None => return Running::Stop,
+                    };
+                    Running::Continue(
+                        broker
+                            .send(ClientBrokerItem::Subscription {
+                                id: SeqId::new(id),
+                                topic,
+                                item: deserializer,
+                            })
+                            .await
+                            .map_err(|err| err.into()),
+                    )
+                }
+                Header::Ack(id) => {
+                    let seq_id = SeqId::new(id);
+                    Running::Continue(
+                        broker
+                            .send(ClientBrokerItem::InboundAck(seq_id))
+                            .await
+                            .map_err(|err| err.into()),
+                    )
+                }
                 _ => Running::Continue(Err(Error::Internal("Unexpected Header type".into()))),
             }
         } else {

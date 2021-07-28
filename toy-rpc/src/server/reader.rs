@@ -6,6 +6,7 @@ use crate::{
     codec::CodecRead,
     error::Error,
     message::{MessageId, CANCELLATION_TOKEN, CANCELLATION_TOKEN_DELIM},
+    pubsub::SeqId,
     service::{ArcAsyncServiceCall, AsyncServiceMap},
 };
 
@@ -190,9 +191,16 @@ impl<T: CodecRead> Reader for ServerReader<T> {
                             .map_err(|err| err.into()),
                     )
                 }
-                Header::Ack(_) => Running::Continue(Err(Error::Internal(
-                    "Unexpected Header type (Header::Ack)".into(),
-                ))),
+                Header::Ack(id) => {
+                    // There is no body frame for unsubscribe message
+                    let seq_id = SeqId::new(id);
+                    Running::Continue(
+                        broker
+                            .send(ServerBrokerItem::InboundAck { seq_id })
+                            .await
+                            .map_err(|err| err.into()),
+                    )
+                }
                 Header::Produce {
                     id: _,
                     topic: _,

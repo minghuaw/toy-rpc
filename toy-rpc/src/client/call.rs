@@ -53,16 +53,16 @@ pub struct Call<Res: DeserializeOwned> {
 
 impl<Res: DeserializeOwned> Call<Res> {
     pub(crate) fn new(
-        id: MessageId, 
-        cancel: Sender<broker::ClientBrokerItem>, 
+        id: MessageId,
+        cancel: Sender<broker::ClientBrokerItem>,
         done: oneshot::Receiver<Result<ResponseResult, Error>>,
     ) -> Self {
         Self {
-            status: CallStatus::Pending, 
+            status: CallStatus::Pending,
             id,
             cancel,
             done,
-            marker: PhantomData
+            marker: PhantomData,
         }
     }
 }
@@ -111,24 +111,20 @@ where
         > = this.done;
 
         match done.poll(cx) {
-            Poll::Pending => {
-                match this.status {
-                    CallStatus::Canceled | CallStatus::Dropped => {
-                        Poll::Ready(Err(Error::Canceled(Some(*this.id))))
-                    },
-                    _ => {
-                        Poll::Pending
-                    }
+            Poll::Pending => match this.status {
+                CallStatus::Canceled | CallStatus::Dropped => {
+                    Poll::Ready(Err(Error::Canceled(Some(*this.id))))
                 }
+                _ => Poll::Pending,
             },
             Poll::Ready(res) => {
                 match this.status {
                     CallStatus::Canceled | CallStatus::Dropped => {
                         return Poll::Ready(Err(Error::Canceled(Some(*this.id))))
-                    },
-                    _ => { }
+                    }
+                    _ => {}
                 }
-                
+
                 let res = match res {
                     Ok(val) => val,
                     Err(_canceled) => return Poll::Ready(Err(Error::Canceled(Some(*this.id)))),

@@ -1,4 +1,8 @@
+use std::sync::Arc;
+
 use cfg_if::cfg_if;
+
+use crate::pubsub::SeqId;
 
 cfg_if! {
     if #[cfg(any(
@@ -9,23 +13,25 @@ cfg_if! {
         use async_trait::async_trait;
         use brw::Running;
 
-        use crate::{message::Metadata, util::GracefulShutdown};
-
         use crate::{
             Error, codec::CodecWrite,
             message::{
-                CANCELLATION_TOKEN, CANCELLATION_TOKEN_DELIM, MessageId
+                Metadata, CANCELLATION_TOKEN, CANCELLATION_TOKEN_DELIM, MessageId
             },
             protocol::{
                 Header, OutboundBody
-            }
+            },
+            util:: GracefulShutdown
         };
 
         pub enum ClientWriterItem {
             Request(MessageId, String, Duration, Box<OutboundBody>),
-            Publish(MessageId, String, Box<OutboundBody>),
+            Publish(MessageId, String, Arc<Vec<u8>>),
             Subscribe(MessageId, String),
             Unsubscribe(MessageId, String),
+            // Client will respond to Publish message sent from the server
+            // Thus needs to reply with the seq_id
+            Ack(SeqId),
             Cancel(MessageId),
             Stop,
         }
@@ -43,6 +49,16 @@ cfg_if! {
                 let id = header.get_id();
                 self.writer.write_header(header).await?;
                 self.writer.write_body(id, body).await
+            }
+
+            pub async fn write_publish_item(
+                &mut self,
+                header: Header,
+                bytes: &[u8]
+            ) -> Result<(), Error> {
+                let id = header.get_id();
+                self.writer.write_header(header).await?;
+                self.writer.write_body_bytes(id, bytes).await
             }
         }
 
@@ -70,7 +86,7 @@ cfg_if! {
                     ClientWriterItem::Publish(id, topic, body) => {
                         let header = Header::Publish{id, topic};
                         log::debug!("{:?}", &header);
-                        self.write_request(header, &body).await
+                        self.write_publish_item(header, &body).await
                     },
                     ClientWriterItem::Subscribe(id, topic) => {
                         let header = Header::Subscribe{id, topic};
@@ -81,7 +97,13 @@ cfg_if! {
                         let header = Header::Unsubscribe{id, topic};
                         log::debug!("{:?}", &header);
                         self.write_request(header, &()).await
-                    }
+                    },
+                    ClientWriterItem::Ack(seq_id) => {
+                        let header = Header::Ack(seq_id.0);
+                        log::debug!("{:?}", &header);
+                        // There is no body frame for Ack message
+                        self.writer.write_header(header).await
+                    },
                     ClientWriterItem::Stop => {
                         self.writer.close().await;
                         return Running::Stop

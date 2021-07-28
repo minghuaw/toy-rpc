@@ -6,6 +6,7 @@ use crate::{
     codec::CodecWrite,
     error::Error,
     message::{ErrorMessage, MessageId},
+    pubsub::SeqId,
     service::HandlerResult,
 };
 
@@ -20,9 +21,14 @@ pub(crate) enum ServerWriterItem {
     },
     /// Publish subscription item to client
     Publication {
-        id: MessageId,
+        seq_id: SeqId,
         topic: String,
         content: Arc<Vec<u8>>,
+    },
+    Ack {
+        // Server will only need to Ack Publish request from client.
+        // Thus should reply with the MessageId that came from the client
+        id: MessageId,
     },
 }
 
@@ -64,6 +70,12 @@ impl<W: CodecWrite> ServerWriter<W> {
         self.writer.write_header(header).await?;
         self.writer.write_body_bytes(id, &content).await
     }
+
+    // Ack message
+    async fn write_ack(&mut self, id: MessageId) -> Result<(), Error> {
+        let header = Header::Ack(id);
+        self.writer.write_header(header).await
+    }
 }
 
 #[async_trait::async_trait]
@@ -75,9 +87,15 @@ impl<W: CodecWrite> Writer for ServerWriter<W> {
     async fn op(&mut self, item: Self::Item) -> Running<Result<Self::Ok, Self::Error>> {
         let res = match item {
             ServerWriterItem::Response { id, result } => self.write_response(id, result).await,
-            ServerWriterItem::Publication { id, topic, content } => {
+            ServerWriterItem::Publication {
+                seq_id,
+                topic,
+                content,
+            } => {
+                let id = seq_id.0;
                 self.write_publication(id, topic, &content).await
             }
+            ServerWriterItem::Ack { id } => self.write_ack(id).await,
         };
         Running::Continue(res)
     }

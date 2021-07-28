@@ -51,6 +51,7 @@ cfg_if! {
                     e @ Error::Internal(_) => Err(e),
                     e @ Error::Canceled(_) => Err(e),
                     e @ Error::Timeout(_) => Err(e),
+                    e @ Error::MaxRetriesReached(_) => Err(e),
                 }
             }
         }

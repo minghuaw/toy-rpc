@@ -38,7 +38,7 @@ pub enum Error {
     /// Cancellation error when an RPC call is cancelled
     #[error("Request is canceled")]
     Canceled(Option<MessageId>),
-    
+
     /// Timeout error when an RPC request timesout
     ///
     /// The timeout is tracked independently on the client and the server.
@@ -47,6 +47,10 @@ pub enum Error {
     /// error.
     #[error("Request reached timeout")]
     Timeout(Option<MessageId>),
+
+    /// Maximum number of retries is reached before an Ack is received
+    #[error("Maximum number of retries is reached for message {0}")]
+    MaxRetriesReached(MessageId),
 }
 
 impl Error {
@@ -127,6 +131,13 @@ impl From<Error> for actix_web::Error {
         // wrap error with actix_web::error::InternalError for now
         // TODO: imporve error handling
         actix_web::error::InternalError::new(err, actix_web::http::StatusCode::OK).into()
+    }
+}
+
+#[cfg(feature = "http_actix_web")]
+impl<T> From<actix::prelude::SendError<T>> for Error {
+    fn from(err: actix::prelude::SendError<T>) -> Self {
+        Self::Internal(format!("Cannot send internal message {:?}", err).into())
     }
 }
 
@@ -235,9 +246,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_conversion_to_anyhow() {
-        
-    }
+    fn test_conversion_to_anyhow() {}
 
     #[cfg(feature = "anyhow")]
     fn return_std_result() -> Result<(), Error> {

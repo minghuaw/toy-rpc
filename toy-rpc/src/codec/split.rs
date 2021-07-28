@@ -50,7 +50,7 @@ where
 }
 
 /// Split a Codec into a writing half and a reading half
-pub trait SplittableCodec {
+pub trait SplittableCodec: Marshal + Unmarshal {
     /// Type of the writing half
     type Writer: CodecWrite + GracefulShutdown;
     /// Type of the reading half

@@ -11,6 +11,7 @@ async fn main() {
     env_logger::init();
 
     let server = Server::builder()
+        // .set_ack_mode_auto()
         .build();
 
     let mut count_pub = server.publisher::<Count>();

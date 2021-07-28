@@ -47,7 +47,7 @@ pub enum Header {
     /// Header of a subscribe message
     /// Message will be pushed to the subscriber
     ///
-    /// The body should be an unit type ie. `()`
+    /// There will be no body message in order to reduce traffic
     Subscribe {
         /// Message id
         id: MessageId,
@@ -57,7 +57,7 @@ pub enum Header {
 
     /// Header of a unsubscribe message
     ///
-    /// The body should be an unit type ie. `()`
+    /// There will be no body message in order to reduce traffic
     Unsubscribe {
         /// Message Id
         id: MessageId,
@@ -79,7 +79,7 @@ pub enum Header {
     /// - Publish
     /// - Subscribe
     ///
-    /// The body should be an unit type `()`
+    /// There will be no body message in order to reduce traffic
     Ack(MessageId),
 
     /// Reserved for a potential message queue like design
@@ -133,16 +133,6 @@ impl Metadata for Header {
 
 pub(crate) type OutboundBody = dyn erased_serde::Serialize + Send + Sync;
 pub(crate) type InboundBody = dyn erased_serde::Deserializer<'static> + Send;
-
-// pub(crate) struct InboundMessage {
-//     header: Header,
-//     body: InboundBody
-// }
-
-// pub(crate) struct OutboundMessage {
-//     header: Header,
-//     body: OutboundBody,
-// }
 
 #[cfg(test)]
 mod tests {

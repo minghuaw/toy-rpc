@@ -142,7 +142,7 @@ cfg_if::cfg_if! {
 
         use toy_rpc::client::{Client};
 
-        pub async fn test_get_magic_u8(client: &Client) {
+        pub async fn test_get_magic_u8<AckMode>(client: &Client<AckMode>) {
             let reply: u8 = client
                 .common_test()
                 .get_magic_u8(())
@@ -152,7 +152,7 @@ cfg_if::cfg_if! {
             println!("test_get_magic_u8() Passed")
         }
 
-        pub async fn test_get_magic_u16(client: &Client) {
+        pub async fn test_get_magic_u16<AckMode>(client: &Client<AckMode>) {
             let reply: u16 = client
                 .common_test()
                 .get_magic_u16(())
@@ -162,7 +162,7 @@ cfg_if::cfg_if! {
             println!("test_get_magic_u16() Passed")
         }
 
-        pub async fn test_get_magic_u32(client: &Client) {
+        pub async fn test_get_magic_u32<AckMode>(client: &Client<AckMode>) {
             let reply: u32 = client
                 .common_test()
                 .get_magic_u32(())
@@ -172,7 +172,7 @@ cfg_if::cfg_if! {
             println!("test_get_magic_u32() Passed")
         }
 
-        pub async fn test_get_magic_u64(client: &Client) {
+        pub async fn test_get_magic_u64<AckMode>(client: &Client<AckMode>) {
             let reply: u64 = client
                 .common_test()
                 .get_magic_u64(())
@@ -182,7 +182,7 @@ cfg_if::cfg_if! {
             println!("test_get_magic_u64() Passed")
         }
 
-        pub async fn test_get_magic_i8(client: &Client) {
+        pub async fn test_get_magic_i8<AckMode>(client: &Client<AckMode>) {
             let reply: i8 = client
                 .common_test()
                 .get_magic_i8(())
@@ -192,7 +192,7 @@ cfg_if::cfg_if! {
             println!("test_get_magic_i8() Passed")
         }
 
-        pub async fn test_get_magic_i16(client: &Client) {
+        pub async fn test_get_magic_i16<AckMode>(client: &Client<AckMode>) {
             let reply: i16 = client
                 .common_test()
                 .get_magic_i16(())
@@ -202,7 +202,7 @@ cfg_if::cfg_if! {
             println!("test_get_magic_i16() Passed")
         }
 
-        pub async fn test_get_magic_i32(client: &Client) {
+        pub async fn test_get_magic_i32<AckMode>(client: &Client<AckMode>) {
             let reply: i32 = client
                 .common_test()
                 .get_magic_i32(())
@@ -212,7 +212,7 @@ cfg_if::cfg_if! {
             println!("test_get_magic_i32() Passed")
         }
 
-        pub async fn test_get_magic_i64(client: &Client) {
+        pub async fn test_get_magic_i64<AckMode>(client: &Client<AckMode>) {
             let reply: i64 = client
                 .common_test()
                 .get_magic_i64(())
@@ -222,7 +222,7 @@ cfg_if::cfg_if! {
             println!("test_get_magic_i64() Passed")
         }
 
-        pub async fn test_get_magic_bool(client: &Client) {
+        pub async fn test_get_magic_bool<AckMode>(client: &Client<AckMode>) {
             let reply: bool = client
                 .common_test()
                 .get_magic_bool(())
@@ -232,7 +232,7 @@ cfg_if::cfg_if! {
             println!("test_get_magic_bool() Passed")
         }
 
-        pub async fn test_get_magic_str(client: &Client) {
+        pub async fn test_get_magic_str<AckMode>(client: &Client<AckMode>) {
             let reply: String = client
                 .common_test()
                 .get_magic_str(())
@@ -243,7 +243,7 @@ cfg_if::cfg_if! {
             println!("test_get_magic_str() Passed")
         }
 
-        pub async fn test_service_not_found(client: &Client) {
+        pub async fn test_service_not_found<AckMode>(client: &Client<AckMode>) {
             let reply: Result<(), toy_rpc::Error> = client.call("UndefinedService.method", ()).await;
             let expected = toy_rpc::Error::ServiceNotFound;
             match reply {
@@ -255,7 +255,7 @@ cfg_if::cfg_if! {
             println!("test_service_not_found() Passed")
         }
 
-        pub async fn test_method_not_found(client: &Client) {
+        pub async fn test_method_not_found<AckMode>(client: &Client<AckMode>) {
             let service_method = format!("{}.undefined_method", COMMON_TEST_SERVICE_NAME);
             let reply: Result<(), toy_rpc::Error> = client.call(service_method, ()).await;
             let expected = toy_rpc::Error::MethodNotFound;
@@ -268,7 +268,7 @@ cfg_if::cfg_if! {
             println!("test_method_not_found() Passed")
         }
 
-        pub async fn test_imcomplete_service_method(client: &Client) {
+        pub async fn test_imcomplete_service_method<AckMode>(client: &Client<AckMode>) {
             let service_method = format!("{}", COMMON_TEST_SERVICE_NAME);
             let reply: Result<(), toy_rpc::Error> = client.call(service_method, ()).await;
             let expected = toy_rpc::Error::MethodNotFound;
@@ -281,7 +281,7 @@ cfg_if::cfg_if! {
             println!("test_imcomplete_service_method() Passed")
         }
 
-        pub async fn test_execution_error(client: &Client) {
+        pub async fn test_execution_error<AckMode>(client: &Client<AckMode>) {
             let val = "an error message".to_string();
             let reply = client.common_test().echo_error(val.clone()).await;
             let expected = toy_rpc::Error::ExecutionError(val);

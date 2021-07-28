@@ -42,6 +42,7 @@
 //! - [Documentation](https://docs.rs/toy-rpc/0.7.0-alpha.0/toy_rpc/)
 //! - [GitHub repository](https://github.com/minghuaw/toy-rpc)
 //! - [crate.io](https://crates.io/crates/toy-rpc)
+//! - Minimum supported Rust version: 1.53 or later
 //!
 //! This crate uses `#![forbid(unsafe_code)]` to ensure no usage of `unsafe` in the crate.
 //!
