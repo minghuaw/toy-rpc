@@ -69,14 +69,6 @@ impl<AckMode> ClientBuilder<AckMode> {
         }
     }
 
-    /// Set the number of retries
-    pub fn set_max_num_retries(self, val: u32) -> Self {
-        Self {
-            max_num_retries: val,
-            ..self
-        }
-    }
-
     /// Set the AckMode to None
     pub fn set_ack_mode_none(self) -> ClientBuilder<AckModeNone> {
         ClientBuilder::<AckModeNone> {
@@ -108,9 +100,22 @@ impl<AckMode> ClientBuilder<AckMode> {
 impl ClientBuilder<AckModeAuto> {
     /// Sets the duration that a publisher waits for the Ack from the server. If an Ack is not
     /// received before the duration expires, the publisher will try to re-send the Publish message.
+    ///
+    /// This does not affect the timeout from the Server to all the `Subscriber`s.
     pub fn set_publisher_retry_timeout(mut self, duration: Duration) -> Self {
         self.pub_retry_timeout = duration;
         self
+    }
+
+    /// Set the number of retries for the publisher
+    ///
+    /// This does not affect the max number of retries from the Server to all the 
+    /// `Subscriber`s.
+    pub fn set_max_num_retries(self, val: u32) -> Self {
+        Self {
+            max_num_retries: val,
+            ..self
+        }
     }
 }
 
@@ -120,6 +125,14 @@ impl ClientBuilder<AckModeManual> {
     pub fn set_publisher_retry_timeout(mut self, duration: Duration) -> Self {
         self.pub_retry_timeout = duration;
         self
+    }
+
+    /// Set the number of retries
+    pub fn set_max_num_retries(self, val: u32) -> Self {
+        Self {
+            max_num_retries: val,
+            ..self
+        }
     }
 }
 

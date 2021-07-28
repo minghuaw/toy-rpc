@@ -137,6 +137,28 @@ impl Default for ServerBuilder<AckModeNone> {
     }
 }
 
+impl ServerBuilder<AckModeAuto> {
+    /// Sets the duration the server waits for Ack messages from all the subscribers. 
+    ///
+    /// This affects not only Publisher on the Server side but also Publisher on the Client
+    /// side.
+    pub fn set_publisher_retry_timeout(mut self, duration: Duration) -> Self {
+        self.pub_retry_timeout = duration;
+        self
+    }
+
+    /// Set the number of retries for the Server
+    ///
+    /// This affects not only Publisher on the Server side but also Publisher on the Client
+    /// side.
+    pub fn set_max_num_retries(self, val: u32) -> Self {
+        Self {
+            max_num_retries: val,
+            ..self
+        }
+    }
+}
+
 macro_rules! impl_server_builder_for_ack_modes {
     ($($ack_mode:ty),*) => {
         $(

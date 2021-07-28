@@ -1249,6 +1249,107 @@ if let Some(result) = subscriber.next().await {
 </code></pre>
 <h2 id="example"><a class="header" href="#example">Example</a></h2>
 <p><a href="https://github.com/minghuaw/toy-rpc/tree/main/examples/tokio_pubsub">GitHub repo</a></p>
+<h2 id="ack-for-publish-message-delivery"><a class="header" href="#ack-for-publish-message-delivery"><code>Ack</code> for <code>Publish</code> message delivery</a></h2>
+<p>As of version 0.8.0-beta.0, <code>Ack</code> is added in the cases where explicit <code>Ack</code> is needed. <code>Ack</code> only applies to acknowledge receiving of <code>Publish</code> message and does <em><strong>NOT</strong></em> apply to any RPC requests/responses. There are three different <code>AckMode</code></p>
+<ol>
+<li><code>AckModeNone</code>, which is the <em><strong>default</strong></em> mode for both the <code>Server</code> and <code>Client</code>. This mode is available on both the <code>Server</code> and the <code>Client</code> Under this mode, no <code>Ack</code> message will be required by the publisher or be sent by the subscriber.</li>
+<li><code>AckModeAuto</code>. This mode is available on both the <code>Server</code> and <code>Client</code>. Under this mode, both the server and the client will automatically reply with an <code>Ack</code> to any <code>Publish</code> message they receive.</li>
+<li><code>AckModeManual</code>. This mode is only available on <code>Client</code>. Under this mode, the subscriber needs to manually <code>.ack()</code> in order to get the published item. Please note that under the manual mode, the <code>Publisher</code> behaves the same as if it is under the <code>AckModeAuto</code> mode.</li>
+</ol>
+<p>The behavior of publisher/subscriber will be discussed in different senarios below.</p>
+<ol>
+<li>
+<p><code>Publisher</code> on the <code>Server</code> with <code>AckModeAuto</code></p>
+<p>When a <code>Publisher</code> is created on the server side, the server's pubsub handler will wait for <em><strong>ALL</strong></em> <code>Ack</code>s from the subscribers, including that from <code>Subscriber</code> on the <code>Server</code>, in an asynchronous manner, meaning the publisher is able to continue publishing new messages even if some subscribers have not sent back <code>Ack</code> yet. Upon reaching the timeout, the server's pubsub handler will try to resend the same publish message (with the same sequence ID) to the <code>Subscriber</code>s that have not send back <code>Ack</code> messages. The server will stop retrying after the maximum number of retries is reached.</p>
+<p><img src="./assets/publisher_on_server.png" alt="Publisher on the Server side" /></p>
+</li>
+<li>
+<p><code>Publisher</code> on the <code>Client</code> with <code>AckModeAuto</code> or <code>AckModeManual</code></p>
+<p>When a <code>Publisher</code> is created on the client side, the client will wait for only <em><strong>ONE</strong></em> <code>Ack</code> message from the <code>Server</code> in an asynchronous manner, meaning the <code>Publisher</code> is able to continue publishing  new messages even if the <code>Ack</code> message from the <code>Server</code> has not arrived. If the <code>Ack</code> message from the <code>Server</code> does not arrive before the timeout expires, the client will attempt to publish the same message (with the same message ID). The client (<code>Publisher</code>) will stop retrying after the maximum number of retries is reached. </p>
+<p>Once the <code>Publish</code> message is received by the <code>Server</code>, the message will be assigned a new sequence ID that is tracked only by the <code>Server</code>. The message will then be published to all subscribers under the topic, and the server will wait for <em><strong>ALL</strong></em> <code>Ack</code> messages from the subscribers in an asynchronous manner, meaning the server will be able to keep handling RPC requests or PubSub messages while waiting for <code>Ack</code> messages to come back. If not all <code>Ack</code> messages are sent back to the server before the timeout expires, the server will attempt to resend the same message with the same sequence ID number to the subscribers whose <code>Ack</code> messages are not received. The server will stop retrying after the maximum number of retries is reached.</p>
+<p><img src="./assets/publisher_on_client.png" alt="Publisher on Client side" /></p>
+</li>
+<li>
+<p><code>Subscriber</code> on the <code>Server</code> side with <code>AckModeAuto</code></p>
+<p>Please note that the <code>Server</code> side does NOT support <code>AckModdManual</code>. Upon receiving a published message, the subscriber will automatically send back an <code>Ack</code> message to the PubSub handler on the server.</p>
+</li>
+<li>
+<p><code>Subscriber</code> on the <code>Client</code> side with <code>AckModeAuto</code></p>
+<p>Upon receiving a published message, the <code>Client</code> will automatically send back an <code>Ack</code> message back to the <code>Server</code>.</p>
+</li>
+<li>
+<p><code>Subscriber</code> on the <code>Client</code> side with <code>AckModeManual</code></p>
+<p>Instead of receiving the usual <code>Result&lt;Topic::Item, Error&gt;</code> from the <code>Subscriber</code> stream, the user will receive <code>Result&lt;Delivery&lt;Topic::Item&gt;, Error&gt;</code>. In order to get the usual <code>Topic::Item</code>, the user will need to call <code>.ack()</code> method on the <code>Delivery</code> object (ie. <code>let item = delivery.ack()</code>), which will send back an <code>Ack</code> message to the <code>Server</code>.</p>
+</li>
+</ol>
+<h3 id="how-to-use-ackmode"><a class="header" href="#how-to-use-ackmode">How to use <code>AckMode</code></a></h3>
+<p>By default, all <code>Server</code> and <code>Client</code> start with <code>AckModeNone</code></p>
+<pre><pre class="playground"><code class="language-rust edition2018">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let server = Server::builder()
+    .build(); // This will create a server with `AckModeNone`
+
+let client = Client::dial(ADDR)
+    .await.unwrap(); // This will create a client with `AckModeNone`
+<span class="boring">}
+</span></code></pre></pre>
+<p><code>Ack</code> can be enabled by setting the <code>Server</code> or <code>Client</code> into the corresponding mode using the corresponding builder.</p>
+<pre><pre class="playground"><code class="language-rust edition2018">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let server = Server::builder() // This will start the builder with `AckModeNone`
+    .set_ack_mode_auto() // This will set the ServerBuilder to `AckModeAuto`
+    .build(); // This will build the server with `AckModeAuto`
+
+let client = Client::builder()
+    .set_ack_mode_auto() // This will set the ClientBuilder to `AckModeAuto`
+    .dial(ADDR)
+    .await.unwrap(); // This will create a Client with `AckModeAuto`
+
+let client = Client::builder() // This will start the builder with `AckModeNone`
+    .set_ack_mode_manual() // This will set the ClientBuilder to `AckModeManual`
+    .dial(ADDR)
+    .await.unwrap(); // This will create a Client with `AckModeManual`
+<span class="boring">}
+</span></code></pre></pre>
+<p>The timeout and maximum number of retries for the publisher can also be configured</p>
+<pre><pre class="playground"><code class="language-rust edition2018">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let server = Server::builder()
+    // Must enable Ack first
+    .set_ack_mode_auto() 
+    // Sets how long the server will wait for Ack messages.
+    //
+    // This also affects the Publish messages sent by 
+    // `Publisher`s from the client side
+    .set_publisher_retry_timeout(Duration::from_secs(5))  
+    // Sets many times the server will retry.
+    // 
+    // This also affects the Publish messages sent by 
+    // `Publisher`s from the client side
+    .set_max_num_retries(3)
+    .build();
+
+let client = Client::builder()
+    // Must set the builder into some `Ack` mode
+    .set_ack_mode_auto()
+    // Sets how long the client publisher will wait for Ack message from Server.
+    //
+    // This does ***NOT*** affect how long the server will wait for 
+    // `Ack` from the subscribers
+    .set_publisher_retry_timeout(Duration::from_secs(5))
+    // Sets how long the client publisher will retry to send the Publish 
+    // message to the server.
+    //
+    // This does ***NOT*** affect how many times the server will attempt to 
+    // resend the publish message to the subscribers
+    .set_max_num_retries(3)
+    .dial(ADDR)
+    .await.unwrap();
+<span class="boring">}
+</span></code></pre></pre>
 <div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><h1 id="examples-1"><a class="header" href="#examples-1">Examples</a></h1>
 <p>There are a few examples available on the <a href="https://github.com/minghuaw/toy-rpc/tree/main/examples">GitHub repo</a>. Here are some descriptions of those examples.</p>
 <ul>
