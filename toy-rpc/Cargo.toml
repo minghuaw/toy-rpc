@@ -29,7 +29,7 @@ rustdoc-args = ["--cfg", "feature=\"docs\""]
 [features]
 default = [
     "serde_bincode",
-    "tokio_runtime",
+    "http_actix_web",
     "server",
     "client",
 ]

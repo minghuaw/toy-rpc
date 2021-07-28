@@ -151,7 +151,7 @@ impl ServerBuilder<AckModeAuto> {
     ///
     /// This affects not only Publisher on the Server side but also Publisher on the Client
     /// side.
-    pub fn set_max_num_retries(self, val: u32) -> Self {
+    pub fn set_publisher_max_num_retries(self, val: u32) -> Self {
         Self {
             max_num_retries: val,
             ..self

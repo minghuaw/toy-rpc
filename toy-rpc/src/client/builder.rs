@@ -111,7 +111,7 @@ impl ClientBuilder<AckModeAuto> {
     ///
     /// This does not affect the max number of retries from the Server to all the 
     /// `Subscriber`s.
-    pub fn set_max_num_retries(self, val: u32) -> Self {
+    pub fn set_publisher_max_num_retries(self, val: u32) -> Self {
         Self {
             max_num_retries: val,
             ..self

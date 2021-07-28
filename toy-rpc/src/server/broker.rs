@@ -1,12 +1,11 @@
 //! Broker on the server side
 
 use std::future::Future;
-use std::marker::PhantomData;
 use std::sync::Arc;
 use std::time::Duration;
 
 use crate::protocol::InboundBody;
-use crate::pubsub::{AckModeAuto, AckModeNone, SeqId};
+use crate::pubsub::SeqId;
 use crate::service::{ArcAsyncServiceCall, HandlerResult};
 
 use crate::{error::Error, message::MessageId};
@@ -14,12 +13,14 @@ use crate::{error::Error, message::MessageId};
 cfg_if::cfg_if! {
     if #[cfg(not(feature = "http_actix_web"))] {
         use std::collections::HashMap;
+        use std::marker::PhantomData;
 
         use flume::Sender;
         use brw::{Running, Broker};
         use futures::sink::{Sink, SinkExt};
 
         use crate::server::pubsub::PubSubResponder;
+        use crate::pubsub::{AckModeNone, AckModeAuto};
 
         use super::ClientId;
         use super::pubsub::PubSubItem;

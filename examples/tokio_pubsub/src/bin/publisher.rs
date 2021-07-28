@@ -10,6 +10,8 @@ async fn main() {
     // let client = Client::dial(ADDR).await.unwrap();
     let client = Client::builder()
         .set_ack_mode_auto()
+        .set_publisher_retry_timeout(Duration::from_secs(1))
+        .set_publisher_max_num_retries(1)
         .dial(ADDR).await.unwrap();
     let mut count_pub = client.publisher::<Count>();
     

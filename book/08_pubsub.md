@@ -147,7 +147,7 @@ let server = Server::builder()
     // 
     // This also affects the Publish messages sent by 
     // `Publisher`s from the client side
-    .set_max_num_retries(3)
+    .set_publisher_max_num_retries(3)
     .build();
 
 let client = Client::builder()
@@ -163,7 +163,7 @@ let client = Client::builder()
     //
     // This does ***NOT*** affect how many times the server will attempt to 
     // resend the publish message to the subscribers
-    .set_max_num_retries(3)
+    .set_publisher_max_num_retries(3)
     .dial(ADDR)
     .await.unwrap();
 ```

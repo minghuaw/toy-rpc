@@ -393,6 +393,8 @@ cfg_if::cfg_if! {
         ),
     ))] {
     pub mod publisher;
+
+    #[cfg(not(feature = "http_actix_web"))]
     pub mod subscriber;
     }
 }

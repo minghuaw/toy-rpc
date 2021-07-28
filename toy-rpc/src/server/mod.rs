@@ -9,9 +9,12 @@ use std::{
 };
 
 use crate::{
-    pubsub::{AckModeAuto, AckModeNone},
+    pubsub::{AckModeNone},
     service::AsyncServiceMap,
 };
+
+#[cfg(not(feature = "http_actix_web"))]
+use crate::pubsub::AckModeAuto;
 
 cfg_if! {
     if #[cfg(any(
