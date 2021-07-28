@@ -23,7 +23,7 @@ async fn run() {
     println!("{:?}", reply);
 
     println!("Calling finite loop");
-    let call: Call<()> = client.call("Echo.finite_loop", ());
+    let mut call: Call<()> = client.call("Echo.finite_loop", ());
     task::sleep(Duration::from_secs(2)).await;
     println!("Calling cancellation");
     call.cancel();
