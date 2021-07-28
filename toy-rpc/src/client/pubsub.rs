@@ -231,8 +231,6 @@ impl<AckMode> Client<AckMode> {
             return Err(err.into());
         };
 
-        // let sub = Subscriber::from(rx);
-        // Ok(sub)
         Ok(rx)
     }
 
