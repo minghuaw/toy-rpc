@@ -8,6 +8,7 @@ use serde::{Serialize, Deserialize};
 /*                                #[derive(Topic)]                            */
 /* -------------------------------------------------------------------------- */
 #[derive(Serialize, Deserialize, Topic)]
+#[topic(rename="YourTopic")]
 pub struct MyTopic(u32);
 
 
