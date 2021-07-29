@@ -5,6 +5,7 @@ use std::{marker::PhantomData, time::Duration};
 
 cfg_if! {
     if #[cfg(any(
+        feature = "docs",
         all(feature = "tokio_runtime", not(feature = "async_std_runtime")),
         all(feature = "async_std_runtime", not(feature = "tokio_runtime"))
     ))] {
@@ -90,6 +91,7 @@ use ::async_std::task::{self};
 use ::tokio::task::{self};
 
 #[cfg(any(
+    feature = "docs",
     all(feature = "tokio_runtime", not(feature = "async_std_runtime")),
     all(feature = "async_std_runtime", not(feature = "tokio_runtime"))
 ))]
@@ -107,6 +109,7 @@ pub(crate) struct ClientBroker<AckMode, C> {
 }
 
 #[cfg(any(
+    feature = "docs",
     all(feature = "tokio_runtime", not(feature = "async_std_runtime")),
     all(feature = "async_std_runtime", not(feature = "tokio_runtime"))
 ))]
