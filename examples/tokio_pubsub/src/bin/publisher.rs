@@ -18,7 +18,9 @@ async fn main() {
     let mut count = 90;
     // immediately dropping the client will not have the message fully sent
     while count >= 0  {
-        count_pub.send(Count(count)).await.unwrap();
+        // let item = Count(count);
+        let item = count;
+        count_pub.send(item).await.unwrap();
         count -= 1;
         tokio::time::sleep(Duration::from_millis(500)).await; 
     }

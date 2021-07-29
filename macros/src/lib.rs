@@ -535,18 +535,46 @@ pub fn export_trait_impl(
 /*                              #[derive(Topic)]                              */
 /* -------------------------------------------------------------------------- */
 
+use darling::{FromDeriveInput};
+
+#[derive(Debug, Default, FromDeriveInput)]
+#[darling(attributes(topic))]
+struct TopicAttr {
+    #[darling(default)]
+    rename: Option<String>,
+    #[darling(default)]
+    item: Option<syn::Ident>,
+}
+
 /// Implements `toy_rpc::pubsub::Topic` trait for a type. The type will also be
 /// the  associated type `Topic::Item`, and thus the derived type must implement
 /// both `serde::Serialize` and `serde::Deserialize`.
-#[proc_macro_derive(Topic)]
+#[proc_macro_derive(Topic, attributes(topic))]
 pub fn derive_topic(item: proc_macro::TokenStream) -> proc_macro::TokenStream {
+
     let input = syn::parse_macro_input!(item as syn::DeriveInput);
-    let ident = input.ident;
-    let topic = ident.to_string();
+    let ident = input.ident.clone();
+    let (topic, item) = {
+        let result = TopicAttr::from_derive_input(&input);
+        println!("{:?}", &result);
+        if let Ok(topic_attr) = result {
+            let t = match topic_attr.rename {
+                Some(s) => s,
+                None => ident.to_string()
+            };
+            let i = match topic_attr.item {
+                Some(i) => i,
+                None => ident.clone()
+            };
+            (t, i)
+        } else {
+            (ident.to_string(), ident.clone())
+        }
+    };
 
     let output = quote::quote! {
         impl toy_rpc::pubsub::Topic for #ident {
-            type Item = #ident;
+            type Item = #item;
 
             fn topic() -> String {
                 String::from(#topic)
