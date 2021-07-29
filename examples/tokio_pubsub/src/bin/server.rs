@@ -21,7 +21,9 @@ async fn main() {
     task::spawn(async move {
         let mut count = 0;
         loop {
-            count_pub.send(Count(count)).await.unwrap();
+            // let item = Count(count);
+            let item = count;
+            count_pub.send(item).await.unwrap();
             count += 1;
             tokio::time::sleep(Duration::from_millis(1000)).await;
         }

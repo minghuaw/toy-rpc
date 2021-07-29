@@ -553,15 +553,28 @@ struct TopicAttr {
 pub fn derive_topic(item: proc_macro::TokenStream) -> proc_macro::TokenStream {
 
     let input = syn::parse_macro_input!(item as syn::DeriveInput);
-    // println!("{:?}", &input);
-    let topic_arg_opts = TopicAttr::from_derive_input(&input);
-    println!("{:?}", &topic_arg_opts);
-    let ident = input.ident;
-    let topic = ident.to_string();
+    let ident = input.ident.clone();
+    let (topic, item) = {
+        let result = TopicAttr::from_derive_input(&input);
+        println!("{:?}", &result);
+        if let Ok(topic_attr) = result {
+            let t = match topic_attr.rename {
+                Some(s) => s,
+                None => ident.to_string()
+            };
+            let i = match topic_attr.item {
+                Some(i) => i,
+                None => ident.clone()
+            };
+            (t, i)
+        } else {
+            (ident.to_string(), ident.clone())
+        }
+    };
 
     let output = quote::quote! {
         impl toy_rpc::pubsub::Topic for #ident {
-            type Item = #ident;
+            type Item = #item;
 
             fn topic() -> String {
                 String::from(#topic)
