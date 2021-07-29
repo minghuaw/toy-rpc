@@ -12,7 +12,10 @@ use crate::{
 };
 
 cfg_if! {
-    if #[cfg(all(feature = "tokio_runtime", not(feature = "async_std_runtime")))] {
+    if #[cfg(any(
+        feature = "docs",
+        all(feature = "tokio_runtime", not(feature = "async_std_runtime"))
+    ))] {
         #[cfg(feature = "tls")]
         use tokio_rustls::TlsConnector;
         #[cfg(feature = "tls")]
@@ -22,7 +25,10 @@ cfg_if! {
         use tokio::net::ToSocketAddrs;
         use async_tungstenite::tokio::connect_async;
         use ::tokio::io::{AsyncRead, AsyncWrite};
-    } else if #[cfg(all(feature = "async_std_runtime", not(feature = "tokio_runtime")))] {
+    } else if #[cfg(any(
+        feature = "docs",
+        all(feature = "async_std_runtime", not(feature = "tokio_runtime"))
+    ))] {
         #[cfg(feature = "tls")]
         use async_rustls::TlsConnector;
         #[cfg(feature = "tls")]
@@ -173,15 +179,6 @@ cfg_if! {
         };
 
         use super::{reader::ClientReader, writer::ClientWriter, broker};
-
-        // #[cfg(feature = "tls")]
-        // use crate::client::{tcp_client_with_tls_config, websocket_client_with_tls_config};
-
-        // #[cfg(all(feature = "tokio_runtime", not(feature = "async_std_runtime")))]
-        // use tokio::net::{ToSocketAddrs, TcpStream};
-
-        // #[cfg(all(feature = "async_std_runtime", not(feature = "tokio_runtime")))]
-        // use async_std::net::{TcpStream, ToSocketAddrs};
 
         macro_rules! impl_client_builder_for_ack_modes {
             ($($ack_mode:ty),*) => {
