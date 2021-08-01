@@ -23,6 +23,8 @@ cfg_if! {
         mod tide_ws;
     } else if #[cfg(feature = "http_warp")] {
         mod warp_ws;
+    } else if #[cfg(feature = "http_axum")] {
+        mod axum_ws;
     }
 }
 pub(crate) struct CanSink {}
