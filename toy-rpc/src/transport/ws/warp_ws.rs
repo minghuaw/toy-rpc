@@ -22,7 +22,7 @@ impl PayloadRead for StreamHalf<SplitStream<WebSocket>, CanSink> {
                 }
                 Some(Err(Error::IoError(std::io::Error::new(
                     ErrorKind::InvalidData,
-                    "Expecting WebSocket::Message::Binary, but found something else".to_string(),
+                    "Expecting WebSocket::Message::Binary",
                 ))))
             }
         }

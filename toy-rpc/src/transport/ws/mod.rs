@@ -161,7 +161,7 @@ where
 
         self.send(msg)
             .await
-            .map_err(|e| Error::IoError(std::io::Error::new(ErrorKind::InvalidData, e.to_string())))
+            .map_err(|e| Error::Internal(Box::new(e)))
     }
 }
 

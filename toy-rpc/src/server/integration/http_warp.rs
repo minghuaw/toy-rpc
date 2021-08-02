@@ -97,6 +97,7 @@ cfg_if! {
                                 feature = "http_warp",
                                 not(feature = "http_actix_web"),
                                 not(feature = "http_tide"),
+                                not(feature = "http_axum")
                             ),
                             feature = "docs"
                         ))]
@@ -106,6 +107,7 @@ cfg_if! {
                                 feature = "http_warp",
                                 not(feature = "http_actix_web"),
                                 not(feature = "http_tide"),
+                                not(feature = "http_axum"),
                             )))
                         )]
                         /// A conevience function that calls the corresponding http handling

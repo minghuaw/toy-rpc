@@ -282,6 +282,39 @@ where
     }
 }
 
+#[cfg(all(feature = "http_axum"))]
+impl<S, E>
+    Codec<
+        StreamHalf<SplitStream<S>, CanSink>,
+        SinkHalf<SplitSink<S, axum::ws::Message>, CanSink>,
+        ConnTypePayload,
+    >
+where 
+    S: Stream<Item = Result<axum::ws::Message, E>> + Sink<axum::ws::Message>,
+    // E: std::error::Error
+{
+    /// Creates a codec with WebSocket wrapper type provided by `axum` HTTP framework
+    #[cfg_attr(feature = "docs", doc(cfg(feature = "http_axum")))]
+    pub fn with_axum_websocket(ws: S) -> Self {
+        use futures::StreamExt;
+        let (writer, reader) = ws.split();
+        let writer = SinkHalf::<_, CanSink> {
+            inner: writer,
+            can_sink: PhantomData
+        };
+        let reader = StreamHalf::<_, CanSink> {
+            inner: reader,
+            can_sink: PhantomData
+        };
+
+        Self {
+            reader,
+            writer,
+            conn_type: PhantomData
+        }
+    }
+}
+
 /// A codec that can read the header and body of a message
 #[async_trait]
 pub trait CodecRead: Send + Unmarshal + EraseDeserializer {
