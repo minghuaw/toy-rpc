@@ -216,7 +216,7 @@ cfg_if! {
                                 let client_id = self.client_counter.fetch_add(1, Ordering::Relaxed);
                                 let pubsub_broker = self.pubsub_tx.clone();
                                 task::spawn(
-                                    serve_tls_connection(stream, acceptor, self.services.clone(), client_id, pubsub_broker)
+                                    Self::serve_tls_connection(stream, acceptor, self.services.clone(), client_id, pubsub_broker)
                                 );
                             }
 
@@ -355,7 +355,7 @@ cfg_if! {
                             let tls_stream = acceptor.accept(stream).await?;
                             // let ret = serve_readwrite_stream(tls_stream, services).await;
                             let codec = DefaultCodec::new(tls_stream);
-                            let ret = start_broker_reader_writer(codec, services, client_id, pubsub_broker).await;
+                            let ret = Self::start_broker_reader_writer(codec, services, client_id, pubsub_broker).await;
                             log::info!("Client disconnected from {}", peer_addr);
                             ret
                         }
