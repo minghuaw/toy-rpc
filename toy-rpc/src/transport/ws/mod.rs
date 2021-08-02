@@ -7,14 +7,14 @@ use futures::io::{AsyncRead, AsyncWrite};
 use futures::stream::{SplitSink, SplitStream};
 use futures::{Sink, SinkExt, Stream, StreamExt};
 use pin_project::pin_project;
-use tungstenite::Message as WsMessage;
+use tungstenite::Message;
 
 use std::{io::ErrorKind, marker::PhantomData};
 
 use super::{PayloadRead, PayloadWrite};
 use crate::{error::Error, util::GracefulShutdown};
 
-type WsSinkHalf<S> = SinkHalf<SplitSink<S, WsMessage>, CanSink>;
+type WsSinkHalf<S> = SinkHalf<SplitSink<S, Message>, CanSink>;
 type WsStreamHalf<S> = StreamHalf<SplitStream<S>, CanSink>;
 
 cfg_if! {
@@ -23,6 +23,8 @@ cfg_if! {
         mod tide_ws;
     } else if #[cfg(feature = "http_warp")] {
         mod warp_ws;
+    } else if #[cfg(feature = "http_axum")] {
+        mod axum_ws;
     }
 }
 pub(crate) struct CanSink {}
@@ -95,7 +97,7 @@ impl<S: Sink<Item>, Item> Sink<Item> for SinkHalf<S, CanSink> {
 
 impl<S, E> WebSocketConn<S, CanSink>
 where
-    S: Stream<Item = Result<WsMessage, E>> + Sink<WsMessage> + Send + Sync + Unpin,
+    S: Stream<Item = Result<Message, E>> + Sink<Message> + Send + Sync + Unpin,
     E: std::error::Error + 'static,
 {
     pub fn new(inner: S) -> Self {
@@ -134,9 +136,9 @@ where
                 ))))
             }
             Ok(msg) => {
-                if let WsMessage::Binary(bytes) = msg {
+                if let Message::Binary(bytes) = msg {
                     return Some(Ok(bytes));
-                } else if let WsMessage::Close(_) = msg {
+                } else if let Message::Close(_) = msg {
                     return None;
                 }
 
@@ -150,27 +152,27 @@ where
 }
 
 #[async_trait]
-impl<T> PayloadWrite for SinkHalf<SplitSink<WebSocketStream<T>, WsMessage>, CanSink>
+impl<T> PayloadWrite for SinkHalf<SplitSink<WebSocketStream<T>, Message>, CanSink>
 where
     T: AsyncRead + AsyncWrite + Send + Unpin,
 {
     async fn write_payload(&mut self, payload: &[u8]) -> Result<(), Error> {
-        let msg = WsMessage::Binary(payload.to_owned());
+        let msg = Message::Binary(payload.to_owned());
 
         self.send(msg)
             .await
-            .map_err(|e| Error::IoError(std::io::Error::new(ErrorKind::InvalidData, e.to_string())))
+            .map_err(|e| Error::Internal(Box::new(e)))
     }
 }
 
 // GracefulShutdown is only required on the client side.
 #[async_trait]
-impl<T> GracefulShutdown for SinkHalf<SplitSink<WebSocketStream<T>, WsMessage>, CanSink>
+impl<T> GracefulShutdown for SinkHalf<SplitSink<WebSocketStream<T>, Message>, CanSink>
 where
     T: AsyncRead + AsyncWrite + Send + Unpin,
 {
     async fn close(&mut self) {
-        let msg = WsMessage::Close(None);
+        let msg = Message::Close(None);
 
         match self
             .send(msg)

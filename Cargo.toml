@@ -22,5 +22,6 @@ exclude = [
     "examples/warp_tls",
     "examples/tide_tls",
     "examples/tokio_pubsub",
-    "examples/multi-client"
+    "examples/multi-client",
+    "examples/axum_integration",
 ]

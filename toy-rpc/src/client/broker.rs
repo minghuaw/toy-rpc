@@ -98,7 +98,6 @@ use ::tokio::task::{self};
 pub(crate) struct ClientBroker<AckMode, C> {
     pub count: Arc<AtomicMessageId>,
     pub pending: HashMap<MessageId, oneshot::Sender<Result<ResponseResult, Error>>>,
-    pub next_timeout: Option<Duration>,
     pub subscriptions: HashMap<String, Sender<SubscriptionItem>>,
     pub pending_acks: BTreeMap<MessageId, oneshot::Sender<()>>,
     pub pub_retry_timeout: Duration,
@@ -122,7 +121,6 @@ impl<AckMode, C> ClientBroker<AckMode, C> {
         Self {
             count,
             pending: HashMap::new(),
-            next_timeout: None,
             subscriptions: HashMap::new(),
             pending_acks: BTreeMap::new(),
             pub_retry_timeout,
@@ -619,6 +617,7 @@ macro_rules! impl_broker_for_ack_modes {
                             if let Err(err) = writer.send(ClientWriterItem::Stop).await {
                                 log::error!("{:?}", err);
                             }
+                            // wait for closing handshake
                             return Running::Stop;
                         }
                     };

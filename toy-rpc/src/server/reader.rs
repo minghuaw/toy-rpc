@@ -227,7 +227,7 @@ impl<T: CodecRead> Reader for ServerReader<T> {
 
     async fn handle_result(res: Result<Self::Ok, Self::Error>) -> Running<()> {
         if let Err(err) = res {
-            log::error!("{:?}", err);
+            log::error!("line 230 {:?}", err);
         }
         Running::Continue(())
     }

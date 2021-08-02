@@ -556,7 +556,6 @@ pub fn derive_topic(item: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let ident = input.ident.clone();
     let (topic, item) = {
         let result = TopicAttr::from_derive_input(&input);
-        println!("{:?}", &result);
         if let Ok(topic_attr) = result {
             let t = match topic_attr.rename {
                 Some(s) => s,

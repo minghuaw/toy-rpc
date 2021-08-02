@@ -10,6 +10,7 @@ run_task = [
         "test_tokio_ws",
         "test_tide_integration",
         "test_warp_integration",
+        "test_axum_integration",
         "test_actix_web_integration",
     ] },
 ]
@@ -119,6 +120,15 @@ args = ["test",
     "--features", "serde_bincode http_warp server client",
     "--no-default-features",
     "--test", "warp_integration",
+    "--", "--nocapture"
+]
+
+[tasks.test_axum_integration]
+command = "cargo"
+args = ["test",
+    "--features", "serde_bincode http_axum server client",
+    "--no-default-features",
+    "--test", "axum_integration",
     "--", "--nocapture"
 ]
 

@@ -117,6 +117,7 @@ pub mod util;
     feature = "http_actix_web",
     feature = "http_warp",
     feature = "http_tide",
+    feature = "http_axum",
     feature = "client"
 ))]
 pub const DEFAULT_RPC_PATH: &str = "_rpc_";

@@ -1,13 +1,13 @@
-//! WebSocket support for `warp`
-//! Separate implementation is required because `warp` has wrapped `tungstenite` types
+//! Integration with axum using WebSocket 
+//! A separate implementation is required because `axum` has wrapped `tungstenite` types
+
 use super::*;
-use warp::ws::{Message, WebSocket};
+use axum::ws::{Message, WebSocket};
 
 #[async_trait]
 impl PayloadRead for StreamHalf<SplitStream<WebSocket>, CanSink> {
     async fn read_payload(&mut self) -> Option<Result<Vec<u8>, Error>> {
-        let msg = self.next().await?;
-        match msg {
+        match self.next().await? {
             Err(e) => {
                 return Some(Err(Error::IoError(std::io::Error::new(
                     ErrorKind::InvalidData,
@@ -22,7 +22,7 @@ impl PayloadRead for StreamHalf<SplitStream<WebSocket>, CanSink> {
                 }
                 Some(Err(Error::IoError(std::io::Error::new(
                     ErrorKind::InvalidData,
-                    "Expecting WebSocket::Message::Binary",
+                    "Expecting WebSocket::Message::Binary, but found something else".to_string(),
                 ))))
             }
         }
@@ -36,7 +36,7 @@ impl PayloadWrite for SinkHalf<SplitSink<WebSocket, Message>, CanSink> {
 
         self.send(msg)
             .await
-            .map_err(|e| Error::Internal(Box::new(e)))
+            .map_err(|e| Error::Internal(e))
     }
 }
 
@@ -47,7 +47,7 @@ impl GracefulShutdown for SinkHalf<SplitSink<WebSocket, Message>, CanSink> {
 
         self.send(msg)
             .await
-            .map_err(|err| Error::Internal(Box::new(err)))
+            .map_err(|err| Error::Internal(err))
             .unwrap_or_else(|err| log::error!("{}", err))
     }
 }
