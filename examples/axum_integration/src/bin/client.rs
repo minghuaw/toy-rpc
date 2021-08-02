@@ -1,4 +1,5 @@
-use toy_rpc::{Client, Error};
+use toy_rpc::{Client};
+use std::time::Duration;
 
 use axum_integration::rpc::*;
 
@@ -9,6 +10,7 @@ async fn main() {
     let addr = "127.0.0.1:23333";
     let client = Client::dial(addr).await.unwrap();
 
+    client.set_next_timeout(Duration::from_millis(500));
     let reply = Arith::add(&client, (3i32, 6i32)).await;
     println!("{:?}", reply);
 
