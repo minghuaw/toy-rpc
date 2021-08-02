@@ -617,6 +617,7 @@ macro_rules! impl_broker_for_ack_modes {
                             if let Err(err) = writer.send(ClientWriterItem::Stop).await {
                                 log::error!("{:?}", err);
                             }
+                            // wait for closing handshake
                             return Running::Stop;
                         }
                     };

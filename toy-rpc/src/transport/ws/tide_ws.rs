@@ -49,7 +49,7 @@ impl PayloadRead for StreamHalf<tide_websockets::WebSocketConnection, CannotSink
 
                 Some(Err(Error::IoError(std::io::Error::new(
                     ErrorKind::InvalidData,
-                    "Expecting WebSocket::Message::Binary, but found something else".to_string(),
+                    "Expecting WebSocket::Message::Binary",
                 ))))
             }
         }
