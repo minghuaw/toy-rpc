@@ -56,6 +56,7 @@ tokio = { version = "1", features = ["rt-multi-thread", "sync"]}
 warp = { version = "0.3" }
 actix-rt = "1.1.1"
 actix-web = "3.3"
+hyper = "0.14.11"
 
 [dependencies]
 # local imports
@@ -75,6 +76,9 @@ actix-web-actors = { version = "3.0", optional = true }
 actix-http = { version = "2.2", optional = true }
 warp = { version = "0.3", optional = true }
 axum = { version = "^0.1.2", optional = true, features = ["ws"] }
+hyper = { version = "0.14.11", optional = true }
+http-body = { version = "0.4.2", optional = true }
+bytes = { version = "1.0.1", optional = true }
 tower-service = { version = "0.3.1", optional = true }
 async-std = { version = "1", optional = true }
 tokio = { version = "1", features = ["rt-multi-thread", "io-util", "net", "time"], optional = true }
@@ -101,9 +105,6 @@ flume = "0.10.7"
 pin-project = "1.0"
 crossbeam = "0.8"
 brw = { version = "^0.1.6" }
-hyper = { version = "0.14.11", optional = true }
-http-body = { version = "0.4.2", optional = true }
-bytes = { version = "1.0.1", optional = true }
 
 [[test]]
 name = "async_std_tcp"
