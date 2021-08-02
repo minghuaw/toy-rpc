@@ -122,6 +122,15 @@ args = ["test",
     "--", "--nocapture"
 ]
 
+[tasks.test_axum_integration]
+command = "cargo"
+args = ["test",
+    "--features", "serde_bincode http_axum server client",
+    "--no-default-features",
+    "--test", "axum_integration",
+    "--", "--nocapture"
+]
+
 [tasks.test_actix_web_integration]
 command = "cargo"
 args = ["test",

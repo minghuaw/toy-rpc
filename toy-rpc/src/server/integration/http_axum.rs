@@ -2,7 +2,9 @@
 
 use std::sync::{atomic::Ordering};
 
-use axum::{AddExtensionLayer, extract::Extension, prelude::{Request, RoutingDsl}, ws::WebSocket};
+use axum::{AddExtensionLayer, extract::Extension, prelude::{RoutingDsl}, ws::WebSocket, routing::BoxRoute};
+use http_body::Body;
+use bytes::Bytes;
 
 use crate::{
     server::Server,
@@ -15,7 +17,8 @@ macro_rules! impl_http_axum_for_ack_modes {
     ($($ack_mode:ty),*) => {
         $(
             impl Server<$ack_mode> {
-                async fn handle_axum_websocket(
+                /// axum websocket handler
+                pub async fn handle_axum_websocket(
                     ws: WebSocket,
                     state: Extension<Server<$ack_mode>>
                 ) {
@@ -29,13 +32,17 @@ macro_rules! impl_http_axum_for_ack_modes {
                 }
 
                 /// Consumes `Server` and returns something that can nested in axum as a service
-                pub fn into_axum_service(self) -> impl tower_service::Service<Request<()>> + Clone {
-                    let app = axum::route(
-                        DEFAULT_RPC_PATH, 
+                pub fn into_boxed_route<B>(self) -> BoxRoute<B> 
+                where 
+                    B: Body<Data = Bytes> + Send + Sync + 'static,
+                    B::Error: std::error::Error + Send + Sync,
+                {
+                    axum::route::<_, B>(
+                        &format!("/{}", DEFAULT_RPC_PATH), 
                         axum::ws::ws(Self::handle_axum_websocket)
                     )
-                    .layer(AddExtensionLayer::new(self));
-                    app
+                    .layer(AddExtensionLayer::new(self))
+                    .boxed()
                 }
             
                 #[cfg(any(
@@ -58,8 +65,12 @@ macro_rules! impl_http_axum_for_ack_modes {
                 )]
                 /// A conevience function that calls the corresponding http handling
                 /// function depending on the enabled feature flag
-                pub fn handle_http(self) -> impl tower_service::Service<Request<()>> + Clone {
-                    self.into_axum_service()
+                pub fn handle_http<B>(self) -> BoxRoute<B>
+                where 
+                    B: Body<Data = Bytes> + Send + Sync + 'static,
+                    B::Error: std::error::Error + Send + Sync,
+                {
+                    self.into_boxed_route::<B>()
                 }
             }
             

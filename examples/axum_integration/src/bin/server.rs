@@ -1,5 +1,6 @@
-use tokio::net::TcpListener;
+use axum::{prelude::*, routing::{nest}};
 use std::sync::Arc;
+use std::net::SocketAddr;
 use async_trait::async_trait;
 
 use toy_rpc::{
@@ -26,14 +27,22 @@ impl Arith for Abacus {
 async fn main() {
     env_logger::init();
 
-    let addr = "127.0.0.1:23333";
+    let addr = SocketAddr::from(([127, 0, 0, 1], 23333));
     let arith = Arc::new(Abacus { });
 
     let server = Server::builder()
         .register(arith)
         .build();
-    let listener = TcpListener::bind(addr).await.unwrap();
+    // let app = route("/rpc/_rpc_", ws(Server::<AckModeNone>::handle_axum_websocket))
+    //     .layer(AddExtensionLayer::new(server));
+    let app = nest(
+        "/rpc",
+        server.handle_http()
+    );
 
     log::info!("Starting server at {}", &addr);
-    server.accept(listener).await.unwrap();
+    hyper::Server::bind(&addr)
+        .serve(app.into_make_service())
+        .await
+        .unwrap();
 }

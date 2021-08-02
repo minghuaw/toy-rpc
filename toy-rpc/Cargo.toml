@@ -47,7 +47,7 @@ async_std_runtime = ["async-std", "async-tungstenite/async-std-runtime", "toy-rp
 http_tide = ["tide", "tide-websockets", "async_std_runtime", "server"]
 http_actix_web = ["actix-web", "actix", "actix-rt", "actix-web-actors", "actix-http", "tokio_runtime", "server"]
 http_warp = ["warp", "tokio_runtime", "server"]
-http_axum = ["axum", "tower-service", "tokio_runtime", "server"]
+http_axum = ["axum", "http-body", "bytes", "tokio_runtime", "server"]
 
 [dev-dependencies]
 async-std = "1.9.0"
@@ -101,6 +101,9 @@ flume = "0.10.7"
 pin-project = "1.0"
 crossbeam = "0.8"
 brw = { version = "^0.1.6" }
+hyper = { version = "0.14.11", optional = true }
+http-body = { version = "0.4.2", optional = true }
+bytes = { version = "1.0.1", optional = true }
 
 [[test]]
 name = "async_std_tcp"
@@ -136,3 +139,8 @@ required-features = ["http_warp", "server", "client"]
 name = "actix_web_integration"
 path = "tests/actix_web_integration.rs"
 required-features = ["http_actix_web", "server", "client"]
+
+[[test]]
+name = "axum_integration"
+path = "tests/axum_integration.rs"
+required-features = ["http_axum", "server", "client"]
