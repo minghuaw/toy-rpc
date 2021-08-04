@@ -24,6 +24,6 @@ anyhow = "1.0.42"
 
 [dependencies.toy-rpc]
 path = "../../toy-rpc/"
-version = "=0.8.0-beta.4"
+version = "0.8.0-beta.5"
 default-features = false
-features = [ "serde_bincode", "tokio_runtime", "server", "client", "anyhow", "ws_tokio"]
+features = [ "serde_bincode", "tokio_runtime", "server", "client", "anyhow"]
