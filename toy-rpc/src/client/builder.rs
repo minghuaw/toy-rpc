@@ -4,10 +4,8 @@ use std::marker::PhantomData;
 
 use cfg_if::cfg_if;
 
-use crate::{
-    pubsub::{
-        AckModeAuto, AckModeManual, AckModeNone, DEFAULT_PUB_RETRIES, DEFAULT_PUB_RETRY_TIMEOUT,
-    },
+use crate::pubsub::{
+    AckModeAuto, AckModeManual, AckModeNone, DEFAULT_PUB_RETRIES, DEFAULT_PUB_RETRY_TIMEOUT,
 };
 
 #[cfg(feature = "ws")]
@@ -41,7 +39,7 @@ cfg_if! {
 
         use async_std::net::ToSocketAddrs;
         use futures::{AsyncRead, AsyncWrite};
-        
+
         #[cfg(feature = "ws")]
         use async_tungstenite::async_std::connect_async;
     }
@@ -121,7 +119,7 @@ impl ClientBuilder<AckModeAuto> {
 
     /// Set the number of retries for the publisher
     ///
-    /// This does not affect the max number of retries from the Server to all the 
+    /// This does not affect the max number of retries from the Server to all the
     /// `Subscriber`s.
     pub fn set_publisher_max_num_retries(self, val: u32) -> Self {
         Self {

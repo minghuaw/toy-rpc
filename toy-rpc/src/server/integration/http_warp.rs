@@ -118,6 +118,7 @@ cfg_if! {
                         /// | `http_tide`| [`into_endpoint`](#method.into_endpoint) |
                         /// | `http_actix_web` | [`scope_config`](#method.scope_config) |
                         /// | `http_warp` | [`into_boxed_filter`](#method.into_boxed_filter) |
+                        /// | `http_axum` | [`into_boxed_route`](#method.into_boxed_route) |
                         ///
                         /// This is enabled
                         /// if and only if **exactly one** of the the following feature flag is turned on
@@ -146,6 +147,9 @@ cfg_if! {
             }
         }
 
-        impl_warp_integration_for_ack_modes!(AckModeNone, AckModeAuto);
+        impl_warp_integration_for_ack_modes!(AckModeNone);
+        
+        #[cfg(not(feature = "docs"))]
+        impl_warp_integration_for_ack_modes!(AckModeAuto);
     }
 }

@@ -92,17 +92,17 @@ cfg_if! {
                                         let services = req.state().services.clone();
                                         let client_id = req.state().client_counter.fetch_add(1, Ordering::Relaxed);
                                         let pubsub_broker = req.state().pubsub_tx.clone();
-            
+
                                         let fut = Self::start_broker_reader_writer(codec, services, client_id, pubsub_broker);
                                         log::trace!("Client disconnected.");
                                         fut.await?;
                                         Ok(())
                                     },
                                 ));
-            
+
                             app
                         }
-            
+
                         #[cfg(any(
                             all(
                                 feature = "http_tide",
@@ -129,6 +129,7 @@ cfg_if! {
                         /// | `http_tide`| [`into_endpoint`](#method.into_endpoint) |
                         /// | `http_actix_web` | [`scope_config`](#method.scope_config) |
                         /// | `http_warp` | [`into_boxed_filter`](#method.into_boxed_filter) |
+                        /// | `http_axum` | [`into_boxed_route`](#method.into_boxed_route) |
                         ///
                         /// This is enabled
                         /// if and only if **exactly one** of the the following feature flag is turned on
@@ -158,7 +159,10 @@ cfg_if! {
                 )*
             }
         }
-        
-        impl_tide_integarion_for_ack_modes!(AckModeNone, AckModeAuto);
+
+        impl_tide_integarion_for_ack_modes!(AckModeNone);
+
+        #[cfg(not(feature = "docs"))]
+        impl_tide_integarion_for_ack_modes!(AckModeAuto);
     }
 }

@@ -211,7 +211,7 @@ impl<AckMode> Client<AckMode> {
     ) -> Result<Receiver<SubscriptionItem>, Error> {
         let (tx, rx) = match cap {
             Some(n) => flume::bounded(n.get()),
-            None => flume::unbounded()
+            None => flume::unbounded(),
         };
         let topic = T::topic();
 
@@ -244,8 +244,8 @@ impl<AckMode> Client<AckMode> {
                 true => {
                     let (tx, rx) = match cap {
                         Some(n) => flume::bounded(n.get()),
-                        None => flume::unbounded()
-                    };                    
+                        None => flume::unbounded(),
+                    };
                     if let Err(err) = self.broker.send(ClientBrokerItem::NewLocalSubscriber {
                         topic,
                         new_item_sink: tx,

@@ -8,12 +8,9 @@ use std::{
     sync::{atomic::AtomicU64, Arc},
 };
 
-use crate::{
-    pubsub::{AckModeNone},
-    service::AsyncServiceMap,
-};
+use crate::{pubsub::AckModeNone, service::AsyncServiceMap};
 
-#[cfg(not(feature = "http_actix_web"))]
+#[cfg(any(feature = "docs", not(feature = "http_actix_web")))]
 use crate::pubsub::AckModeAuto;
 
 cfg_if! {
@@ -94,7 +91,10 @@ impl Server<AckModeNone> {
 }
 
 cfg_if! {
-    if #[cfg(all(feature = "tokio_runtime", not(feature = "async_std_runtime"), not(feature = "http_actix_web")))] {
+    if #[cfg(any(
+        feature = "docs",
+        all(feature = "tokio_runtime", not(feature = "async_std_runtime"), not(feature = "http_actix_web"))
+    ))] {
         #[cfg(feature = "tls")]
         use tokio_rustls::{TlsAcceptor};
         use tokio::net::{TcpListener, TcpStream};
@@ -116,24 +116,27 @@ cfg_if! {
 }
 
 cfg_if! {
-    if #[cfg(all(
-        not(feature = "http_actix_web"),
-        any(
-            all(
-                feature = "serde_bincode",
-                not(any(feature = "serde_json", feature = "serde_cbor", feature = "serde_rmp"))
-            ),
-            all(
-                feature = "serde_cbor",
-                not(any(feature = "serde_json", feature = "serde_bincode", feature = "serde_rmp")),
-            ),
-            all(
-                feature = "serde_json",
-                not(any(feature = "serde_bincode", feature = "serde_cbor", feature = "serde_rmp")),
-            ),
-            all(
-                feature = "serde_rmp",
-                not(any(feature = "serde_cbor", feature = "serde_json", feature = "serde_bincode")),
+    if #[cfg(any(
+        feature = "docs",
+        all(
+            not(feature = "http_actix_web"),
+            any(
+                all(
+                    feature = "serde_bincode",
+                    not(any(feature = "serde_json", feature = "serde_cbor", feature = "serde_rmp"))
+                ),
+                all(
+                    feature = "serde_cbor",
+                    not(any(feature = "serde_json", feature = "serde_bincode", feature = "serde_rmp")),
+                ),
+                all(
+                    feature = "serde_json",
+                    not(any(feature = "serde_bincode", feature = "serde_cbor", feature = "serde_rmp")),
+                ),
+                all(
+                    feature = "serde_rmp",
+                    not(any(feature = "serde_cbor", feature = "serde_json", feature = "serde_bincode")),
+                )
             )
         )
     ))] {
@@ -406,6 +409,9 @@ cfg_if! {
             }
         }
 
-        impl_server_for_ack_modes!(AckModeNone, AckModeAuto);
+        impl_server_for_ack_modes!(AckModeNone);
+
+        #[cfg(not(feature = "docs"))]
+        impl_server_for_ack_modes!(AckModeAuto);
     }
 }

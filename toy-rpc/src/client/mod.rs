@@ -33,7 +33,10 @@ cfg_if! {
 }
 
 cfg_if! {
-    if #[cfg(all(feature = "tokio_runtime", not(feature = "async_std_runtime")))] {
+    if #[cfg(any(
+        feature = "docs",
+        all(feature = "tokio_runtime", not(feature = "async_std_runtime"))
+    ))] {
         use tokio::net::ToSocketAddrs;
         use ::tokio::io::{AsyncRead, AsyncWrite};
     } else if #[cfg(all(feature = "async_std_runtime", not(feature = "tokio_runtime")))] {
@@ -60,21 +63,24 @@ pub struct Client<AckMode> {
 
 cfg_if! {
     if #[cfg(any(
-        all(
-            feature = "serde_bincode",
-            not(any(feature = "serde_json", feature = "serde_cbor", feature = "serde_rmp"))
-        ),
-        all(
-            feature = "serde_cbor",
-            not(any(feature = "serde_json", feature = "serde_bincode", feature = "serde_rmp")),
-        ),
-        all(
-            feature = "serde_json",
-            not(any(feature = "serde_bincode", feature = "serde_cbor", feature = "serde_rmp")),
-        ),
-        all(
-            feature = "serde_rmp",
-            not(any(feature = "serde_cbor", feature = "serde_json", feature = "serde_bincode")),
+        feature = "docs",
+        any(
+            all(
+                feature = "serde_bincode",
+                not(any(feature = "serde_json", feature = "serde_cbor", feature = "serde_rmp"))
+            ),
+            all(
+                feature = "serde_cbor",
+                not(any(feature = "serde_json", feature = "serde_bincode", feature = "serde_rmp")),
+            ),
+            all(
+                feature = "serde_json",
+                not(any(feature = "serde_bincode", feature = "serde_cbor", feature = "serde_rmp")),
+            ),
+            all(
+                feature = "serde_rmp",
+                not(any(feature = "serde_cbor", feature = "serde_json", feature = "serde_bincode")),
+            )
         )
     ))] {
         #[cfg(feature = "tls")]
