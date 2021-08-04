@@ -141,7 +141,7 @@ impl<T> From<actix::prelude::SendError<T>> for Error {
     }
 }
 
-#[cfg(feature = "ws")]
+#[cfg(any(feature = "ws_tokio", feature = "ws_async_std"))]
 impl From<tungstenite::Error> for crate::error::Error {
     fn from(err: tungstenite::Error) -> Self {
         Self::IoError(std::io::Error::new(

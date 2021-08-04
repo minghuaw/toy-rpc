@@ -59,8 +59,6 @@
 //! - `http_warp`: enables integration with `warp` on the server side. This also enables `tokio_runtime` and `ws`
 //! - `http_axum`: enables integration with `axum` on the server side. This also enables `tokio_runtime` and `ws`
 //!
-//! - `ws`: enables WebSocket and HTTP integrations. This must be enabled for client to use `dial_http(addr)` or `dial_websocket(addr)`.
-//!
 //! Choice of RPC server or client (both can be enabled at the same time)
 //!
 //! - `server`: enables RPC server
@@ -76,6 +74,13 @@
 //!     for serialization/deserialization
 //! - `serde_rmp`: the default codec will use `rmp-serde`
 //!     for serialization/deserialization
+//!
+//! WebSocket support (HTTP integration is implementd with WebSocket)
+//!
+//! - `ws_tokio`: enables WebSocket and HTTP integrations with `tokio`. 
+//! This must be enabled for client to use `dial_http(addr)` or `dial_websocket(addr)`.
+//! - `ws_async_std`: enables WebSocket and HTTP integrations with `async-std`. 
+//! This must be enabled for client to use `dial_http(addr)` or `dial_websocket(addr)`.
 //!
 //! TLS support
 //!

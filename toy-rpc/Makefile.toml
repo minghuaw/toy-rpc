@@ -90,7 +90,7 @@ args = ["test",
 [tasks.test_async_std_ws]
 command = "cargo"
 args = ["test",
-    "--features", "serde_bincode async_std_runtime server client ws",
+    "--features", "serde_bincode async_std_runtime server client ws_async_std",
     "--no-default-features",
     "--test", "async_std_ws",
     "--", "--nocapture"
@@ -99,7 +99,7 @@ args = ["test",
 [tasks.test_tokio_ws]
 command = "cargo"
 args = ["test",
-    "--features", "serde_bincode tokio_runtime server client ws",
+    "--features", "serde_bincode tokio_runtime server client ws_tokio",
     "--no-default-features",
     "--test", "tokio_ws",
     "--", "--nocapture"

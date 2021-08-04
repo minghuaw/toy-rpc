@@ -228,7 +228,10 @@ for serialization/deserialization</li>
 </ul>
 <p>WebSocket support (HTTP integration is implemented using WebSocket)</p>
 <ul>
-<li><code>ws</code>: enables WebSocket and HTTP integrations. This must be enabled for client to use <code>dial_http(addr)</code> or <code>dial_websocket(addr)</code>.</li>
+<li><code>ws_tokio</code>: enables WebSocket and HTTP integrations with <code>tokio</code>. 
+This must be enabled for client to use <code>dial_http(addr)</code> or <code>dial_websocket(addr)</code> with <code>tokio_runtime</code>.</li>
+<li><code>ws_async_std</code>: enables WebSocket and HTTP integrations with <code>async-std</code>. 
+This must be enabled for client to use <code>dial_http(addr)</code> or <code>dial_websocket(addr)</code> with <code>async_std_runtime</code>.</li>
 </ul>
 <p>TLS support</p>
 <ul>

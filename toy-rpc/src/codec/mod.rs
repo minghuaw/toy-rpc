@@ -166,7 +166,7 @@ cfg_if! {
 pub(crate) struct ConnTypeReadWrite {}
 
 /// Type state for PayloadRead and PayloadWrite connections (ie. WebSocket)
-#[cfg(feature = "ws")]
+#[cfg(any(feature = "ws_tokio", feature = "ws_async_std"))]
 pub(crate) struct ConnTypePayload {}
 
 /// Reserved type state for Reader/Writer for Codec
@@ -196,7 +196,7 @@ pub struct Codec<R, W, C> {
 }
 
 cfg_if! {
-    if #[cfg(feature = "ws")] {
+    if #[cfg(any(feature = "ws_tokio", feature = "ws_async_std"))] {
         use futures::stream::{SplitSink, SplitStream};
         use futures::{Sink, Stream};
         use tungstenite::Message;

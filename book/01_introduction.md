@@ -68,7 +68,10 @@ Choice of serialization/deserialzation (only one should be enabled at a time)
 
 WebSocket support (HTTP integration is implemented using WebSocket)
 
-- `ws`: enables WebSocket and HTTP integrations. This must be enabled for client to use `dial_http(addr)` or `dial_websocket(addr)`.
+- `ws_tokio`: enables WebSocket and HTTP integrations with `tokio`. 
+    This must be enabled for client to use `dial_http(addr)` or `dial_websocket(addr)` with `tokio_runtime`.
+- `ws_async_std`: enables WebSocket and HTTP integrations with `async-std`. 
+    This must be enabled for client to use `dial_http(addr)` or `dial_websocket(addr)` with `async_std_runtime`.
 
 TLS support
 
