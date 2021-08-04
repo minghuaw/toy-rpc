@@ -677,10 +677,10 @@ cfg_if! {
                             feature = "docs",
                             doc(cfg(all(
                                 feature = "http_actix_web", 
-                                not(feature = "http_tide",
+                                not(feature = "http_tide"),
                                 not(feature = "http_warp"),
                                 not(feature = "http_axum"),
-                            ), not(feature = "http_warp"))))
+                                not(feature = "http_warp"))))
                         )]
                         pub fn handle_http() -> fn(&mut web::ServiceConfig) {
                             Self::scope_config
