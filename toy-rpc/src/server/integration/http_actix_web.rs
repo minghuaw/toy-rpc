@@ -15,13 +15,21 @@ use std::{
     time::Duration,
 };
 
-use crate::{codec::{EraseDeserializer, Marshal, Unmarshal}, error::Error, message::{ErrorMessage, MessageId}, protocol::{Header, InboundBody}, pubsub::{AckModeAuto, AckModeNone, SeqId}, server::{
+use crate::{
+    codec::{EraseDeserializer, Marshal, Unmarshal},
+    error::Error,
+    message::{ErrorMessage, MessageId},
+    protocol::{Header, InboundBody},
+    pubsub::{AckModeAuto, AckModeNone, SeqId},
+    server::{
         broker::ServerBrokerItem,
         pubsub::{PubSubItem, PubSubResponder},
         reader::{get_service, handle_cancel},
         writer::ServerWriterItem,
         ClientId,
-    }, service::{ArcAsyncServiceCall, AsyncServiceMap, HandlerResult}};
+    },
+    service::{ArcAsyncServiceCall, AsyncServiceMap, HandlerResult},
+};
 
 use crate::server::broker::execute_call;
 
@@ -40,7 +48,7 @@ pub struct WsMessageActor<C, AckMode> {
     manager: Option<Recipient<ServerBrokerItem>>,
     req_header: Option<Header>,
     marker: PhantomData<C>,
-    ack_mode: PhantomData<AckMode>
+    ack_mode: PhantomData<AckMode>,
 }
 
 impl<C, AckMode> WsMessageActor<C, AckMode> {
@@ -61,7 +69,7 @@ macro_rules! impl_ws_message_actor_for_ack_modes {
                 C: Marshal + Unmarshal + Unpin + 'static,
             {
                 type Context = ws::WebsocketContext<Self>;
-            
+
                 /// Start a new `ExecutionManager`
                 fn started(&mut self, ctx: &mut Self::Context) {
                     let responder: Recipient<ServerWriterItem> = ctx.address().recipient();
@@ -70,14 +78,14 @@ macro_rules! impl_ws_message_actor_for_ack_modes {
                         responder,
                         pubsub_broker: self.pubsub_broker.clone(),
                         executions: HashMap::new(),
-            
+
                         ack_mode: PhantomData
                     };
                     let addr = manager.start();
-            
+
                     self.manager = Some(addr.recipient());
                 }
-            
+
                 fn stopping(&mut self, _: &mut Self::Context) -> Running {
                     self.send_to_manager(ServerBrokerItem::Stop);
                     Running::Stop
@@ -257,9 +265,6 @@ macro_rules! impl_ws_message_actor_for_ack_modes {
 
 impl_ws_message_actor_for_ack_modes!(AckModeNone, AckModeAuto);
 
-
-
-
 // =============================================================================
 // `ExecutionManager`
 // =============================================================================
@@ -274,23 +279,14 @@ struct ExecutionBroker<AckMode> {
     pubsub_broker: Sender<PubSubItem>,
     executions: HashMap<MessageId, Sender<()>>,
 
-    ack_mode: PhantomData<AckMode>
+    ack_mode: PhantomData<AckMode>,
 }
 
 impl<AckMode: Unpin + 'static> ExecutionBroker<AckMode> {
-    
-
-    fn handle_response(
-        &mut self,
-        id: MessageId,
-        result: HandlerResult,
-    ) -> Result<(), Error>
-    {
+    fn handle_response(&mut self, id: MessageId, result: HandlerResult) -> Result<(), Error> {
         self.executions.remove(&id);
         let msg = ServerWriterItem::Response { id, result };
-        self.responder
-            .do_send(msg)
-            .map_err(|err| err.into())
+        self.responder.do_send(msg).map_err(|err| err.into())
     }
 
     fn handle_cancel(&mut self, id: MessageId) -> Result<(), Error> {
@@ -313,9 +309,7 @@ impl<AckMode: Unpin + 'static> ExecutionBroker<AckMode> {
             topic,
             content,
         };
-        self.pubsub_broker
-            .send(msg)
-            .map_err(|err| err.into())
+        self.pubsub_broker.send(msg).map_err(|err| err.into())
     }
 
     fn handle_unsubscribe(&mut self, id: MessageId, topic: String) -> Result<(), Error> {
@@ -324,9 +318,7 @@ impl<AckMode: Unpin + 'static> ExecutionBroker<AckMode> {
             client_id: self.client_id,
             topic,
         };
-        self.pubsub_broker
-            .send(msg)
-            .map_err(|err| err.into())
+        self.pubsub_broker.send(msg).map_err(|err| err.into())
     }
 
     fn handle_publication(
@@ -340,19 +332,15 @@ impl<AckMode: Unpin + 'static> ExecutionBroker<AckMode> {
             topic,
             content,
         };
-        self.responder
-            .do_send(msg)
-            .map_err(|err| err.into())
+        self.responder.do_send(msg).map_err(|err| err.into())
     }
 
     fn handle_inbound_ack(&mut self, seq_id: SeqId) -> Result<(), Error> {
         let msg = PubSubItem::Ack {
             seq_id,
-            client_id: self.client_id
+            client_id: self.client_id,
         };
-        self.pubsub_broker
-            .send(msg)
-            .map_err(|err| err.into())
+        self.pubsub_broker.send(msg).map_err(|err| err.into())
     }
 }
 
@@ -414,7 +402,7 @@ macro_rules! impl_execution_broker_for_ack_modes {
                 ) -> Result<(), Error> {
                     let call_fut = call(method, deserializer);
                     let broker = ctx.address().recipient();
-            
+
                     let fut: Pin<Box<dyn Future<Output = ()>>> = Box::pin(async move {
                         let result = execute_timed_call(id, duration, call_fut).await;
                         let item = ServerBrokerItem::Response { id, result };
@@ -423,7 +411,7 @@ macro_rules! impl_execution_broker_for_ack_modes {
                     });
                     let (tx, rx) = flume::bounded(1);
                     self.executions.insert(id, tx);
-            
+
                     actix::spawn(async move {
                         futures::select! {
                             _ = rx.recv_async().fuse() => {
@@ -458,7 +446,7 @@ macro_rules! impl_execution_broker_for_ack_modes {
 
             impl actix::Handler<ServerBrokerItem> for ExecutionBroker<$ack_mode> {
                 type Result = ();
-            
+
                 fn handle(&mut self, msg: ServerBrokerItem, ctx: &mut Self::Context) -> Self::Result {
                     let result = match msg {
                         ServerBrokerItem::Request {
@@ -500,13 +488,13 @@ macro_rules! impl_execution_broker_for_ack_modes {
                             Ok(())
                         }
                     };
-            
+
                     if let Err(err) = result {
                         log::error!("{}", err);
                     }
                 }
             }
-            
+
         )*
     };
 }
@@ -530,7 +518,7 @@ async fn execute_timed_call(
 // Integration
 // =============================================================================
 
-use crate::codec::{DefaultCodec, ConnTypePayload};
+use crate::codec::{ConnTypePayload, DefaultCodec};
 use crate::server::Server;
 
 cfg_if! {
@@ -585,7 +573,7 @@ cfg_if! {
                                 };
                             ws::start(ws_actor, &req, stream)
                         }
-        
+
                         /// Configuration for integration with an actix-web scope.
                         /// A convenient funciont "handle_http" may be used to achieve the same thing
                         /// with the `actix-web` feature turned on.
@@ -630,7 +618,7 @@ cfg_if! {
                                     )
                             );
                         }
-            
+
                         /// A conevience function that calls the corresponding http handling
                         /// function depending on the enabled feature flag
                         ///
@@ -639,6 +627,7 @@ cfg_if! {
                         /// | `http_tide`| [`into_endpoint`](#method.into_endpoint) |
                         /// | `http_actix_web` | [`scope_config`](#method.scope_config) |
                         /// | `http_warp` | [`into_boxed_filter`](#method.into_boxed_filter) |
+                        /// | `http_axum` | [`into_boxed_route`](#method.into_boxed_route) |
                         ///
                         /// This is enabled
                         /// if and only if **exactly one** of the the following feature flag is turned on
@@ -668,7 +657,7 @@ cfg_if! {
                         /// )
                         /// ```
                         #[cfg(any(all(
-                            feature = "http_actix_web", 
+                            feature = "http_actix_web",
                             not(feature = "http_tide"),
                             not(feature = "http_warp"),
                             not(feature = "http_axum"),
@@ -676,11 +665,11 @@ cfg_if! {
                         #[cfg_attr(
                             feature = "docs",
                             doc(cfg(all(
-                                feature = "http_actix_web", 
-                                not(feature = "http_tide",
+                                feature = "http_actix_web",
+                                not(feature = "http_tide"),
                                 not(feature = "http_warp"),
                                 not(feature = "http_axum"),
-                            ), not(feature = "http_warp"))))
+                                not(feature = "http_warp"))))
                         )]
                         pub fn handle_http() -> fn(&mut web::ServiceConfig) {
                             Self::scope_config
@@ -690,6 +679,9 @@ cfg_if! {
             }
         }
 
-        impl_actix_web_integration_for_ack_modes!(AckModeAuto, AckModeNone);
+        impl_actix_web_integration_for_ack_modes!(AckModeNone);
+
+        #[cfg(not(feature = "docs"))]
+        impl_actix_web_integration_for_ack_modes!(AckModeAuto);
     }
 }

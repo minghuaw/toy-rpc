@@ -205,14 +205,15 @@ easy-to-use and supports both <code>async_std</code> and <code>tokio</code> runt
 <ul>
 <li><code>async_std_runtime</code>: supports usage with <code>async-std</code></li>
 <li><code>tokio_runtime</code>: supports usage with <code>tokio</code></li>
-<li><code>http_tide</code>: enables <code>tide</code> integration on the server side. This also enables <code>async_std_runtime</code></li>
-<li><code>http_actix_web</code>: enables <code>actix-web</code> integration on the server side. This also enables <code>tokio_runtime</code></li>
-<li><code>http_warp</code>: enables integration with <code>warp</code> on the server side. This also enables <code>tokio_runtime</code></li>
+<li><code>http_tide</code>: enables <code>tide</code> integration on the server side. This also enables <code>async_std_runtime</code> and <code>ws_async_std</code></li>
+<li><code>http_actix_web</code>: enables <code>actix-web</code> integration on the server side. This also enables <code>tokio_runtime</code> and <code>ws_tokio</code></li>
+<li><code>http_warp</code>: enables integration with <code>warp</code> on the server side. This also enables <code>tokio_runtime</code> and <code>ws_tokio</code></li>
+<li><code>http_axum</code>: enables integration with <code>axum</code> on the server side. This also enables <code>tokio_runtime</code> and <code>ws_tokio</code></li>
 </ul>
 <p>Choice of RPC server or client (both can be enabled at the same time)</p>
 <ul>
 <li><code>server</code>: enables RPC server</li>
-<li><code>client</code>: enables RPC client </li>
+<li><code>client</code>: enables RPC client. Please note that <code>ws</code> must also be enabled for client to use <code>dial_http(addr)</code> or <code>dial_websocket(addr)</code>.</li>
 </ul>
 <p>Choice of serialization/deserialzation (only one should be enabled at a time)</p>
 <ul>
@@ -224,6 +225,13 @@ for <code>json</code> serialization/deserialization</li>
 for serialization/deserialization</li>
 <li><code>serde_rmp</code>: the default codec will use <code>rmp-serde</code>
 for serialization/deserialization</li>
+</ul>
+<p>WebSocket support (HTTP integration is implemented using WebSocket)</p>
+<ul>
+<li><code>ws_tokio</code>: enables WebSocket and HTTP integrations with <code>tokio</code>. 
+This must be enabled for client to use <code>dial_http(addr)</code> or <code>dial_websocket(addr)</code> with <code>tokio_runtime</code>.</li>
+<li><code>ws_async_std</code>: enables WebSocket and HTTP integrations with <code>async-std</code>. 
+This must be enabled for client to use <code>dial_http(addr)</code> or <code>dial_websocket(addr)</code> with <code>async_std_runtime</code>.</li>
 </ul>
 <p>TLS support</p>
 <ul>
@@ -1356,6 +1364,22 @@ let client = Client::builder()
 </li>
 </ul>
 <div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><h1 id="change-log"><a class="header" href="#change-log">Change Log</a></h1>
+<h2 id="080-beta"><a class="header" href="#080-beta">0.8.0-beta</a></h2>
+<ul>
+<li>Added AckMode impl</li>
+<li>Added attribute #[topic()] for derive macro #[derive(Topic)]</li>
+<li>Added integration with <code>axum</code></li>
+</ul>
+<h2 id="080-alpha"><a class="header" href="#080-alpha">0.8.0-alpha</a></h2>
+<h3 id="breaking-changes"><a class="header" href="#breaking-changes">Breaking Changes</a></h3>
+<ul>
+<li>Communication protocol is changed</li>
+</ul>
+<h3 id="non-breaking-changes"><a class="header" href="#non-breaking-changes">Non-breaking Changes</a></h3>
+<ul>
+<li>Added pubsub support</li>
+<li>Added RPC trait implementation generation for client</li>
+</ul>
 <h2 id="074"><a class="header" href="#074">0.7.4</a></h2>
 <ul>
 <li>Fixed wrong documentation for <code>Client::with_stream&lt;T&gt;(stream: T)</code></li>
@@ -1371,7 +1395,7 @@ let client = Client::builder()
 <li>Fixed a bug where large payload is not written entirely with <code>tokio</code> runtime</li>
 </ul>
 <h2 id="070"><a class="header" href="#070">0.7.0</a></h2>
-<h3 id="breaking-changes"><a class="header" href="#breaking-changes">Breaking Changes</a></h3>
+<h3 id="breaking-changes-1"><a class="header" href="#breaking-changes-1">Breaking Changes</a></h3>
 <ul>
 <li>The blocking RPC call on the client side is renamed to <code>call_blocking</code></li>
 <li>The asynchronous RPC call on the client side is renamed to <code>call</code></li>
@@ -1394,7 +1418,7 @@ use the <code>ServerBuilder::register_with_name</code> method as opposed to the 
 More details can be found in <code>ServerBuilder::register_with_name</code>'s documentation.</li>
 </ul>
 <h2 id="060"><a class="header" href="#060">0.6.0</a></h2>
-<h3 id="breaking-changes-1"><a class="header" href="#breaking-changes-1">Breaking Changes</a></h3>
+<h3 id="breaking-changes-2"><a class="header" href="#breaking-changes-2">Breaking Changes</a></h3>
 <ul>
 <li>In short, this update makes the crate resemble closer to the usage of <code>go</code>'s <code>net/rpc</code> package</li>
 <li>Service registration is simplified to <code>Server::builder().register(foo_service).build()</code>. The examples will be
@@ -1411,7 +1435,7 @@ can be registered on the same server. Multiple servers are needed to have multip
 </li>
 <li>Re-defined the custom <code>Error</code> type</li>
 </ul>
-<h3 id="non-breaking-changes"><a class="header" href="#non-breaking-changes">Non-breaking changes</a></h3>
+<h3 id="non-breaking-changes-1"><a class="header" href="#non-breaking-changes-1">Non-breaking changes</a></h3>
 <ul>
 <li>Fixed bug where client does not interpret error message correctly</li>
 <li>Fixed bug with <code>accept_websocket</code> crashes with incorrect protocol</li>

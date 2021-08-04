@@ -1,4 +1,4 @@
-//! Integration with axum using WebSocket 
+//! Integration with axum using WebSocket
 //! A separate implementation is required because `axum` has wrapped `tungstenite` types
 
 use super::*;
@@ -34,9 +34,7 @@ impl PayloadWrite for SinkHalf<SplitSink<WebSocket, Message>, CanSink> {
     async fn write_payload(&mut self, payload: &[u8]) -> Result<(), Error> {
         let msg = Message::binary(payload);
 
-        self.send(msg)
-            .await
-            .map_err(|e| Error::Internal(e))
+        self.send(msg).await.map_err(|e| Error::Internal(e))
     }
 }
 

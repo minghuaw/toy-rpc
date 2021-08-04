@@ -2,8 +2,8 @@ use actix_web::{web, App, HttpServer};
 use anyhow::Result;
 use flume::{Receiver, Sender};
 use std::sync::Arc;
-use toy_rpc::{Client, Server};
 use toy_rpc::pubsub::AckModeNone;
+use toy_rpc::{Client, Server};
 
 mod rpc;
 

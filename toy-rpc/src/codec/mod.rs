@@ -166,7 +166,7 @@ cfg_if! {
 pub(crate) struct ConnTypeReadWrite {}
 
 /// Type state for PayloadRead and PayloadWrite connections (ie. WebSocket)
-#[cfg(feature = "ws")]
+#[cfg(any(feature = "ws_tokio", feature = "ws_async_std"))]
 pub(crate) struct ConnTypePayload {}
 
 /// Reserved type state for Reader/Writer for Codec
@@ -195,14 +195,14 @@ pub struct Codec<R, W, C> {
     conn_type: PhantomData<C>,
 }
 
-cfg_if!{
-    if #[cfg(feature = "ws")] {
+cfg_if! {
+    if #[cfg(any(feature = "ws_tokio", feature = "ws_async_std"))] {
         use futures::stream::{SplitSink, SplitStream};
         use futures::{Sink, Stream};
         use tungstenite::Message;
 
         use crate::transport::ws::{CanSink, SinkHalf, StreamHalf, WebSocketConn};
-        
+
         /// WebSocket integration for async_tungstenite, tokio_tungstenite
         impl<S, E>
             Codec<
@@ -219,7 +219,7 @@ cfg_if!{
             /// This works with the `WebSocketConn` types implemented in `async_tungstenite` and `tokio_tungstenite`
             pub fn with_websocket(ws: WebSocketConn<S, CanSink>) -> Self {
                 let (writer, reader) = WebSocketConn::<S, CanSink>::split(ws);
-        
+
                 Self {
                     reader,
                     writer,
@@ -229,7 +229,6 @@ cfg_if!{
         }
     }
 }
-
 
 #[cfg(all(feature = "http_tide"))]
 /// WebSocket integration with `tide`
@@ -296,7 +295,7 @@ impl<S, E>
         SinkHalf<SplitSink<S, axum::ws::Message>, CanSink>,
         ConnTypePayload,
     >
-where 
+where
     S: Stream<Item = Result<axum::ws::Message, E>> + Sink<axum::ws::Message>,
     // E: std::error::Error
 {
@@ -307,17 +306,17 @@ where
         let (writer, reader) = ws.split();
         let writer = SinkHalf::<_, CanSink> {
             inner: writer,
-            can_sink: PhantomData
+            can_sink: PhantomData,
         };
         let reader = StreamHalf::<_, CanSink> {
             inner: reader,
-            can_sink: PhantomData
+            can_sink: PhantomData,
         };
 
         Self {
             reader,
             writer,
-            conn_type: PhantomData
+            conn_type: PhantomData,
         }
     }
 }

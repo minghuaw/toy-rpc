@@ -45,14 +45,15 @@ Choice of runtime and HTTP framework integration
 
 - `async_std_runtime`: supports usage with `async-std`
 - `tokio_runtime`: supports usage with `tokio`
-- `http_tide`: enables `tide` integration on the server side. This also enables `async_std_runtime`
-- `http_actix_web`: enables `actix-web` integration on the server side. This also enables `tokio_runtime`
-- `http_warp`: enables integration with `warp` on the server side. This also enables `tokio_runtime`
-
+- `http_tide`: enables `tide` integration on the server side. This also enables `async_std_runtime` and `ws_async_std`
+- `http_actix_web`: enables `actix-web` integration on the server side. This also enables `tokio_runtime` and `ws_tokio`
+- `http_warp`: enables integration with `warp` on the server side. This also enables `tokio_runtime` and `ws_tokio`
+- `http_axum`: enables integration with `axum` on the server side. This also enables `tokio_runtime` and `ws_tokio`
+ 
 Choice of RPC server or client (both can be enabled at the same time)
 
 - `server`: enables RPC server
-- `client`: enables RPC client 
+- `client`: enables RPC client. Please note that `ws` must also be enabled for client to use `dial_http(addr)` or `dial_websocket(addr)`.
 
 Choice of serialization/deserialzation (only one should be enabled at a time)
 
@@ -64,6 +65,13 @@ Choice of serialization/deserialzation (only one should be enabled at a time)
     for serialization/deserialization
 - `serde_rmp`: the default codec will use `rmp-serde`
     for serialization/deserialization
+
+WebSocket support (HTTP integration is implemented using WebSocket)
+
+- `ws_tokio`: enables WebSocket and HTTP integrations with `tokio`. 
+    This must be enabled for client to use `dial_http(addr)` or `dial_websocket(addr)` with `tokio_runtime`.
+- `ws_async_std`: enables WebSocket and HTTP integrations with `async-std`. 
+    This must be enabled for client to use `dial_http(addr)` or `dial_websocket(addr)` with `async_std_runtime`.
 
 TLS support
 

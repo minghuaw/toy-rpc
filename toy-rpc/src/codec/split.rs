@@ -204,10 +204,10 @@ cfg_if! {
             )
         )
     ))] {
-        #[cfg(feature = "ws")]
+        #[cfg(any(feature = "ws_tokio", feature = "ws_async_std"))]
         use crate::transport::{PayloadRead, PayloadWrite};
 
-        #[cfg(feature = "ws")]
+        #[cfg(any(feature = "ws_tokio", feature = "ws_async_std"))]
         #[async_trait]
         impl<R, C> CodecRead for CodecReadHalf<R, C, ConnTypePayload>
         where
@@ -219,7 +219,7 @@ cfg_if! {
             }
         }
 
-        #[cfg(feature = "ws")]
+        #[cfg(any(feature = "ws_tokio", feature = "ws_async_std"))]
         #[async_trait]
         impl<W, C> CodecWrite for CodecWriteHalf<W, C, ConnTypePayload>
         where
@@ -262,7 +262,7 @@ cfg_if! {
             }
         }
 
-        #[cfg(feature = "ws")]
+        #[cfg(any(feature = "ws_tokio", feature = "ws_async_std"))]
         impl<R, W> SplittableCodec for Codec<R, W, ConnTypePayload>
         where
             R: PayloadRead + Send,

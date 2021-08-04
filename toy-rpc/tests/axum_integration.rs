@@ -36,9 +36,9 @@ async fn test_client(base: &str, mut ready: Receiver<()>) -> Result<()> {
 }
 
 async fn run(base: &'static str) {
-    use axum::routing::nest;
     use axum::prelude::RoutingDsl;
-    
+    use axum::routing::nest;
+
     let (tx, rx) = channel::<()>();
     let common_test_service = Arc::new(rpc::CommonTest::new());
 

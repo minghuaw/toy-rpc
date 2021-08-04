@@ -14,7 +14,7 @@ use crate::error::Error;
 ))]
 pub(crate) mod frame;
 
-#[cfg(feature = "ws")]
+#[cfg(any(feature = "ws_tokio", feature = "ws_async_std"))]
 pub(crate) mod ws;
 
 /// Reads bytes from transport protocols that carry payload (ie. WebSocket)

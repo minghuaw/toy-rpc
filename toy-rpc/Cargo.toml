@@ -1,6 +1,6 @@
 [package]
 name = "toy-rpc"
-version = "0.8.0-beta.3"
+version = "0.8.0-beta.5"
 authors = ["Minghua Wu <michael.wu1107@gmail.com>"]
 edition = "2018"
 description = "An async RPC that mimics golang net/rpc's usage and supports both async-std and tokio"
@@ -36,19 +36,20 @@ docs = []
 server = ["toy-rpc-macros/server"]
 client = ["toy-rpc-macros/client"]
 tls = ["rustls", "tokio-rustls", "async-rustls", "webpki"]
-ws = ["tungstenite", "async-tungstenite"]
-
+ws_tokio = ["tungstenite", "async-tungstenite/tokio-runtime"]
+ws_async_std = ["tungstenite", "async-tungstenite/async-std-runtime"]
+ 
 # feature flags for codec
 serde_bincode = []
 serde_rmp = ["rmp-serde"]
 
 # feature flags for runtime
-tokio_runtime = ["tokio", "async-tungstenite/tokio-runtime", "tokio-stream", "toy-rpc-macros/runtime", "brw/tokio"]
-async_std_runtime = ["async-std", "async-tungstenite/async-std-runtime", "toy-rpc-macros/runtime", "brw/async-std"]
-http_tide = ["tide", "tide-websockets", "ws", "async_std_runtime", "server",]
-http_actix_web = ["actix-web", "actix", "actix-rt", "actix-web-actors", "actix-http", "ws", "tokio_runtime", "server"]
-http_warp = ["warp", "ws", "tokio_runtime", "server"]
-http_axum = ["axum", "http-body", "bytes", "ws", "tokio_runtime", "server"]
+tokio_runtime = ["tokio", "tokio-stream", "toy-rpc-macros/runtime", "brw/tokio"]
+async_std_runtime = ["async-std", "toy-rpc-macros/runtime", "brw/async-std"]
+http_tide = ["tide", "tide-websockets", "ws_async_std", "async_std_runtime", "server",]
+http_actix_web = ["actix-web", "actix", "actix-rt", "actix-web-actors", "actix-http", "ws_tokio", "tokio_runtime", "server"]
+http_warp = ["warp", "ws_tokio", "tokio_runtime", "server"]
+http_axum = ["axum", "http-body", "bytes", "ws_tokio", "tokio_runtime", "server"]
 
 [dev-dependencies]
 async-std = "1.9.0"

@@ -138,7 +138,7 @@ impl Default for ServerBuilder<AckModeNone> {
 }
 
 impl ServerBuilder<AckModeAuto> {
-    /// Sets the duration the server waits for Ack messages from all the subscribers. 
+    /// Sets the duration the server waits for Ack messages from all the subscribers.
     ///
     /// This affects not only Publisher on the Server side but also Publisher on the Client
     /// side.
@@ -198,4 +198,8 @@ macro_rules! impl_server_builder_for_ack_modes {
     };
 }
 
-impl_server_builder_for_ack_modes!(AckModeNone, AckModeAuto);
+impl_server_builder_for_ack_modes!(AckModeNone);
+
+#[cfg(not(feature = "docs"))]
+impl_server_builder_for_ack_modes!(AckModeAuto);
+

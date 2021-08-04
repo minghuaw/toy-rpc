@@ -1,5 +1,22 @@
 # Change Log
 
+## 0.8.0-beta
+
+- Added AckMode impl
+- Added attribute #[topic()] for derive macro #[derive(Topic)]
+- Added integration with `axum`
+
+## 0.8.0-alpha
+
+### Breaking Changes
+
+- Communication protocol is changed
+
+### Non-breaking Changes
+
+- Added pubsub support
+- Added RPC trait implementation generation for client
+
 ## 0.7.4
 
 - Fixed wrong documentation for `Client::with_stream<T>(stream: T)`

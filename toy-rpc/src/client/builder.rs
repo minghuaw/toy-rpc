@@ -4,13 +4,11 @@ use std::marker::PhantomData;
 
 use cfg_if::cfg_if;
 
-use crate::{
-    pubsub::{
-        AckModeAuto, AckModeManual, AckModeNone, DEFAULT_PUB_RETRIES, DEFAULT_PUB_RETRY_TIMEOUT,
-    },
+use crate::pubsub::{
+    AckModeAuto, AckModeManual, AckModeNone, DEFAULT_PUB_RETRIES, DEFAULT_PUB_RETRY_TIMEOUT,
 };
 
-#[cfg(feature = "ws")]
+#[cfg(any(feature = "ws_tokio", feature = "ws_async_std"))]
 use crate::transport::ws::WebSocketConn;
 
 cfg_if! {
@@ -27,7 +25,7 @@ cfg_if! {
         use tokio::net::ToSocketAddrs;
         use ::tokio::io::{AsyncRead, AsyncWrite};
 
-        #[cfg(feature = "ws")]
+        #[cfg(any(feature = "ws_tokio", feature = "ws_async_std"))]
         use async_tungstenite::tokio::connect_async;
     } else if #[cfg(any(
         feature = "docs",
@@ -41,8 +39,8 @@ cfg_if! {
 
         use async_std::net::ToSocketAddrs;
         use futures::{AsyncRead, AsyncWrite};
-        
-        #[cfg(feature = "ws")]
+
+        #[cfg(any(feature = "ws_tokio", feature = "ws_async_std"))]
         use async_tungstenite::async_std::connect_async;
     }
 }
@@ -121,7 +119,7 @@ impl ClientBuilder<AckModeAuto> {
 
     /// Set the number of retries for the publisher
     ///
-    /// This does not affect the max number of retries from the Server to all the 
+    /// This does not affect the max number of retries from the Server to all the
     /// `Subscriber`s.
     pub fn set_publisher_max_num_retries(self, val: u32) -> Self {
         Self {
@@ -183,7 +181,7 @@ cfg_if! {
             message::AtomicMessageId,
         };
 
-        #[cfg(feature = "ws")]
+        #[cfg(any(feature = "ws_tokio", feature = "ws_async_std"))]
         use crate::DEFAULT_RPC_PATH;
 
         use super::{reader::ClientReader, writer::ClientWriter, broker};
@@ -247,7 +245,7 @@ cfg_if! {
                             )
                         }
 
-                        #[cfg(feature = "ws")]
+                        #[cfg(any(feature = "ws_tokio", feature = "ws_async_std"))]
                         async fn dial_websocket_url(self, url: url::Url) -> Result<Client<$ack_mode>, Error> {
                             let (ws_stream, _) = connect_async(&url).await?;
                             let ws_stream = WebSocketConn::new(ws_stream);
@@ -276,8 +274,8 @@ cfg_if! {
                         }
 
                         /// Connects to an HTTP RPC server at the specified network address using WebSocket and the defatul codec.
-                        #[cfg(feature = "ws")]
-                        #[cfg_attr(feature = "docs", doc(cfg(feature = "ws")))]
+                        #[cfg(any(feature = "ws_tokio", feature = "ws_async_std"))]
+                        #[cfg_attr(feature = "docs", doc(cfg(any(feature = "ws_tokio", feature = "ws_async_std"))))]
                         pub async fn dial_http(self, addr: &str) -> Result<Client<$ack_mode>, Error> {
                             let mut url = url::Url::parse(addr)?.join(DEFAULT_RPC_PATH)?;
                             url.set_scheme("ws").expect("Failed to change scheme to ws");
@@ -304,8 +302,8 @@ cfg_if! {
                         ///
                         /// The difference between `dial_websocket` and `dial_http` is that, `dial_websocket` does not
                         /// append `DEFAULT_RPC_PATH="_rpc"` to the end of the addr.
-                        #[cfg(feature = "ws")]
-                        #[cfg_attr(feature = "docs", doc(cfg(feature = "ws")))]
+                        #[cfg(any(feature = "ws_tokio", feature = "ws_async_std"))]
+                        #[cfg_attr(feature = "docs", doc(cfg(any(feature = "ws_tokio", feature = "ws_async_std"))))]
                         pub async fn dial_websocket(self, addr: &str) -> Result<Client<$ack_mode>, Error> {
                             let url = url::Url::parse(addr)?;
                             self.dial_websocket_url(url).await
