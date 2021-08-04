@@ -149,7 +149,8 @@ cfg_if! {
             /// let client = Client::dial_http(addr).await.unwrap();
             /// ```
             ///
-            #[cfg_attr(feature = "docs", doc(cfg(feature = "tokio_runtime")))]
+            #[cfg(feature = "ws")]
+            #[cfg_attr(feature = "docs", doc(cfg(feature = "ws")))]
             pub async fn dial_http(addr: &str) -> Result<Self, Error> {
                 ClientBuilder::default().dial_http(addr).await
             }
@@ -187,7 +188,8 @@ cfg_if! {
             /// let client = Client::dial_websocket(addr).await.unwrap();
             /// ```
             ///
-            #[cfg_attr(feature = "docs", doc(cfg(feature = "tokio_runtime")))]
+            #[cfg(feature = "ws")]
+            #[cfg_attr(feature = "docs", doc(cfg(feature = "ws")))]
             pub async fn dial_websocket(addr: &str) -> Result<Self, Error> {
                 ClientBuilder::default().dial_websocket(addr).await
             }

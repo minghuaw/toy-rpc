@@ -8,8 +8,10 @@ use crate::{
     pubsub::{
         AckModeAuto, AckModeManual, AckModeNone, DEFAULT_PUB_RETRIES, DEFAULT_PUB_RETRY_TIMEOUT,
     },
-    transport::ws::WebSocketConn,
 };
+
+#[cfg(feature = "ws")]
+use crate::transport::ws::WebSocketConn;
 
 cfg_if! {
     if #[cfg(any(
@@ -23,8 +25,10 @@ cfg_if! {
         use tokio::net::TcpStream;
 
         use tokio::net::ToSocketAddrs;
-        use async_tungstenite::tokio::connect_async;
         use ::tokio::io::{AsyncRead, AsyncWrite};
+
+        #[cfg(feature = "ws")]
+        use async_tungstenite::tokio::connect_async;
     } else if #[cfg(any(
         feature = "docs",
         all(feature = "async_std_runtime", not(feature = "tokio_runtime"))
@@ -36,8 +40,10 @@ cfg_if! {
         use async_std::net::TcpStream;
 
         use async_std::net::ToSocketAddrs;
-        use async_tungstenite::async_std::connect_async;
         use futures::{AsyncRead, AsyncWrite};
+        
+        #[cfg(feature = "ws")]
+        use async_tungstenite::async_std::connect_async;
     }
 }
 
@@ -171,12 +177,14 @@ cfg_if! {
         use crossbeam::atomic::AtomicCell;
 
         use crate::{
-            DEFAULT_RPC_PATH,
             client::Client,
             error::Error,
             codec::{split::SplittableCodec, DefaultCodec},
             message::AtomicMessageId,
         };
+
+        #[cfg(feature = "ws")]
+        use crate::DEFAULT_RPC_PATH;
 
         use super::{reader::ClientReader, writer::ClientWriter, broker};
 
@@ -239,6 +247,7 @@ cfg_if! {
                             )
                         }
 
+                        #[cfg(feature = "ws")]
                         async fn dial_websocket_url(self, url: url::Url) -> Result<Client<$ack_mode>, Error> {
                             let (ws_stream, _) = connect_async(&url).await?;
                             let ws_stream = WebSocketConn::new(ws_stream);
@@ -267,6 +276,8 @@ cfg_if! {
                         }
 
                         /// Connects to an HTTP RPC server at the specified network address using WebSocket and the defatul codec.
+                        #[cfg(feature = "ws")]
+                        #[cfg_attr(feature = "docs", doc(cfg(feature = "ws")))]
                         pub async fn dial_http(self, addr: &str) -> Result<Client<$ack_mode>, Error> {
                             let mut url = url::Url::parse(addr)?.join(DEFAULT_RPC_PATH)?;
                             url.set_scheme("ws").expect("Failed to change scheme to ws");
@@ -293,6 +304,8 @@ cfg_if! {
                         ///
                         /// The difference between `dial_websocket` and `dial_http` is that, `dial_websocket` does not
                         /// append `DEFAULT_RPC_PATH="_rpc"` to the end of the addr.
+                        #[cfg(feature = "ws")]
+                        #[cfg_attr(feature = "docs", doc(cfg(feature = "ws")))]
                         pub async fn dial_websocket(self, addr: &str) -> Result<Client<$ack_mode>, Error> {
                             let url = url::Url::parse(addr)?;
                             self.dial_websocket_url(url).await

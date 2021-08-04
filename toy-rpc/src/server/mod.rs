@@ -100,6 +100,8 @@ cfg_if! {
         use tokio::net::{TcpListener, TcpStream};
         use tokio::task::{self};
         use tokio::io::{AsyncRead, AsyncWrite};
+
+        #[cfg(feature = "ws")]
         use async_tungstenite::tokio::accept_async;
     } else if #[cfg(all(feature = "async_std_runtime", not(feature = "tokio_runtime")))] {
         #[cfg(feature = "tls")]
@@ -107,6 +109,8 @@ cfg_if! {
         use async_std::net::{TcpListener, TcpStream};
         use async_std::task::{self};
         use futures::io::{AsyncRead, AsyncWrite};
+
+        #[cfg(feature = "ws")]
         use async_tungstenite::accept_async;
     }
 }
@@ -139,9 +143,10 @@ cfg_if! {
         use futures::{StreamExt};
         use std::sync::atomic::Ordering;
 
-        use crate::{error::Error, transport::ws::WebSocketConn, codec::{split::SplittableCodec, DefaultCodec}};
+        use crate::{error::Error, codec::{split::SplittableCodec, DefaultCodec}};
 
-
+        #[cfg(feature = "ws")]
+        use crate::{transport::ws::WebSocketConn};
 
         macro_rules! impl_server_for_ack_modes {
             ($($ack_mode:ty),*) => {
@@ -243,6 +248,8 @@ cfg_if! {
                         /// let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
                         /// server.accept_websocket(listener).await.unwrap();
                         /// ```
+                        #[cfg(feature = "ws")]
+                        #[cfg_attr(feature = "docs", doc(cfg(feature = "ws")))]
                         pub async fn accept_websocket(&self, listener: TcpListener) -> Result<(), Error> {
                             #[cfg(all(feature = "tokio_runtime", not(feature = "async_std_runtime")))]
                             let mut incoming = tokio_stream::wrappers::TcpListenerStream::new(listener);
@@ -375,6 +382,7 @@ cfg_if! {
                             ret
                         }
 
+                        #[cfg(feature = "ws")]
                         async fn accept_ws_connection(
                             stream: TcpStream,
                             services: Arc<AsyncServiceMap>,

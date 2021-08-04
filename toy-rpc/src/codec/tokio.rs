@@ -60,6 +60,7 @@ where
     }
 }
 
+#[cfg(feature = "ws")]
 #[async_trait::async_trait]
 impl<R, W> GracefulShutdown for Codec<R, W, ConnTypePayload>
 where

@@ -6,16 +6,11 @@
 use async_trait::async_trait;
 use cfg_if::cfg_if;
 use erased_serde as erased;
-use futures::stream::{SplitSink, SplitStream};
-use futures::{Sink, Stream};
 use std::marker::PhantomData;
-use tungstenite::Message as WsMessage;
 
 use crate::error::Error;
 use crate::message::{MessageId, Metadata};
-
 use crate::protocol::InboundBody;
-use crate::transport::ws::{CanSink, SinkHalf, StreamHalf, WebSocketConn};
 
 pub mod split;
 
@@ -171,6 +166,7 @@ cfg_if! {
 pub(crate) struct ConnTypeReadWrite {}
 
 /// Type state for PayloadRead and PayloadWrite connections (ie. WebSocket)
+#[cfg(feature = "ws")]
 pub(crate) struct ConnTypePayload {}
 
 /// Reserved type state for Reader/Writer for Codec
@@ -199,30 +195,41 @@ pub struct Codec<R, W, C> {
     conn_type: PhantomData<C>,
 }
 
-/// WebSocket integration for async_tungstenite, tokio_tungstenite
-impl<S, E>
-    Codec<
-        StreamHalf<SplitStream<S>, CanSink>,
-        SinkHalf<SplitSink<S, WsMessage>, CanSink>,
-        ConnTypePayload,
-    >
-where
-    S: Stream<Item = Result<WsMessage, E>> + Sink<WsMessage> + Send + Sync + Unpin,
-    E: std::error::Error + 'static,
-{
-    /// Creates a `Codec` with a WebSocket connection.
-    ///
-    /// This works with the `WebSocketConn` types implemented in `async_tungstenite` and `tokio_tungstenite`
-    pub fn with_websocket(ws: WebSocketConn<S, CanSink>) -> Self {
-        let (writer, reader) = WebSocketConn::<S, CanSink>::split(ws);
+cfg_if!{
+    if #[cfg(feature = "ws")] {
+        use futures::stream::{SplitSink, SplitStream};
+        use futures::{Sink, Stream};
+        use tungstenite::Message;
 
-        Self {
-            reader,
-            writer,
-            conn_type: PhantomData,
+        use crate::transport::ws::{CanSink, SinkHalf, StreamHalf, WebSocketConn};
+        
+        /// WebSocket integration for async_tungstenite, tokio_tungstenite
+        impl<S, E>
+            Codec<
+                StreamHalf<SplitStream<S>, CanSink>,
+                SinkHalf<SplitSink<S, Message>, CanSink>,
+                ConnTypePayload,
+            >
+        where
+            S: Stream<Item = Result<Message, E>> + Sink<Message> + Send + Sync + Unpin,
+            E: std::error::Error + 'static,
+        {
+            /// Creates a `Codec` with a WebSocket connection.
+            ///
+            /// This works with the `WebSocketConn` types implemented in `async_tungstenite` and `tokio_tungstenite`
+            pub fn with_websocket(ws: WebSocketConn<S, CanSink>) -> Self {
+                let (writer, reader) = WebSocketConn::<S, CanSink>::split(ws);
+        
+                Self {
+                    reader,
+                    writer,
+                    conn_type: PhantomData,
+                }
+            }
         }
     }
 }
+
 
 #[cfg(all(feature = "http_tide"))]
 /// WebSocket integration with `tide`
