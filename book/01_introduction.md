@@ -45,10 +45,10 @@ Choice of runtime and HTTP framework integration
 
 - `async_std_runtime`: supports usage with `async-std`
 - `tokio_runtime`: supports usage with `tokio`
-- `http_tide`: enables `tide` integration on the server side. This also enables `async_std_runtime` and `ws`
-- `http_actix_web`: enables `actix-web` integration on the server side. This also enables `tokio_runtime` and `ws`
-- `http_warp`: enables integration with `warp` on the server side. This also enables `tokio_runtime` and `ws`
-- `http_axum`: enables integration with `axum` on the server side. This also enables `tokio_runtime` and `ws`
+- `http_tide`: enables `tide` integration on the server side. This also enables `async_std_runtime` and `ws_async_std`
+- `http_actix_web`: enables `actix-web` integration on the server side. This also enables `tokio_runtime` and `ws_tokio`
+- `http_warp`: enables integration with `warp` on the server side. This also enables `tokio_runtime` and `ws_tokio`
+- `http_axum`: enables integration with `axum` on the server side. This also enables `tokio_runtime` and `ws_tokio`
  
 Choice of RPC server or client (both can be enabled at the same time)
 
