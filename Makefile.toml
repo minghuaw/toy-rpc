@@ -1,6 +1,9 @@
 [env]
 CARGO_MAKE_EXTEND_WORKSPACE_MAKEFILE = true
 
+[config]
+skip_core_tasks = true
+
 [tasks.format]
 command = "cargo"
 args = ["fmt"]
