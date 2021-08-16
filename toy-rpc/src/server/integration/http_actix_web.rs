@@ -494,6 +494,10 @@ macro_rules! impl_execution_broker_for_ack_modes {
                             self.responder.do_send(msg).map_err(Into::into)
                         },
                         ServerBrokerItem::Stop => {
+                            let msg = ServerWriterItem::Stop;
+                            if let Err(err) = self.responder.do_send(msg) {
+                                log::error!("{}", err);
+                            }
                             ctx.stop();
                             Ok(())
                         }
