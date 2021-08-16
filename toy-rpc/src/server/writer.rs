@@ -49,7 +49,13 @@ impl<W: CodecWrite> ServerWriter<W> {
             Err(err) => {
                 log::trace!("Message {} Error", &id);
                 let header = Header::Response { id, is_ok: false };
-                let msg = ErrorMessage::from_err(err)?;
+                let msg = match ErrorMessage::from_err(err) {
+                    Ok(m) => m,
+                    Err(err) => {
+                        log::debug!("Non-sendable error: {}", err);
+                        return Ok(())
+                    }
+                };
                 self.writer.write_header(header).await?;
                 self.writer.write_body(id, &msg).await
             }

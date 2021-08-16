@@ -426,12 +426,18 @@ pub(crate) async fn execute_timed_call(
     #[cfg(all(feature = "async_std_runtime", not(feature = "tokio_runtime")))]
     match ::async_std::future::timeout(duration, execute_call(id, fut)).await {
         Ok(res) => res,
-        Err(_) => Err(Error::Timeout(id)),
+        Err(err) => {
+            log::error!("Request {} reached timeout (err: {})", id, err);
+            Err(Error::Timeout(id))
+        },
     }
 
     #[cfg(all(feature = "tokio_runtime", not(feature = "async_std_runtime"),))]
     match ::tokio::time::timeout(duration, execute_call(id, fut)).await {
         Ok(res) => res,
-        Err(_) => Err(Error::Timeout(id)),
+        Err(err) => {
+            log::error!("Request {} reached timeout (err: {})", id, err);
+            Err(Error::Timeout(id))
+        },
     }
 }
