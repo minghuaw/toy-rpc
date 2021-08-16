@@ -30,6 +30,7 @@ async fn test_client(addr: &'static str, mut ready: Receiver<()>) -> Result<()> 
     rpc::test_execution_error(&client).await;
 
     println!("Client received correct RPC result");
+    client.close().await;
     Ok(())
 }
 

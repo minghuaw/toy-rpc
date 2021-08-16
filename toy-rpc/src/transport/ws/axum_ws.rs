@@ -41,16 +41,10 @@ impl PayloadWrite for SinkHalf<SplitSink<WebSocket, Message>, CanSink> {
 #[async_trait]
 impl GracefulShutdown for SinkHalf<SplitSink<WebSocket, Message>, CanSink> {
     async fn close(&mut self) {
-        let msg = Message::Close(None);
+        let msg = Message::close();
 
         if let Err(err) = self.send(msg).await {
-            match err {
-                tungstenite::Error::ConnectionClosed => { },
-                tungstenite::Error::AlreadyClosed => { },
-                e @ _ => {
-                    log::error!("{}", e)
-                }
-            }
+            log::error!("{}", err)
         }
     }
 }

@@ -254,6 +254,12 @@ macro_rules! impl_ws_message_actor_for_ack_modes {
                             // There is no body frame for Ack message
                             ctx.binary(buf);
                         }
+                        ServerWriterItem::Stopping => {
+                            ctx.close(None);
+                        },
+                        ServerWriterItem::Stop => {
+                            ctx.stop();
+                        }
                     }
 
                     Ok(())
@@ -482,6 +488,10 @@ macro_rules! impl_execution_broker_for_ack_modes {
                         },
                         ServerBrokerItem::InboundAck{seq_id} => {
                             self.handle_inbound_ack(seq_id)
+                        },
+                        ServerBrokerItem::Stopping => {
+                            let msg = ServerWriterItem::Stopping;
+                            self.responder.do_send(msg).map_err(Into::into)
                         },
                         ServerBrokerItem::Stop => {
                             ctx.stop();

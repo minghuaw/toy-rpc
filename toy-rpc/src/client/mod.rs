@@ -290,12 +290,13 @@ impl<AckMode> Drop for Client<AckMode> {
                 log::error!("{}", err)
             }
             
-            #[cfg(any(feature = "ws_tokio", feature = "ws_async_std"))]
-            if let Some(handle) = self.broker_handle.take() {
-                let _ = futures::executor::block_on(async {
-                    handle.await
-                });
-            }
+            // // Drop impl does not provide graceful shutdown. 
+            // #[cfg(any(feature = "ws_tokio", feature = "ws_async_std"))]
+            // if let Some(handle) = self.broker_handle.take() {
+            //     let _ = futures::executor::block_on(async {
+            //         handle.await
+            //     });
+            // }
         }
     }
 }
