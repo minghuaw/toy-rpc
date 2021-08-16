@@ -26,4 +26,4 @@ anyhow = "1.0.42"
 path = "../../toy-rpc/"
 version = "0.8.0"
 default-features = false
-features = [ "serde_bincode", "tokio_runtime", "server", "client", "anyhow"]
+features = [ "serde_json", "tokio_runtime", "server", "client", "anyhow"]

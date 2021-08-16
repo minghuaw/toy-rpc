@@ -81,7 +81,9 @@ pub(crate) enum ClientBrokerItem {
     InboundAck(SeqId),
     /// (Manual) Ack reply for incoming Publish message
     OutboundAck(SeqId),
+
     /// Begin the stop process
+    // #[cfg(any(feature = "ws_tokio", feature = "ws_async_std"))]
     Stopping,
 
     /// Stop

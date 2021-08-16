@@ -59,6 +59,7 @@ async fn run(addr: &'static str) {
         .expect("Error joining client thread")
         .expect("Error testing client");
 
+    println!("Aborting server");
     server_handle.abort();
 }
 

@@ -50,7 +50,10 @@ cfg_if! {
 /// RPC client
 ///
 #[cfg_attr(
-    not(any(feature = "async_std_runtime", feature = "tokio_runtime")),
+    any(
+        not(any(feature = "async_std_runtime", feature = "tokio_runtime")),
+        not(any(feature = "ws_async_std", feature = "ws_tokio")),
+    ),
     allow(dead_code)
 )]
 pub struct Client<AckMode> {
@@ -278,13 +281,21 @@ impl<AckMode> Drop for Client<AckMode> {
                     .unwrap_or_else(|err| log::error!("{}", err));
             }
 
+            // #[cfg(any(feature = "ws_tokio", feature = "ws_async_std"))]
             if let Err(err) = self.broker.try_send(broker::ClientBrokerItem::Stopping) {
-                log::error!("Failed to send stop signal to writer loop: {}", err);
+                log::error!("{}", err);
             }
-        }
-
-        if let Some(handle) = self.broker_handle.take() {
-            let _ = futures::executor::block_on(handle);
+            #[cfg(not(any(feature = "ws_tokio", feature = "ws_async_std")))]
+            if let Err(err) = self.broker.try_send(broker::ClientBrokerItem::Stop) {
+                log::error!("{}", err)
+            }
+            
+            #[cfg(any(feature = "ws_tokio", feature = "ws_async_std"))]
+            if let Some(handle) = self.broker_handle.take() {
+                let _ = futures::executor::block_on(async {
+                    handle.await
+                });
+            }
         }
     }
 }
@@ -314,6 +325,13 @@ impl<AckMode> Client<AckMode> {
             .await
             .unwrap_or_else(|err| log::error!("{}", err));
 
+        #[cfg(not(any(feature = "ws_tokio", feature = "ws_async_std")))]
+        self.broker
+            .send_async(broker::ClientBrokerItem::Stop)
+            .await
+            .unwrap_or_else(|err| log::error!("{}", err));
+
+        #[cfg(any(feature = "ws_tokio", feature = "ws_async_std"))]
         if let Some(handle) = self.broker_handle.take() {
             let _ = handle.await;
         }

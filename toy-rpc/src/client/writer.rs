@@ -30,6 +30,7 @@ cfg_if! {
             Publish(MessageId, String, Arc<Vec<u8>>),
             Subscribe(MessageId, String),
             Unsubscribe(MessageId, String),
+
             // Client will respond to Publish message sent from the server
             // Thus needs to reply with the seq_id
             Ack(SeqId),

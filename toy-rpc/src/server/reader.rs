@@ -220,9 +220,11 @@ impl<T: CodecRead> Reader for ServerReader<T> {
                 ))),
             }
         } else {
+            // Stop is not needed on the server because server broker will send a stop to itself after stopping
             if let Err(err) = broker.send(ServerBrokerItem::Stopping).await {
                 log::error!("{}", err)
             }
+
             Running::Stop
         }
     }

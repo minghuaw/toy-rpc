@@ -29,10 +29,9 @@ rustdoc-args = ["--cfg", "feature=\"docs\""]
 [features]
 default = [
     "serde_bincode",
-    "async_std_runtime",
+    "tokio_runtime",
     "server",
     "client",
-    "ws_async_std",
 ]
 
 docs = []
