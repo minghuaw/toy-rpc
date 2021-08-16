@@ -39,9 +39,11 @@ cfg_if! {
     ))] {
         use tokio::net::ToSocketAddrs;
         use ::tokio::io::{AsyncRead, AsyncWrite};
+        use tokio::task::JoinHandle;
     } else if #[cfg(all(feature = "async_std_runtime", not(feature = "tokio_runtime")))] {
         use async_std::net::ToSocketAddrs;
         use futures::{AsyncRead, AsyncWrite};
+        use async_std::task::JoinHandle;
     }
 }
 
@@ -56,6 +58,7 @@ pub struct Client<AckMode> {
     default_timeout: Duration,
     next_timeout: AtomicCell<Option<Duration>>,
     broker: Sender<ClientBrokerItem>,
+    broker_handle: Option<JoinHandle<()>>,
     subscriptions: HashMap<String, TypeId>,
 
     ack_mode: PhantomData<AckMode>,
@@ -268,14 +271,20 @@ pub use call::Call;
 // seems like it still works even without this impl
 impl<AckMode> Drop for Client<AckMode> {
     fn drop(&mut self) {
-        for (topic, _) in self.subscriptions.drain() {
-            self.broker
-                .try_send(broker::ClientBrokerItem::Unsubscribe { topic })
-                .unwrap_or_else(|err| log::error!("{}", err));
+        if !self.broker.is_disconnected() {
+            for (topic, _) in self.subscriptions.drain() {
+                self.broker
+                    .try_send(broker::ClientBrokerItem::Unsubscribe { topic })
+                    .unwrap_or_else(|err| log::error!("{}", err));
+            }
+
+            if let Err(err) = self.broker.try_send(broker::ClientBrokerItem::Stopping) {
+                log::error!("Failed to send stop signal to writer loop: {}", err);
+            }
         }
 
-        if let Err(err) = self.broker.try_send(broker::ClientBrokerItem::Stop) {
-            log::error!("Failed to send stop signal to writer loop: {}", err);
+        if let Some(handle) = self.broker_handle.take() {
+            let _ = futures::executor::block_on(handle);
         }
     }
 }
@@ -301,9 +310,13 @@ impl<AckMode> Client<AckMode> {
         }
 
         self.broker
-            .send_async(broker::ClientBrokerItem::Stop)
+            .send_async(broker::ClientBrokerItem::Stopping)
             .await
             .unwrap_or_else(|err| log::error!("{}", err));
+
+        if let Some(handle) = self.broker_handle.take() {
+            let _ = handle.await;
+        }
     }
 }
 

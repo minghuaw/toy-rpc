@@ -80,6 +80,7 @@ pub(crate) enum ServerBrokerItem {
     InboundAck {
         seq_id: SeqId,
     },
+    Stopping,
     Stop,
 }
 
@@ -322,13 +323,25 @@ macro_rules! impl_server_broker_for_ack_modes {
                         ServerBrokerItem::InboundAck {seq_id} => {
                             self.handle_inbound_ack(seq_id).await
                         },
-                        ServerBrokerItem::Stop => {
+                        ServerBrokerItem::Stopping => {
                             for (_, handle) in self.executions.drain() {
                                 log::debug!("Stopping execution as client is disconnected");
                                 #[cfg(all(feature = "tokio_runtime", not(feature = "async_std_runtime")))]
                                 handle.abort();
                                 #[cfg(all(feature = "async_std_runtime", not(feature = "tokio_runtime")))]
                                 handle.cancel().await;
+                            }
+                            
+                            let result = writer.send(ServerWriterItem::Stopping).await
+                                .map_err(Into::into);
+
+                            ctx.broker.send_async(ServerBrokerItem::Stop).await
+                                .map_err(Into::into)
+                                .and(result)
+                        }
+                        ServerBrokerItem::Stop => {
+                            if let Err(err) = writer.send(ServerWriterItem::Stop).await {
+                                log::error!("{:?}", err);
                             }
                             log::debug!("Client connection is closed");
                             return Running::Stop

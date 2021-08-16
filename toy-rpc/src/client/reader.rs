@@ -80,6 +80,8 @@ impl<R: CodecRead> brw::Reader for ClientReader<R> {
                 _ => Running::Continue(Err(Error::Internal("Unexpected Header type".into()))),
             }
         } else {
+            println!("Connection is closed");
+            // A Close frame will return None to the reader
             if broker.send(ClientBrokerItem::Stop).await.is_ok() {}
             Running::Stop
         }

@@ -81,7 +81,10 @@ pub(crate) enum ClientBrokerItem {
     InboundAck(SeqId),
     /// (Manual) Ack reply for incoming Publish message
     OutboundAck(SeqId),
-    /// Stops the broker
+    /// Begin the stop process
+    Stopping,
+
+    /// Stop
     Stop,
 }
 
@@ -613,12 +616,15 @@ macro_rules! impl_broker_for_ack_modes {
                         ClientBrokerItem::OutboundAck(seq_id) => {
                             self.handle_outbound_ack(&mut writer, seq_id).await
                         },
+                        ClientBrokerItem::Stopping => {
+                            writer.send(ClientWriterItem::Stopping).await
+                                .map_err(Into::into)
+                        },
                         ClientBrokerItem::Stop => {
                             if let Err(err) = writer.send(ClientWriterItem::Stop).await {
                                 log::error!("{:?}", err);
                             }
-                            // wait for closing handshake
-                            return Running::Stop;
+                            return Running::Stop
                         }
                     };
 

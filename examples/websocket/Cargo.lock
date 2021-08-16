@@ -157,7 +157,6 @@ version = "0.13.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "07b30ef0ea5c20caaa54baea49514a206308989c68be7ecd86c7f956e4da6378"
 dependencies = [
- "async-std",
  "futures-io",
  "futures-util",
  "log",
@@ -1306,7 +1305,7 @@ dependencies = [
 
 [[package]]
 name = "toy-rpc"
-version = "0.8.0-beta.4"
+version = "0.8.0-beta.5"
 dependencies = [
  "async-std",
  "async-trait",

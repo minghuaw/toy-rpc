@@ -2,13 +2,7 @@ use std::sync::Arc;
 
 use brw::{Running, Writer};
 
-use crate::{
-    codec::CodecWrite,
-    error::Error,
-    message::{ErrorMessage, MessageId},
-    pubsub::SeqId,
-    service::HandlerResult,
-};
+use crate::{codec::CodecWrite, error::Error, message::{ErrorMessage, MessageId}, pubsub::SeqId, service::HandlerResult, util::GracefulShutdown};
 
 use crate::protocol::Header;
 
@@ -30,6 +24,8 @@ pub(crate) enum ServerWriterItem {
         // Thus should reply with the MessageId that came from the client
         id: MessageId,
     },
+    Stopping,
+    Stop,
 }
 
 pub(crate) struct ServerWriter<W> {
@@ -79,7 +75,7 @@ impl<W: CodecWrite> ServerWriter<W> {
 }
 
 #[async_trait::async_trait]
-impl<W: CodecWrite> Writer for ServerWriter<W> {
+impl<W: CodecWrite + GracefulShutdown> Writer for ServerWriter<W> {
     type Item = ServerWriterItem;
     type Ok = ();
     type Error = Error;
@@ -96,6 +92,8 @@ impl<W: CodecWrite> Writer for ServerWriter<W> {
                 self.write_publication(id, topic, &content).await
             }
             ServerWriterItem::Ack { id } => self.write_ack(id).await,
+            ServerWriterItem::Stopping => Ok(self.writer.close().await),
+            ServerWriterItem::Stop => return Running::Stop
         };
         Running::Continue(res)
     }

@@ -69,11 +69,16 @@ impl PayloadWrite for SinkHalf<tide_websockets::WebSocketConnection, CannotSink>
 #[async_trait]
 impl GracefulShutdown for SinkHalf<tide_websockets::WebSocketConnection, CannotSink> {
     async fn close(&mut self) {
-        let close_msg = tide_websockets::Message::Close(None);
-        self.inner
-            .send(close_msg)
-            .await
-            .map_err(|err| Error::Internal(Box::new(err)))
-            .unwrap_or_else(|err| log::error!("{}", err));
+        let msg = tide_websockets::Message::Close(None);
+
+        if let Err(err) = self.inner.send(msg).await {
+            match err {
+                tungstenite::Error::ConnectionClosed => { },
+                tungstenite::Error::AlreadyClosed => { },
+                e @ _ => {
+                    log::error!("{:?}", e)
+                }
+            }
+        }
     }
 }

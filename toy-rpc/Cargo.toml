@@ -29,6 +29,10 @@ rustdoc-args = ["--cfg", "feature=\"docs\""]
 [features]
 default = [
     "serde_bincode",
+    "tokio_runtime",
+    "server",
+    "client",
+    "ws_tokio",
 ]
 
 docs = []
@@ -121,12 +125,12 @@ required-features = ["tokio_runtime", "server", "client"]
 [[test]]
 name = "async_std_ws"
 path = "tests/async_std_ws.rs"
-required-features = ["async_std_runtime", "server", "client"]
+required-features = ["async_std_runtime", "server", "client", "ws_async_std"]
 
 [[test]]
 name = "tokio_ws"
 path = "tests/tokio_ws.rs"
-required-features = ["tokio_runtime", "server", "client"]
+required-features = ["tokio_runtime", "server", "client", "ws_tokio"]
 
 [[test]]
 name = "tide_integration"

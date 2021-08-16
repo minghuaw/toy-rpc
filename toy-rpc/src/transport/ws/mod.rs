@@ -174,13 +174,14 @@ where
     async fn close(&mut self) {
         let msg = Message::Close(None);
 
-        match self
-            .send(msg)
-            .await
-            .map_err(|e| Error::IoError(std::io::Error::new(ErrorKind::InvalidData, e.to_string())))
-        {
-            Ok(()) => {}
-            Err(e) => log::error!("Error closing WebSocket {}", e.to_string()),
-        };
+        if let Err(err) = self.send(msg).await {
+            match err {
+                tungstenite::Error::ConnectionClosed => { },
+                tungstenite::Error::AlreadyClosed => { },
+                e @ _ => {
+                    log::error!("{:?}", e)
+                }
+            }
+        }
     }
 }

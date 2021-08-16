@@ -220,7 +220,9 @@ impl<T: CodecRead> Reader for ServerReader<T> {
                 ))),
             }
         } else {
-            if broker.send(ServerBrokerItem::Stop).await.is_ok() {}
+            if let Err(err) = broker.send(ServerBrokerItem::Stopping).await {
+                log::error!("{:?}", err)
+            }
             Running::Stop
         }
     }

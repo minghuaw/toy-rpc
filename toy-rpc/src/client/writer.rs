@@ -34,6 +34,7 @@ cfg_if! {
             // Thus needs to reply with the seq_id
             Ack(SeqId),
             Cancel(MessageId),
+            Stopping,
             Stop,
         }
 
@@ -105,8 +106,10 @@ cfg_if! {
                         // There is no body frame for Ack message
                         self.writer.write_header(header).await
                     },
+                    ClientWriterItem::Stopping => {
+                        Ok(self.writer.close().await)
+                    },
                     ClientWriterItem::Stop => {
-                        self.writer.close().await;
                         return Running::Stop
                     }
                 };

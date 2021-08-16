@@ -16,7 +16,7 @@ path = "src/bin/client.rs"
 
 [features]
 default = [
-    "async_std_runtime"
+    "tokio_runtime"
 ]
 
 async_std_runtime = ["toy-rpc/async_std_runtime", "async-std"]
@@ -36,5 +36,5 @@ async-trait = "0.1.50"
 path = "../../toy-rpc/"
 version = "0.8.0-beta.5"
 default-features = false
-features = [ "serde_bincode", "server", "client", "ws"]
+features = [ "serde_bincode", "server", "client", "ws_tokio"]
 optional = true
