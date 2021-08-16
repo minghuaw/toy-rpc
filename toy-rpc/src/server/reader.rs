@@ -221,7 +221,7 @@ impl<T: CodecRead> Reader for ServerReader<T> {
             }
         } else {
             if let Err(err) = broker.send(ServerBrokerItem::Stopping).await {
-                log::error!("{:?}", err)
+                log::error!("{}", err)
             }
             Running::Stop
         }
@@ -229,7 +229,7 @@ impl<T: CodecRead> Reader for ServerReader<T> {
 
     async fn handle_result(res: Result<Self::Ok, Self::Error>) -> Running<()> {
         if let Err(err) = res {
-            log::error!("line 230 {:?}", err);
+            log::error!("{}", err);
         }
         Running::Continue(())
     }

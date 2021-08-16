@@ -155,7 +155,7 @@ impl<AckMode: Send + 'static> PubSubBroker<AckMode> {
             let msg = match timeout(duration, fut).await {
                 Ok(_) => PubSubItem::RemovePendingAcks { seq_id },
                 Err(err) => {
-                    log::error!("{:?}", err);
+                    log::error!("{}", err);
                     PubSubItem::PublishRetry {
                         count,
                         client_ids: set,
@@ -168,7 +168,7 @@ impl<AckMode: Send + 'static> PubSubBroker<AckMode> {
             pubsub_tx
                 .send_async(msg)
                 .await
-                .unwrap_or_else(|err| log::error!("{:?}", err))
+                .unwrap_or_else(|err| log::error!("{}", err))
         });
     }
 

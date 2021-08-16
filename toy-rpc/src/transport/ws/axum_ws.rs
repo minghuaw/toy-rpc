@@ -48,7 +48,7 @@ impl GracefulShutdown for SinkHalf<SplitSink<WebSocket, Message>, CanSink> {
                 tungstenite::Error::ConnectionClosed => { },
                 tungstenite::Error::AlreadyClosed => { },
                 e @ _ => {
-                    log::error!("{:?}", e)
+                    log::error!("{}", e)
                 }
             }
         }

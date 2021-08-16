@@ -344,7 +344,7 @@ cfg_if! {
             ///     .set_default_timeout(std::time::Duration::from_secs(2)) // the RPC Call will timeout after 2 seconds
             ///     .call("Service.wait_for_10secs", ()); // request a RPC call that waits for 10 seconds
             /// let result = call.await;
-            /// println!("{:?}", result); // Err(Error::Timeout(Some(call_id)))
+            /// println!("{:?}", result); // Err(Error::Timeout(call_id))
             /// ```
             #[cfg_attr(feature = "docs", doc(cfg(all(feature = "async_std_runtime", not(feature = "tokio_runtime")))))]
             #[cfg_attr(feature = "docs", doc(cfg(all(feature = "tokio_runtime", not(feature = "async_std_runtime")))))]
@@ -362,7 +362,7 @@ cfg_if! {
             ///     .set_next_timeout(std::time::Duration::from_secs(2)) // the RPC Call will timeout after 2 seconds
             ///     .call("Service.wait_for_10secs", ()); // request a RPC call that waits for 10 seconds
             /// let result = call.await;
-            /// println!("{:?}", result); // Err(Error::Timeout(Some(call_id)))
+            /// println!("{:?}", result); // Err(Error::Timeout(call_id))
             /// ```
             #[cfg_attr(feature = "docs", doc(cfg(all(feature = "async_std_runtime", not(feature = "tokio_runtime")))))]
             #[cfg_attr(feature = "docs", doc(cfg(all(feature = "tokio_runtime", not(feature = "async_std_runtime")))))]
@@ -463,7 +463,7 @@ cfg_if! {
                         resp_tx,
                     }
                 ) {
-                    log::error!("{:?}", err);
+                    log::error!("{}", err);
                 }
 
                 // Creates Call

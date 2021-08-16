@@ -36,8 +36,8 @@ pub enum Error {
     ExecutionError(String),
 
     /// Cancellation error when an RPC call is cancelled
-    #[error("Request is canceled")]
-    Canceled(Option<MessageId>),
+    #[error("Request ({0}) is canceled")]
+    Canceled(MessageId),
 
     /// Timeout error when an RPC request timesout
     ///
@@ -45,8 +45,8 @@ pub enum Error {
     /// Thus, the situation where a response comes back to the client just
     /// at the moment of timeout could happen and may still result in a timeout
     /// error.
-    #[error("Request reached timeout")]
-    Timeout(Option<MessageId>),
+    #[error("Request ({0}) reached timeout")]
+    Timeout(MessageId),
 
     /// Maximum number of retries is reached before an Ack is received
     #[error("Maximum number of retries is reached for message {0}")]

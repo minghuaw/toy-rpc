@@ -152,7 +152,7 @@ impl<AckMode, C> ClientBroker<AckMode, C> {
             // takes care of receiving/cancel  error
             match rx.await {
                 Ok(res) => res,
-                Err(_) => Err(Error::Canceled(Some(id))),
+                Err(_) => Err(Error::Canceled(id)),
             }
         };
         let request_result = writer
@@ -173,8 +173,8 @@ impl<AckMode, C> ClientBroker<AckMode, C> {
             let cancellation_result = match timout_result {
                 Ok(res) => res,
                 Err(_) => {
-                    if let Err(_) = resp_tx.send(Err(Error::Timeout(Some(id)))) {
-                        log::trace!("InternalError: Unable to send Error::Timeout(Some({})) over response channel, response receiver is dropped", id);
+                    if let Err(_) = resp_tx.send(Err(Error::Timeout(id))) {
+                        log::trace!("InternalError: Unable to send Error::Timeout({}) over response channel, response receiver is dropped", id);
                     }
                     return;
                 }
@@ -217,7 +217,7 @@ impl<AckMode, C> ClientBroker<AckMode, C> {
         W: Sink<ClientWriterItem, Error = flume::SendError<ClientWriterItem>> + Send + Unpin,
     {
         if let Some(tx) = self.pending.remove(&id) {
-            tx.send(Err(Error::Canceled(Some(id)))).map_err(|_| {
+            tx.send(Err(Error::Canceled(id))).map_err(|_| {
                 Error::Internal(
                     format!(
                         "Unable to send Error::Canceled(Some({})) over response channel",
@@ -622,7 +622,7 @@ macro_rules! impl_broker_for_ack_modes {
                         },
                         ClientBrokerItem::Stop => {
                             if let Err(err) = writer.send(ClientWriterItem::Stop).await {
-                                log::error!("{:?}", err);
+                                log::error!("{}", err);
                             }
                             return Running::Stop
                         }

@@ -100,7 +100,7 @@ impl<W: CodecWrite + GracefulShutdown> Writer for ServerWriter<W> {
 
     async fn handle_result(res: Result<Self::Ok, Self::Error>) -> Running<()> {
         if let Err(err) = res {
-            log::error!("{:?}", err);
+            log::error!("{}", err);
         }
         Running::Continue(())
     }

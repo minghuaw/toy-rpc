@@ -179,7 +179,7 @@ where
                 tungstenite::Error::ConnectionClosed => { },
                 tungstenite::Error::AlreadyClosed => { },
                 e @ _ => {
-                    log::error!("{:?}", e)
+                    log::error!("{}", e)
                 }
             }
         }

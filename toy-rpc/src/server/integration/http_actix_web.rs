@@ -510,7 +510,7 @@ async fn execute_timed_call(
 ) -> HandlerResult {
     match actix_rt::time::timeout(duration, execute_call(id, fut)).await {
         Ok(res) => res,
-        Err(_) => Err(Error::Timeout(Some(id))),
+        Err(_) => Err(Error::Timeout(id)),
     }
 }
 

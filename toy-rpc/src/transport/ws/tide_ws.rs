@@ -76,7 +76,7 @@ impl GracefulShutdown for SinkHalf<tide_websockets::WebSocketConnection, CannotS
                 tungstenite::Error::ConnectionClosed => { },
                 tungstenite::Error::AlreadyClosed => { },
                 e @ _ => {
-                    log::error!("{:?}", e)
+                    log::error!("{}", e)
                 }
             }
         }
