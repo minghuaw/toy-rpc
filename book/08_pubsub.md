@@ -2,7 +2,7 @@
 
 A simple PubSub support is added in 0.8.0. A simple example can be found [here](https://github.com/minghuaw/toy-rpc/tree/main/examples/tokio_pubsub).
 
-A publisher can be created on the server side or the client side using the `publisher::<T: Topic>()` method, and a subscriber can be created using the `subscriber::<T: Topic>(cap: usize)` method. They both take one type parameter `T` that must implements the `toy_rpc::pubsub::Topic` trait. You can use the provided derive macro `#[derive(toy_rpc::macros::Topic)]` to define a struct as the pubsub message or by manually implementing the `toy_rpc::pubsub::Topic` trait on a type.
+A publisher can be created on the server side or the client side using the `publisher::<T: Topic>()` method, and a subscriber can be created using the `subscriber::<T: Topic>(cap: usize)` method. They both take one type parameter `T` which must implement the `toy_rpc::pubsub::Topic` trait. You can use the provided derive macro `#[derive(toy_rpc::macros::Topic)]` to define a struct as the pubsub message or by manually implementing the `toy_rpc::pubsub::Topic` trait on a type.
 
 ```rust,noplaypen
 use toy_rpc::macros::Topic;
@@ -10,6 +10,26 @@ use serde::{Serializer, Deserialize};
 
 #[derive(Topic, Serialize, Deserialize)]
 pub struct Count(pub u32);
+```
+
+The message item type and topic name can also be customized using attribute `#[topic]`. For example
+
+```rust,noplaypen
+#[derive(Serialize, Deserialize, Topic)
+#[topic(rename="C")] // This will only change topic name to "C", and the message item type is still `Count`
+pub struct Count(u32);
+```
+
+```rust,noplaypen
+#[derive(Topic)
+#[topic(item = "u32")] // This will only change the message item type
+pub struct Count { }
+```
+
+```rust,noplaypen
+#[derive(Topic)
+#[topic(rename = "C", item = "u32")] // Or customize both topic name and item type
+pub struct Count { }
 ```
 
 Or manually implement the `Topic` trait

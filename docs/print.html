@@ -1210,12 +1210,25 @@ IP.2 = 127.0.0.1
 </code></pre>
 <div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><h1 id="pubsub"><a class="header" href="#pubsub">PubSub</a></h1>
 <p>A simple PubSub support is added in 0.8.0. A simple example can be found <a href="https://github.com/minghuaw/toy-rpc/tree/main/examples/tokio_pubsub">here</a>.</p>
-<p>A publisher can be created on the server side or the client side using the <code>publisher::&lt;T: Topic&gt;()</code> method, and a subscriber can be created using the <code>subscriber::&lt;T: Topic&gt;(cap: usize)</code> method. They both take one type parameter <code>T</code> that must implements the <code>toy_rpc::pubsub::Topic</code> trait. You can use the provided derive macro <code>#[derive(toy_rpc::macros::Topic)]</code> to define a struct as the pubsub message or by manually implementing the <code>toy_rpc::pubsub::Topic</code> trait on a type.</p>
+<p>A publisher can be created on the server side or the client side using the <code>publisher::&lt;T: Topic&gt;()</code> method, and a subscriber can be created using the <code>subscriber::&lt;T: Topic&gt;(cap: usize)</code> method. They both take one type parameter <code>T</code> which must implement the <code>toy_rpc::pubsub::Topic</code> trait. You can use the provided derive macro <code>#[derive(toy_rpc::macros::Topic)]</code> to define a struct as the pubsub message or by manually implementing the <code>toy_rpc::pubsub::Topic</code> trait on a type.</p>
 <pre><code class="language-rust noplaypen">use toy_rpc::macros::Topic;
 use serde::{Serializer, Deserialize};
 
 #[derive(Topic, Serialize, Deserialize)]
 pub struct Count(pub u32);
+</code></pre>
+<p>The message item type and topic name can also be customized using attribute <code>#[topic]</code>. For example</p>
+<pre><code class="language-rust noplaypen">#[derive(Serialize, Deserialize, Topic)
+#[topic(rename=&quot;C&quot;)] // This will only change topic name to &quot;C&quot;, and the message item type is still `Count`
+pub struct Count(u32);
+</code></pre>
+<pre><code class="language-rust noplaypen">#[derive(Topic)
+#[topic(item = &quot;u32&quot;)] // This will only change the message item type
+pub struct Count { }
+</code></pre>
+<pre><code class="language-rust noplaypen">#[derive(Topic)
+#[topic(rename = &quot;C&quot;, item = &quot;u32&quot;)] // Or customize both topic name and item type
+pub struct Count { }
 </code></pre>
 <p>Or manually implement the <code>Topic</code> trait</p>
 <pre><code class="language-rust noplaypen">#[derive(Serialize, Deserialize)]
