@@ -12,7 +12,7 @@ pub type AtomicMessageId = AtomicU16;
 /// Returning the metadata
 pub trait Metadata {
     /// Gets the id from the metadata
-    fn get_id(&self) -> MessageId;
+    fn id(&self) -> MessageId;
 }
 
 /// The Error message that will be sent over for a error response

@@ -66,10 +66,10 @@ where
     State: Send + Sync + 'static,
 {
     /// Returns a `Arc` of the internal state
-    fn get_state(&self) -> Arc<State>;
+    fn state(&self) -> Arc<State>;
 
     /// Returns a function pointer to the requested method
-    fn get_method(&self, name: &str) -> Option<AsyncHandler<State>>;
+    fn method(&self, name: &str) -> Option<AsyncHandler<State>>;
 
     /// Returns a future that will execute the RPC method when `.await`ed.
     /// Returns `Error::MethodNotFound` if the requested method is not registered.
@@ -78,8 +78,8 @@ where
         name: &str,
         deserializer: Box<dyn erased::Deserializer<'static> + Send>,
     ) -> HandlerResultFut {
-        let _state = self.get_state();
-        match self.get_method(name) {
+        let _state = self.state();
+        match self.method(name) {
             Some(m) => m(_state, deserializer),
             None => Box::pin(async move { Err(Error::MethodNotFound) }),
         }
@@ -90,11 +90,11 @@ impl<State> HandleService<State> for Service<State>
 where
     State: Send + Sync + 'static,
 {
-    fn get_state(&self) -> Arc<State> {
+    fn state(&self) -> Arc<State> {
         self.state.clone()
     }
 
-    fn get_method(&self, name: &str) -> Option<AsyncHandler<State>> {
+    fn method(&self, name: &str) -> Option<AsyncHandler<State>> {
         // self.handlers.get(name).map(|m| m.clone())
         self.handlers.get(name).cloned()
     }

@@ -25,7 +25,7 @@ impl<T: CodecRead> ServerReader<T> {
     }
 }
 
-pub(crate) fn get_service(
+pub(crate) fn service(
     services: &Arc<AsyncServiceMap>,
     service_method: String,
 ) -> Result<(ArcAsyncServiceCall, String), Error> {
@@ -103,7 +103,7 @@ impl<T: CodecRead> Reader for ServerReader<T> {
                         },
                         None => return Running::Stop,
                     };
-                    match get_service(&self.services, service_method) {
+                    match service(&self.services, service_method) {
                         Ok((call, method)) => {
                             let msg = ServerBrokerItem::Request {
                                 call,

@@ -89,7 +89,7 @@ cfg_if! {
             where
                 H: serde::Serialize + Metadata + Send,
             {
-                let _ = header.get_id();
+                let _ = header.id();
                 let buf = Self::marshal(&header)?;
 
                 let _ = self.writer.write(&buf).await?;

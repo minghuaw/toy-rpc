@@ -91,7 +91,7 @@ impl<AckMode: Send + 'static> PubSubBroker<AckMode> {
         )
     }
 
-    fn get_seq_id(&mut self, client_id: &ClientId, msg_id: &MessageId) -> SeqId {
+    fn seq_id(&mut self, client_id: &ClientId, msg_id: &MessageId) -> SeqId {
         let seq_id = self.seq_counter.fetch_add(1, Ordering::Relaxed);
         let seq_id = SeqId::new(seq_id);
         log::info!(
@@ -249,7 +249,7 @@ impl PubSubBroker<AckModeNone> {
         topic: String,
         content: Arc<Vec<u8>>,
     ) {
-        let seq_id = self.get_seq_id(&client_id, &msg_id);
+        let seq_id = self.seq_id(&client_id, &msg_id);
         self.handle_publish_inner(seq_id, &topic, content)
     }
 }
@@ -262,7 +262,7 @@ impl PubSubBroker<AckModeAuto> {
         topic: String,
         content: Arc<Vec<u8>>,
     ) {
-        let seq_id = self.get_seq_id(&client_id, &msg_id);
+        let seq_id = self.seq_id(&client_id, &msg_id);
         let count = 0;
         self.handle_publish_inner(seq_id.clone(), &topic, content.clone());
         if let Some(entry) = self.subscriptions.get(&topic) {

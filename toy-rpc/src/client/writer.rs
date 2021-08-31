@@ -49,7 +49,7 @@ cfg_if! {
                 header: Header,
                 body: &(dyn erased_serde::Serialize + Send + Sync),
             ) -> Result<(), Error> {
-                let id = header.get_id();
+                let id = header.id();
                 self.writer.write_header(header).await?;
                 self.writer.write_body(id, body).await
             }
@@ -59,7 +59,7 @@ cfg_if! {
                 header: Header,
                 bytes: &[u8]
             ) -> Result<(), Error> {
-                let id = header.get_id();
+                let id = header.id();
                 self.writer.write_header(header).await?;
                 self.writer.write_body_bytes(id, bytes).await
             }

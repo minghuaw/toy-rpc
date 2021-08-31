@@ -115,7 +115,7 @@ cfg_if! {
             {
                 let writer = &mut self.writer;
 
-                let id = header.get_id();
+                let id = header.id();
                 let buf = Self::marshal(&header)?;
                 // let frame = Frame::new(id, 0, PayloadType::Header, buf);
                 let frame_header = FrameHeader::new(id, 0, PayloadType::Header, buf.len() as u32);

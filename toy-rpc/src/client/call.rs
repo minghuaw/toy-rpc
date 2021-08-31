@@ -93,7 +93,7 @@ impl<Res: DeserializeOwned> Call<Res> {
     /// Gets the ID number of the call
     ///
     /// Each client RPC call has a monotonically increasing ID number of type `u16`
-    pub fn get_id(&self) -> MessageId {
+    pub fn id(&self) -> MessageId {
         self.id
     }
 }

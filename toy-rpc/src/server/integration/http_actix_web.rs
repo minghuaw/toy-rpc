@@ -24,7 +24,7 @@ use crate::{
     server::{
         broker::ServerBrokerItem,
         pubsub::{PubSubItem, PubSubResponder},
-        reader::{get_service, handle_cancel},
+        reader::{service, handle_cancel},
         writer::ServerWriterItem,
         ClientId,
     },
@@ -128,7 +128,7 @@ macro_rules! impl_ws_message_actor_for_ack_modes {
                                     timeout,
                                 } => {
                                     let deserializer = C::from_bytes(buf.to_vec());
-                                    match get_service(&self.services, service_method) {
+                                    match service(&self.services, service_method) {
                                         Ok((call, method)) => {
                                             let item = ServerBrokerItem::Request {
                                                 call,

@@ -114,7 +114,7 @@ pub enum Header {
 }
 
 impl Metadata for Header {
-    fn get_id(&self) -> MessageId {
+    fn id(&self) -> MessageId {
         match self {
             Self::Request { id, .. } => id.clone(),
             Self::Response { id, .. } => id.clone(),
