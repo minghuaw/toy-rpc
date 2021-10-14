@@ -3,6 +3,8 @@
 #![warn(missing_docs)]
 
 //! # An async RPC crate that mimics the `golang`'s `net/rpc` package and supports both `async-std` and `tokio`.
+//! 
+//! This project is still being actively developed. I have kind of run out of ideas for features, so feel free to let me know if there is a feature that you want.
 //!
 //! <div align="center">
 //! <!-- Crates version -->
