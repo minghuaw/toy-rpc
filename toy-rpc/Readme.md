@@ -40,6 +40,7 @@ More detailed usage can be found in the book and documentation.
 - [Book](https://minghuaw.github.io/toy-rpc/01_introduction.html)
 - [Quickstart](https://minghuaw.github.io/toy-rpc/02_quickstart.html)
 - [Documentation](https://docs.rs/toy-rpc/0.7.0-alpha.0/toy_rpc/)
+- [Change Log](https://minghuaw.github.io/toy-rpc/10_change_log.html)
 - [GitHub repository](https://github.com/minghuaw/toy-rpc)
 - [crate.io](https://crates.io/crates/toy-rpc)
 - Minimum supported Rust version: 1.53 or later
