@@ -18,7 +18,7 @@ cfg_if! {
     ))] {
         #[cfg(feature = "tls")]
         use tokio_rustls::TlsConnector;
-        #[cfg(feature = "tls")]
+        #[cfg(all(feature = "tls", feature = "ws_tokio"))]
         use async_tungstenite::tokio::client_async;
         use tokio::net::TcpStream;
 
@@ -32,8 +32,8 @@ cfg_if! {
         all(feature = "async_std_runtime", not(feature = "tokio_runtime"))
     ))] {
         #[cfg(feature = "tls")]
-        use async_rustls::TlsConnector;
-        #[cfg(feature = "tls")]
+        use futures_rustls::TlsConnector;
+        #[cfg(all(feature = "tls", feature = "ws_async_std"))]
         use async_tungstenite::client_async;
         use async_std::net::TcpStream;
 
@@ -203,9 +203,13 @@ cfg_if! {
                             domain: &str,
                             config: rustls::ClientConfig
                         ) -> Result<Client<$ack_mode>, Error> {
+                            use rustls::client::ServerName;
+                            use std::convert::TryFrom;
+
                             let stream = TcpStream::connect(addr).await?;
                             let connector = TlsConnector::from(std::sync::Arc::new(config));
-                            let domain = webpki::DNSNameRef::try_from_ascii_str(domain)?;
+                            let domain = ServerName::try_from(domain)
+                                .map_err(|_| Error::Internal(Box::new(webpki::InvalidDnsNameError)))?;
                             let tls_stream = connector.connect(domain, stream).await?;
 
                             Ok(
@@ -216,6 +220,10 @@ cfg_if! {
 
                         #[cfg(all(
                             feature = "tls",
+                            any(
+                                feature = "ws_tokio",
+                                feature = "ws_async_std",
+                            ),
                             any(
                                 all(feature = "tokio_runtime", not(feature = "async_std_runtime")),
                                 all(feature = "async_std_runtime", not(feature = "tokio_runtime"))
@@ -234,7 +242,9 @@ cfg_if! {
                             let addr = (host, port);
                             let stream = TcpStream::connect(addr).await?;
                             let connector = TlsConnector::from(std::sync::Arc::new(config));
-                            let domain = webpki::DNSNameRef::try_from_ascii_str(domain)?;
+                            // let domain = webpki::DNSNameRef::try_from_ascii_str(domain)?;
+                            let domain = rustls::client::ServerName::try_from(domain)
+                                .map_err(|_| Error::Internal(Box::new(webpki::InvalidDnsNameError)))?;
                             let tls_stream = connector.connect(domain, stream).await?;
                             let (ws_stream, _) = client_async(url, tls_stream).await?;
                             let ws_stream = WebSocketConn::new(ws_stream);
@@ -285,7 +295,13 @@ cfg_if! {
                         }
 
                         /// Connects to an HTTP RPC server with TLS enabled
-                        #[cfg(feature = "tls")]
+                        #[cfg(all(
+                            feature = "tls",
+                            any(
+                                feature = "ws_tokio",
+                                feature = "ws_async_std",
+                            )
+                        ))]
                         pub async fn dial_http_with_tls_config(
                             self,
                             addr: &str,
@@ -310,7 +326,13 @@ cfg_if! {
                         }
 
                         /// Similar to `dial_websocket` but with TLS enabled
-                        #[cfg(feature = "tls")]
+                        #[cfg(all(
+                            feature = "tls",
+                            any(
+                                feature = "ws_tokio",
+                                feature = "ws_async_std",
+                            )
+                        ))]
                         pub async fn dial_websocket_with_tls_config(
                             self,
                             addr: &str,

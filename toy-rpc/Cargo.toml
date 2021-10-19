@@ -29,15 +29,17 @@ rustdoc-args = ["--cfg", "feature=\"docs\""]
 [features]
 default = [
     "serde_bincode",
-    "server",
-    "http_tide",
+    # "async_std_runtime",
+    # "server",
+    # "client",
+    # "tls"
 ]
 
 docs = []
 
 server = ["toy-rpc-macros/server"]
 client = ["toy-rpc-macros/client"]
-tls = ["rustls", "tokio-rustls", "async-rustls", "webpki"]
+tls = ["rustls", "tokio-rustls", "futures-rustls", "webpki"]
 ws_tokio = ["tungstenite", "async-tungstenite/tokio-runtime"]
 ws_async_std = ["tungstenite", "async-tungstenite/async-std-runtime"]
  
@@ -87,10 +89,10 @@ tower-service = { version = "0.3.1", optional = true }
 async-std = { version = "1", optional = true }
 tokio = { version = "1", features = ["rt-multi-thread", "io-util", "net", "time"], optional = true }
 tokio-stream = {  version = "0.1", features = ["net"], optional = true }
-tokio-rustls = { version = "0.22", optional = true }
-async-rustls = { version = "0.2", optional = true }
-rustls = { version = "0.19", optional = true }
-webpki = { version = "0.21", optional = true }
+tokio-rustls = { version = "0.23.0", optional = true }
+futures-rustls = { version = "0.22", optional = true }
+rustls = { version = "0.20", optional = true }
+webpki = { version = "0.22", optional = true }
 anyhow = { version = "1", optional = true }
 tungstenite = { version = "0.15.0", optional = true }
 async-tungstenite = { version = "0.15.0", optional = true }

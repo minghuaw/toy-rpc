@@ -158,8 +158,8 @@ impl From<erased_serde::Error> for crate::error::Error {
 }
 
 #[cfg(feature = "tls")]
-impl From<webpki::InvalidDNSNameError> for crate::error::Error {
-    fn from(err: webpki::InvalidDNSNameError) -> Self {
+impl From<webpki::InvalidDnsNameError> for crate::error::Error {
+    fn from(err: webpki::InvalidDnsNameError) -> Self {
         Self::Internal(Box::new(err))
     }
 }

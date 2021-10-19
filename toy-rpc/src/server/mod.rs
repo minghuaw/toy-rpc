@@ -105,7 +105,7 @@ cfg_if! {
         use async_tungstenite::tokio::accept_async;
     } else if #[cfg(all(feature = "async_std_runtime", not(feature = "tokio_runtime")))] {
         #[cfg(feature = "tls")]
-        use async_rustls::{TlsAcceptor};
+        use futures_rustls::{TlsAcceptor};
         use async_std::net::{TcpListener, TcpStream};
         use async_std::task::{self};
         use futures::io::{AsyncRead, AsyncWrite};

@@ -171,8 +171,23 @@ cfg_if! {
             ///
             /// An example with self-signed certificate can be found in the
             /// [GitHub repo](https://github.com/minghuaw/toy-rpc/blob/9793bf53909bd7ffa74967fae6267f973e03ec8a/examples/warp_tls/src/bin/client.rs#L25)
-            #[cfg(feature = "tls")]
-            #[cfg_attr(feature = "docs",doc(cfg(all(feature ="tls", feature = "tokio_runtime"))))]
+            #[cfg(all(
+                feature = "tls",
+                any(
+                    feature = "ws_tokio",
+                    feature = "ws_async_std",
+                )
+            ))]
+            #[cfg_attr(
+                feature = "docs",
+                doc(cfg(all(feature = "tls",
+                    any(
+                        feature = "ws_tokio",
+                        feature = "ws_async_std",
+                    ),
+                    feature = "tokio_runtime"
+                )))
+            )]
             pub async fn dial_http_with_tls_config(
                 addr: &str,
                 domain: &str,
@@ -207,8 +222,23 @@ cfg_if! {
             }
 
             /// Similar to `dial_websocket` but with TLS enabled
-            #[cfg(feature = "tls")]
-            #[cfg_attr(feature = "docs",doc(cfg(all(feature ="tls", feature = "tokio_runtime"))))]
+            #[cfg(all(
+                feature = "tls",
+                any(
+                    feature = "ws_tokio",
+                    feature = "ws_async_std",
+                )
+            ))]
+            #[cfg_attr(
+                feature = "docs",
+                doc(cfg(all(feature = "tls",
+                    any(
+                        feature = "ws_tokio",
+                        feature = "ws_async_std",
+                    ),
+                    feature = "tokio_runtime"
+                )))
+            )]
             pub async fn dial_websocket_with_tls_config(
                 addr: &str,
                 domain: &str,
