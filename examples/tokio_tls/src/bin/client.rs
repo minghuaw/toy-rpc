@@ -1,8 +1,8 @@
 use std::{fs::File, io::BufReader, path::Path};
 use std::io;
 use rustls::{Certificate, ClientConfig, RootCertStore};
-use anyhow::Result;
 use rustls_pemfile::certs;
+use anyhow::Result;
 use toy_rpc::Client;
 
 use tokio_tls::{ADDR, rpc::*};
@@ -26,11 +26,6 @@ async fn main() -> Result<()> {
         .with_safe_defaults()
         .with_root_certificates(root_certs)
         .with_no_client_auth();
-    // let mut pem = BufReader::new(File::open(Path::new(SELF_SIGNED_CA_CERT_PATH))?);
-    // config
-    //     .root_store
-    //     .add_pem_file(&mut pem)
-    //     .map_err(|_| io::Error::new(io::ErrorKind::InvalidInput, "invalid cert"))?;
 
     let client = Client::dial_with_tls_config(ADDR, "localhost", config).await?;
 

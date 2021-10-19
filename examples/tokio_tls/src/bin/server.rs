@@ -4,7 +4,7 @@ use std::io::{self, BufReader};
 use std::path::{Path};
 use std::sync::Arc;
 use rustls_pemfile::{certs, rsa_private_keys};
-use rustls::{Certificate, server::NoClientAuth, PrivateKey, ServerConfig};
+use rustls::{Certificate, PrivateKey, ServerConfig};
 use toy_rpc::Server;
 use anyhow::Result;
 
@@ -16,13 +16,13 @@ const SERVER_KEY_PATH: &str = "certs/service.key";
 
 fn load_certs(path: &str) -> Result<Vec<Certificate>> {
     certs(&mut BufReader::new(File::open(Path::new(path))?))
-        .map(|v| v.iter().map(|vv| Certificate(vv.clone())).collect())
+        .map(|v| v.into_iter().map(|vv| Certificate(vv)).collect())
         .map_err(|_| io::Error::new(io::ErrorKind::InvalidInput, "invalid cert").into())
 }
 
 fn load_keys(path: &str) -> Result<Vec<PrivateKey>> {
     rsa_private_keys(&mut BufReader::new(File::open(Path::new(path))?))
-        .map(|v| v.iter().map(|vv| PrivateKey(vv.clone())).collect())
+        .map(|v| v.into_iter().map(|vv| PrivateKey(vv)).collect())
         .map_err(|_| io::Error::new(io::ErrorKind::InvalidInput, "invalid key").into())
 }
 
@@ -43,7 +43,6 @@ async fn main() -> Result<()> {
         .build();
     let listener = TcpListener::bind(ADDR).await.unwrap();
 
-    // server.accept(listener).await.unwrap();
     server.accept_with_tls_config(listener, config).await.unwrap();
     
     Ok(())
