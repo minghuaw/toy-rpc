@@ -341,7 +341,7 @@ macro_rules! impl_server_broker_for_ack_modes {
                         }
                         ServerBrokerItem::Stop => {
                             if let Err(err) = writer.send(ServerWriterItem::Stop).await {
-                                log::error!("{}", err);
+                                log::debug!("{}", err);
                             }
                             log::debug!("Client connection is closed");
                             return Running::Stop

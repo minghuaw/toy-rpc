@@ -624,7 +624,7 @@ macro_rules! impl_broker_for_ack_modes {
                         },
                         ClientBrokerItem::Stop => {
                             if let Err(err) = writer.send(ClientWriterItem::Stop).await {
-                                log::error!("{}", err);
+                                log::debug!("{}", err);
                             }
                             return Running::Stop
                         }
