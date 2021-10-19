@@ -1,5 +1,19 @@
 # Change Log
 
+## 0.8.1
+
+- Updated dependencies
+  - `axum` to the latest version
+  - WebSocket dependencies like `tungstenite`, etc
+  - TLS dependencies like `rustls`, etc.
+- Switched from `async-rustls` to `futures-rustls`
+- The error message of sending on a closed channel upon ending a client or server 
+becomes a debug message now.
+
+## 0.8.0
+
+- Finalized features
+
 ## 0.8.0-beta
 
 - Added AckMode impl
