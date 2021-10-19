@@ -292,11 +292,11 @@ where
 impl<S, E>
     Codec<
         StreamHalf<SplitStream<S>, CanSink>,
-        SinkHalf<SplitSink<S, axum::ws::Message>, CanSink>,
+        SinkHalf<SplitSink<S, axum::extract::ws::Message>, CanSink>,
         ConnTypePayload,
     >
 where
-    S: Stream<Item = Result<axum::ws::Message, E>> + Sink<axum::ws::Message>,
+    S: Stream<Item = Result<axum::extract::ws::Message, E>> + Sink<axum::extract::ws::Message>,
     // E: std::error::Error
 {
     /// Creates a codec with WebSocket wrapper type provided by `axum` HTTP framework

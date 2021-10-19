@@ -38,8 +38,7 @@ async fn test_client(base: &str, mut ready: Receiver<()>) -> Result<()> {
 }
 
 async fn run(base: &'static str) {
-    use axum::prelude::RoutingDsl;
-    use axum::routing::nest;
+    use axum::routing::Router;
 
     let (tx, rx) = channel::<()>();
     let common_test_service = Arc::new(rpc::CommonTest::new());
@@ -47,7 +46,7 @@ async fn run(base: &'static str) {
     // start testing server
     let server = Server::builder().register(common_test_service).build();
 
-    let app = nest("/rpc", server.into_boxed_route());
+    let app = Router::new().nest("/rpc", server.into_boxed_route());
     let addr: SocketAddr = base.parse().expect("Unable to parse addr");
     let server_handle = task::spawn(async move {
         hyper::Server::bind(&addr)

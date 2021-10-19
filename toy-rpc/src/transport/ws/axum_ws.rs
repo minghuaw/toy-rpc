@@ -2,7 +2,7 @@
 //! A separate implementation is required because `axum` has wrapped `tungstenite` types
 
 use super::*;
-use axum::ws::{Message, WebSocket};
+use axum::extract::ws::{Message, WebSocket};
 
 #[async_trait]
 impl PayloadRead for StreamHalf<SplitStream<WebSocket>, CanSink> {
@@ -15,15 +15,15 @@ impl PayloadRead for StreamHalf<SplitStream<WebSocket>, CanSink> {
                 ))))
             }
             Ok(m) => {
-                if m.is_close() {
-                    return None;
-                } else if m.is_binary() {
-                    return Some(Ok(m.into_bytes()));
+                match m {
+                    Message::Close(_) => None,
+                    Message::Binary(bytes) => Some(Ok(bytes)),
+                    _ => Some(Err(Error::IoError(std::io::Error::new(
+                            ErrorKind::InvalidData,
+                            "Expecting WebSocket::Message::Binary, but found something else".to_string(),
+                        ))))
                 }
-                Some(Err(Error::IoError(std::io::Error::new(
-                    ErrorKind::InvalidData,
-                    "Expecting WebSocket::Message::Binary, but found something else".to_string(),
-                ))))
+                
             }
         }
     }
@@ -32,16 +32,16 @@ impl PayloadRead for StreamHalf<SplitStream<WebSocket>, CanSink> {
 #[async_trait]
 impl PayloadWrite for SinkHalf<SplitSink<WebSocket, Message>, CanSink> {
     async fn write_payload(&mut self, payload: &[u8]) -> Result<(), Error> {
-        let msg = Message::binary(payload);
+        let msg = Message::Binary(payload.to_vec());
 
-        self.send(msg).await.map_err(|e| Error::Internal(e))
+        self.send(msg).await.map_err(|e| Error::Internal(Box::new(e)))
     }
 }
 
 #[async_trait]
 impl GracefulShutdown for SinkHalf<SplitSink<WebSocket, Message>, CanSink> {
     async fn close(&mut self) {
-        let msg = Message::close();
+        let msg = Message::Close(None);
 
         if let Err(err) = self.send(msg).await {
             log::error!("{}", err)
