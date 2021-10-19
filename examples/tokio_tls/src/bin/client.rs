@@ -11,7 +11,7 @@ const SELF_SIGNED_CA_CERT_PATH: &str = "certs/ca.cert";
 
 fn load_certs(path: &str) -> Result<Vec<Certificate>> {
     certs(&mut BufReader::new(File::open(Path::new(path))?))
-        .map(|v| v.iter().map(|vv| Certificate(vv.clone())).collect())
+        .map(|v| v.into_iter().map(|vv| Certificate(vv)).collect())
         .map_err(|_| io::Error::new(io::ErrorKind::InvalidInput, "invalid cert").into())
 }
 
