@@ -2,7 +2,7 @@
 
 ## 0.8.1
 
-- Updated dependencies
+- Updated dependencies and corresponding examples
   - `axum` to the latest version
   - WebSocket dependencies like `tungstenite`, etc
   - TLS dependencies like `rustls`, etc.
