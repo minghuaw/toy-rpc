@@ -2,7 +2,7 @@
 name = "toy-rpc-macros"
 version = "0.6.1"
 authors = ["Minghua Wu <michael.wu1107@gmail.com>"]
-edition = "2018"
+edition = "2021"
 description = "Macros for toy-rpc"
 license = "MIT/Apache-2.0"
 documentation = "https://docs.rs/toy-rpc-macros/0.5.0-alpha/toy_rpc_macros/"
