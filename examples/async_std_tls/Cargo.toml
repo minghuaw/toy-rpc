@@ -20,4 +20,4 @@ async-std = { version = "1.9.0", features = ["attributes"] }
 env_logger = "0.9.0"
 rustls = "0.20.0"
 rustls-pemfile = { version = "0.2.1"}
-toy-rpc = {version = "0.8.2", path = "../../toy-rpc", features = ["async_std_runtime", "tls", "server", "client"]}
+toy-rpc = {version = "0.8.3", path = "../../toy-rpc", features = ["async_std_runtime", "tls", "server", "client"]}

@@ -17,6 +17,8 @@ use crate::{error::Error, util::GracefulShutdown};
 type WsSinkHalf<S> = SinkHalf<SplitSink<S, Message>, CanSink>;
 type WsStreamHalf<S> = StreamHalf<SplitStream<S>, CanSink>;
 
+const CONNECTION_CLOSED_ERR_STR: &str = "Connection closed normally";
+
 cfg_if! {
     if #[cfg(feature = "http_tide")] {
         pub(crate) struct CannotSink {}
@@ -177,7 +179,7 @@ where
         if let Err(err) = self.send(msg).await {
             match err {
                 tungstenite::Error::ConnectionClosed => { },
-                tungstenite::Error::AlreadyClosed => { },
+                // tungstenite::Error::AlreadyClosed => { },
                 e @ _ => {
                     log::error!("{}", e)
                 }
