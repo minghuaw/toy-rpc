@@ -46,7 +46,10 @@ impl GracefulShutdown for SinkHalf<SplitSink<WebSocket, Message>, CanSink> {
         let msg = Message::close();
 
         if let Err(err) = self.send(msg).await {
-            log::error!("{}", err)
+            let err_str = format!("{}", err);
+            if err_str != CONNECTION_CLOSED_ERR_STR {
+                log::error!("{}", err_str)
+            }
         }
     }
 }

@@ -74,7 +74,7 @@ impl GracefulShutdown for SinkHalf<tide_websockets::WebSocketConnection, CannotS
         if let Err(err) = self.inner.send(msg).await {
             match err {
                 tungstenite::Error::ConnectionClosed => { },
-                tungstenite::Error::AlreadyClosed => { },
+                // tungstenite::Error::AlreadyClosed => { },
                 e @ _ => {
                     log::error!("{}", e)
                 }
