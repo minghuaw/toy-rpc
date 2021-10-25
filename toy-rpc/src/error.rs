@@ -164,13 +164,6 @@ impl From<webpki::InvalidDnsNameError> for crate::error::Error {
     }
 }
 
-// /// Trait that convert `std::error::Error` to a
-// /// `toy_rpc::error::Error::ExecutionError`
-// pub trait IntoError {
-//     /// Format the error as a string
-//     fn into_error(self) -> Error;
-// }
-
 impl From<String> for Error {
     fn from(val: String) -> Self {
         Self::ExecutionError(val)

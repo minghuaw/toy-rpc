@@ -133,16 +133,17 @@ pub(crate) fn remove_export_attr_from_impl(mut input: syn::ItemImpl) -> syn::Ite
 ///
 #[cfg(feature = "server")]
 pub(crate) fn impl_register_service_for_struct(
-    struct_ident: &syn::Ident,
+    type_path: &syn::TypePath,
     names: Vec<String>,
     handler_idents: Vec<syn::Ident>,
 ) -> impl quote::ToTokens {
-    let service_name = struct_ident.to_string();
+    let type_ident = parse_type_ident_from_type_path(type_path).unwrap();
+    let service_name = type_ident.to_string();
     let ret = quote::quote! {
-        impl toy_rpc::util::RegisterService for #struct_ident {
+        impl toy_rpc::util::RegisterService for #type_path {
             fn handlers() -> std::collections::HashMap<&'static str, toy_rpc::service::AsyncHandler<Self>> {
-                let mut map = std::collections::HashMap::<&'static str, toy_rpc::service::AsyncHandler<#struct_ident>>::new();
-                #(map.insert(#names, #struct_ident::#handler_idents);)*;
+                let mut map = std::collections::HashMap::<&'static str, toy_rpc::service::AsyncHandler<#type_path>>::new();
+                #(map.insert(#names, #type_path::#handler_idents);)*;
                 map
             }
 
@@ -167,11 +168,12 @@ pub(crate) fn filter_exported_impl_items(input: syn::ItemImpl) -> syn::ItemImpl 
 
 #[cfg(all(feature = "client", feature = "runtime"))]
 pub(crate) fn generate_service_client_for_struct(
-    struct_ident: &syn::Ident,
+    type_path: &syn::TypePath,
     input: &syn::ItemImpl,
 ) -> (syn::Item, syn::ItemImpl) {
-    let concat_name = format!("{}{}", &struct_ident.to_string(), CLIENT_SUFFIX);
-    let client_ident = syn::Ident::new(&concat_name, struct_ident.span());
+    let type_ident = parse_type_ident_from_type_path(type_path).unwrap();
+    let concat_name = format!("{}{}", &type_ident.to_string(), CLIENT_SUFFIX);
+    let client_ident = syn::Ident::new(&concat_name, type_ident.span());
 
     let client_struct = syn::parse_quote!(
         pub struct #client_ident<'c, AckMode> {
@@ -180,7 +182,7 @@ pub(crate) fn generate_service_client_for_struct(
         }
     );
 
-    let client_impl = client_stub_impl_for_struct(struct_ident, &client_ident, input);
+    let client_impl = client_stub_impl_for_struct(type_ident, &client_ident, input);
     (client_struct, client_impl)
 }
 
@@ -237,15 +239,16 @@ pub(crate) fn generate_client_stub_for_struct_method(
 /// Generate client stub for the service impl block
 #[cfg(all(feature = "client", feature = "runtime"))]
 pub(crate) fn generate_client_stub_for_struct(
-    struct_ident: &syn::Ident,
+    type_path: &syn::TypePath,
 ) -> (syn::Item, syn::ItemImpl) {
-    let concat_name = format!("{}{}", &struct_ident.to_string(), CLIENT_SUFFIX);
-    let client_ident = syn::Ident::new(&concat_name, struct_ident.span());
+    let type_ident = parse_type_ident_from_type_path(type_path).unwrap();
+    let concat_name = format!("{}{}", &type_ident.to_string(), CLIENT_SUFFIX);
+    let client_ident = syn::Ident::new(&concat_name, type_ident.span());
 
     // client stub
-    let concat_name = format!("{}{}", &struct_ident.to_string(), CLIENT_STUB_SUFFIX);
-    let stub_ident = syn::Ident::new(&concat_name, struct_ident.span());
-    let stub_fn = parse_stub_fn_name(struct_ident);
+    let concat_name = format!("{}{}", &type_ident.to_string(), CLIENT_STUB_SUFFIX);
+    let stub_ident = syn::Ident::new(&concat_name, type_ident.span());
+    let stub_fn = parse_stub_fn_name(type_ident);
 
     let stub_trait = syn::parse_quote!(
         pub trait #stub_ident<AckMode> {
@@ -253,7 +256,7 @@ pub(crate) fn generate_client_stub_for_struct(
         }
     );
 
-    let service_name = struct_ident.to_string();
+    let service_name = type_ident.to_string();
     let stub_impl: syn::ItemImpl = syn::parse_quote!(
         impl<AckMode> #stub_ident<AckMode> for toy_rpc::client::Client<AckMode> {
             fn #stub_fn<'c>(&'c self) -> #client_ident<AckMode> {

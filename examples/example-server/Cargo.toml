@@ -11,6 +11,7 @@ async-trait = "0.1.50"
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "net"] }
 env_logger = "0.8.3"
 log = "0.4.14"
+anyhow = "1.0"
 
 # RPC service definition
 example-service = { version = "0.1.0", path = "../example-service" }
@@ -20,4 +21,4 @@ example-service = { version = "0.1.0", path = "../example-service" }
 [dependencies.toy-rpc]
 version = "0.8.1"
 path = "../../toy-rpc/"
-features = [ "tokio_runtime", "server" ]
+features = [ "tokio_runtime", "server", "anyhow" ]

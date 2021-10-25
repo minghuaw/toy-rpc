@@ -26,7 +26,8 @@ impl Arith for Abacus {
     }
 }
 
-struct Calculator { }
+
+pub struct Calculator { }
 
 #[export_impl]
 impl Calculator {
@@ -41,6 +42,20 @@ impl Calculator {
     }
 }
 
+
+mod consumer {
+    pub struct Consumer {}
+}
+
+#[async_trait]
+#[export_trait_impl]
+impl Consumer for consumer::Consumer {
+    async fn consume(&self, message: String) -> anyhow::Result<u8> {
+        println!("Message {}", message);
+        Ok(0)
+    }
+}
+
 #[tokio::main]
 async fn main() {
     env_logger::init();
@@ -48,12 +63,14 @@ async fn main() {
     let addr = "127.0.0.1:23333";
     let arith = Arc::new(Abacus{}); // create an instance of the `Arith` service
     let calculator = Arc::new(Calculator{}); // create an instance of the `Calculator` service
+    let consumer = Arc::new(consumer::Consumer{});
     let listener = TcpListener::bind(addr).await.unwrap();
     let server = Server::builder()
         // This will register service with name: "Arith"
         .register(arith) 
         // This will register service with name: "Calculator"
         .register(calculator)
+        .register(consumer)
         .build();
 
     log::info!("Starting server at {}", &addr);

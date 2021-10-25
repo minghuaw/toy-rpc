@@ -269,21 +269,21 @@ pub fn export_impl(
 
     // extract Self type and use it for construct Ident for handler HashMap
     #[cfg(any(feature = "server", all(feature = "client", feature = "runtime")))]
-    let ident = {
+    let type_path = {
         let self_ty = &input.self_ty;
-        match util::parse_impl_self_ty(self_ty) {
+        match util::parse_impl_self_ty_path(self_ty) {
             Ok(i) => i,
             Err(err) => return err.to_compile_error().into(),
         }
     };
     #[cfg(feature = "server")]
-    let register_service_impl = impl_register_service_for_struct(ident, names, handler_idents);
+    let register_service_impl = impl_register_service_for_struct(type_path, names, handler_idents);
 
     // generate client stub
     #[cfg(all(feature = "client", feature = "runtime"))]
-    let (client_ty, client_impl) = generate_service_client_for_struct(&ident, &input);
+    let (client_ty, client_impl) = generate_service_client_for_struct(type_path, &input);
     #[cfg(all(feature = "client", feature = "runtime"))]
-    let (stub_trait, stub_impl) = generate_client_stub_for_struct(&ident);
+    let (stub_trait, stub_impl) = generate_client_stub_for_struct(type_path);
 
     let input = remove_export_attr_from_impl(input);
     #[cfg(feature = "server")]
@@ -502,20 +502,28 @@ pub fn export_trait_impl(
 ) -> proc_macro::TokenStream {
     let input = syn::parse_macro_input!(item as syn::ItemImpl);
     #[cfg(feature = "server")]
-    let trait_ident = get_trait_ident_from_item_impl(&input).unwrap();
+    let trait_path = if let Some((_, ref path, _)) = input.trait_ {
+        path
+    } else {
+        panic!("Expecting a trait path");
+    };
+    // let trait_ident = get_trait_ident_from_item_impl(&input).unwrap();
 
     // extract Self type and use it for construct Ident for handler HashMap
     #[cfg(feature = "server")]
     let type_ident = {
         let self_ty = &input.self_ty;
-        match util::parse_impl_self_ty(self_ty) {
+        match util::parse_impl_self_ty_path(self_ty) {
             Ok(i) => i,
             Err(err) => return err.to_compile_error().into(),
         }
     };
 
+    // The ***HandlerRegistry trait is placed with the trait definition
+    // and not with the trait impl because this will allow user to omit
+    // specifying which method is "exported" on the impl.
     #[cfg(feature = "server")]
-    let register_impl = impl_register_service_for_trait_impl(&trait_ident, type_ident);
+    let register_impl = impl_register_service_for_trait_impl(trait_path, type_ident);
 
     let input = remove_export_attr_from_impl(input);
 

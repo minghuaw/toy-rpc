@@ -165,17 +165,20 @@ pub(crate) fn impl_local_registry_for_trait(
 
 #[cfg(feature = "server")]
 pub(crate) fn impl_register_service_for_trait_impl(
-    trait_ident: &syn::Ident,
-    type_ident: &syn::Ident,
+    trait_path: &syn::Path,
+    type_path: &syn::TypePath,
 ) -> impl quote::ToTokens {
-    // let service_name = trait_ident.to_string();
+    let trait_ident = &trait_path.segments
+        .last()
+        .expect("Expecting a trait identifier")
+        .ident;
     let concat_name = format!("{}{}", &trait_ident.to_string(), EXPORTED_TRAIT_SUFFIX);
     let transformed_trait_ident = syn::Ident::new(&&concat_name, trait_ident.span());
     let registry_name = format!("{}{}", transformed_trait_ident, REGISTRY_SUFFIX);
     let registry_ident = syn::Ident::new(&registry_name, transformed_trait_ident.span());
 
     let ret = quote::quote! {
-        impl toy_rpc::util::RegisterService for #type_ident {
+        impl toy_rpc::util::RegisterService for #type_path {
             fn handlers() -> std::collections::HashMap<&'static str, toy_rpc::service::AsyncHandler<Self>> {
                 <Self as #registry_ident>::handlers()
             }
@@ -188,14 +191,16 @@ pub(crate) fn impl_register_service_for_trait_impl(
     ret
 }
 
-#[cfg(feature = "server")]
-pub(crate) fn get_trait_ident_from_item_impl(input: &syn::ItemImpl) -> Option<syn::Ident> {
-    if let Some((_, ref path, _)) = input.trait_ {
-        path.get_ident().map(|id| id.clone())
-    } else {
-        None
-    }
-}
+// #[cfg(feature = "server")]
+// pub(crate) fn get_trait_ident_from_item_impl(input: &syn::ItemImpl) -> Option<syn::Ident> {
+    
+//     if let Some((_, ref path, _)) = input.trait_ {
+//         println!("path: {:?}", path);
+//         path.get_ident().map(|id| id.clone())
+//     } else {
+//         None
+//     }
+// }
 
 #[cfg(any(feature = "server", all(feature = "client", feature = "runtime",)))]
 pub(crate) fn filter_exported_trait_items(input: syn::ItemTrait) -> syn::ItemTrait {

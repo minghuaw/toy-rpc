@@ -20,4 +20,7 @@ async fn main() {
 
     let reply: Result<i32, _> = client.call("Calculator.divide", (15i32, 3i32)).await;
     println!("[Calculator]: 15 / 3 = {:?}", reply);
+
+    let reply: anyhow::Result<u8> = client.consume(String::from("message from client")).await;
+    println!("[Consumer]: {:?}", reply);
 }

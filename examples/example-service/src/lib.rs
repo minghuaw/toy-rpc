@@ -12,3 +12,10 @@ pub trait Arith {
 
     fn say_hi(&self);
 }
+
+#[async_trait]
+#[export_trait(impl_for_client)]
+pub trait Consumer {
+    #[export_method]
+    async fn consume(&self, message: String) -> anyhow::Result<u8>;
+}
