@@ -4,6 +4,7 @@ use async_trait::async_trait;
 use toy_rpc::Server;
 use toy_rpc::macros::{export_impl, export_trait_impl};
 
+// The user needs should ensure that everything is imported here
 use example_service::*;
 
 struct Abacus { }
@@ -42,19 +43,17 @@ impl Calculator {
     }
 }
 
-
-mod consumer {
-    pub struct Consumer {}
-}
+pub struct Consumer {}
 
 #[async_trait]
 #[export_trait_impl]
-impl Consumer for consumer::Consumer {
+impl example_service::Consumer for Consumer {
     async fn consume(&self, message: String) -> anyhow::Result<u8> {
         println!("Message {}", message);
         Ok(0)
     }
 }
+
 
 #[tokio::main]
 async fn main() {
@@ -63,7 +62,7 @@ async fn main() {
     let addr = "127.0.0.1:23333";
     let arith = Arc::new(Abacus{}); // create an instance of the `Arith` service
     let calculator = Arc::new(Calculator{}); // create an instance of the `Calculator` service
-    let consumer = Arc::new(consumer::Consumer{});
+    let consumer = Arc::new(Consumer{});
     let listener = TcpListener::bind(addr).await.unwrap();
     let server = Server::builder()
         // This will register service with name: "Arith"
