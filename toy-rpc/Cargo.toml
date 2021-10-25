@@ -2,7 +2,7 @@
 name = "toy-rpc"
 version = "0.8.2"
 authors = ["Minghua Wu <michael.wu1107@gmail.com>"]
-edition = "2021"
+edition = "2018"
 description = "An async RPC that mimics golang net/rpc's usage and supports both async-std and tokio"
 license = "MIT/Apache-2.0"
 documentation = "https://docs.rs/toy-rpc/"
