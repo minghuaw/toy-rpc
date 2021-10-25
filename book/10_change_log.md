@@ -1,5 +1,13 @@
 # Change Log
 
+## 0.8.3
+
+- Reverting back to 2018 edition
+
+## 0.8.2
+
+- Fixed a bug where attribute macros doesn't parse trait path and type path correctly
+
 ## 0.8.1
 
 - Updated dependencies and corresponding examples
