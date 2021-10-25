@@ -1,6 +1,6 @@
 [package]
 name = "toy-rpc"
-version = "0.8.1"
+version = "0.8.2"
 authors = ["Minghua Wu <michael.wu1107@gmail.com>"]
 edition = "2021"
 description = "An async RPC that mimics golang net/rpc's usage and supports both async-std and tokio"
@@ -62,8 +62,8 @@ hyper = "0.14.11"
 
 [dependencies]
 # local imports
-toy-rpc-macros = { version = "0.6.1", path="../macros" }
-# toy-rpc-macros = "0.6.1"
+# toy-rpc-macros = { version = "0.6.2", path="../macros" }
+toy-rpc-macros = "0.6.2"
 
 # feature gated optional dependecies
 serde_json = { version = "1.0", optional = true }
