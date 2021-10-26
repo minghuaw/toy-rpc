@@ -232,7 +232,8 @@ cfg_if! {
             {
                 let writer = &mut self.writer;
                 let buf = Self::marshal(&header)?;
-                writer.write_payload(&buf).await
+                writer.write_payload(&buf).await?;
+                Ok(())
             }
 
             async fn write_body(
@@ -242,11 +243,13 @@ cfg_if! {
             ) -> Result<(), Error> {
                 let buf = Self::marshal(&body)?;
                 let writer = &mut self.writer;
-                writer.write_payload(&buf).await
+                writer.write_payload(&buf).await?;
+                Ok(())
             }
 
             async fn write_body_bytes(&mut self, _: MessageId, bytes: &[u8]) -> Result<(), Error> {
-                self.writer.write_payload(bytes).await
+                self.writer.write_payload(bytes).await?;
+                Ok(())
             }
         }
 

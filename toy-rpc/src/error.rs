@@ -4,6 +4,8 @@ use std::fmt::Debug;
 
 use crate::message::{ErrorMessage, MessageId};
 
+pub type IoError = std::io::Error;
+
 /// Custom error type
 #[derive(Debug, thiserror::Error)]
 pub enum Error {

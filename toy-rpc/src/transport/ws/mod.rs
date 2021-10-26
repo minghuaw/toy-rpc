@@ -12,6 +12,7 @@ use tungstenite::Message;
 use std::{io::ErrorKind, marker::PhantomData};
 
 use super::{PayloadRead, PayloadWrite};
+use crate::error::IoError;
 use crate::{error::Error, util::GracefulShutdown};
 
 type WsSinkHalf<S> = SinkHalf<SplitSink<S, Message>, CanSink>;
@@ -31,13 +32,12 @@ cfg_if! {
 }
 pub(crate) struct CanSink {}
 
-pub(crate) fn into_io_err_other(err: &impl std::fmt::Display) -> Error {
+pub(crate) fn into_io_err_other(err: &impl std::fmt::Display) -> IoError {
     let msg = format!("{}", err);
-    let io_err = std::io::Error::new(
+    std::io::Error::new(
         std::io::ErrorKind::Other,
         msg
-    );
-    Error::IoError(io_err)
+    )
 }
 
 pub struct WebSocketConn<S, N> {
@@ -167,7 +167,7 @@ impl<T> PayloadWrite for SinkHalf<SplitSink<WebSocketStream<T>, Message>, CanSin
 where
     T: AsyncRead + AsyncWrite + Send + Unpin,
 {
-    async fn write_payload(&mut self, payload: &[u8]) -> Result<(), Error> {
+    async fn write_payload(&mut self, payload: &[u8]) -> Result<(), IoError> {
         use tungstenite::error;
         let msg = Message::Binary(payload.to_owned());
 
@@ -175,7 +175,7 @@ where
             Ok(_) => Ok(()),
             Err(err) => {
                 match err {
-                    error::Error::Io(e) => Err(Error::IoError(e)),
+                    error::Error::Io(e) => Err(e),
                     _ => Err(into_io_err_other(&err))
                 }
             }

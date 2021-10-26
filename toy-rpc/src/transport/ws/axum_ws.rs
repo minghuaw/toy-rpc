@@ -31,15 +31,11 @@ impl PayloadRead for StreamHalf<SplitStream<WebSocket>, CanSink> {
 
 #[async_trait]
 impl PayloadWrite for SinkHalf<SplitSink<WebSocket, Message>, CanSink> {
-    async fn write_payload(&mut self, payload: &[u8]) -> Result<(), Error> {
+    async fn write_payload(&mut self, payload: &[u8]) -> Result<(), IoError> {
         let msg = Message::Binary(payload.to_vec());
 
-        match self.send(msg).await {
-            Ok(_) => Ok(()),
-            Err(err) => {
-                Err(into_io_err_other(&err))
-            }
-        }
+        self.send(msg).await
+            .map_err(|e| into_io_err_other(&e))
     }
 }
 
