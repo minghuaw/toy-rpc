@@ -65,8 +65,8 @@ impl Error {
 }
 
 impl<T: 'static> From<flume::SendError<T>> for Error {
-    fn from(err: flume::SendError<T>) -> Self {
-        Self::Internal(format!("Cannot send internal message {:?}", err).into())
+    fn from(_: flume::SendError<T>) -> Self {
+        Self::Internal(format!("Cannot send internal message").into())
     }
 }
 

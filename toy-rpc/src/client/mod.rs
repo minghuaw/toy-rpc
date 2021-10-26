@@ -513,6 +513,13 @@ cfg_if! {
                     }
                 ) {
                     log::error!("{}", err);
+                    let err = Error::IoError(
+                        std::io::Error::new(
+                            std::io::ErrorKind::NotConnected,
+                            "Cannot connect to client side broker"
+                        )
+                    );
+                    return Call::<Res>::with_error(id, self.broker.clone(), resp_rx, err)
                 }
 
                 // Creates Call

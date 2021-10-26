@@ -18,6 +18,7 @@ enum CallStatus {
     Pending,
     Canceled,
     Received,
+    // Dropped could also indicate unsuccessful send because of internal error
     Dropped,
 }
 
@@ -49,6 +50,7 @@ pub struct Call<Res: DeserializeOwned> {
     #[pin]
     done: oneshot::Receiver<Result<ResponseResult, Error>>,
     marker: PhantomData<Res>,
+    error: Option<Error>,
 }
 
 impl<Res: DeserializeOwned> Call<Res> {
@@ -63,6 +65,24 @@ impl<Res: DeserializeOwned> Call<Res> {
             cancel,
             done,
             marker: PhantomData,
+            error: None,
+        }
+    }
+
+    /// This will initialize
+    pub(crate) fn with_error(
+        id: MessageId,
+        cancel: Sender<broker::ClientBrokerItem>,
+        done: oneshot::Receiver<Result<ResponseResult, Error>>,
+        error: Error
+    ) -> Self {
+        Self {
+            status: CallStatus::Dropped,
+            id,
+            cancel,
+            done,
+            marker: PhantomData,
+            error: Some(error),
         }
     }
 }
@@ -112,9 +132,20 @@ where
 
         match done.poll(cx) {
             Poll::Pending => match this.status {
-                CallStatus::Canceled | CallStatus::Dropped => {
+                CallStatus::Canceled => {
                     Poll::Ready(Err(Error::Canceled(*this.id)))
-                }
+                },
+                CallStatus::Dropped => {
+                    match this.error.take() {
+                        Some(err) => {
+                            Poll::Ready(Err(err))
+                        },
+                        None => {
+                            // Call is dropped
+                            Poll::Ready(Err(Error::Canceled(*this.id)))
+                        }
+                    }
+                },
                 _ => Poll::Pending,
             },
             Poll::Ready(res) => {
