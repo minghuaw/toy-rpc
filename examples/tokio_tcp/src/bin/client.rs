@@ -9,17 +9,17 @@ async fn main() {
     run().await;
 }
 
-async fn run() {
+async fn run() -> anyhow::Result<()> {
     env_logger::init();
 
     let addr = "127.0.0.1:23333";
     let client = Client::dial(addr).await.unwrap();
 
     let call: Call<i32> = client.call("Echo.echo_i32", 13i32);
-    let reply = call.await;
+    let reply = call.await?;
     println!("{:?}", reply);
 
-    let reply: Result<i32, _> = client.call("Echo.echo_i32", 1313i32).await;
+    let reply: i32 = client.call("Echo.echo_i32", 1313i32).await?;
     println!("{:?}", reply);
 
     println!("Calling finite loop");
@@ -36,17 +36,18 @@ async fn run() {
 
     // let call: Call<i32> = client.call("Echo.echo_i32", 13i32);
     let call = client.echo().echo_i32(13i32);
-    let reply = call.await;
+    let reply = call.await?;
     println!("{:?}", reply);
 
-    let reply = Arith::add(&client, (3i32, 4i32)).await;
+    let reply = Arith::add(&client, (3i32, 4i32)).await?;
     println!("{:?}", reply);
 
-    let reply = Arith::get_num_anyhow(&client, ()).await;
+    let reply = Arith::get_num_anyhow(&client, ()).await?;
     println!("{:?}", reply);
 
-    let reply = Arith::get_str_anyhow(&client, ()).await;
+    let reply = Arith::get_str_anyhow(&client, ()).await?;
     println!("{:?}", reply);
 
     client.close().await;
+    Ok(())
 }
