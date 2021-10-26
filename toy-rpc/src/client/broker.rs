@@ -90,6 +90,12 @@ pub(crate) enum ClientBrokerItem {
     Stop,
 }
 
+enum ClientBrokerState {
+    Started,
+    Stopping,
+    Stopped,
+}
+
 #[cfg(all(feature = "async_std_runtime", not(feature = "tokio_runtime")))]
 use ::async_std::task::{self};
 #[cfg(all(feature = "tokio_runtime", not(feature = "async_std_runtime")))]
@@ -101,6 +107,7 @@ use ::tokio::task::{self};
     all(feature = "async_std_runtime", not(feature = "tokio_runtime"))
 ))]
 pub(crate) struct ClientBroker<AckMode, C> {
+    state: ClientBrokerState,
     pub count: Arc<AtomicMessageId>,
     pub pending: HashMap<MessageId, oneshot::Sender<Result<ResponseResult, Error>>>,
     pub subscriptions: HashMap<String, Sender<SubscriptionItem>>,
@@ -124,6 +131,7 @@ impl<AckMode, C> ClientBroker<AckMode, C> {
         max_num_retries: u32,
     ) -> Self {
         Self {
+            state: ClientBrokerState::Started,
             count,
             pending: HashMap::new(),
             subscriptions: HashMap::new(),
@@ -414,6 +422,19 @@ impl<AckMode, C> ClientBroker<AckMode, C> {
             Err(Error::Internal("Topic is not found locally".into()))
         }
     }
+
+    async fn handle_stopping<'w, W>(
+        &'w mut self,
+        writer: &'w mut W
+    ) -> Result<(), Error> 
+    where
+        W: Sink<ClientWriterItem, Error = flume::SendError<ClientWriterItem>> + Send + Unpin,
+    {
+        self.state = ClientBrokerState::Stopping;
+
+        writer.send(ClientWriterItem::Stopping).await
+            .map_err(Into::into)
+    }
 }
 
 #[cfg(any(
@@ -619,13 +640,28 @@ macro_rules! impl_broker_for_ack_modes {
                             self.handle_outbound_ack(&mut writer, seq_id).await
                         },
                         ClientBrokerItem::Stopping => {
-                            writer.send(ClientWriterItem::Stopping).await
-                                .map_err(Into::into)
+                            // Stopping comes from control
+                            self.handle_stopping(&mut writer).await
                         },
                         ClientBrokerItem::Stop => {
+                            // Stop comes from reader
+                            match self.state {
+                                ClientBrokerState::Started => {
+                                    if let Err(_) = self.handle_stopping(&mut writer).await {
+                                        todo!()
+                                    }
+                                },
+                                ClientBrokerState::Stopping => { 
+                                },
+                                ClientBrokerState::Stopped => {
+                                    return Running::Stop
+                                }
+                            }
+
                             if let Err(err) = writer.send(ClientWriterItem::Stop).await {
                                 log::debug!("{}", err);
                             }
+                            self.state = ClientBrokerState::Stopped;
                             return Running::Stop
                         }
                     };

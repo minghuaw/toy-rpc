@@ -347,7 +347,7 @@ pub trait CodecRead: Send + Unmarshal + EraseDeserializer {
         }
     }
 
-    /// Reads the body as raw bytes
+    /// Reads the frame body as raw bytes
     async fn read_bytes(&mut self) -> Option<Result<Vec<u8>, Error>>;
 }
 
