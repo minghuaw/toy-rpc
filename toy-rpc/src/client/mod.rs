@@ -513,6 +513,7 @@ cfg_if! {
                     }
                 ) {
                     log::error!("{}", err);
+                    // If Broker is dropped, then the connection is dropped as well
                     let err = Error::IoError(
                         std::io::Error::new(
                             std::io::ErrorKind::NotConnected,
