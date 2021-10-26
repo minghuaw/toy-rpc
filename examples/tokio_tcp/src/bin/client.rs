@@ -42,7 +42,7 @@ async fn run() -> anyhow::Result<()> {
     let reply = Arith::add(&client, (3i32, 4i32)).await?;
     println!("{:?}", reply);
 
-    let reply = Arith::get_num_anyhow(&client, ()).await?;
+    let reply: u32 = Arith::get_num_anyhow(&client, ()).await?;
     println!("{:?}", reply);
 
     let reply = Arith::get_str_anyhow(&client, ()).await?;
