@@ -34,9 +34,12 @@ impl PayloadWrite for SinkHalf<SplitSink<WebSocket, Message>, CanSink> {
     async fn write_payload(&mut self, payload: &[u8]) -> Result<(), Error> {
         let msg = Message::binary(payload);
 
-        self.send(msg)
-            .await
-            .map_err(|e| Error::Internal(Box::new(e)))
+        match self.send(msg).await {
+            Ok(_) => Ok(()),
+            Err(err) => {
+                Err(into_io_err_other(&err))
+            }
+        }
     }
 }
 

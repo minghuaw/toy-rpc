@@ -221,13 +221,6 @@ impl<W: AsyncWrite + Unpin + Send> FrameWrite for W {
         frame_header: FrameHeader,
         payload: &[u8],
     ) -> Result<(), Error> {
-        // let Frame {
-        //     message_id,
-        //     frame_id,
-        //     payload_type,
-        //     payload,
-        // } = frame;
-
         // check if buf length exceeds maximum
         if payload.len() > PayloadLen::MAX as usize {
             return Err(Error::IoError(std::io::Error::new(
@@ -239,9 +232,6 @@ impl<W: AsyncWrite + Unpin + Send> FrameWrite for W {
                 ),
             )));
         }
-
-        // construct frame header
-        // let header = FrameHeader::new(message_id, frame_id, payload_type, payload.len() as u32);
 
         // write magic first
         self.write_all(&[MAGIC]).await?;

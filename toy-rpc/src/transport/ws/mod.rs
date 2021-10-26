@@ -31,6 +31,15 @@ cfg_if! {
 }
 pub(crate) struct CanSink {}
 
+pub(crate) fn into_io_err_other(err: &impl std::fmt::Display) -> Error {
+    let msg = format!("{}", err);
+    let io_err = std::io::Error::new(
+        std::io::ErrorKind::Other,
+        msg
+    );
+    Error::IoError(io_err)
+}
+
 pub struct WebSocketConn<S, N> {
     pub inner: S,
     can_sink: PhantomData<N>,
@@ -159,11 +168,18 @@ where
     T: AsyncRead + AsyncWrite + Send + Unpin,
 {
     async fn write_payload(&mut self, payload: &[u8]) -> Result<(), Error> {
+        use tungstenite::error;
         let msg = Message::Binary(payload.to_owned());
 
-        self.send(msg)
-            .await
-            .map_err(|e| Error::Internal(Box::new(e)))
+        match self.send(msg).await {
+            Ok(_) => Ok(()),
+            Err(err) => {
+                match err {
+                    error::Error::Io(e) => Err(Error::IoError(e)),
+                    _ => Err(into_io_err_other(&err))
+                }
+            }
+        }
     }
 }
 

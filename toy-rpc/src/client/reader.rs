@@ -25,7 +25,16 @@ impl<R: CodecRead> brw::Reader for ClientReader<R> {
         if let Some(header) = self.reader.read_header().await {
             let header: Header = match header {
                 Ok(header) => header,
-                Err(err) => return Running::Continue(Err(err)),
+                Err(err) => {
+                    match err {
+                        Error::IoError(e) => {
+                            // pass back IoError
+                            let _ = broker.send(ClientBrokerItem::Stop(Some(e))).await;
+                            return Running::Stop
+                        },
+                        _ => return Running::Continue(Err(err))
+                    }
+                },
             };
             log::debug!("{:?}", &header);
 
@@ -80,8 +89,8 @@ impl<R: CodecRead> brw::Reader for ClientReader<R> {
                 _ => Running::Continue(Err(Error::Internal("Unexpected Header type".into()))),
             }
         } else {
-            // A Close frame will return None to the reader
-            if broker.send(ClientBrokerItem::Stop).await.is_ok() {}
+            // A WebSocket Close frame will return None to the reader
+            if broker.send(ClientBrokerItem::Stop(None)).await.is_ok() {}
             Running::Stop
         }
     }

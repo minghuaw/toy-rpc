@@ -87,7 +87,9 @@ pub(crate) enum ClientBrokerItem {
     Stopping,
 
     /// Stop
-    Stop,
+    /// 
+    /// 
+    Stop(Option<std::io::Error>),
 }
 
 enum ClientBrokerState {
@@ -516,8 +518,6 @@ impl<C: Marshal + Send> ClientBroker<AckModeAuto, C> {
     where
         W: Sink<ClientWriterItem, Error = flume::SendError<ClientWriterItem>> + Send + Unpin,
     {
-        log::debug!("Handling subscription with AckModeAuto");
-
         let item = SubscriptionItem::new(id.clone(), item);
         self.handle_subscription_inner(topic, item)?;
         // Automatically send back Ack
@@ -643,7 +643,7 @@ macro_rules! impl_broker_for_ack_modes {
                             // Stopping comes from control
                             self.handle_stopping(&mut writer).await
                         },
-                        ClientBrokerItem::Stop => {
+                        ClientBrokerItem::Stop(io_err) => {
                             // Stop comes from reader
                             match self.state {
                                 ClientBrokerState::Started => {
