@@ -7,6 +7,7 @@ use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
 use std::io::ErrorKind;
 
+use crate::error::IoError;
 use crate::message::MessageId;
 use crate::{error::Error, util::GracefulShutdown};
 
@@ -59,7 +60,7 @@ pub trait FrameRead {
 pub trait FrameWrite {
     /// Writes a frame
     async fn write_frame(&mut self, frame_header: FrameHeader, payload: &[u8])
-        -> Result<(), Error>;
+        -> Result<(), IoError>;
 }
 
 /// Header of a frame
@@ -96,11 +97,14 @@ impl FrameHeader {
     }
 
     /// Convert a frame header to bytes
-    pub fn to_vec(&self) -> Result<Vec<u8>, Error> {
+    pub fn to_vec(&self) -> Result<Vec<u8>, IoError> {
         DefaultOptions::new()
             .with_fixint_encoding()
             .serialize(self)
-            .map_err(|err| Error::ParseError(err))
+            .map_err(|err| IoError::new(
+                std::io::ErrorKind::InvalidData,
+                err.to_string()
+            ))
     }
 }
 
@@ -220,17 +224,17 @@ impl<W: AsyncWrite + Unpin + Send> FrameWrite for W {
         &mut self,
         frame_header: FrameHeader,
         payload: &[u8],
-    ) -> Result<(), Error> {
+    ) -> Result<(), IoError> {
         // check if buf length exceeds maximum
         if payload.len() > PayloadLen::MAX as usize {
-            return Err(Error::IoError(std::io::Error::new(
+            return Err(std::io::Error::new(
                 ErrorKind::InvalidData,
                 format!(
                     "Payload length exceeded maximum. Max is {}, found {}",
                     PayloadLen::MAX,
                     payload.len()
                 ),
-            )));
+            ));
         }
 
         // write magic first

@@ -120,7 +120,8 @@ cfg_if! {
                 // let frame = Frame::new(id, 0, PayloadType::Header, buf);
                 let frame_header = FrameHeader::new(id, 0, PayloadType::Header, buf.len() as u32);
 
-                writer.write_frame(frame_header, &buf).await
+                writer.write_frame(frame_header, &buf).await?;
+                Ok(())
             }
 
             async fn write_body(
@@ -132,13 +133,15 @@ cfg_if! {
                 let buf = Self::marshal(&body)?;
                 // let frame = Frame::new(id.to_owned(), 1, PayloadType::Data, buf.to_owned());
                 let frame_header = FrameHeader::new(id, 1, PayloadType::Data, buf.len() as u32);
-                writer.write_frame(frame_header, &buf).await
+                writer.write_frame(frame_header, &buf).await?;
+                Ok(())
             }
 
             async fn write_body_bytes(&mut self, id: MessageId, bytes: &[u8]) -> Result<(), Error> {
                 // let frame = Frame::new(*id, 1, PayloadType::Data, bytes);
                 let frame_header = FrameHeader::new(id, 1, PayloadType::Data, bytes.len() as u32);
-                self.writer.write_frame(frame_header, bytes).await
+                self.writer.write_frame(frame_header, bytes).await?;
+                Ok(())
             }
         }
 
