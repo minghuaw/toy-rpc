@@ -28,7 +28,7 @@ rustdoc-args = ["--cfg", "feature=\"docs\""]
 
 [features]
 default = [
-    "serde_json",
+    "serde_rmp",
     "http_axum",
     # "http_warp",
     # "http_tide",

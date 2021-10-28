@@ -15,7 +15,7 @@ cfg_if! {
         use std::io::Cursor; // serde doesn't support AsyncRead
 
         use super::{Codec, DeserializerOwned, EraseDeserializer, Marshal, Unmarshal};
-        use crate::error::Error;
+        use crate::error::ParseError;
         use crate::macros::impl_inner_deserializer;
 
         impl<'de, R> serde::Deserializer<'de>
@@ -30,7 +30,7 @@ cfg_if! {
         }
 
         impl<R, W, C> Marshal for Codec<R, W, C> {
-            fn marshal<S: serde::Serialize>(val: &S) -> Result<Vec<u8>, Error> {
+            fn marshal<S: serde::Serialize>(val: &S) -> Result<Vec<u8>, ParseError> {
                 let mut buf = Vec::new();
                 match val.serialize(&mut rmp_serde::Serializer::new(&mut buf)) {
                     Ok(_) => Ok(buf),
@@ -40,7 +40,7 @@ cfg_if! {
         }
 
         impl<R, W, C> Unmarshal for Codec<R, W, C> {
-            fn unmarshal<'de, D: serde::Deserialize<'de>>(buf: &'de [u8]) -> Result<D, Error> {
+            fn unmarshal<'de, D: serde::Deserialize<'de>>(buf: &'de [u8]) -> Result<D, ParseError> {
                 let mut de = rmp_serde::Deserializer::new(buf);
                 serde::Deserialize::deserialize(&mut de).map_err(|e| e.into())
             }

@@ -4,18 +4,18 @@ use cfg_if::cfg_if;
 
 cfg_if! {
     if #[cfg(feature = "serde_json")] {
-
+        
     } else if #[cfg(feature = "serde_bincode")] {
-
+        
     } else if #[cfg(feature = "serde_rmp")] {
-
+        
     } else {
         use erased_serde as erased;
         use serde::de::Visitor;
         use std::io::Cursor; // serde doesn't support AsyncRead
-
+        
         use super::{Codec, DeserializerOwned, EraseDeserializer, Marshal, Unmarshal};
-        use crate::error::Error;
+        use crate::error::ParseError;
         use crate::macros::impl_inner_deserializer;
 
         impl<'de, R> serde::Deserializer<'de> for DeserializerOwned<serde_cbor::Deserializer<R>>
@@ -29,13 +29,13 @@ cfg_if! {
         }
 
         impl<R, W, C> Marshal for Codec<R, W, C> {
-            fn marshal<S: serde::Serialize>(val: &S) -> Result<Vec<u8>, Error> {
+            fn marshal<S: serde::Serialize>(val: &S) -> Result<Vec<u8>, ParseError> {
                 serde_cbor::to_vec(val).map_err(|e| e.into())
             }
         }
 
         impl<R, W, C> Unmarshal for Codec<R, W, C> {
-            fn unmarshal<'de, D: serde::Deserialize<'de>>(buf: &'de [u8]) -> Result<D, Error> {
+            fn unmarshal<'de, D: serde::Deserialize<'de>>(buf: &'de [u8]) -> Result<D, ParseError> {
                 serde_cbor::from_slice(buf).map_err(|e| e.into())
             }
         }
