@@ -26,7 +26,7 @@ impl<W, C, CT> Marshal for CodecWriteHalf<W, C, CT>
 where
     C: Marshal,
 {
-    fn marshal<S: serde::Serialize>(val: &S) -> Result<Vec<u8>, Error> {
+    fn marshal<S: serde::Serialize>(val: &S) -> Result<Vec<u8>, ParseError> {
         C::marshal(val)
     }
 }
@@ -35,7 +35,7 @@ impl<R, C, CT> Unmarshal for CodecReadHalf<R, C, CT>
 where
     C: Unmarshal,
 {
-    fn unmarshal<'de, D: serde::Deserialize<'de>>(buf: &'de [u8]) -> Result<D, Error> {
+    fn unmarshal<'de, D: serde::Deserialize<'de>>(buf: &'de [u8]) -> Result<D, ParseError> {
         C::unmarshal(buf)
     }
 }
@@ -95,7 +95,7 @@ cfg_if! {
             R: FrameRead + Send + Unpin,
             C: Unmarshal + EraseDeserializer + Send
         {
-            async fn read_bytes(&mut self) -> Option<Result<Vec<u8>, Error>> {
+            async fn read_bytes(&mut self) -> Option<Result<Vec<u8>, CodecError>> {
                 self.reader.read_frame().await
                     .map(|res| {
                         res.map(|f| f.payload)
@@ -218,7 +218,7 @@ cfg_if! {
             R: PayloadRead + Send,
             C: Unmarshal + EraseDeserializer + Send
         {
-            async fn read_bytes(&mut self) -> Option<Result<Vec<u8>, Error>> {
+            async fn read_bytes(&mut self) -> Option<Result<Vec<u8>, CodecError>> {
                 self.reader.read_payload().await
                     .map(|res| res.map_err(Into::into))
             }

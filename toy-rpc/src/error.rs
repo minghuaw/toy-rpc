@@ -5,11 +5,14 @@ use std::fmt::Debug;
 use crate::message::{ErrorMessage, MessageId};
 
 pub(crate) type IoError = std::io::Error;
+pub(crate) type ParseError = Box<dyn std::error::Error + Send + Sync>;
 
+/// A subset Error variants
+/// 
 /// Because codec wraps over transport and handles parsing the header
 /// it includes IoError and ParseError
 #[derive(Debug, thiserror::Error)]
-pub(crate) enum CodecError {
+pub enum CodecError {
     /// Errors with IO including that from the transport layer.
     /// 
     /// This includes errors from reading/writing on either the TCP transport
@@ -22,7 +25,7 @@ pub(crate) enum CodecError {
 
     /// Errors with serialization/deserialization
     #[error("{0}")]
-    ParseError(Box<dyn std::error::Error + Send + Sync>),
+    ParseError(#[from] ParseError),
 }
 
 impl From<CodecError> for Error {
@@ -49,7 +52,7 @@ pub enum Error {
 
     /// Errors with serialization/deserialization
     #[error("{0}")]
-    ParseError(Box<dyn std::error::Error + Send + Sync>),
+    ParseError(#[from] ParseError),
 
     /// Errors with server or client
     #[error("InternalError: {0}")]

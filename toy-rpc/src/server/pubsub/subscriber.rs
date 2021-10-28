@@ -75,7 +75,7 @@ impl<T: Topic, C: Unmarshal> Stream for Subscriber<T, C, AckModeNone> {
                         content,
                     } => {
                         let result = C::unmarshal(&content);
-                        Poll::Ready(Some(result))
+                        Poll::Ready(Some(result.map_err(Into::into)))
                     }
                     _ => {
                         let result = Err(Error::Internal("Invalid PubSub item".into()));
@@ -115,7 +115,7 @@ impl<T: Topic, C: Unmarshal> Stream for Subscriber<T, C, AckModeAuto> {
                             return Poll::Ready(Some(Err(err)));
                         }
                         let result = C::unmarshal(&content);
-                        Poll::Ready(Some(result))
+                        Poll::Ready(Some(result.map_err(Into::into)))
                     }
                     _ => {
                         let result = Err(Error::Internal("Invalid PubSub item".into()));

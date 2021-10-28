@@ -2,6 +2,8 @@
 
 use cfg_if::cfg_if;
 
+use crate::error::ParseError;
+
 cfg_if! {
     if #[cfg(feature = "serde_json")] {
 
@@ -16,7 +18,6 @@ cfg_if! {
         use std::io::Cursor; // serde doesn't support AsyncRead
 
         use super::{Codec, DeserializerOwned, Marshal, Unmarshal};
-        use crate::error::Error;
         use crate::macros::impl_inner_deserializer;
 
         use super::EraseDeserializer;
@@ -33,7 +34,7 @@ cfg_if! {
         }
 
         impl<R, W, C> Marshal for Codec<R, W, C> {
-            fn marshal<S: serde::Serialize>(val: &S) -> Result<Vec<u8>, Error> {
+            fn marshal<S: serde::Serialize>(val: &S) -> Result<Vec<u8>, ParseError> {
                 DefaultOptions::new()
                     // .with_fixint_encoding()
                     .with_varint_encoding() // FIXME: varint has problem with i16
@@ -43,7 +44,7 @@ cfg_if! {
         }
 
         impl<R, W, C> Unmarshal for Codec<R, W, C> {
-            fn unmarshal<'de, D: serde::Deserialize<'de>>(buf: &'de [u8]) -> Result<D, Error> {
+            fn unmarshal<'de, D: serde::Deserialize<'de>>(buf: &'de [u8]) -> Result<D, ParseError> {
                 DefaultOptions::new()
                     // .with_fixint_encoding()
                     .with_varint_encoding() // FIXME: varint has problem with i16

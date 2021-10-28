@@ -8,7 +8,7 @@ use cfg_if::cfg_if;
 use erased_serde as erased;
 use std::marker::PhantomData;
 
-use crate::error::Error;
+use crate::error::{CodecError, Error, ParseError};
 use crate::message::{MessageId, Metadata};
 use crate::protocol::InboundBody;
 
@@ -325,19 +325,19 @@ where
 #[async_trait]
 pub trait CodecRead: Send + Unmarshal + EraseDeserializer {
     /// Reads the header of the message.
-    async fn read_header<H>(&mut self) -> Option<Result<H, Error>>
+    async fn read_header<H>(&mut self) -> Option<Result<H, CodecError>>
     where
         H: serde::de::DeserializeOwned,
     {
         Some(
             self.read_bytes()
                 .await?
-                .and_then(|payload| Self::unmarshal(&payload)),
+                .and_then(|payload| Self::unmarshal(&payload).map_err(Into::into)),
         )
     }
 
     /// Reads the body of the message
-    async fn read_body(&mut self) -> Option<Result<Box<InboundBody>, Error>> {
+    async fn read_body(&mut self) -> Option<Result<Box<InboundBody>, CodecError>> {
         match self.read_bytes().await? {
             Ok(payload) => {
                 let de = Self::from_bytes(payload);
@@ -348,7 +348,7 @@ pub trait CodecRead: Send + Unmarshal + EraseDeserializer {
     }
 
     /// Reads the frame body as raw bytes
-    async fn read_bytes(&mut self) -> Option<Result<Vec<u8>, Error>>;
+    async fn read_bytes(&mut self) -> Option<Result<Vec<u8>, CodecError>>;
 }
 
 /// A codec that can write the header and body of a message
@@ -422,13 +422,13 @@ cfg_if! {
 /// This trait should be implemented by serializer (Codec) to serialize messages into bytes
 pub trait Marshal {
     /// Marshals/serializes an object into `Vec<u8>`
-    fn marshal<S: serde::Serialize>(val: &S) -> Result<Vec<u8>, Error>;
+    fn marshal<S: serde::Serialize>(val: &S) -> Result<Vec<u8>, ParseError>;
 }
 
 /// This trait should be implemented by deserializer (Codec) to deserialize messages from bytes
 pub trait Unmarshal {
     /// Unmarshals an object from bytes
-    fn unmarshal<'de, D: serde::Deserialize<'de>>(buf: &'de [u8]) -> Result<D, Error>;
+    fn unmarshal<'de, D: serde::Deserialize<'de>>(buf: &'de [u8]) -> Result<D, ParseError>;
 }
 
 /// This trait should be implemented by a codec to allow creating a `erased_serde::Deserilizer` from

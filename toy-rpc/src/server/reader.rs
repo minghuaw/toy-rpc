@@ -86,7 +86,7 @@ impl<T: CodecRead> Reader for ServerReader<T> {
         if let Some(header) = self.reader.read_header().await {
             let header: Header = match header {
                 Ok(header) => header,
-                Err(err) => return Running::Continue(Err(err)),
+                Err(err) => return Running::Continue(Err(err.into())),
             };
             log::debug!("{:?}", &header);
 
@@ -99,7 +99,7 @@ impl<T: CodecRead> Reader for ServerReader<T> {
                     let deserializer = match self.reader.read_body().await {
                         Some(res) => match res {
                             Ok(de) => de,
-                            Err(err) => return Running::Continue(Err(err)),
+                            Err(err) => return Running::Continue(Err(err.into())),
                         },
                         None => return Running::Stop,
                     };
@@ -128,7 +128,7 @@ impl<T: CodecRead> Reader for ServerReader<T> {
                     let _ = match self.reader.read_body().await {
                         Some(res) => match res {
                             Ok(de) => de,
-                            Err(err) => return Running::Continue(Err(err)),
+                            Err(err) => return Running::Continue(Err(err.into())),
                         },
                         None => return Running::Stop,
                     };
@@ -140,7 +140,7 @@ impl<T: CodecRead> Reader for ServerReader<T> {
                     let deserializer = match self.reader.read_body().await {
                         Some(res) => match res {
                             Ok(de) => de,
-                            Err(err) => return Running::Continue(Err(err)),
+                            Err(err) => return Running::Continue(Err(err.into())),
                         },
                         None => return Running::Stop,
                     };
@@ -162,7 +162,7 @@ impl<T: CodecRead> Reader for ServerReader<T> {
                     let content = match self.reader.read_bytes().await {
                         Some(res) => match res {
                             Ok(b) => b,
-                            Err(err) => return Running::Continue(Err(err)),
+                            Err(err) => return Running::Continue(Err(err.into())),
                         },
                         None => return Running::Stop,
                     };

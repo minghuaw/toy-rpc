@@ -4,6 +4,7 @@ use futures::Sink;
 use futures::SinkExt;
 
 use super::broker::ClientBrokerItem;
+use crate::error::CodecError;
 use crate::protocol::{Header, InboundBody};
 use crate::pubsub::SeqId;
 use crate::{codec::CodecRead, Error};
@@ -27,12 +28,12 @@ impl<R: CodecRead> brw::Reader for ClientReader<R> {
                 Ok(header) => header,
                 Err(err) => {
                     match err {
-                        Error::IoError(e) => {
+                        CodecError::IoError(e) => {
                             // pass back IoError
                             let _ = broker.send(ClientBrokerItem::Stop(Some(e))).await;
                             return Running::Stop
                         },
-                        _ => return Running::Continue(Err(err))
+                        _ => return Running::Continue(Err(err.into()))
                     }
                 },
             };
@@ -44,7 +45,7 @@ impl<R: CodecRead> brw::Reader for ClientReader<R> {
                     let deserializer: Box<InboundBody> = match self.reader.read_body().await {
                         Some(res) => match res {
                             Ok(de) => de,
-                            Err(err) => return Running::Continue(Err(err)),
+                            Err(err) => return Running::Continue(Err(err.into())),
                         },
                         None => return Running::Stop,
                     };
@@ -62,7 +63,7 @@ impl<R: CodecRead> brw::Reader for ClientReader<R> {
                     let deserializer: Box<InboundBody> = match self.reader.read_body().await {
                         Some(res) => match res {
                             Ok(de) => de,
-                            Err(err) => return Running::Continue(Err(err)),
+                            Err(err) => return Running::Continue(Err(err.into())),
                         },
                         None => return Running::Stop,
                     };
