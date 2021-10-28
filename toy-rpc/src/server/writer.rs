@@ -97,7 +97,7 @@ impl<W: CodecWrite + GracefulShutdown> Writer for ServerWriter<W> {
     type Ok = ();
     type Error = Error;
 
-    async fn op(&mut self, item: Self::Item) -> Running<Result<Self::Ok, Self::Error>> {
+    async fn op(&mut self, item: Self::Item) -> Running<Result<Self::Ok, Self::Error>, Option<Self::Error>> {
         let res = match item {
             ServerWriterItem::Response { id, result } => self.write_response(id, result).await,
             ServerWriterItem::Publication {
@@ -110,12 +110,12 @@ impl<W: CodecWrite + GracefulShutdown> Writer for ServerWriter<W> {
             }
             ServerWriterItem::Ack { id } => self.write_ack(id).await,
             ServerWriterItem::Stopping => Ok(self.writer.close().await),
-            ServerWriterItem::Stop => return Running::Stop,
+            ServerWriterItem::Stop => return Running::Stop(None),
         };
         Running::Continue(res)
     }
 
-    async fn handle_result(res: Result<Self::Ok, Self::Error>) -> Running<()> {
+    async fn handle_result(res: Result<Self::Ok, Self::Error>) -> Running<(), Option<Self::Error>> {
         if let Err(err) = res {
             log::error!("{}", err);
         }

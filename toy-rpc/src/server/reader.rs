@@ -79,7 +79,7 @@ impl<T: CodecRead> Reader for ServerReader<T> {
     type Ok = ();
     type Error = Error;
 
-    async fn op<B>(&mut self, mut broker: B) -> Running<Result<Self::Ok, Self::Error>>
+    async fn op<B>(&mut self, mut broker: B) -> Running<Result<Self::Ok, Self::Error>, Option<Self::Error>>
     where
         B: Sink<Self::BrokerItem, Error = flume::SendError<Self::BrokerItem>> + Send + Unpin,
     {
@@ -101,7 +101,7 @@ impl<T: CodecRead> Reader for ServerReader<T> {
                             Ok(de) => de,
                             Err(err) => return Running::Continue(Err(err.into())),
                         },
-                        None => return Running::Stop,
+                        None => return Running::Stop(None),
                     };
                     match service(&self.services, service_method) {
                         Ok((call, method)) => {
@@ -130,7 +130,7 @@ impl<T: CodecRead> Reader for ServerReader<T> {
                             Ok(de) => de,
                             Err(err) => return Running::Continue(Err(err.into())),
                         },
-                        None => return Running::Stop,
+                        None => return Running::Stop(None),
                     };
                     Running::Continue(Err(Error::Internal(
                         format!("Server received Response {{id: {}, is_ok: {}}}", id, is_ok).into(),
@@ -142,7 +142,7 @@ impl<T: CodecRead> Reader for ServerReader<T> {
                             Ok(de) => de,
                             Err(err) => return Running::Continue(Err(err.into())),
                         },
-                        None => return Running::Stop,
+                        None => return Running::Stop(None),
                     };
                     match handle_cancel(id, deserializer) {
                         Ok(_) => {
@@ -164,7 +164,7 @@ impl<T: CodecRead> Reader for ServerReader<T> {
                             Ok(b) => b,
                             Err(err) => return Running::Continue(Err(err.into())),
                         },
-                        None => return Running::Stop,
+                        None => return Running::Stop(None),
                     };
                     Running::Continue(
                         broker
@@ -225,11 +225,11 @@ impl<T: CodecRead> Reader for ServerReader<T> {
                 log::error!("{}", err)
             }
 
-            Running::Stop
+            Running::Stop(None)
         }
     }
 
-    async fn handle_result(res: Result<Self::Ok, Self::Error>) -> Running<()> {
+    async fn handle_result(res: Result<Self::Ok, Self::Error>) -> Running<(), Option<Self::Error>> {
         if let Err(err) = res {
             log::error!("{}", err);
         }

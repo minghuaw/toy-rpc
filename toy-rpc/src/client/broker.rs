@@ -601,7 +601,7 @@ macro_rules! impl_broker_for_ack_modes {
                     ctx: &Arc<Context<Self::Item>>,
                     item: Self::Item,
                     mut writer: W,
-                ) -> Running<Result<Self::Ok, Self::Error>>
+                ) -> Running<Result<Self::Ok, Self::Error>, Option<Self::Error>>
                 where
                     W: Sink<Self::WriterItem, Error = flume::SendError<Self::WriterItem>> + Send + Unpin,
                 {
@@ -660,10 +660,12 @@ macro_rules! impl_broker_for_ack_modes {
                                         todo!()
                                     }
                                 },
-                                ClientBrokerState::Stopping => {
-                                },
+                                ClientBrokerState::Stopping => { },
                                 ClientBrokerState::Stopped => {
-                                    return Running::Stop
+                                    return Running::Stop(Some(IoError::new(
+                                        std::io::ErrorKind::Other,
+                                        "Connection is already stopped"
+                                    ).into()))
                                 }
                             }
 
@@ -671,7 +673,7 @@ macro_rules! impl_broker_for_ack_modes {
                                 log::debug!("{}", err);
                             }
                             self.state = ClientBrokerState::Stopped;
-                            return Running::Stop
+                            return Running::Stop(io_err.map(Into::into))
                         }
                     };
 

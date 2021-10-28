@@ -288,7 +288,7 @@ macro_rules! impl_server_broker_for_ack_modes {
                     ctx: &Arc<brw::Context<Self::Item>>,
                     item: Self::Item,
                     mut writer: W,
-                ) -> Running<Result<Self::Ok, Self::Error>>
+                ) -> Running<Result<Self::Ok, Self::Error>, Option<Self::Error>>
                 where
                     W: Sink<Self::WriterItem, Error = flume::SendError<Self::WriterItem>> + Send + Unpin,
                 {
@@ -344,7 +344,7 @@ macro_rules! impl_server_broker_for_ack_modes {
                                 log::debug!("{}", err);
                             }
                             log::debug!("Client connection is closed");
-                            return Running::Stop
+                            return Running::Stop(None)
                         }
                     };
 

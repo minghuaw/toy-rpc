@@ -73,7 +73,7 @@ cfg_if! {
             type Ok = ();
             type Error = Error;
 
-            async fn op(&mut self, item: Self::Item) -> Running<Result<Self::Ok, Self::Error>> {
+            async fn op(&mut self, item: Self::Item) -> Running<Result<Self::Ok, Self::Error>, Option<Self::Error>> {
                 let res = match item {
                     ClientWriterItem::Request(id, service_method, duration, body) => {
                         let header = Header::Request{id, service_method, timeout: duration};
@@ -114,21 +114,21 @@ cfg_if! {
                         Ok(self.writer.close().await)
                     },
                     ClientWriterItem::Stop => {
-                        return Running::Stop
+                        return Running::Stop(None)
                     }
                 };
 
                 Running::Continue(res)
             }
 
-            async fn handle_result(res: Result<Self::Ok, Self::Error>) -> Running<()> {
+            async fn handle_result(res: Result<Self::Ok, Self::Error>) -> Running<(), Option<Self::Error>> {
                 if let Err(err) = res {
                     #[cfg(feature = "debug")]
                     log::error!("{:?}", err);
 
                     // Drop the writer if unable to write to connection
-                    if let Error::IoError(_) = err {
-                        return Running::Stop
+                    if let Error::IoError(_) = &err {
+                        return Running::Stop(Some(err))
                     }
                 }
                 Running::Continue(())

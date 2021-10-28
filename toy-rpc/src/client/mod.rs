@@ -61,7 +61,7 @@ pub struct Client<AckMode> {
     default_timeout: Duration,
     next_timeout: AtomicCell<Option<Duration>>,
     broker: Sender<ClientBrokerItem>,
-    broker_handle: Option<JoinHandle<()>>,
+    broker_handle: Option<JoinHandle<Result<(), Error>>>,
     subscriptions: HashMap<String, TypeId>,
 
     ack_mode: PhantomData<AckMode>,

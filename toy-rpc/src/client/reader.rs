@@ -5,6 +5,7 @@ use futures::SinkExt;
 
 use super::broker::ClientBrokerItem;
 use crate::error::CodecError;
+use crate::error::IoError;
 use crate::protocol::{Header, InboundBody};
 use crate::pubsub::SeqId;
 use crate::{codec::CodecRead, Error};
@@ -19,7 +20,7 @@ impl<R: CodecRead> brw::Reader for ClientReader<R> {
     type Ok = ();
     type Error = Error;
 
-    async fn op<B>(&mut self, mut broker: B) -> Running<Result<Self::Ok, Self::Error>>
+    async fn op<B>(&mut self, mut broker: B) -> Running<Result<Self::Ok, Self::Error>, Option<Self::Error>>
     where
         B: Sink<Self::BrokerItem, Error = flume::SendError<Self::BrokerItem>> + Send + Unpin,
     {
@@ -30,8 +31,10 @@ impl<R: CodecRead> brw::Reader for ClientReader<R> {
                     match err {
                         CodecError::IoError(e) => {
                             // pass back IoError
-                            let _ = broker.send(ClientBrokerItem::Stop(Some(e))).await;
-                            return Running::Stop;
+                            match broker.send(ClientBrokerItem::Stop(Some(e))).await {
+                                Ok(_) => return Running::Stop(None),
+                                Err(e) => return Running::Stop(Some(e.into()))
+                            }
                         }
                         _ => return Running::Continue(Err(err.into())),
                     }
@@ -47,7 +50,13 @@ impl<R: CodecRead> brw::Reader for ClientReader<R> {
                             Ok(de) => de,
                             Err(err) => return Running::Continue(Err(err.into())),
                         },
-                        None => return Running::Stop,
+                        None => {
+                            let err = IoError::new(std::io::ErrorKind::UnexpectedEof, "Expecting response body");
+                            match broker.send(ClientBrokerItem::Stop(Some(err))).await {
+                                Ok(_) => return Running::Stop(None),
+                                Err(e) => return Running::Stop(Some(e.into()))
+                            }
+                        },
                     };
                     let result = match is_ok {
                         true => Ok(deserializer),
@@ -65,7 +74,13 @@ impl<R: CodecRead> brw::Reader for ClientReader<R> {
                             Ok(de) => de,
                             Err(err) => return Running::Continue(Err(err.into())),
                         },
-                        None => return Running::Stop,
+                        None => {
+                            let err = IoError::new(std::io::ErrorKind::UnexpectedEof, "Expecting Publish body");
+                            match broker.send(ClientBrokerItem::Stop(Some(err))).await {
+                                Ok(_) => return Running::Stop(None),
+                                Err(e) => return Running::Stop(Some(e.into()))
+                            }
+                        },
                     };
                     Running::Continue(
                         broker
@@ -92,7 +107,7 @@ impl<R: CodecRead> brw::Reader for ClientReader<R> {
         } else {
             // A WebSocket Close frame will return None to the reader
             if broker.send(ClientBrokerItem::Stop(None)).await.is_ok() {}
-            Running::Stop
+            Running::Stop(None)
         }
     }
 }
