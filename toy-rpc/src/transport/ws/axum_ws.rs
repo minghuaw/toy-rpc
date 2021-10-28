@@ -34,6 +34,8 @@ impl PayloadWrite for SinkHalf<SplitSink<WebSocket, Message>, CanSink> {
     async fn write_payload(&mut self, payload: &[u8]) -> Result<(), IoError> {
         let msg = Message::Binary(payload.to_vec());
 
+        // FIXME: `axum` has wrapped all errors into a trait object and doesn't 
+        // provide public API to retrieve the original error.
         self.send(msg).await
             .map_err(|e| into_io_err_other(&e))
     }
