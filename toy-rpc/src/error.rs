@@ -6,6 +6,34 @@ use crate::message::{ErrorMessage, MessageId};
 
 pub(crate) type IoError = std::io::Error;
 
+/// Because codec wraps over transport and handles parsing the header
+/// it includes IoError and ParseError
+#[derive(Debug, thiserror::Error)]
+pub(crate) enum CodecError {
+    /// Errors with IO including that from the transport layer.
+    /// 
+    /// This includes errors from reading/writing on either the TCP transport
+    /// or websocket transport. If the underlying error isn't a native 
+    /// `std::io::Error`, it will be converted to `std::io::Error` with `ErrorKind::Other`
+    /// 
+    /// This is expected to see changes in version 0.9.
+    #[error("{0:?}")]
+    IoError(#[from] std::io::Error),
+
+    /// Errors with serialization/deserialization
+    #[error("{0}")]
+    ParseError(Box<dyn std::error::Error + Send + Sync>),
+}
+
+impl From<CodecError> for Error {
+    fn from(err: CodecError) -> Self {
+        match err {
+            CodecError::IoError(err) => Error::IoError(err),
+            CodecError::ParseError(err) => Error::ParseError(err)
+        }
+    }
+}
+
 /// Custom error type
 #[derive(Debug, thiserror::Error)]
 pub enum Error {

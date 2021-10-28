@@ -2,7 +2,7 @@
 
 use async_trait::async_trait;
 
-use crate::error::{Error, IoError};
+use crate::error::{IoError};
 
 #[cfg(all(
     any(
