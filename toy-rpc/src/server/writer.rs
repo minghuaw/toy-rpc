@@ -44,7 +44,8 @@ impl<W: CodecWrite> ServerWriter<W> {
                 log::trace!("Message {} Success", &id);
                 let header = Header::Response { id, is_ok: true };
                 self.writer.write_header(header).await?;
-                self.writer.write_body(id, &body).await
+                self.writer.write_body(id, &body).await?;
+                Ok(())
             }
             Err(err) => {
                 log::trace!("Message {} Error", &id);
@@ -57,7 +58,8 @@ impl<W: CodecWrite> ServerWriter<W> {
                     }
                 };
                 self.writer.write_header(header).await?;
-                self.writer.write_body(id, &msg).await
+                self.writer.write_body(id, &msg).await?;
+                Ok(())
             }
         }
     }
@@ -70,13 +72,15 @@ impl<W: CodecWrite> ServerWriter<W> {
     ) -> Result<(), Error> {
         let header = Header::Publish { id, topic };
         self.writer.write_header(header).await?;
-        self.writer.write_body_bytes(id, &content).await
+        self.writer.write_body_bytes(id, &content).await?;
+        Ok(())
     }
 
     // Ack message
     async fn write_ack(&mut self, id: MessageId) -> Result<(), Error> {
         let header = Header::Ack(id);
-        self.writer.write_header(header).await
+        self.writer.write_header(header).await?;
+        Ok(())
     }
 }
 

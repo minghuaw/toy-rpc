@@ -110,7 +110,7 @@ cfg_if! {
             W: FrameWrite + Send + Unpin,
             C: Marshal + Send,
         {
-            async fn write_header<H>(&mut self, header: H) -> Result<(), Error>
+            async fn write_header<H>(&mut self, header: H) -> Result<(), CodecError>
             where
                 H: serde::Serialize + Metadata + Send,
             {
@@ -129,7 +129,7 @@ cfg_if! {
                 &mut self,
                 id: MessageId,
                 body: &(dyn erased::Serialize + Send + Sync),
-            ) -> Result<(), Error> {
+            ) -> Result<(), CodecError> {
                 let writer = &mut self.writer;
                 let buf = Self::marshal(&body)?;
                 // let frame = Frame::new(id.to_owned(), 1, PayloadType::Data, buf.to_owned());
@@ -138,7 +138,7 @@ cfg_if! {
                 Ok(())
             }
 
-            async fn write_body_bytes(&mut self, id: MessageId, bytes: &[u8]) -> Result<(), Error> {
+            async fn write_body_bytes(&mut self, id: MessageId, bytes: &[u8]) -> Result<(), IoError> {
                 // let frame = Frame::new(*id, 1, PayloadType::Data, bytes);
                 let frame_header = FrameHeader::new(id, 1, PayloadType::Data, bytes.len() as u32);
                 self.writer.write_frame(frame_header, bytes).await?;
@@ -231,7 +231,7 @@ cfg_if! {
             W: PayloadWrite + Send,
             C: Marshal + Send,
         {
-            async fn write_header<H>(&mut self, header: H) -> Result<(), Error>
+            async fn write_header<H>(&mut self, header: H) -> Result<(), CodecError>
             where
                 H: serde::Serialize + Metadata + Send,
             {
@@ -245,14 +245,14 @@ cfg_if! {
                 &mut self,
                 _: MessageId,
                 body: &(dyn erased::Serialize + Send + Sync),
-            ) -> Result<(), Error> {
+            ) -> Result<(), CodecError> {
                 let buf = Self::marshal(&body)?;
                 let writer = &mut self.writer;
                 writer.write_payload(&buf).await?;
                 Ok(())
             }
 
-            async fn write_body_bytes(&mut self, _: MessageId, bytes: &[u8]) -> Result<(), Error> {
+            async fn write_body_bytes(&mut self, _: MessageId, bytes: &[u8]) -> Result<(), IoError> {
                 self.writer.write_payload(bytes).await?;
                 Ok(())
             }

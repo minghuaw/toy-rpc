@@ -51,7 +51,8 @@ cfg_if! {
             ) -> Result<(), Error> {
                 let id = header.id();
                 self.writer.write_header(header).await?;
-                self.writer.write_body(id, body).await
+                self.writer.write_body(id, body).await?;
+                Ok(())
             }
 
             pub async fn write_publish_item(
@@ -61,7 +62,8 @@ cfg_if! {
             ) -> Result<(), Error> {
                 let id = header.id();
                 self.writer.write_header(header).await?;
-                self.writer.write_body_bytes(id, bytes).await
+                self.writer.write_body_bytes(id, bytes).await?;
+                Ok(())
             }
         }
 
@@ -106,6 +108,7 @@ cfg_if! {
                         log::debug!("{:?}", &header);
                         // There is no body frame for Ack message
                         self.writer.write_header(header).await
+                            .map_err(Into::into)
                     },
                     ClientWriterItem::Stopping => {
                         Ok(self.writer.close().await)

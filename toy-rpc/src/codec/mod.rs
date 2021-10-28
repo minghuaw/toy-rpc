@@ -8,7 +8,7 @@ use cfg_if::cfg_if;
 use erased_serde as erased;
 use std::marker::PhantomData;
 
-use crate::error::{CodecError, Error, IoError, ParseError};
+use crate::error::{CodecError, IoError, ParseError};
 use crate::message::{MessageId, Metadata};
 use crate::protocol::InboundBody;
 
@@ -356,7 +356,7 @@ pub trait CodecRead: Send + Unmarshal + EraseDeserializer {
 #[async_trait]
 pub trait CodecWrite: Send + Marshal {
     /// Writes the header of the message
-    async fn write_header<H>(&mut self, header: H) -> Result<(), Error>
+    async fn write_header<H>(&mut self, header: H) -> Result<(), CodecError>
     where
         H: serde::Serialize + Metadata + Send;
 
@@ -365,10 +365,10 @@ pub trait CodecWrite: Send + Marshal {
         &mut self,
         id: MessageId,
         body: &(dyn erased::Serialize + Send + Sync),
-    ) -> Result<(), Error>;
+    ) -> Result<(), CodecError>;
 
     /// Writes body as raw bytes
-    async fn write_body_bytes(&mut self, id: MessageId, bytes: &[u8]) -> Result<(), Error>;
+    async fn write_body_bytes(&mut self, id: MessageId, bytes: &[u8]) -> Result<(), IoError>;
 }
 
 cfg_if! {
