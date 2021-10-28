@@ -32,13 +32,13 @@ impl WebSocketConn<tide_websockets::WebSocketConnection, CannotSink> {
 
 #[async_trait]
 impl PayloadRead for StreamHalf<tide_websockets::WebSocketConnection, CannotSink> {
-    async fn read_payload(&mut self) -> Option<Result<Vec<u8>, Error>> {
+    async fn read_payload(&mut self) -> Option<Result<Vec<u8>, IoError>> {
         match self.inner.next().await? {
             Err(e) => {
-                return Some(Err(Error::IoError(std::io::Error::new(
+                return Some(Err(std::io::Error::new(
                     ErrorKind::InvalidData,
                     e.to_string(),
-                ))))
+                )))
             }
             Ok(msg) => {
                 if let tide_websockets::Message::Binary(bytes) = msg {
@@ -47,10 +47,10 @@ impl PayloadRead for StreamHalf<tide_websockets::WebSocketConnection, CannotSink
                     return None;
                 }
 
-                Some(Err(Error::IoError(std::io::Error::new(
+                Some(Err(std::io::Error::new(
                     ErrorKind::InvalidData,
                     "Expecting WebSocket::Message::Binary",
-                ))))
+                )))
             }
         }
     }

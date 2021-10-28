@@ -13,7 +13,7 @@ use std::{io::ErrorKind, marker::PhantomData};
 
 use super::{PayloadRead, PayloadWrite};
 use crate::error::IoError;
-use crate::{error::Error, util::GracefulShutdown};
+use crate::{util::GracefulShutdown};
 
 type WsSinkHalf<S> = SinkHalf<SplitSink<S, Message>, CanSink>;
 type WsStreamHalf<S> = StreamHalf<SplitStream<S>, CanSink>;
@@ -138,13 +138,13 @@ impl<T> PayloadRead for StreamHalf<SplitStream<WebSocketStream<T>>, CanSink>
 where
     T: AsyncRead + AsyncWrite + Send + Unpin,
 {
-    async fn read_payload(&mut self) -> Option<Result<Vec<u8>, Error>> {
+    async fn read_payload(&mut self) -> Option<Result<Vec<u8>, IoError>> {
         match self.next().await? {
             Err(e) => {
-                return Some(Err(Error::IoError(std::io::Error::new(
+                return Some(Err(std::io::Error::new(
                     ErrorKind::InvalidData,
                     e.to_string(),
-                ))))
+                )))
             }
             Ok(msg) => {
                 if let Message::Binary(bytes) = msg {
@@ -153,10 +153,10 @@ where
                     return None;
                 }
 
-                Some(Err(Error::IoError(std::io::Error::new(
+                Some(Err(std::io::Error::new(
                     ErrorKind::InvalidData,
                     "Expecting WebSocket::Message::Binary",
-                ))))
+                )))
             }
         }
     }

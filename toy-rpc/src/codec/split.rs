@@ -219,6 +219,7 @@ cfg_if! {
         {
             async fn read_bytes(&mut self) -> Option<Result<Vec<u8>, Error>> {
                 self.reader.read_payload().await
+                    .map(|res| res.map_err(Into::into))
             }
         }
 

@@ -21,7 +21,7 @@ pub(crate) mod ws;
 #[async_trait]
 pub trait PayloadRead {
     /// Reads bytes from the payload
-    async fn read_payload(&mut self) -> Option<Result<Vec<u8>, Error>>;
+    async fn read_payload(&mut self) -> Option<Result<Vec<u8>, IoError>>;
 }
 
 /// Writes bytes as payload on transport protocols that carry payload (ie. WebSocket)

@@ -29,7 +29,9 @@ rustdoc-args = ["--cfg", "feature=\"docs\""]
 [features]
 default = [
     "serde_bincode",
-    "http_tide",
+    "http_axum",
+    # "http_warp",
+    # "http_tide",
     "tokio",
     "server",
     "client",

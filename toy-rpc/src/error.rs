@@ -4,12 +4,18 @@ use std::fmt::Debug;
 
 use crate::message::{ErrorMessage, MessageId};
 
-pub type IoError = std::io::Error;
+pub(crate) type IoError = std::io::Error;
 
 /// Custom error type
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
-    /// Errors with IO including that from the transport layer
+    /// Errors with IO including that from the transport layer.
+    /// 
+    /// This includes errors from reading/writing on either the TCP transport
+    /// or websocket transport. If the underlying error isn't a native 
+    /// `std::io::Error`, it will be converted to `std::io::Error` with `ErrorKind::Other`
+    /// 
+    /// This is expected to see changes in version 0.9.
     #[error("{0:?}")]
     IoError(#[from] std::io::Error),
 
