@@ -11,6 +11,8 @@ use crate::error::IoError;
 use crate::message::MessageId;
 use crate::{error::Error, util::GracefulShutdown};
 
+use super::ws::into_io_err_other;
+
 const INVALID_PROTOCOL: &str = "Magic byte mismatch.\rClient may be using a different protocol or version.\rClient of version <0.5.0 is not compatible with Server of version >0.5.0";
 const END_FRAME_ID: FrameId = 131;
 
@@ -48,7 +50,7 @@ lazy_static! {
 #[async_trait]
 pub trait FrameRead {
     /// Reads a frame
-    async fn read_frame(&mut self) -> Option<Result<Frame, Error>>;
+    async fn read_frame(&mut self) -> Option<Result<Frame, IoError>>;
 }
 
 /// Trait for custom binary transport protocol
@@ -178,15 +180,15 @@ impl Frame {
 
 #[async_trait]
 impl<R: AsyncRead + Unpin + Send> FrameRead for R {
-    async fn read_frame(&mut self) -> Option<Result<Frame, Error>> {
+    async fn read_frame(&mut self) -> Option<Result<Frame, IoError>> {
         // read magic first
         let magic = &mut [0];
         let _ = self.read_exact(magic).await.ok()?;
         if magic[0] != MAGIC {
-            return Some(Err(Error::IoError(std::io::Error::new(
+            return Some(Err(std::io::Error::new(
                 ErrorKind::InvalidData,
                 INVALID_PROTOCOL,
-            ))));
+            )));
         }
 
         // read header
@@ -194,7 +196,10 @@ impl<R: AsyncRead + Unpin + Send> FrameRead for R {
         let _ = self.read_exact(&mut buf).await.ok()?;
         let header = match FrameHeader::from_slice(&buf) {
             Ok(h) => h,
-            Err(e) => return Some(Err(e)),
+            Err(e) => {
+                let err = into_io_err_other(&e);
+                return Some(Err(err))
+            },
         };
 
         // determine if end frame is received

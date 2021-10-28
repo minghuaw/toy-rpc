@@ -4,7 +4,7 @@
 use async_trait::async_trait;
 use std::marker::PhantomData;
 
-use crate::util::GracefulShutdown;
+use crate::{error::IoError, util::GracefulShutdown};
 
 use super::*;
 
@@ -99,6 +99,7 @@ cfg_if! {
                 self.reader.read_frame().await
                     .map(|res| {
                         res.map(|f| f.payload)
+                            .map_err(Into::into)
                     })
             }
         }
