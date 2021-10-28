@@ -2,6 +2,8 @@
 
 use cfg_if::cfg_if;
 
+use crate::error::ParseError;
+
 cfg_if! {
     if #[cfg(any(
         feature = "async_std_runtime",
@@ -50,7 +52,7 @@ cfg_if! {
         }
 
         impl<R, W, C> Marshal for Codec<R, W, C> {
-            fn marshal<S: serde::Serialize>(val: &S) -> Result<Vec<u8>, Error> {
+            fn marshal<S: serde::Serialize>(val: &S) -> Result<Vec<u8>, ParseError> {
                 serde_json::to_vec(val)
                     .map(|mut v| {
                         v.push(b'\n');
@@ -61,7 +63,7 @@ cfg_if! {
         }
 
         impl<R, W, C> Unmarshal for Codec<R, W, C> {
-            fn unmarshal<'de, D: serde::Deserialize<'de>>(buf: &'de [u8]) -> Result<D, Error> {
+            fn unmarshal<'de, D: serde::Deserialize<'de>>(buf: &'de [u8]) -> Result<D, ParseError> {
                 serde_json::from_slice(buf).map_err(|e| e.into())
             }
         }

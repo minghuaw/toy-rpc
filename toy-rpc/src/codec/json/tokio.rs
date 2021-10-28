@@ -2,6 +2,8 @@
 
 use cfg_if::cfg_if;
 
+use crate::error::{CodecError, IoError};
+
 cfg_if! {
     if #[cfg(feature = "serde_bincode")] {
 
@@ -63,7 +65,7 @@ cfg_if! {
             //     }
             // }
 
-            async fn read_bytes(&mut self) -> Option<Result<Vec<u8>, Error>> {
+            async fn read_bytes(&mut self) -> Option<Result<Vec<u8>, IoError>> {
                 let mut buf = String::new();
                 match self.reader.read_line(&mut buf).await {
                     Ok(n) => {
@@ -85,7 +87,7 @@ cfg_if! {
             W: AsyncWrite + Send + Unpin,
             C: Marshal + Send,
         {
-            async fn write_header<H>(&mut self, header: H) -> Result<(), Error>
+            async fn write_header<H>(&mut self, header: H) -> Result<(), CodecError>
             where
                 H: serde::Serialize + Metadata + Send,
             {
@@ -102,7 +104,7 @@ cfg_if! {
                 &mut self,
                 _id: MessageId,
                 body: &(dyn erased::Serialize + Send + Sync),
-            ) -> Result<(), Error> {
+            ) -> Result<(), CodecError> {
                 let buf = Self::marshal(&body)?;
 
                 let _ = self.writer.write(&buf).await?;
@@ -111,7 +113,7 @@ cfg_if! {
                 Ok(())
             }
 
-            async fn write_body_bytes(&mut self, _: MessageId, bytes: &[u8]) -> Result<(), Error> {
+            async fn write_body_bytes(&mut self, _: MessageId, bytes: &[u8]) -> Result<(), IoError> {
                 let _ = self.writer.write(bytes).await?;
                 self.writer.flush().await?;
                 Ok(())
