@@ -13,7 +13,7 @@ use std::{io::ErrorKind, marker::PhantomData};
 
 use super::{PayloadRead, PayloadWrite};
 use crate::error::IoError;
-use crate::{util::GracefulShutdown};
+use crate::util::GracefulShutdown;
 
 type WsSinkHalf<S> = SinkHalf<SplitSink<S, Message>, CanSink>;
 type WsStreamHalf<S> = StreamHalf<SplitStream<S>, CanSink>;
@@ -34,10 +34,7 @@ pub(crate) struct CanSink {}
 
 pub(crate) fn into_io_err_other(err: &impl std::fmt::Display) -> IoError {
     let msg = format!("{}", err);
-    std::io::Error::new(
-        std::io::ErrorKind::Other,
-        msg
-    )
+    std::io::Error::new(std::io::ErrorKind::Other, msg)
 }
 
 pub struct WebSocketConn<S, N> {
@@ -173,12 +170,10 @@ where
 
         match self.send(msg).await {
             Ok(_) => Ok(()),
-            Err(err) => {
-                match err {
-                    error::Error::Io(e) => Err(e),
-                    _ => Err(into_io_err_other(&err))
-                }
-            }
+            Err(err) => match err {
+                error::Error::Io(e) => Err(e),
+                _ => Err(into_io_err_other(&err)),
+            },
         }
     }
 }
@@ -194,7 +189,7 @@ where
 
         if let Err(err) = self.send(msg).await {
             match err {
-                tungstenite::Error::ConnectionClosed => { },
+                tungstenite::Error::ConnectionClosed => {}
                 // tungstenite::Error::AlreadyClosed => { },
                 e @ _ => {
                     log::error!("{}", e)

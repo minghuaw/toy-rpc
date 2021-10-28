@@ -80,13 +80,15 @@ pub(crate) fn parse_impl_self_ty_path(self_ty: &syn::Type) -> Result<&syn::TypeP
 }
 
 #[cfg(any(feature = "server", all(feature = "client", feature = "runtime",)))]
-pub(crate) fn parse_type_ident_from_type_path(path: &syn::TypePath) -> Result<&syn::Ident, syn::Error> {
+pub(crate) fn parse_type_ident_from_type_path(
+    path: &syn::TypePath,
+) -> Result<&syn::Ident, syn::Error> {
     match path.path.segments.last() {
         Some(seg) => Ok(&seg.ident),
         None => Err(syn::Error::new_spanned(
             quote::quote! {},
             "Expecting type ident",
-        ))
+        )),
     }
 }
 

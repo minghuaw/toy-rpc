@@ -21,6 +21,7 @@ cfg_if! {
 
 use crate::{
     codec::Marshal,
+    error::IoError,
     message::MessageId,
     protocol::{InboundBody, OutboundBody},
     pubsub::{AckModeAuto, AckModeManual, AckModeNone, SeqId},
@@ -87,8 +88,8 @@ pub(crate) enum ClientBrokerItem {
     Stopping,
 
     /// Stop
-    /// 
-    /// 
+    ///
+    ///
     Stop(Option<std::io::Error>),
 }
 
@@ -425,16 +426,24 @@ impl<AckMode, C> ClientBroker<AckMode, C> {
         }
     }
 
-    async fn handle_stopping<'w, W>(
-        &'w mut self,
-        writer: &'w mut W
-    ) -> Result<(), Error> 
+    async fn handle_stopping<'w, W>(&'w mut self, writer: &'w mut W) -> Result<(), Error>
     where
         W: Sink<ClientWriterItem, Error = flume::SendError<ClientWriterItem>> + Send + Unpin,
     {
-        self.state = ClientBrokerState::Stopping;
+        match self.state {
+            ClientBrokerState::Started => self.state = ClientBrokerState::Stopping,
+            ClientBrokerState::Stopping => self.state = ClientBrokerState::Stopped,
+            _ => {
+                return Err(Error::IoError(IoError::new(
+                    std::io::ErrorKind::NotConnected,
+                    "Connection is already closed",
+                )))
+            }
+        }
 
-        writer.send(ClientWriterItem::Stopping).await
+        writer
+            .send(ClientWriterItem::Stopping)
+            .await
             .map_err(Into::into)
     }
 }
@@ -640,18 +649,18 @@ macro_rules! impl_broker_for_ack_modes {
                             self.handle_outbound_ack(&mut writer, seq_id).await
                         },
                         ClientBrokerItem::Stopping => {
-                            // Stopping comes from control
+                            // Stopping ONLY comes from control
                             self.handle_stopping(&mut writer).await
                         },
                         ClientBrokerItem::Stop(io_err) => {
-                            // Stop comes from reader
+                            // Stop ONLY comes from reader
                             match self.state {
                                 ClientBrokerState::Started => {
                                     if let Err(_) = self.handle_stopping(&mut writer).await {
                                         todo!()
                                     }
                                 },
-                                ClientBrokerState::Stopping => { 
+                                ClientBrokerState::Stopping => {
                                 },
                                 ClientBrokerState::Stopped => {
                                     return Running::Stop

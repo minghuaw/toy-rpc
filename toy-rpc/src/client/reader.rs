@@ -31,11 +31,11 @@ impl<R: CodecRead> brw::Reader for ClientReader<R> {
                         CodecError::IoError(e) => {
                             // pass back IoError
                             let _ = broker.send(ClientBrokerItem::Stop(Some(e))).await;
-                            return Running::Stop
-                        },
-                        _ => return Running::Continue(Err(err.into()))
+                            return Running::Stop;
+                        }
+                        _ => return Running::Continue(Err(err.into())),
                     }
-                },
+                }
             };
             log::debug!("{:?}", &header);
 

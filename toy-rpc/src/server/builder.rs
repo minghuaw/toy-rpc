@@ -202,4 +202,3 @@ impl_server_builder_for_ack_modes!(AckModeNone);
 
 #[cfg(not(feature = "docs"))]
 impl_server_builder_for_ack_modes!(AckModeAuto);
-

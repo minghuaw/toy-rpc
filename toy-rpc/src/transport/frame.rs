@@ -61,8 +61,11 @@ pub trait FrameRead {
 #[async_trait]
 pub trait FrameWrite {
     /// Writes a frame
-    async fn write_frame(&mut self, frame_header: FrameHeader, payload: &[u8])
-        -> Result<(), IoError>;
+    async fn write_frame(
+        &mut self,
+        frame_header: FrameHeader,
+        payload: &[u8],
+    ) -> Result<(), IoError>;
 }
 
 /// Header of a frame
@@ -103,10 +106,7 @@ impl FrameHeader {
         DefaultOptions::new()
             .with_fixint_encoding()
             .serialize(self)
-            .map_err(|err| IoError::new(
-                std::io::ErrorKind::InvalidData,
-                err.to_string()
-            ))
+            .map_err(|err| IoError::new(std::io::ErrorKind::InvalidData, err.to_string()))
     }
 }
 
@@ -198,8 +198,8 @@ impl<R: AsyncRead + Unpin + Send> FrameRead for R {
             Ok(h) => h,
             Err(e) => {
                 let err = into_io_err_other(&e);
-                return Some(Err(err))
-            },
+                return Some(Err(err));
+            }
         };
 
         // determine if end frame is received

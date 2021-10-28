@@ -24,7 +24,7 @@ use crate::{
     server::{
         broker::ServerBrokerItem,
         pubsub::{PubSubItem, PubSubResponder},
-        reader::{service, handle_cancel},
+        reader::{handle_cancel, service},
         writer::ServerWriterItem,
         ClientId,
     },

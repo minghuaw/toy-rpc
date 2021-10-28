@@ -3,8 +3,14 @@
 use std::sync::atomic::Ordering;
 
 use axum::{
-    extract::{Extension, ws::{WebSocket, WebSocketUpgrade}}, routing::{BoxRoute, Router},  AddExtensionLayer,
-    handler::get, response::IntoResponse,
+    extract::{
+        ws::{WebSocket, WebSocketUpgrade},
+        Extension,
+    },
+    handler::get,
+    response::IntoResponse,
+    routing::{BoxRoute, Router},
+    AddExtensionLayer,
 };
 use bytes::Bytes;
 use http_body::Body;

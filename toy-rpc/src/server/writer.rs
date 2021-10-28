@@ -2,7 +2,14 @@ use std::sync::Arc;
 
 use brw::{Running, Writer};
 
-use crate::{codec::CodecWrite, error::Error, message::{ErrorMessage, MessageId}, pubsub::SeqId, service::HandlerResult, util::GracefulShutdown};
+use crate::{
+    codec::CodecWrite,
+    error::Error,
+    message::{ErrorMessage, MessageId},
+    pubsub::SeqId,
+    service::HandlerResult,
+    util::GracefulShutdown,
+};
 
 use crate::protocol::Header;
 
@@ -54,7 +61,7 @@ impl<W: CodecWrite> ServerWriter<W> {
                     Ok(m) => m,
                     Err(err) => {
                         log::debug!("Non-sendable error: {}", err);
-                        return Ok(())
+                        return Ok(());
                     }
                 };
                 self.writer.write_header(header).await?;
@@ -103,7 +110,7 @@ impl<W: CodecWrite + GracefulShutdown> Writer for ServerWriter<W> {
             }
             ServerWriterItem::Ack { id } => self.write_ack(id).await,
             ServerWriterItem::Stopping => Ok(self.writer.close().await),
-            ServerWriterItem::Stop => return Running::Stop
+            ServerWriterItem::Stop => return Running::Stop,
         };
         Running::Continue(res)
     }

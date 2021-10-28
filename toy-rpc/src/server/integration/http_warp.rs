@@ -148,7 +148,7 @@ cfg_if! {
         }
 
         impl_warp_integration_for_ack_modes!(AckModeNone);
-        
+
         #[cfg(not(feature = "docs"))]
         impl_warp_integration_for_ack_modes!(AckModeAuto);
     }

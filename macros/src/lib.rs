@@ -543,7 +543,7 @@ pub fn export_trait_impl(
 /*                              #[derive(Topic)]                              */
 /* -------------------------------------------------------------------------- */
 
-use darling::{FromDeriveInput};
+use darling::FromDeriveInput;
 
 #[derive(Debug, Default, FromDeriveInput)]
 #[darling(attributes(topic))]
@@ -559,7 +559,6 @@ struct TopicAttr {
 /// both `serde::Serialize` and `serde::Deserialize`.
 #[proc_macro_derive(Topic, attributes(topic))]
 pub fn derive_topic(item: proc_macro::TokenStream) -> proc_macro::TokenStream {
-
     let input = syn::parse_macro_input!(item as syn::DeriveInput);
     let ident = input.ident.clone();
     let (topic, item) = {
@@ -567,11 +566,11 @@ pub fn derive_topic(item: proc_macro::TokenStream) -> proc_macro::TokenStream {
         if let Ok(topic_attr) = result {
             let t = match topic_attr.rename {
                 Some(s) => s,
-                None => ident.to_string()
+                None => ident.to_string(),
             };
             let i = match topic_attr.item {
                 Some(i) => i,
-                None => ident.clone()
+                None => ident.clone(),
             };
             (t, i)
         } else {

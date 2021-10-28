@@ -74,7 +74,7 @@ impl<Res: DeserializeOwned> Call<Res> {
         id: MessageId,
         cancel: Sender<broker::ClientBrokerItem>,
         done: oneshot::Receiver<Result<ResponseResult, Error>>,
-        error: Error
+        error: Error,
     ) -> Self {
         Self {
             status: CallStatus::Dropped,
@@ -132,20 +132,16 @@ where
 
         match done.poll(cx) {
             Poll::Pending => match this.status {
-                CallStatus::Canceled => {
-                    Poll::Ready(Err(Error::Canceled(*this.id)))
-                },
+                CallStatus::Canceled => Poll::Ready(Err(Error::Canceled(*this.id))),
                 CallStatus::Dropped => {
                     match this.error.take() {
-                        Some(err) => {
-                            Poll::Ready(Err(err))
-                        },
+                        Some(err) => Poll::Ready(Err(err)),
                         None => {
                             // Call is dropped
                             Poll::Ready(Err(Error::Canceled(*this.id)))
                         }
                     }
-                },
+                }
                 _ => Poll::Pending,
             },
             Poll::Ready(res) => {

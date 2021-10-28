@@ -168,7 +168,8 @@ pub(crate) fn impl_register_service_for_trait_impl(
     trait_path: &syn::Path,
     type_path: &syn::TypePath,
 ) -> impl quote::ToTokens {
-    let trait_ident = &trait_path.segments
+    let trait_ident = &trait_path
+        .segments
         .last()
         .expect("Expecting a trait identifier")
         .ident;
@@ -193,7 +194,7 @@ pub(crate) fn impl_register_service_for_trait_impl(
 
 // #[cfg(feature = "server")]
 // pub(crate) fn get_trait_ident_from_item_impl(input: &syn::ItemImpl) -> Option<syn::Ident> {
-    
+
 //     if let Some((_, ref path, _)) = input.trait_ {
 //         println!("path: {:?}", path);
 //         path.get_ident().map(|id| id.clone())

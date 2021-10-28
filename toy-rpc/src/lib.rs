@@ -3,7 +3,7 @@
 #![warn(missing_docs)]
 
 //! # An async RPC crate that mimics the `golang`'s `net/rpc` package and supports both `async-std` and `tokio`.
-//! 
+//!
 //! This project is still being actively developed. I have kind of run out of ideas for features, so feel free to let me know if there is a feature that you want.
 //!
 //! <div align="center">
@@ -80,9 +80,9 @@
 //!
 //! WebSocket support (HTTP integration is implementd with WebSocket)
 //!
-//! - `ws_tokio`: enables WebSocket and HTTP integrations with `tokio`. 
+//! - `ws_tokio`: enables WebSocket and HTTP integrations with `tokio`.
 //! This must be enabled for client to use `dial_http(addr)` or `dial_websocket(addr)`.
-//! - `ws_async_std`: enables WebSocket and HTTP integrations with `async-std`. 
+//! - `ws_async_std`: enables WebSocket and HTTP integrations with `async-std`.
 //! This must be enabled for client to use `dial_http(addr)` or `dial_websocket(addr)`.
 //!
 //! TLS support

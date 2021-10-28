@@ -61,12 +61,10 @@ impl PayloadWrite for SinkHalf<tide_websockets::WebSocketConnection, CannotSink>
     async fn write_payload(&mut self, payload: &[u8]) -> Result<(), IoError> {
         match self.inner.send_bytes(payload.to_owned()).await {
             Ok(_) => Ok(()),
-            Err(err) => {
-                match err {
-                    tungstenite::error::Error::Io(e) => Err(e),
-                    _ => Err(into_io_err_other(&err))
-                }
-            }
+            Err(err) => match err {
+                tungstenite::error::Error::Io(e) => Err(e),
+                _ => Err(into_io_err_other(&err)),
+            },
         }
     }
 }
@@ -78,7 +76,7 @@ impl GracefulShutdown for SinkHalf<tide_websockets::WebSocketConnection, CannotS
 
         if let Err(err) = self.inner.send(msg).await {
             match err {
-                tungstenite::Error::ConnectionClosed => { },
+                tungstenite::Error::ConnectionClosed => {}
                 // tungstenite::Error::AlreadyClosed => { },
                 e @ _ => {
                     log::error!("{}", e)

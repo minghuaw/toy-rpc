@@ -331,7 +331,7 @@ macro_rules! impl_server_broker_for_ack_modes {
                                 #[cfg(all(feature = "async_std_runtime", not(feature = "tokio_runtime")))]
                                 handle.cancel().await;
                             }
-                            
+
                             let result = writer.send(ServerWriterItem::Stopping).await
                                 .map_err(Into::into);
 
@@ -429,7 +429,7 @@ pub(crate) async fn execute_timed_call(
         Err(err) => {
             log::error!("Request {} reached timeout (err: {})", id, err);
             Err(Error::Timeout(id))
-        },
+        }
     }
 
     #[cfg(all(feature = "tokio_runtime", not(feature = "async_std_runtime"),))]
@@ -438,6 +438,6 @@ pub(crate) async fn execute_timed_call(
         Err(err) => {
             log::error!("Request {} reached timeout (err: {})", id, err);
             Err(Error::Timeout(id))
-        },
+        }
     }
 }
