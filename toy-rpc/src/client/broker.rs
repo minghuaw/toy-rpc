@@ -168,14 +168,18 @@ impl<AckMode, C> ClientBroker<AckMode, C> {
                 Err(_) => Err(Error::Canceled(id)),
             }
         };
-        let request_result = writer
-            .send(ClientWriterItem::Request(
-                id,
-                service_method,
-                duration,
-                body,
-            ))
-            .await;
+        let item = ClientWriterItem::Request(
+            id,
+            service_method,
+            duration,
+            body,
+        );
+        if let Err(_) = writer.send(item).await {
+            return Err(Error::IoError(IoError::new(
+                std::io::ErrorKind::Other, 
+                "Writer is disconnected"
+            )))
+        }
 
         task::spawn(async move {
             #[cfg(all(feature = "tokio_runtime", not(feature = "async_std_runtime")))]
@@ -206,7 +210,8 @@ impl<AckMode, C> ClientBroker<AckMode, C> {
         });
 
         self.pending.insert(id, tx);
-        request_result.map_err(|err| err.into())
+        // request_result.map_err(|err| err.into())
+        Ok(())
     }
 
     fn handle_response(&mut self, id: MessageId, result: ResponseResult) -> Result<(), Error> {
@@ -243,7 +248,10 @@ impl<AckMode, C> ClientBroker<AckMode, C> {
         writer
             .send(ClientWriterItem::Cancel(id))
             .await
-            .map_err(|err| err.into())
+            .map_err(|_| Error::IoError(IoError::new(
+                std::io::ErrorKind::Other, 
+                "Writer is disconnected"
+            )))
     }
 
     async fn handle_publish_inner<'w, W>(
@@ -258,7 +266,10 @@ impl<AckMode, C> ClientBroker<AckMode, C> {
         writer
             .send(ClientWriterItem::Publish(id, topic, body))
             .await
-            .map_err(|err| err.into())
+            .map_err(|_| Error::IoError(IoError::new(
+                std::io::ErrorKind::Other, 
+                "Writer is disconnected"
+            )))
     }
 
     fn spawn_timed_task_waiting_for_ack(
@@ -338,12 +349,13 @@ impl<AckMode, C> ClientBroker<AckMode, C> {
         // NOTE: Only one local subscriber is allowed
         self.subscriptions.insert(topic.clone(), item_sink);
 
-        let res = writer
+        writer
             .send(ClientWriterItem::Subscribe(id, topic))
             .await
-            .map_err(|err| err.into());
-        // TODO: Spawn a timed task to check Ack?
-        res
+            .map_err(|_| Error::IoError(IoError::new(
+                std::io::ErrorKind::Other, 
+                "Writer is disconnected"
+            )))
     }
 
     fn handle_new_local_subscriber(
@@ -365,12 +377,13 @@ impl<AckMode, C> ClientBroker<AckMode, C> {
     {
         let id = self.count.fetch_add(1, Ordering::Relaxed);
         // NOTE: the sender should be dropped on the Client side
-        let res = writer
+        writer
             .send(ClientWriterItem::Unsubscribe(id, topic))
             .await
-            .map_err(|err| err.into());
-        // TODO: Spawn  timed task to check Ack?
-        res
+            .map_err(|_| Error::IoError(IoError::new(
+                std::io::ErrorKind::Other, 
+                "Writer is disconnected"
+            )))
     }
 
     fn handle_inbound_ack(&mut self, id: MessageId) -> Result<(), Error> {
@@ -400,7 +413,10 @@ impl<AckMode, C> ClientBroker<AckMode, C> {
         writer
             .send(ClientWriterItem::Ack(seq_id))
             .await
-            .map_err(|err| err.into())
+            .map_err(|_| Error::IoError(IoError::new(
+                std::io::ErrorKind::Other, 
+                "Writer is disconnected"
+            )))
     }
 
     fn handle_subscription_inner(
@@ -444,7 +460,10 @@ impl<AckMode, C> ClientBroker<AckMode, C> {
         writer
             .send(ClientWriterItem::Stopping)
             .await
-            .map_err(Into::into)
+            .map_err(|_| Error::IoError(IoError::new(
+                std::io::ErrorKind::Other, 
+                "Writer is disconnected"
+            )))
     }
 }
 
@@ -533,7 +552,10 @@ impl<C: Marshal + Send> ClientBroker<AckModeAuto, C> {
         writer
             .send(ClientWriterItem::Ack(id))
             .await
-            .map_err(|err| err.into())
+            .map_err(|_| Error::IoError(IoError::new(
+                std::io::ErrorKind::Other, 
+                "Writer is disconnected"
+            )))
     }
 }
 
