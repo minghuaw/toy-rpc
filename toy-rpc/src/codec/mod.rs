@@ -8,7 +8,7 @@ use cfg_if::cfg_if;
 use erased_serde as erased;
 use std::marker::PhantomData;
 
-use crate::error::{CodecError, Error, ParseError};
+use crate::error::{CodecError, Error, IoError, ParseError};
 use crate::message::{MessageId, Metadata};
 use crate::protocol::InboundBody;
 
@@ -332,6 +332,7 @@ pub trait CodecRead: Send + Unmarshal + EraseDeserializer {
         Some(
             self.read_bytes()
                 .await?
+                .map_err(Into::into)
                 .and_then(|payload| Self::unmarshal(&payload).map_err(Into::into)),
         )
     }
@@ -343,12 +344,12 @@ pub trait CodecRead: Send + Unmarshal + EraseDeserializer {
                 let de = Self::from_bytes(payload);
                 Some(Ok(de))
             }
-            Err(e) => return Some(Err(e)),
+            Err(e) => return Some(Err(e.into())),
         }
     }
 
     /// Reads the frame body as raw bytes
-    async fn read_bytes(&mut self) -> Option<Result<Vec<u8>, CodecError>>;
+    async fn read_bytes(&mut self) -> Option<Result<Vec<u8>, IoError>>;
 }
 
 /// A codec that can write the header and body of a message

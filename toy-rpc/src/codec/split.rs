@@ -95,7 +95,7 @@ cfg_if! {
             R: FrameRead + Send + Unpin,
             C: Unmarshal + EraseDeserializer + Send
         {
-            async fn read_bytes(&mut self) -> Option<Result<Vec<u8>, CodecError>> {
+            async fn read_bytes(&mut self) -> Option<Result<Vec<u8>, IoError>> {
                 self.reader.read_frame().await
                     .map(|res| {
                         res.map(|f| f.payload)
@@ -218,7 +218,7 @@ cfg_if! {
             R: PayloadRead + Send,
             C: Unmarshal + EraseDeserializer + Send
         {
-            async fn read_bytes(&mut self) -> Option<Result<Vec<u8>, CodecError>> {
+            async fn read_bytes(&mut self) -> Option<Result<Vec<u8>, IoError>> {
                 self.reader.read_payload().await
                     .map(|res| res.map_err(Into::into))
             }
