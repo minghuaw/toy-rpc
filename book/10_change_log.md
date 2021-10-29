@@ -1,5 +1,9 @@
 # Change Log
 
+## 0.8.4
+
+- Unified all connection related error (read/write) to `Error::IoError(_)`
+
 ## 0.8.3
 
 - Reverting back to 2018 edition
