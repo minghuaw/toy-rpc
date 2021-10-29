@@ -2,8 +2,6 @@
 
 use cfg_if::cfg_if;
 
-use crate::error::ParseError;
-
 cfg_if! {
     if #[cfg(any(
         feature = "async_std_runtime",
@@ -34,7 +32,7 @@ cfg_if! {
         use super::{
             Codec, CodecRead, CodecWrite, DeserializerOwned, EraseDeserializer, Marshal, Unmarshal,
         };
-        use crate::error::Error;
+        use crate::error::ParseError;
         use crate::macros::impl_inner_deserializer;
         use crate::message::{MessageId, Metadata};
 

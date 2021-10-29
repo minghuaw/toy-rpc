@@ -4,7 +4,7 @@
 use async_trait::async_trait;
 use std::marker::PhantomData;
 
-use crate::{error::IoError, util::GracefulShutdown};
+use crate::{util::GracefulShutdown};
 
 use super::*;
 
@@ -88,6 +88,7 @@ cfg_if! {
         )
     ))] {
         use crate::transport::frame::{PayloadType, FrameRead, FrameWrite, FrameHeader};
+        use crate::error::IoError;
 
         #[async_trait]
         impl<R, C> CodecRead for CodecReadHalf<R, C, ConnTypeReadWrite>
