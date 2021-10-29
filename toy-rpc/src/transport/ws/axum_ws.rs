@@ -1,6 +1,8 @@
 //! Integration with axum using WebSocket
 //! A separate implementation is required because `axum` has wrapped `tungstenite` types
 
+use crate::transport::as_io_err_other;
+
 use super::*;
 use axum::extract::ws::{Message, WebSocket};
 
@@ -33,7 +35,7 @@ impl PayloadWrite for SinkHalf<SplitSink<WebSocket, Message>, CanSink> {
 
         // FIXME: `axum` has wrapped all errors into a trait object and doesn't
         // provide public API to retrieve the original error.
-        self.send(msg).await.map_err(|e| into_io_err_other(&e))
+        self.send(msg).await.map_err(|e| as_io_err_other(&e))
     }
 }
 

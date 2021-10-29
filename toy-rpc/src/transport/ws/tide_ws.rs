@@ -63,7 +63,7 @@ impl PayloadWrite for SinkHalf<tide_websockets::WebSocketConnection, CannotSink>
             Ok(_) => Ok(()),
             Err(err) => match err {
                 tungstenite::error::Error::Io(e) => Err(e),
-                _ => Err(into_io_err_other(&err)),
+                _ => Err(as_io_err_other(&err)),
             },
         }
     }

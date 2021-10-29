@@ -316,7 +316,7 @@ impl<AckMode> Drop for Client<AckMode> {
                 log::error!("{}", err);
             }
             #[cfg(not(any(feature = "ws_tokio", feature = "ws_async_std")))]
-            if let Err(err) = self.broker.try_send(broker::ClientBrokerItem::Stop) {
+            if let Err(err) = self.broker.try_send(broker::ClientBrokerItem::Stop(None)) {
                 log::error!("{}", err)
             }
 
@@ -358,7 +358,7 @@ impl<AckMode> Client<AckMode> {
 
         #[cfg(not(any(feature = "ws_tokio", feature = "ws_async_std")))]
         self.broker
-            .send_async(broker::ClientBrokerItem::Stop)
+            .send_async(broker::ClientBrokerItem::Stop(None))
             .await
             .unwrap_or_else(|err| log::error!("{}", err));
 

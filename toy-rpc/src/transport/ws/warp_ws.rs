@@ -36,7 +36,7 @@ impl PayloadWrite for SinkHalf<SplitSink<WebSocket, Message>, CanSink> {
 
         // FIXME: `warp` has wrapped all errors into a trait object and doesn't
         // provide public API to retrieve the original error.
-        self.send(msg).await.map_err(|e| into_io_err_other(&e))
+        self.send(msg).await.map_err(|e| as_io_err_other(&e))
     }
 }
 

@@ -11,7 +11,7 @@ use crate::error::IoError;
 use crate::message::MessageId;
 use crate::{error::Error, util::GracefulShutdown};
 
-use super::ws::into_io_err_other;
+use super::as_io_err_other;
 
 const INVALID_PROTOCOL: &str = "Magic byte mismatch.\rClient may be using a different protocol or version.\rClient of version <0.5.0 is not compatible with Server of version >0.5.0";
 const END_FRAME_ID: FrameId = 131;
@@ -197,7 +197,7 @@ impl<R: AsyncRead + Unpin + Send> FrameRead for R {
         let header = match FrameHeader::from_slice(&buf) {
             Ok(h) => h,
             Err(e) => {
-                let err = into_io_err_other(&e);
+                let err = as_io_err_other(&e);
                 return Some(Err(err));
             }
         };

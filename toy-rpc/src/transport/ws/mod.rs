@@ -13,11 +13,13 @@ use std::{io::ErrorKind, marker::PhantomData};
 
 use super::{PayloadRead, PayloadWrite};
 use crate::error::IoError;
+use crate::transport::as_io_err_other;
 use crate::util::GracefulShutdown;
 
 type WsSinkHalf<S> = SinkHalf<SplitSink<S, Message>, CanSink>;
 type WsStreamHalf<S> = StreamHalf<SplitStream<S>, CanSink>;
 
+#[cfg(any(feature = "http_axum", feature = "http_warp"))]
 const CONNECTION_CLOSED_ERR_STR: &str = "Connection closed normally";
 
 cfg_if! {
@@ -31,11 +33,6 @@ cfg_if! {
     }
 }
 pub(crate) struct CanSink {}
-
-pub(crate) fn into_io_err_other(err: &impl std::fmt::Display) -> IoError {
-    let msg = format!("{}", err);
-    std::io::Error::new(std::io::ErrorKind::Other, msg)
-}
 
 pub struct WebSocketConn<S, N> {
     pub inner: S,
@@ -172,7 +169,7 @@ where
             Ok(_) => Ok(()),
             Err(err) => match err {
                 error::Error::Io(e) => Err(e),
-                _ => Err(into_io_err_other(&err)),
+                _ => Err(as_io_err_other(&err)),
             },
         }
     }

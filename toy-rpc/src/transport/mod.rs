@@ -17,6 +17,11 @@ pub(crate) mod frame;
 #[cfg(any(feature = "ws_tokio", feature = "ws_async_std"))]
 pub(crate) mod ws;
 
+pub(crate) fn as_io_err_other(err: &impl std::fmt::Display) -> IoError {
+    let msg = format!("{}", err);
+    std::io::Error::new(std::io::ErrorKind::Other, msg)
+}
+
 /// Reads bytes from transport protocols that carry payload (ie. WebSocket)
 #[async_trait]
 pub trait PayloadRead {
