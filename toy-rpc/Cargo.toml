@@ -1,6 +1,6 @@
 [package]
 name = "toy-rpc"
-version = "0.8.3"
+version = "0.8.4"
 authors = ["Minghua Wu <michael.wu1107@gmail.com>"]
 edition = "2018"
 description = "An async RPC that mimics golang net/rpc's usage and supports both async-std and tokio"
@@ -28,14 +28,7 @@ rustdoc-args = ["--cfg", "feature=\"docs\""]
 
 [features]
 default = [
-    "serde_json",
-    # "http_axum",
-    # "http_warp",
-    # "tokio_runtime",
-    # "http_tide",
-    "async_std_runtime",
-    "server",
-    "client",
+    "serde_bincode",
 ]
 
 docs = []
@@ -113,7 +106,7 @@ thiserror = "1.0"
 flume = "0.10.7"
 pin-project = "1.0"
 crossbeam = "0.8"
-brw = { version = "^0.1.7", path = "../../brw" }
+brw = { version = "^0.1.7" }
 
 [[test]]
 name = "async_std_tcp"

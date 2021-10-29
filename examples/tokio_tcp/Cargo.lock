@@ -56,9 +56,7 @@ dependencies = [
 
 [[package]]
 name = "brw"
-version = "0.1.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "611cfcbc347a65916292dd824f95efa57ae47838f531693bd01fb267867af29f"
+version = "0.1.7"
 dependencies = [
  "async-trait",
  "flume",
@@ -727,8 +725,6 @@ dependencies = [
 [[package]]
 name = "toy-rpc"
 version = "0.8.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2821d800dcd4628dfd01b14927e177099a477fb46820297ea14a24f70a2062ae"
 dependencies = [
  "anyhow",
  "async-trait",
