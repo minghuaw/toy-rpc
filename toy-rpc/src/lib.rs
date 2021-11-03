@@ -36,6 +36,11 @@
 //! to make them sound more "rusty". Because rust does not come with runtime reflection, attribute macros `#[export_impl]`
 //! and `#[export_trait]` / `#[export_trait_impl]`, and attribute `#[export_method]` are used to mark functions "exported" in golang's
 //! `net/rpc` perspective.
+//! 
+//! Some other features of `toy-rpc`:
+//! 
+//! - Cascading cancellation: whenever an unfinished `Call<Res>` is dropped, a cancellation will be sent to the server
+//! and thus propagating the cancellation.
 //!
 //! More detailed usage can be found in the book and documentation.
 //!

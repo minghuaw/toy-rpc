@@ -104,10 +104,10 @@ impl<Res: DeserializeOwned> Call<Res> {
     /// Cancel the RPC call
     ///
     pub fn cancel(&mut self) {
-        self.status = CallStatus::Canceled;
         if let Err(_) = self.cancel.send(broker::ClientBrokerItem::Cancel(self.id)) {
             log::error!("Failed to send cancellation message to client broker");
         }
+        self.status = CallStatus::Canceled;
     }
 
     /// Gets the ID number of the call

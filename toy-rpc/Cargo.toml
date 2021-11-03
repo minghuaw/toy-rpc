@@ -62,7 +62,7 @@ hyper = "0.14.11"
 
 [dependencies]
 # local imports
-# toy-rpc-macros = { version = "0.6.2", path="../macros" }
+# toy-rpc-macros = { version = "0.6.3", path="../macros" }
 toy-rpc-macros = "0.6.3"
 
 # feature gated optional dependecies
