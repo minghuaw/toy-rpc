@@ -436,5 +436,5 @@ pub trait Unmarshal {
 /// bytes
 pub trait EraseDeserializer {
     /// Creates an `erased_serde::Deserializer` from bytes
-    fn from_bytes(buf: Vec<u8>) -> Box<dyn erased::Deserializer<'static> + Send>;
+    fn from_bytes(buf: Vec<u8>) -> Box<InboundBody>;
 }

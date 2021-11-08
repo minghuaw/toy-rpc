@@ -15,7 +15,7 @@ cfg_if! {
         use std::io::Cursor; // serde doesn't support AsyncRead
 
         use super::{Codec, DeserializerOwned, EraseDeserializer, Marshal, Unmarshal};
-        use crate::error::ParseError;
+        use crate::{error::ParseError, protocol::InboundBody};
         use crate::macros::impl_inner_deserializer;
 
         impl<'de, R> serde::Deserializer<'de> for DeserializerOwned<serde_cbor::Deserializer<R>>
@@ -41,7 +41,7 @@ cfg_if! {
         }
 
         impl<R, W, C> EraseDeserializer for Codec<R, W, C> {
-            fn from_bytes(buf: Vec<u8>) -> Box<dyn erased::Deserializer<'static> + Send> {
+            fn from_bytes(buf: Vec<u8>) -> Box<InboundBody> {
                 let de = serde_cbor::Deserializer::from_reader(Cursor::new(buf));
 
                 let de_owned = DeserializerOwned::new(de);

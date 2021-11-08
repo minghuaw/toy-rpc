@@ -1,7 +1,6 @@
 //!  Service builder and registration
 
 use async_trait::async_trait;
-use erased_serde as erased;
 use futures::future::Future;
 use std::collections::HashMap;
 use std::marker::PhantomData;
@@ -9,7 +8,7 @@ use std::pin::Pin;
 use std::sync::Arc;
 
 use crate::error::Error;
-use crate::protocol::OutboundBody;
+use crate::protocol::{InboundBody, OutboundBody};
 
 /// Ok type of HandlerResult
 // pub(crate) type Success = Box<dyn erased::Serialize + Send + Sync + 'static>;
@@ -22,14 +21,11 @@ pub type HandlerResult = Result<Success, Error>;
 pub type HandlerResultFut = Pin<Box<dyn Future<Output = HandlerResult> + Send>>;
 
 /// Async handler definition
-pub type AsyncHandler<S> =
-    fn(Arc<S>, Box<dyn erased::Deserializer<'static> + Send>) -> HandlerResultFut;
+pub type AsyncHandler<S> = fn(Arc<S>, Box<InboundBody>) -> HandlerResultFut;
 
 /// Async trait objects to invoke a service
-pub type AsyncServiceCall = dyn Fn(String, Box<dyn erased::Deserializer<'static> + Send>) -> HandlerResultFut
-    + Send
-    + Sync
-    + 'static;
+pub type AsyncServiceCall =
+    dyn Fn(String, Box<InboundBody>) -> HandlerResultFut + Send + Sync + 'static;
 
 /// Arc wrapper of `AsyncServiceCall`
 pub type ArcAsyncServiceCall = Arc<AsyncServiceCall>;
@@ -73,11 +69,7 @@ where
 
     /// Returns a future that will execute the RPC method when `.await`ed.
     /// Returns `Error::MethodNotFound` if the requested method is not registered.
-    fn call(
-        &self,
-        name: &str,
-        deserializer: Box<dyn erased::Deserializer<'static> + Send>,
-    ) -> HandlerResultFut {
+    fn call(&self, name: &str, deserializer: Box<InboundBody>) -> HandlerResultFut {
         let _state = self.state();
         match self.method(name) {
             Some(m) => m(_state, deserializer),
@@ -95,7 +87,6 @@ where
     }
 
     fn method(&self, name: &str) -> Option<AsyncHandler<State>> {
-        // self.handlers.get(name).map(|m| m.clone())
         self.handlers.get(name).cloned()
     }
 }

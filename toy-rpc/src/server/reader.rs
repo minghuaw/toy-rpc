@@ -79,7 +79,10 @@ impl<T: CodecRead> Reader for ServerReader<T> {
     type Ok = ();
     type Error = Error;
 
-    async fn op<B>(&mut self, mut broker: B) -> Running<Result<Self::Ok, Self::Error>, Option<Self::Error>>
+    async fn op<B>(
+        &mut self,
+        mut broker: B,
+    ) -> Running<Result<Self::Ok, Self::Error>, Option<Self::Error>>
     where
         B: Sink<Self::BrokerItem, Error = flume::SendError<Self::BrokerItem>> + Send + Unpin,
     {

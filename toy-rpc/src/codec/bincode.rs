@@ -2,8 +2,6 @@
 
 use cfg_if::cfg_if;
 
-use crate::error::ParseError;
-
 cfg_if! {
     if #[cfg(feature = "serde_json")] {
 
@@ -14,6 +12,7 @@ cfg_if! {
     } else {
         use bincode::{DefaultOptions, Options};
         use erased_serde as erased;
+        use crate::{error::ParseError, protocol::InboundBody};
         use serde::de::Visitor;
         use std::io::Cursor; // serde doesn't support AsyncRead
 
@@ -54,7 +53,7 @@ cfg_if! {
         }
 
         impl<R, W, C> EraseDeserializer for Codec<R, W, C> {
-            fn from_bytes(buf: Vec<u8>) -> Box<dyn erased::Deserializer<'static> + Send> {
+            fn from_bytes(buf: Vec<u8>) -> Box<InboundBody> {
                 let de = bincode::Deserializer::with_reader(
                     Cursor::new(buf),
                     bincode::DefaultOptions::new()

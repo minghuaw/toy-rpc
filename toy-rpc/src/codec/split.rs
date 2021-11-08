@@ -4,7 +4,7 @@
 use async_trait::async_trait;
 use std::marker::PhantomData;
 
-use crate::{util::GracefulShutdown};
+use crate::util::GracefulShutdown;
 
 use super::*;
 
@@ -44,7 +44,7 @@ impl<R, C, CT> EraseDeserializer for CodecReadHalf<R, C, CT>
 where
     C: EraseDeserializer,
 {
-    fn from_bytes(buf: Vec<u8>) -> Box<dyn erased::Deserializer<'static> + Send> {
+    fn from_bytes(buf: Vec<u8>) -> Box<InboundBody> {
         C::from_bytes(buf)
     }
 }

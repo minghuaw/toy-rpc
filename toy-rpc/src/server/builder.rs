@@ -1,6 +1,5 @@
 //! Builder of the Server
 
-use erased_serde as erased;
 use std::{collections::HashMap, marker::PhantomData, sync::Arc, time::Duration};
 
 #[cfg(any(
@@ -11,6 +10,7 @@ use std::{collections::HashMap, marker::PhantomData, sync::Arc, time::Duration};
 use super::Server;
 
 use crate::{
+    protocol::InboundBody,
     pubsub::{AckModeAuto, AckModeNone, DEFAULT_PUB_RETRIES, DEFAULT_PUB_RETRY_TIMEOUT},
     service::{build_service, AsyncServiceMap, HandleService, HandlerResultFut, Service},
     util::RegisterService,
@@ -121,7 +121,7 @@ impl<AckMode> ServerBuilder<AckMode> {
         S: Send + Sync + 'static,
     {
         let call = move |method_name: String,
-                         _deserializer: Box<(dyn erased::Deserializer<'static> + Send)>|
+                         _deserializer: Box<InboundBody>|
               -> HandlerResultFut { service.call(&method_name, _deserializer) };
 
         log::debug!("Registering service: {}", name);
