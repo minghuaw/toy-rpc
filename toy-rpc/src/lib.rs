@@ -119,6 +119,7 @@
 //!
 
 pub mod codec;
+pub mod context;
 pub mod error;
 pub mod macros;
 pub mod message;
@@ -128,7 +129,6 @@ pub mod request;
 pub mod service;
 pub mod transport;
 pub mod util;
-pub mod context;
 
 /// The default path added to the HTTP url
 #[cfg(any(

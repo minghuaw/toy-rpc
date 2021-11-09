@@ -10,17 +10,14 @@ use futures::Sink;
 ))]
 use tokio::task::{spawn, JoinHandle};
 
-use crate::{Error, message::MessageId, protocol::InboundBody, service::{ArcAsyncServiceCall, AsyncHandler, HandlerResult}, server::broker::ServerBrokerItem};
-
-pub struct Context {
-
-}
-
-impl Context {
-    pub fn id(&self) -> &MessageId {
-        todo!()
-    }
-}
+use crate::{
+    context::Context,
+    message::MessageId,
+    protocol::InboundBody,
+    server::broker::ServerBrokerItem,
+    service::{ArcAsyncServiceCall, AsyncHandler, HandlerResult},
+    Error,
+};
 
 pub struct Request {
     call: ArcAsyncServiceCall,
@@ -37,7 +34,7 @@ impl Request {
             method,
             arg,
             duration,
-            context
+            context,
         } = self;
 
         #[cfg(all(feature = "tokio_runtime", not(feature = "async_std_runtime"),))]
@@ -62,9 +59,6 @@ impl Request {
     }
 
     fn spawn_timed_execution(self, responder: impl Sink<ServerBrokerItem>) -> JoinHandle<()> {
-
-        
         todo!()
     }
 }
-
