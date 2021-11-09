@@ -70,9 +70,9 @@ where
     /// Returns a future that will execute the RPC method when `.await`ed.
     /// Returns `Error::MethodNotFound` if the requested method is not registered.
     fn call(&self, name: &str, deserializer: Box<InboundBody>) -> HandlerResultFut {
-        let _state = self.state();
+        let state = self.state();
         match self.method(name) {
-            Some(m) => m(_state, deserializer),
+            Some(m) => m(state, deserializer),
             None => Box::pin(async move { Err(Error::MethodNotFound) }),
         }
     }
