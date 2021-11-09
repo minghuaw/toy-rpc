@@ -21,7 +21,7 @@ cfg_if! {
     ))] {
         use flume::Sender;
         mod integration;
-        mod broker;
+        pub(crate) mod broker;
         mod reader;
         mod writer;
 
