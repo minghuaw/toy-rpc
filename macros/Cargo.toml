@@ -15,8 +15,8 @@ readme = "Readme.md"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [features]
-# default = ["server", "runtime", "client"]
-default = []
+default = ["server", "runtime", "client"]
+# default = []
 
 server = []
 client = []

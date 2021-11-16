@@ -9,12 +9,7 @@ use std::{collections::HashMap, marker::PhantomData, sync::Arc, time::Duration};
 ))]
 use super::Server;
 
-use crate::{
-    protocol::InboundBody,
-    pubsub::{AckModeAuto, AckModeNone, DEFAULT_PUB_RETRIES, DEFAULT_PUB_RETRY_TIMEOUT},
-    service::{build_service, AsyncServiceMap, HandleService, HandlerResultFut, Service},
-    util::RegisterService,
-};
+use crate::{protocol::InboundBody, pubsub::{AckModeAuto, AckModeNone, DEFAULT_PUB_RETRIES, DEFAULT_PUB_RETRY_TIMEOUT}, service::{AsyncServiceMap, HandleService, Service, ServiceCallFut, build_service}, util::RegisterService};
 
 /// Server builder
 pub struct ServerBuilder<AckMode> {
@@ -122,7 +117,7 @@ impl<AckMode> ServerBuilder<AckMode> {
     {
         let call = move |method_name: String,
                          _deserializer: Box<InboundBody>|
-              -> HandlerResultFut { service.call(&method_name, _deserializer) };
+              -> ServiceCallFut { service.call(&method_name, _deserializer) };
 
         log::debug!("Registering service: {}", name);
         let mut builder = self;

@@ -10,14 +10,7 @@ use futures::Sink;
 ))]
 use tokio::task::{spawn, JoinHandle};
 
-use crate::{
-    context::Context,
-    message::MessageId,
-    protocol::InboundBody,
-    server::broker::ServerBrokerItem,
-    service::{ArcAsyncServiceCall, AsyncHandler, HandlerResult},
-    Error,
-};
+use crate::{Error, context::Context, message::MessageId, protocol::InboundBody, server::broker::ServerBrokerItem, service::{ArcAsyncServiceCall, AsyncHandler, ServiceCallResult}};
 
 pub struct Request {
     call: ArcAsyncServiceCall,
@@ -28,7 +21,7 @@ pub struct Request {
 }
 
 impl Request {
-    async fn execute_with_timeout(self) -> HandlerResult {
+    async fn execute_with_timeout(self) -> ServiceCallResult {
         let Self {
             call,
             method,
@@ -58,7 +51,7 @@ impl Request {
         }
     }
 
-    fn spawn_timed_execution(self, responder: impl Sink<ServerBrokerItem>) -> JoinHandle<()> {
+    fn spawn_execution_with_timeout(self, responder: impl Sink<ServerBrokerItem>) -> JoinHandle<()> {
         todo!()
     }
 }

@@ -6,7 +6,7 @@ use std::time::Duration;
 
 use crate::protocol::InboundBody;
 use crate::pubsub::SeqId;
-use crate::service::{ArcAsyncServiceCall, HandlerResult};
+use crate::service::{ArcAsyncServiceCall, ServiceCallResult};
 
 use crate::{error::Error, message::MessageId};
 
@@ -52,7 +52,7 @@ pub(crate) enum ServerBrokerItem {
     },
     Response {
         id: MessageId,
-        result: HandlerResult,
+        result: ServiceCallResult,
     },
     Cancel(MessageId),
     // A new publish from the client publisher
@@ -124,7 +124,7 @@ impl<AckMode> ServerBroker<AckMode> {
         &'w mut self,
         writer: &'w mut W,
         id: MessageId,
-        result: HandlerResult,
+        result: ServiceCallResult,
     ) -> Result<(), Error>
     where
         W: Sink<ServerWriterItem, Error = flume::SendError<ServerWriterItem>> + Send + Unpin,
@@ -384,7 +384,7 @@ fn spawn_timed_request_execution(
     broker: Sender<ServerBrokerItem>,
     duration: Duration,
     id: MessageId,
-    fut: impl Future<Output = HandlerResult> + Send + 'static,
+    fut: impl Future<Output = ServiceCallResult> + Send + 'static,
 ) -> ::tokio::task::JoinHandle<()> {
     ::tokio::task::spawn(async move {
         let result = execute_timed_call(id, duration, fut).await;
@@ -397,9 +397,9 @@ fn spawn_timed_request_execution(
 
 pub(crate) async fn execute_call(
     id: MessageId,
-    fut: impl Future<Output = HandlerResult>,
-) -> HandlerResult {
-    let result: HandlerResult = fut.await.map_err(|err| {
+    fut: impl Future<Output = ServiceCallResult>,
+) -> ServiceCallResult {
+    let result: ServiceCallResult = fut.await.map_err(|err| {
         log::error!(
             "Error found executing request id: {}, error msg: {}",
             &id,
@@ -421,8 +421,8 @@ pub(crate) async fn execute_call(
 pub(crate) async fn execute_timed_call(
     id: MessageId,
     duration: Duration,
-    fut: impl Future<Output = HandlerResult>,
-) -> HandlerResult {
+    fut: impl Future<Output = ServiceCallResult>,
+) -> ServiceCallResult {
     #[cfg(all(feature = "async_std_runtime", not(feature = "tokio_runtime")))]
     match ::async_std::future::timeout(duration, execute_call(id, fut)).await {
         Ok(res) => res,

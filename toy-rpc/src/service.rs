@@ -12,20 +12,27 @@ use crate::protocol::{InboundBody, OutboundBody};
 
 /// Ok type of HandlerResult
 // pub(crate) type Success = Box<dyn erased::Serialize + Send + Sync + 'static>;
-pub(crate) type Success = Box<OutboundBody>;
+// pub(crate) type Success = Box<OutboundBody>;
 
-/// Return type of RPC handler
-pub type HandlerResult = Result<Success, Error>;
 
-/// Future of RPC handler, this must be `.await`ed to obtain the result
-pub type HandlerResultFut = Pin<Box<dyn Future<Output = HandlerResult> + Send>>;
+pub type Outcome = Box<OutboundBody>;
+
+
+/// Future of RPC handler
+pub type HandlerResultFut = Pin<Box<dyn Future<Output = Result<Outcome, Error>> + Send>>;
 
 /// Async handler definition
 pub type AsyncHandler<S> = fn(Arc<S>, Box<InboundBody>) -> HandlerResultFut;
 
+/// Result of HandleService::call
+pub type ServiceCallResult = Result<Outcome, Error>;
+
+/// Future of RPC handler, this must be `.await`ed to obtain the result
+pub type ServiceCallFut = Pin<Box<dyn Future<Output = ServiceCallResult> + Send>>;
+
 /// Async trait objects to invoke a service
 pub type AsyncServiceCall =
-    dyn Fn(String, Box<InboundBody>) -> HandlerResultFut + Send + Sync + 'static;
+    dyn Fn(String, Box<InboundBody>) -> ServiceCallFut + Send + Sync + 'static;
 
 /// Arc wrapper of `AsyncServiceCall`
 pub type ArcAsyncServiceCall = Arc<AsyncServiceCall>;
@@ -69,10 +76,12 @@ where
 
     /// Returns a future that will execute the RPC method when `.await`ed.
     /// Returns `Error::MethodNotFound` if the requested method is not registered.
-    fn call(&self, name: &str, deserializer: Box<InboundBody>) -> HandlerResultFut {
+    fn call(&self, name: &str, deserializer: Box<InboundBody>) -> ServiceCallFut {
         let state = self.state();
         match self.method(name) {
-            Some(m) => m(state, deserializer),
+            Some(m) => {
+                m(state, deserializer)
+            },
             None => Box::pin(async move { Err(Error::MethodNotFound) }),
         }
     }

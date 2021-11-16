@@ -7,7 +7,7 @@ use crate::{
     error::Error,
     message::{ErrorMessage, MessageId},
     pubsub::SeqId,
-    service::HandlerResult,
+    service::ServiceCallResult,
     util::GracefulShutdown,
 };
 
@@ -18,7 +18,7 @@ use crate::protocol::Header;
 pub(crate) enum ServerWriterItem {
     Response {
         id: MessageId,
-        result: HandlerResult,
+        result: ServiceCallResult,
     },
     /// Publish subscription item to client
     Publication {
@@ -45,7 +45,7 @@ impl<W: CodecWrite> ServerWriter<W> {
         Self { writer }
     }
 
-    async fn write_response(&mut self, id: MessageId, result: HandlerResult) -> Result<(), Error> {
+    async fn write_response(&mut self, id: MessageId, result: ServiceCallResult) -> Result<(), Error> {
         match result {
             Ok(body) => {
                 log::trace!("Message {} Success", &id);

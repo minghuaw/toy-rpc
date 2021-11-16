@@ -73,7 +73,7 @@ pub(crate) fn transform_impl(
 
 /// transform method to meet the signature of service function
 #[cfg(feature = "server")]
-pub(crate) fn transform_impl_item(f: &mut syn::ImplItemMethod) {
+pub(crate) fn   transform_impl_item(f: &mut syn::ImplItemMethod) {
     // change function ident
     let ident = f.sig.ident.clone();
     let concat_name = format!("{}_{}", &ident.to_string(), HANDLER_SUFFIX);
@@ -91,9 +91,12 @@ pub(crate) fn transform_impl_item(f: &mut syn::ImplItemMethod) {
                 async move {
                     let req: #req_ty = toy_rpc::erased_serde::deserialize(&mut deserializer)
                         .map_err(|e| toy_rpc::error::Error::ParseError(Box::new(e)))?;
-                    self.#ident(req).await
-                        .map(|r| Box::new(r) as Box<dyn toy_rpc::erased_serde::Serialize + Send + Sync + 'static>)
-                        .map_err(|err| err.into())
+                    let outcome = self.#ident(req).await;
+                    Ok(
+                        Box::new(outcome) as Box<dyn toy_rpc::erased_serde::Serialize + Send + Sync + 'static>
+                    )
+                        // .map(|r| Box::new(r) as Box<dyn toy_rpc::erased_serde::Serialize + Send + Sync + 'static>)
+                        // .map_err(|err| err.into())
                 }
             )
         });
