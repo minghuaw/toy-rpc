@@ -119,13 +119,13 @@
 //!
 
 pub mod codec;
-pub mod context;
+// pub mod context;
 pub mod error;
 pub mod macros;
 pub mod message;
 pub mod protocol;
 pub mod pubsub;
-pub mod request;
+// pub mod request;
 pub mod service;
 pub mod transport;
 pub mod util;

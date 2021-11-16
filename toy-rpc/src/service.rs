@@ -17,9 +17,11 @@ use crate::protocol::{InboundBody, OutboundBody};
 
 pub type Outcome = Box<OutboundBody>;
 
+/// Handler result
+pub type HandlerResult = Result<Outcome, Error>;
 
 /// Future of RPC handler
-pub type HandlerResultFut = Pin<Box<dyn Future<Output = Result<Outcome, Error>> + Send>>;
+pub type HandlerResultFut = Pin<Box<dyn Future<Output = HandlerResult> + Send>>;
 
 /// Async handler definition
 pub type AsyncHandler<S> = fn(Arc<S>, Box<InboundBody>) -> HandlerResultFut;

@@ -9,7 +9,7 @@ pub(crate) fn transform_impl(
     let mut names = Vec::new();
     let mut idents = Vec::new();
     let self_ty = input.self_ty.clone();
-    let mut methods = filter_exported_impl_items(input);
+    let mut methods = exported_impl_items(input);
 
     methods.iter_mut()
         // first filter out method
@@ -126,7 +126,17 @@ pub(crate) fn impl_register_service_for_struct(
 }
 
 #[cfg(any(feature = "server", all(feature = "client", feature = "runtime")))]
-pub(crate) fn filter_exported_impl_items(input: syn::ItemImpl) -> Vec<syn::ImplItem> {
+pub(crate) fn retain_exported_impl_items(input: syn::ItemImpl) -> syn::ItemImpl {
+    let mut output = input;
+    output.items.retain(|item| match item {
+        syn::ImplItem::Method(f) => f.attrs.iter().any(|attr| is_exported(attr)),
+        _ => false,
+    });
+    output
+}
+
+#[cfg(any(feature = "server", all(feature = "client", feature = "runtime")))]
+pub(crate) fn exported_impl_items(input: syn::ItemImpl) -> Vec<syn::ImplItem> {
     let mut output = input;
     output.items.retain(|item| match item {
         syn::ImplItem::Method(f) => f.attrs.iter().any(|attr| is_exported(attr)),
@@ -139,7 +149,7 @@ pub(crate) fn filter_exported_impl_items(input: syn::ItemImpl) -> Vec<syn::ImplI
 pub(crate) fn generate_service_client_for_struct(
     type_path: &syn::TypePath,
     input: &syn::ItemImpl,
-) -> (syn::Item, syn::ItemImpl) {
+) -> (syn::Item, proc_macro2::TokenStream) {
     let type_ident = parse_type_ident_from_type_path(type_path).unwrap();
     let concat_name = format!("{}{}", &type_ident.to_string(), CLIENT_SUFFIX);
     let client_ident = syn::Ident::new(&concat_name, type_ident.span());
@@ -161,24 +171,24 @@ fn client_stub_impl_for_struct(
     service_ident: &syn::Ident,
     client_ident: &syn::Ident,
     input: &syn::ItemImpl,
-) -> syn::ItemImpl {
-    let input = filter_exported_impl_items(input.clone());
-    let mut generated_items: Vec<syn::ImplItem> = Vec::new();
+) -> proc_macro2::TokenStream {
+    let input = retain_exported_impl_items(input.clone());
+    let mut generated_items = Vec::new();
     input.items.iter().for_each(|item| {
         if let syn::ImplItem::Method(f) = item {
-            if let Some(method) = generate_client_stub_for_struct_method(service_ident, f) {
-                generated_items.push(syn::ImplItem::Method(method));
+            if let Some(method) = generate_client_stub_for_struct_method(service_ident, &f) {
+                generated_items.push(method);
             }
         }
     });
 
-    let mut output: syn::ItemImpl = syn::parse_quote!(
+    let output = quote::quote!(
         impl<'c, AckMode> #client_ident<'c, AckMode> {
-
+            #(#generated_items;)*
         }
     );
 
-    output.items = generated_items;
+    // output.items = generated_items;
     output
 }
 
@@ -186,20 +196,18 @@ fn client_stub_impl_for_struct(
 pub(crate) fn generate_client_stub_for_struct_method(
     service_ident: &syn::Ident,
     f: &syn::ImplItemMethod,
-) -> Option<syn::ImplItemMethod> {
+) -> Option<proc_macro2::TokenStream> {
     if let syn::FnArg::Typed(pt) = f.sig.inputs.last().unwrap() {
         let fn_ident = &f.sig.ident;
         let req_ty = &pt.ty;
+        let ret_ty = &f.sig.output;
 
-        if let syn::ReturnType::Type(_, ret_ty) = f.sig.output.clone() {
-            let ok_ty = get_ok_ident_from_type(ret_ty)?;
-            return Some(generate_client_stub_for_struct_method_impl(
-                service_ident,
-                fn_ident,
-                &req_ty,
-                &ok_ty,
-            ));
-        }
+        return Some(generate_client_stub_for_struct_method_impl(
+            service_ident,
+            fn_ident,
+            &req_ty,
+            &ret_ty,
+        ));
     }
 
     None

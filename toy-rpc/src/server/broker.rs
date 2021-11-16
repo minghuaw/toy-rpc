@@ -363,7 +363,7 @@ fn spawn_timed_request_execution(
     broker: Sender<ServerBrokerItem>,
     duration: Duration,
     id: MessageId,
-    fut: impl Future<Output = HandlerResult> + Send + 'static,
+    fut: impl Future<Output = ServiceCallResult> + Send + 'static,
 ) -> ::async_std::task::JoinHandle<()> {
     ::async_std::task::spawn(async move {
         let result = execute_timed_call(id, duration, fut).await;

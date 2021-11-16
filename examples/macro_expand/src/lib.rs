@@ -6,6 +6,7 @@ use async_trait::async_trait;
 use serde::{Serialize, Deserialize};
 
 pub struct Foo { }
+pub struct Foo2 { }
 
 /* -------------------------------------------------------------------------- */
 /*                                #[derive(Topic)]                            */
@@ -21,7 +22,7 @@ pub struct Foo { }
 
 
 // #[async_trait]
-// #[export_trait]
+// #[export_trait(impl_for_client)]
 // pub trait AnotherExample {
 //     #[export_method]
 //     async fn one(&self, args: i32) -> Result<i32, Error>;
@@ -31,7 +32,7 @@ pub struct Foo { }
 
 // #[async_trait]
 // #[export_trait_impl]
-// impl AnotherExample for Foo {
+// impl AnotherExample for Foo2 {
 //     async fn one(&self, args: i32) -> Result<i32, Error> {
 //         Ok(1)
 //     }
@@ -46,24 +47,24 @@ pub struct Foo { }
 // #[export_impl]
 // =============================================================================
 
-#[async_trait]
-pub trait Example {
-    async fn foo(&self, args: i32) -> Result<i32, String>;
-    async fn not_exported(&self);
-}
+// #[async_trait]
+// pub trait Example {
+//     async fn foo(&self, args: i32) -> Result<i32, String>;
+//     async fn not_exported(&self);
+// }
 
-#[export_impl]
-#[async_trait]
-impl Example for Foo {
-    #[export_method]
-    async fn foo(&self, args: i32) -> Result<i32, String> {
-        Ok(args)
-    }
+// #[export_impl]
+// #[async_trait]
+// impl Example for Foo {
+//     #[export_method]
+//     async fn foo(&self, args: i32) -> Result<i32, String> {
+//         Ok(args)
+//     }
 
-    async fn not_exported(&self) {
-        println!("this is not exported");
-    }
-}
+//     async fn not_exported(&self) {
+//         println!("this is not exported");
+//     }
+// }
 
 // // =============================================================================
 // // #[export_impl]

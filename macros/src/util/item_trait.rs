@@ -224,7 +224,7 @@ pub(crate) fn filter_exported_trait_items(input: syn::ItemTrait) -> syn::ItemTra
 pub(crate) fn generate_service_client_for_trait(
     trait_ident: &syn::Ident,
     input: &syn::ItemTrait,
-) -> (syn::Item, syn::ItemImpl) {
+) -> (syn::Item, proc_macro2::TokenStream) {
     let concat_name = format!("{}{}", &trait_ident.to_string(), CLIENT_SUFFIX);
     let client_ident = syn::Ident::new(&&concat_name, trait_ident.span());
 
@@ -243,23 +243,23 @@ fn client_stub_impl_for_trait(
     service_ident: &syn::Ident,
     client_ident: &syn::Ident,
     input: &syn::ItemTrait,
-) -> syn::ItemImpl {
+) -> proc_macro2::TokenStream {
     let input = filter_exported_trait_items(input.clone());
-    let mut generated_items: Vec<syn::ImplItem> = Vec::new();
+    let mut generated_items = Vec::new();
     input.items.iter().for_each(|item| {
         if let syn::TraitItem::Method(f) = item {
             if let Some(method) = generate_client_stub_for_trait_method(service_ident, f) {
-                generated_items.push(syn::ImplItem::Method(method))
+                generated_items.push(method);
             }
         }
     });
 
-    let mut output: syn::ItemImpl = syn::parse_quote!(
+    let output = quote::quote!(
         impl<'c, AckMode> #client_ident<'c, AckMode> {
-
+            #(#generated_items)*
         }
     );
-    output.items = generated_items;
+    // output.items = generated_items;
     output
 }
 
@@ -267,20 +267,17 @@ fn client_stub_impl_for_trait(
 fn generate_client_stub_for_trait_method(
     service_ident: &syn::Ident,
     f: &syn::TraitItemMethod,
-) -> Option<syn::ImplItemMethod> {
+) -> Option<proc_macro2::TokenStream> {
     if let syn::FnArg::Typed(pt) = f.sig.inputs.last().unwrap() {
         let fn_ident = &f.sig.ident;
         let req_ty = &pt.ty;
-
-        if let syn::ReturnType::Type(_, ret_ty) = f.sig.output.clone() {
-            let ok_ty = get_ok_ident_from_type(ret_ty)?;
-            return Some(generate_client_stub_for_struct_method_impl(
-                service_ident,
-                fn_ident,
-                &req_ty,
-                &ok_ty,
-            ));
-        }
+        let ret_ty = &f.sig.output;
+        return Some(generate_client_stub_for_struct_method_impl(
+            service_ident,
+            fn_ident,   
+            &req_ty,
+            &ret_ty,
+        ));
     }
 
     None

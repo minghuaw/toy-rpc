@@ -289,34 +289,39 @@ pub fn export_impl(
     #[cfg(feature = "server")]
     let handler_impl = remove_export_attr_from_impl(handler_impl);
     #[cfg(all(feature = "client", feature = "runtime"))]
-    let client_impl = remove_export_attr_from_impl(client_impl);
+    // let client_impl = remove_export_attr_from_impl(client_impl);
 
     // macro_rules
     let macro_handler = macro_rules_handler();
-    let declarative_macros = quote::quote! {
-        #macro_handler
-    };
+    #[cfg(all(feature = "client", feature = "runtime"))]
+    let macro_client = macro_rules_client_stub();
 
     #[cfg(all(feature = "server", feature = "client", feature = "runtime"))]
     let output = quote::quote! {
         #input
         const _: () = {
-            #declarative_macros
+            #macro_handler
             #handler_impl
             #register_service_impl
         };
-        #client_ty
-        #client_impl
-        #stub_trait
-        #stub_impl
+        const _: () = {
+            #macro_client
+            #client_ty
+            #client_impl
+            #stub_trait
+            #stub_impl
+        };
     };
     #[cfg(all(not(feature = "server"), feature = "client", feature = "runtime"))]
     let output = quote::quote! {
         #input
-        #client_ty
-        #client_impl
-        #stub_trait
-        #stub_impl
+        const _: () = {
+            #macro_client
+            #client_ty
+            #client_impl
+            #stub_trait
+            #stub_impl
+        };
     };
     #[cfg(all(
         feature = "server",
@@ -325,7 +330,7 @@ pub fn export_impl(
     let output = quote::quote! {
         #input
         const _: () = {
-            #declarative_macros
+            #macro_handler
             #handler_impl
             #register_service_impl
         };
@@ -421,9 +426,8 @@ pub fn export_trait(
 
     // macro_rules
     let macro_handler = macro_rules_handler();
-    let declarative_macros = quote::quote! {
-        #macro_handler
-    };
+    #[cfg(all(feature = "client", feature = "runtime"))]
+    let macro_client = macro_rules_client_stub();
 
     #[cfg(all(feature = "server", feature = "client", feature = "runtime"))]
     let output = if args.impl_for_client {
@@ -431,12 +435,14 @@ pub fn export_trait(
             #input
             #transformed_trait
             const _: () = {
-                #declarative_macros
+                #macro_handler
                 #transformed_trait_impl
             };
             #local_registry
-            #client_ty
-            #client_impl
+            const _: () = {
+                #client_ty
+                #client_impl
+            };
             #stub_trait
             #stub_impl
             #trait_impl
@@ -446,12 +452,15 @@ pub fn export_trait(
             #input
             #transformed_trait
             const _: () = {
-                #declarative_macros
+                #macro_handler
                 #transformed_trait_impl
             };
             #local_registry
-            #client_ty
-            #client_impl
+            const _: () = {
+                #macro_handler
+                #client_ty
+                #client_impl
+            };
             #stub_trait
             #stub_impl
         }
@@ -460,8 +469,11 @@ pub fn export_trait(
     let output = if args.impl_for_client {
         quote::quote! {
             #input
-            #client_ty
-            #client_impl
+            const _: () = {
+                #macro_client
+                #client_ty
+                #client_impl
+            };
             #stub_trait
             #stub_impl
             #trait_impl
@@ -469,8 +481,11 @@ pub fn export_trait(
     } else {
         quote::quote! {
             #input
-            #client_ty
-            #client_impl
+            const _: () = {
+                #macro_client
+                #client_ty
+                #client_impl
+            };
             #stub_trait
             #stub_impl
         }
@@ -483,7 +498,7 @@ pub fn export_trait(
         #input
         #transformed_trait
         const _: () = {
-            #declarative_macros
+            #macro_handler
             #transformed_trait_impl
         };
         #local_registry
@@ -572,6 +587,7 @@ pub fn export_trait_impl(
 
 use darling::FromDeriveInput;
 
+use crate::util::macro_rules_client_stub;
 use crate::util::macro_rules_handler;
 
 #[derive(Debug, Default, FromDeriveInput)]

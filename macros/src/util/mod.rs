@@ -208,19 +208,21 @@ pub(crate) fn generate_client_stub_for_struct_method_impl(
     service_ident: &syn::Ident,
     fn_ident: &syn::Ident,
     req_ty: &syn::Type,
-    ok_ty: &syn::GenericArgument,
-) -> syn::ImplItemMethod {
+    ret_ty: &syn::ReturnType,
+) -> proc_macro2::TokenStream {
     let service = service_ident.to_string();
     let method = fn_ident.to_string();
     let service_method = format!("{}.{}", service, method);
-    syn::parse_quote!(
-        pub fn #fn_ident<A>(&'c self, args: A) -> toy_rpc::client::Call<#ok_ty>
-        where
-            A: std::borrow::Borrow<#req_ty> + Send + Sync + toy_rpc::serde::Serialize + 'static,
-        {
-            self.client.call(#service_method, args)
-        }
-    )
+    let ret_ty = unwrap_return_type(ret_ty);
+    quote::quote!{
+        // pub fn #fn_ident<A>(&'c self, args: A) -> toy_rpc::client::Call<#ret_ty>
+        // where
+        //     A: std::borrow::Borrow<#req_ty> + Send + Sync + toy_rpc::serde::Serialize + 'static,
+        // {
+        //     self.client.call(#service_method, args)
+        // }
+        client_stub!(self, #fn_ident, #service_method, #req_ty, #ret_ty)
+    }
 }
 
 pub(crate) fn macro_rules_handler() -> proc_macro2::TokenStream {
@@ -255,6 +257,21 @@ pub(crate) fn macro_rules_handler() -> proc_macro2::TokenStream {
                     }
                 )
             };
+        }
+    }
+}
+
+pub(crate) fn macro_rules_client_stub() -> proc_macro2::TokenStream {
+    quote::quote! {
+        macro_rules! client_stub {
+            ($self:ident, $func:ident, $service_method:expr, $req_ty:ty, $ret_ty:ty) => {
+                pub fn $func<A>(&'c $self, args: A) -> toy_rpc::client::Call<$ret_ty>
+                where 
+                    A: std::borrow::Borrow<$req_ty> + Send + Sync + toy_rpc::serde::Serialize + 'static,
+                {
+                    $self.client.call($service_method, args)
+                }
+            }
         }
     }
 }
