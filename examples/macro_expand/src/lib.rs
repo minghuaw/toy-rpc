@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use toy_rpc::macros::{export_impl, export_trait, Topic};
+use toy_rpc::macros::{export_impl, export_trait, export_trait_impl, Topic};
 use toy_rpc::Error;
 use async_trait::async_trait;
 use serde::{Serialize, Deserialize};
@@ -16,6 +16,8 @@ use serde::{Serialize, Deserialize};
 // #[export_trait]
 // =============================================================================
 
+// pub struct Foo { }
+
 // #[async_trait]
 // #[export_trait(impl_for_client)]
 // pub trait AnotherExample {
@@ -25,12 +27,22 @@ use serde::{Serialize, Deserialize};
 //     async fn two(&self, req: bool) -> Result<bool, Error>;
 // }
 
+// #[async_trait]
+// #[export_trait_impl]
+// impl AnotherExample for Foo {
+//     async fn one(&self, args: i32) -> Result<i32, Error> {
+//         Ok(1)
+//     }
+
+//     async fn two(&self, req: bool) -> Result<bool, Error> {
+//         Ok(false)
+//     }
+// }
+
 // =============================================================================
 // #[async_trait]
 // #[export_impl]
 // =============================================================================
-
-// pub struct Foo { }
 
 // #[async_trait]
 // pub trait Example {

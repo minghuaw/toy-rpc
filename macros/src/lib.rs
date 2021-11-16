@@ -291,10 +291,19 @@ pub fn export_impl(
     #[cfg(all(feature = "client", feature = "runtime"))]
     let client_impl = remove_export_attr_from_impl(client_impl);
 
+    // macro_rules
+    let macro_handler = macro_rules_handler();
+    let declarative_macros = quote::quote! {
+        #macro_handler
+    };
+
     #[cfg(all(feature = "server", feature = "client", feature = "runtime"))]
     let output = quote::quote! {
         #input
-        #handler_impl
+        const _: () = {
+            #declarative_macros
+            #handler_impl
+        };
         #register_service_impl
         #client_ty
         #client_impl
@@ -315,7 +324,10 @@ pub fn export_impl(
     ))]
     let output = quote::quote! {
         #input
-        #handler_impl
+        const _: () = {
+            #declarative_macros
+            #handler_impl
+        };
         #register_service_impl
     };
     #[cfg(all(
@@ -544,6 +556,8 @@ pub fn export_trait_impl(
 /* -------------------------------------------------------------------------- */
 
 use darling::FromDeriveInput;
+
+use crate::util::macro_rules_handler;
 
 #[derive(Debug, Default, FromDeriveInput)]
 #[darling(attributes(topic))]

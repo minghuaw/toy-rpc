@@ -101,9 +101,8 @@ fn impl_transformed_trait(
                         async move {
                             let req: #req_ty = toy_rpc::erased_serde::deserialize(&mut deserializer)
                                 .map_err(|e| toy_rpc::error::Error::ParseError(Box::new(e)))?;
-                            self.#orig_ident(req).await
-                                .map(|r| Box::new(r) as Box<dyn toy_rpc::erased_serde::Serialize + Send + Sync + 'static>)
-                                .map_err(|err| err.into())
+                            let outcome = self.#orig_ident(req).await;
+                            Ok(Box::new(outcome) as toy_rpc::service::Outcome)
                         }
                     )
                 }

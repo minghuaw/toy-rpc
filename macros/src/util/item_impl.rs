@@ -2,49 +2,6 @@ use super::*;
 
 /// transform impl block to meet the signature of service function
 ///
-/// Example
-///
-/// ```rust
-/// pub struct Foo { }
-///
-/// #[export_impl]
-/// impl Foo {
-///     #[export_method]
-///     async fn increment(&self, arg: i32) -> Result<i32, String> {
-///         Ok(arg + 1)
-///     }
-/// }
-/// ```
-///
-/// will generate the following impl
-///
-/// ```rust
-/// pub struct Foo { }
-///
-/// impl Foo {
-///     async fn increment(&self, arg: i32) -> Result<i32, String> {
-///         Ok(arg + 1)
-///     }
-/// }
-/// pub fn increment_handler(
-///     self: std::sync::Arc<Self>,
-///     mut deserializer: Box<dyn toy_rpc::erased_serde::Deserializer<'static> + Send>,
-/// ) -> toy_rpc::service::HandlerResultFut {
-///     Box::pin(async move {
-///     let req: i32 = toy_rpc::erased_serde::deserialize(&mut deserializer)
-///         .map_err(|e| toy_rpc::error::Error::ParseError(Box::new(e)))?;
-///     let res = self
-///         .increment(req) // executes the RPC method
-///         .await
-///         .map(|r| {
-///             Box::new(r)
-///                 as Box<dyn toy_rpc::erased_serde::Serialize + Send + Sync + 'static>
-///         })
-///         .map_err(|e| toy_rpc::error::Error::ExecutionError(e.to_string()));
-///     res
-///     })
-/// }
-/// ```
 #[cfg(feature = "server")]
 pub(crate) fn transform_impl(
     input: syn::ItemImpl,
@@ -73,7 +30,7 @@ pub(crate) fn transform_impl(
 
 /// transform method to meet the signature of service function
 #[cfg(feature = "server")]
-pub(crate) fn   transform_impl_item(f: &mut syn::ImplItemMethod) {
+pub(crate) fn transform_impl_item(f: &mut syn::ImplItemMethod) {
     // change function ident
     let ident = f.sig.ident.clone();
     let concat_name = format!("{}_{}", &ident.to_string(), HANDLER_SUFFIX);
@@ -84,21 +41,23 @@ pub(crate) fn   transform_impl_item(f: &mut syn::ImplItemMethod) {
 
     // transform function request type
     if let syn::FnArg::Typed(pt) = f.sig.inputs.last().unwrap() {
+        // let method = quote::quote! {&self.#ident};
         let req_ty = &pt.ty;
+        let ret_ty = match &f.sig.output {
+            syn::ReturnType::Default => quote::quote! {()},
+            syn::ReturnType::Type(_, ty) => quote::quote! {#ty}
+        };
 
         f.block = syn::parse_quote!({
-            Box::pin(
-                async move {
-                    let req: #req_ty = toy_rpc::erased_serde::deserialize(&mut deserializer)
-                        .map_err(|e| toy_rpc::error::Error::ParseError(Box::new(e)))?;
-                    let outcome = self.#ident(req).await;
-                    Ok(
-                        Box::new(outcome) as Box<dyn toy_rpc::erased_serde::Serialize + Send + Sync + 'static>
-                    )
-                        // .map(|r| Box::new(r) as Box<dyn toy_rpc::erased_serde::Serialize + Send + Sync + 'static>)
-                        // .map_err(|err| err.into())
-                }
-            )
+            // Box::pin(
+            //     async move {
+            //         let req: #req_ty = toy_rpc::erased_serde::deserialize(&mut deserializer)
+            //             .map_err(|e| toy_rpc::error::Error::ParseError(Box::new(e)))?;
+            //         let outcome = self.#ident(req).await;
+            //         Ok(Box::new(outcome) as toy_rpc::service::Outcome)
+            //     }
+            // )
+            handler!(self, #ident, deserializer, #req_ty, #ret_ty)
         });
 
         f.sig.inputs = syn::parse_quote!(
