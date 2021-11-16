@@ -144,6 +144,19 @@ pub(crate) fn generate_client_stub_for_struct_method_impl(
 pub(crate) fn macro_rules_handler() -> proc_macro2::TokenStream {
     quote! {
         macro_rules! handler {
+            // handler when return type is a Result
+            ($self:ident, $method:ident, $de:ident, $req_ty:ty, Result<$ret_ty:ty, $err_ty:ty>) => {
+                Box::pin(
+                    async move {
+                        let req: $req_ty = toy_rpc::erased_serde::deserialize(&mut $de)
+                            .map_err(|e| toy_rpc::error::Error::ParseError(Box::new(e)))?;
+                        let result: Result<$ret_ty, $err_ty> = $self.$method(req).await;
+                        let outcome = result?;
+                        Ok(Box::new(outcome) as toy_rpc::service::Outcome)
+                    }
+                )
+            };
+
             // handler when return type is not Result
             ($self:ident, $method:ident, $de:ident, $req_ty:ty, $ret_ty:ty) => {
                 Box::pin(
@@ -154,7 +167,7 @@ pub(crate) fn macro_rules_handler() -> proc_macro2::TokenStream {
                         Ok(Box::new(outcome) as toy_rpc::service::Outcome)
                     }
                 )
-            }
+            };
         }
     }
 }
