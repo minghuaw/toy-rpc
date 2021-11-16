@@ -1,6 +1,3 @@
-use std::collections::binary_heap::Iter;
-
-use quote::quote;
 
 #[cfg(all(feature = "client", feature = "runtime",))]
 use super::{CLIENT_STUB_SUFFIX, CLIENT_SUFFIX};
@@ -227,7 +224,7 @@ pub(crate) fn generate_client_stub_for_struct_method_impl(
 }
 
 pub(crate) fn macro_rules_handler() -> proc_macro2::TokenStream {
-    quote! {
+    quote::quote! {
         macro_rules! handler {
             // handler when return type is a pinned Result (from async_trait)
             ($self:ident, $method:ident, $de:ident, $req_ty:ty, Pin<$token:tt>) => {
