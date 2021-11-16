@@ -8,12 +8,10 @@ pub(crate) fn transform_impl(
 ) -> (syn::ItemImpl, Vec<String>, Vec<syn::Ident>) {
     let mut names = Vec::new();
     let mut idents = Vec::new();
-    let mut output = filter_exported_impl_items(input);
+    let self_ty = input.self_ty.clone();
+    let mut methods = filter_exported_impl_items(input);
 
-    output.trait_ = None;
-    output
-        .items
-        .iter_mut()
+    methods.iter_mut()
         // first filter out method
         .filter_map(|item| match item {
             syn::ImplItem::Method(f) => Some(f),
@@ -24,6 +22,14 @@ pub(crate) fn transform_impl(
             transform_impl_item(f);
             idents.push(f.sig.ident.clone());
         });
+
+    let mut output: syn::ItemImpl = syn::parse_quote!{
+        impl #self_ty {
+            
+        }
+    };
+    // println!("{:?}", &output);
+    output.items = methods;
 
     (output, names, idents)
 }
@@ -43,10 +49,11 @@ pub(crate) fn transform_impl_item(f: &mut syn::ImplItemMethod) {
     if let syn::FnArg::Typed(pt) = f.sig.inputs.last().unwrap() {
         // let method = quote::quote! {&self.#ident};
         let req_ty = &pt.ty;
-        let ret_ty = match &f.sig.output {
-            syn::ReturnType::Default => quote::quote! {()},
-            syn::ReturnType::Type(_, ty) => quote::quote! {#ty}
-        };
+        // let ret_ty: syn::Type = match &f.sig.output {
+        //     syn::ReturnType::Default => syn::parse_quote! {()},
+        //     syn::ReturnType::Type(_, ty) => syn::parse_quote! {#ty}
+        // };
+        let ret_ty = unwrap_return_type(&f.sig.output);
 
         f.block = syn::parse_quote!({
             // Box::pin(
@@ -119,13 +126,13 @@ pub(crate) fn impl_register_service_for_struct(
 }
 
 #[cfg(any(feature = "server", all(feature = "client", feature = "runtime")))]
-pub(crate) fn filter_exported_impl_items(input: syn::ItemImpl) -> syn::ItemImpl {
+pub(crate) fn filter_exported_impl_items(input: syn::ItemImpl) -> Vec<syn::ImplItem> {
     let mut output = input;
     output.items.retain(|item| match item {
         syn::ImplItem::Method(f) => f.attrs.iter().any(|attr| is_exported(attr)),
         _ => false,
     });
-    output
+    output.items
 }
 
 #[cfg(all(feature = "client", feature = "runtime"))]

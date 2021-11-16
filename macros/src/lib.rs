@@ -303,8 +303,8 @@ pub fn export_impl(
         const _: () = {
             #declarative_macros
             #handler_impl
+            #register_service_impl
         };
-        #register_service_impl
         #client_ty
         #client_impl
         #stub_trait
@@ -327,8 +327,8 @@ pub fn export_impl(
         const _: () = {
             #declarative_macros
             #handler_impl
+            #register_service_impl
         };
-        #register_service_impl
     };
     #[cfg(all(
         not(feature = "server"),
@@ -419,12 +419,21 @@ pub fn export_trait(
     #[cfg(feature = "server")]
     let transformed_trait_impl = remove_export_attr_from_impl(transformed_trait_impl);
 
+    // macro_rules
+    let macro_handler = macro_rules_handler();
+    let declarative_macros = quote::quote! {
+        #macro_handler
+    };
+
     #[cfg(all(feature = "server", feature = "client", feature = "runtime"))]
     let output = if args.impl_for_client {
         quote::quote! {
             #input
             #transformed_trait
-            #transformed_trait_impl
+            const _: () = {
+                #declarative_macros
+                #transformed_trait_impl
+            };
             #local_registry
             #client_ty
             #client_impl
@@ -436,7 +445,10 @@ pub fn export_trait(
         quote::quote! {
             #input
             #transformed_trait
-            #transformed_trait_impl
+            const _: () = {
+                #declarative_macros
+                #transformed_trait_impl
+            };
             #local_registry
             #client_ty
             #client_impl
@@ -470,7 +482,10 @@ pub fn export_trait(
     let output = quote::quote! {
         #input
         #transformed_trait
-        #transformed_trait_impl
+        const _: () = {
+            #declarative_macros
+            #transformed_trait_impl
+        };
         #local_registry
     };
     #[cfg(all(

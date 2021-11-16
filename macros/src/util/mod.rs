@@ -1,3 +1,5 @@
+use std::collections::binary_heap::Iter;
+
 use quote::quote;
 
 #[cfg(all(feature = "client", feature = "runtime",))]
@@ -27,6 +29,89 @@ pub(crate) fn recursively_get_result_from_generic_arg(
         syn::GenericArgument::Binding(binding) => recusively_get_result_from_type(&binding.ty),
         _ => None,
     }
+}
+
+pub(crate) fn unwrap_return_type(ty: &syn::ReturnType) -> syn::Type {
+    // use syn::{Type};
+    // println!("{:?}", &ty);
+    let ret_ty: syn::Type = match ty {
+        syn::ReturnType::Default => syn::parse_quote! {()},
+        syn::ReturnType::Type(_, ty) => syn::parse_quote! {#ty}
+    };
+
+    let ty = unwrap_type(ret_ty);
+    ty
+}
+
+pub(crate) fn unwrap_type(ty: syn::Type) -> syn::Type {
+    let tp = match ty {
+        syn::Type::Path(tp) => tp,
+        _ => return ty
+    };
+
+    match unwrap_type_path_for_async_trait(&tp) {
+        Some(ty) => ty.clone(),
+        None => syn::Type::Path(tp.clone())
+    }
+}
+
+pub(crate) fn unwrap_type_path_for_async_trait(tp: &syn::TypePath) -> Option<&syn::Type> {
+    // println!("{:?}", tp.path.segments);
+
+    let pin_args = unwrap_till_ident(tp.path.segments.iter(), "Pin")?;
+    let ty = unwrap_angled_path_args(pin_args)?;
+    let segments = match ty {
+        syn::Type::Path(tp) => tp.path.segments.iter(),
+        _ => return None
+    };
+    let box_args = unwrap_till_ident(segments, "Box")?;
+    let ty = unwrap_angled_path_args(box_args)?;
+    let objs = match ty {
+        syn::Type::TraitObject(tobj) => &tobj.bounds,
+        _ => return None
+    };
+    let segments = unwrap_trait_obj(objs.iter())?;
+    let fut_args = unwrap_till_ident(segments, "Future")?;
+    let ty = unwrap_angled_path_args(fut_args)?;
+
+    Some(ty)
+}
+
+pub(crate) fn unwrap_till_ident<'a>(segments: impl Iterator<Item=&'a syn::PathSegment>, ident: &'a str) -> Option<&'a syn::PathArguments> {
+    for seg in segments {
+        // println!("{:?}", seg.ident);
+        if seg.ident == ident {
+            return Some(&seg.arguments)
+        }
+    }
+    None
+}
+
+pub(crate) fn unwrap_angled_path_args(path_args: &syn::PathArguments) -> Option<&syn::Type> {
+    if let syn::PathArguments::AngleBracketed(aargs) = path_args {
+        if let Some(garg) = aargs.args.first() {
+            match garg {
+                syn::GenericArgument::Type(ty) => return Some(ty),
+                syn::GenericArgument::Binding(binding) => return Some(&binding.ty),
+                _ => return None
+            }
+        }
+    }
+
+    None
+}
+
+
+pub(crate) fn unwrap_trait_obj<'a>(objs: impl Iterator<Item=&'a syn::TypeParamBound>) -> Option<impl Iterator<Item=&'a syn::PathSegment>> {
+    for obj in objs {
+        match obj {
+            syn::TypeParamBound::Trait(tb) => {
+                return Some(tb.path.segments.iter())
+            },
+            _ => {}
+        }
+    }
+    None
 }
 
 #[cfg(all(feature = "client", feature = "runtime"))]
@@ -144,6 +229,11 @@ pub(crate) fn generate_client_stub_for_struct_method_impl(
 pub(crate) fn macro_rules_handler() -> proc_macro2::TokenStream {
     quote! {
         macro_rules! handler {
+            // handler when return type is a pinned Result (from async_trait)
+            ($self:ident, $method:ident, $de:ident, $req_ty:ty, Pin<$token:tt>) => {
+              
+            };
+
             // handler when return type is a Result
             ($self:ident, $method:ident, $de:ident, $req_ty:ty, Result<$ret_ty:ty, $err_ty:ty>) => {
                 Box::pin(

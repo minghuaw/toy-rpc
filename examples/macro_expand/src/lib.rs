@@ -4,6 +4,9 @@ use toy_rpc::macros::{export_impl, export_trait, export_trait_impl, Topic};
 use toy_rpc::Error;
 use async_trait::async_trait;
 use serde::{Serialize, Deserialize};
+
+pub struct Foo { }
+
 /* -------------------------------------------------------------------------- */
 /*                                #[derive(Topic)]                            */
 /* -------------------------------------------------------------------------- */
@@ -16,15 +19,14 @@ use serde::{Serialize, Deserialize};
 // #[export_trait]
 // =============================================================================
 
-// pub struct Foo { }
 
 // #[async_trait]
-// #[export_trait(impl_for_client)]
+// #[export_trait]
 // pub trait AnotherExample {
 //     #[export_method]
 //     async fn one(&self, args: i32) -> Result<i32, Error>;
 //     #[export_method]
-//     async fn two(&self, req: bool) -> Result<bool, Error>;
+//     async fn two(&self, req: bool) -> i32;
 // }
 
 // #[async_trait]
@@ -34,8 +36,8 @@ use serde::{Serialize, Deserialize};
 //         Ok(1)
 //     }
 
-//     async fn two(&self, req: bool) -> Result<bool, Error> {
-//         Ok(false)
+//     async fn two(&self, req: bool) -> i32 {
+//         2
 //     }
 // }
 
@@ -44,25 +46,24 @@ use serde::{Serialize, Deserialize};
 // #[export_impl]
 // =============================================================================
 
-// #[async_trait]
-// pub trait Example {
-//     async fn foo(&self, args: i32) -> Result<i32, String>;
-//     async fn not_exported(&self);
-// }
+#[async_trait]
+pub trait Example {
+    async fn foo(&self, args: i32) -> Result<i32, String>;
+    async fn not_exported(&self);
+}
 
-// #[async_trait]
-// #[export_impl]
-// impl Example for Foo {
-// // impl Example {
-//     #[export_method]
-//     async fn foo(&self, args: i32) -> Result<i32, String> {
-//         Ok(args)
-//     }
+#[export_impl]
+#[async_trait]
+impl Example for Foo {
+    #[export_method]
+    async fn foo(&self, args: i32) -> Result<i32, String> {
+        Ok(args)
+    }
 
-//     async fn not_exported(&self) {
-//         println!("this is not exported");
-//     }
-// }
+    async fn not_exported(&self) {
+        println!("this is not exported");
+    }
+}
 
 // // =============================================================================
 // // #[export_impl]

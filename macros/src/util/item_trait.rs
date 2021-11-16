@@ -88,8 +88,14 @@ fn impl_transformed_trait(
     for (handler_item, orig_item) in items {
         if let syn::FnArg::Typed(pt) = orig_item.sig.inputs.last().unwrap() {
             let req_ty = &pt.ty;
+            // let ret_ty: syn::Type = match &orig_item.sig.output {
+            //     syn::ReturnType::Default => syn::parse_quote! {()},
+            //     syn::ReturnType::Type(_, ty) => syn::parse_quote! {#ty}
+            // };
             let handler_ident = &handler_item.sig.ident;
             let orig_ident = &orig_item.sig.ident;
+
+            let ret_ty = unwrap_return_type(&orig_item.sig.output );
 
             let f: syn::ImplItemMethod = syn::parse_quote!(
                 fn #handler_ident(
@@ -97,14 +103,15 @@ fn impl_transformed_trait(
                     mut deserializer: Box<dyn toy_rpc::erased_serde::Deserializer<'static> + Send>
                 ) -> toy_rpc::service::HandlerResultFut
                 {
-                    Box::pin(
-                        async move {
-                            let req: #req_ty = toy_rpc::erased_serde::deserialize(&mut deserializer)
-                                .map_err(|e| toy_rpc::error::Error::ParseError(Box::new(e)))?;
-                            let outcome = self.#orig_ident(req).await;
-                            Ok(Box::new(outcome) as toy_rpc::service::Outcome)
-                        }
-                    )
+                    // Box::pin(
+                    //     async move {
+                    //         let req: #req_ty = toy_rpc::erased_serde::deserialize(&mut deserializer)
+                    //             .map_err(|e| toy_rpc::error::Error::ParseError(Box::new(e)))?;
+                    //         let outcome = self.#orig_ident(req).await;
+                    //         Ok(Box::new(outcome) as toy_rpc::service::Outcome)
+                    //     }
+                    // )
+                    handler!(self, #orig_ident, deserializer, #req_ty, #ret_ty)
                 }
             );
             trait_impl.items.push(syn::ImplItem::Method(f));
