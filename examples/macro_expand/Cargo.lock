@@ -3,6 +3,12 @@
 version = 3
 
 [[package]]
+name = "anyhow"
+version = "1.0.45"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ee10e43ae4a853c0a3591d4e2ada1719e553be18199d9da9d4a83f5927c2f5c7"
+
+[[package]]
 name = "async-channel"
 version = "1.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -601,6 +607,7 @@ dependencies = [
 name = "macro_expand"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "async-trait",
  "serde",
  "toy-rpc",
@@ -903,6 +910,7 @@ dependencies = [
 name = "toy-rpc"
 version = "0.8.4"
 dependencies = [
+ "anyhow",
  "async-std",
  "async-trait",
  "bincode",

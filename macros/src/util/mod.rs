@@ -275,19 +275,74 @@ pub(crate) fn macro_rules_client_stub() -> proc_macro2::TokenStream {
                 )
             };
 
-            // non Result return type
-            ($self:ident, $service_method:expr, $req_id:ident, $ret_ty:ty) => {
+            ($self:ident, $service_method:expr, $req_id:ident, Result<$ok_ty:ty>) => {
                 Box::pin(
                     async move {
-                        let success = $self.call($service_method, $req_id).await;
+                        let success = $self.call($service_method, $req_id).await?;
                         Ok(success)
                     }
                 )
             };
 
+            ($self:ident, $service_method:expr, $req_id:ident, toy_rpc::Result<$ok_ty:ty>) => {
+                Box::pin(
+                    async move {
+                        let success = $self.call($service_method, $req_id).await?;
+                        Ok(success)
+                    }
+                )
+            };
+
+            ($self:ident, $service_method:expr, $req_id:ident, anyhow::Result<$ok_ty:ty>) => {
+                Box::pin(
+                    async move {
+                        let success = $self.call($service_method, $req_id).await?;
+                        Ok(success)
+                    }
+                )
+            };
+
+            // non Result return type
+            ($self:ident, $service_method:expr, $req_id:ident, $ret_ty:ty) => {
+                // Box::pin(
+                //     async move {
+                //         let success = $self.call($service_method, $req_id).await;
+                //         Ok(success)
+                //     }
+                // )
+                compile_error!("`#[export_trait(impl_for_client)]` requires return type to be Result<_, _>");
+            };
+
             // For Service Struct
             // Result return type
             ($self:ident, $func:ident, $service_method:expr, $req_ty:ty, Result<$ok_ty:ty, $err_ty:ty>) => {
+                pub fn $func<A>(&'c $self, args: A) -> toy_rpc::client::Call<$ok_ty>
+                where 
+                    A: std::borrow::Borrow<$req_ty> + Send + Sync + toy_rpc::serde::Serialize + 'static,
+                {
+                    $self.client.call($service_method, args)
+                }
+            };
+
+            ($self:ident, $func:ident, $service_method:expr, $req_ty:ty, Result<$ok_ty:ty>) => {
+                pub fn $func<A>(&'c $self, args: A) -> toy_rpc::client::Call<$ok_ty>
+                where 
+                    A: std::borrow::Borrow<$req_ty> + Send + Sync + toy_rpc::serde::Serialize + 'static,
+                {
+                    $self.client.call($service_method, args)
+                }
+            };
+
+            ($self:ident, $func:ident, $service_method:expr, $req_ty:ty, toy_rpc::Result<$ok_ty:ty>) => {
+                pub fn $func<A>(&'c $self, args: A) -> toy_rpc::client::Call<$ok_ty>
+                where 
+                    A: std::borrow::Borrow<$req_ty> + Send + Sync + toy_rpc::serde::Serialize + 'static,
+                {
+                    $self.client.call($service_method, args)
+                }
+            };
+
+            ($self:ident, $func:ident, $service_method:expr, $req_ty:ty, anyhow::Result<$ok_ty:ty>) => {
                 pub fn $func<A>(&'c $self, args: A) -> toy_rpc::client::Call<$ok_ty>
                 where 
                     A: std::borrow::Borrow<$req_ty> + Send + Sync + toy_rpc::serde::Serialize + 'static,

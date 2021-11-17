@@ -360,6 +360,7 @@ fn generate_trait_method_impl_for_client(
     };
     let service_method = format!("{}.{}", service_ident, method_ident);
     let ret_ty = unwrap_return_type(&method.sig.output);
+    
 
     let block: syn::Block = syn::parse_quote!(
         {
