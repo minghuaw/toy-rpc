@@ -21,26 +21,26 @@ pub struct Foo2 { }
 // =============================================================================
 
 
-// #[async_trait]
-// #[export_trait(impl_for_client)]
-// pub trait AnotherExample {
-//     #[export_method]
-//     async fn one(&self, args: i32) -> Result<i32, Error>;
-//     #[export_method]
-//     async fn two(&self, req: bool) -> i32;
-// }
+#[async_trait]
+#[export_trait(impl_for_client)]
+pub trait AnotherExample {
+    #[export_method]
+    async fn one(&self, args: i32) -> Result<i32, Error>;
+    #[export_method]
+    async fn two(&self, req: bool) -> i32;
+}
 
-// #[async_trait]
-// #[export_trait_impl]
-// impl AnotherExample for Foo2 {
-//     async fn one(&self, args: i32) -> Result<i32, Error> {
-//         Ok(1)
-//     }
+#[async_trait]
+#[export_trait_impl]
+impl AnotherExample for Foo2 {
+    async fn one(&self, args: i32) -> Result<i32, Error> {
+        Ok(1)
+    }
 
-//     async fn two(&self, req: bool) -> i32 {
-//         2
-//     }
-// }
+    async fn two(&self, req: bool) -> i32 {
+        2
+    }
+}
 
 // =============================================================================
 // #[async_trait]
@@ -72,15 +72,15 @@ pub struct Foo2 { }
 
 pub struct Bar { }
 
-#[export_impl]
-impl Bar {
-    #[export_method]
-    async fn bar(&self, args: i32) -> Result<i32, String> {
-        Ok(args)
-    }
+// #[export_impl]
+// impl Bar {
+//     #[export_method]
+//     async fn bar(&self, args: i32) -> Result<i32, String> {
+//         Ok(args)
+//     }
 
-    #[export_method]
-    async fn get_string(&self, args: ()) -> String {
-        "hello".into()
-    }
-}
+//     #[export_method]
+//     async fn get_string(&self, args: ()) -> String {
+//         "hello".into()
+//     }
+// }

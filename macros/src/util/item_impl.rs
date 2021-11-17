@@ -64,7 +64,7 @@ pub(crate) fn transform_impl_item(f: &mut syn::ImplItemMethod) {
             //         Ok(Box::new(outcome) as toy_rpc::service::Outcome)
             //     }
             // )
-            handler!(self, #ident, deserializer, #req_ty, #ret_ty)
+            toy_rpc_handler!(self, #ident, deserializer, #req_ty, #ret_ty)
         });
 
         f.sig.inputs = syn::parse_quote!(

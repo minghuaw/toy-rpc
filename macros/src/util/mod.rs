@@ -221,13 +221,13 @@ pub(crate) fn generate_client_stub_for_struct_method_impl(
         // {
         //     self.client.call(#service_method, args)
         // }
-        client_stub!(self, #fn_ident, #service_method, #req_ty, #ret_ty)
+        toy_rpc_client_stub!(self, #fn_ident, #service_method, #req_ty, #ret_ty)
     }
 }
 
 pub(crate) fn macro_rules_handler() -> proc_macro2::TokenStream {
     quote::quote! {
-        macro_rules! handler {
+        macro_rules! toy_rpc_handler {
             // handler when return type is a pinned Result (from async_trait)
             ($self:ident, $method:ident, $de:ident, $req_ty:ty, Pin<$token:tt>) => {
               
@@ -263,7 +263,40 @@ pub(crate) fn macro_rules_handler() -> proc_macro2::TokenStream {
 
 pub(crate) fn macro_rules_client_stub() -> proc_macro2::TokenStream {
     quote::quote! {
-        macro_rules! client_stub {
+        macro_rules! toy_rpc_client_stub {
+            // For Service Trait
+            // Result return type
+            ($self:ident, $service_method:expr, $req_id:ident, Result<$ok_ty:ty, $err_ty:ty>) => {
+                Box::pin(
+                    async move {
+                        let success = $self.call($service_method, $req_id).await?;
+                        Ok(success)
+                    }
+                )
+            };
+
+            // non Result return type
+            ($self:ident, $service_method:expr, $req_id:ident, $ret_ty:ty) => {
+                Box::pin(
+                    async move {
+                        let success = $self.call($service_method, $req_id).await;
+                        Ok(success)
+                    }
+                )
+            };
+
+            // For Service Struct
+            // Result return type
+            ($self:ident, $func:ident, $service_method:expr, $req_ty:ty, Result<$ok_ty:ty, $err_ty:ty>) => {
+                pub fn $func<A>(&'c $self, args: A) -> toy_rpc::client::Call<$ok_ty>
+                where 
+                    A: std::borrow::Borrow<$req_ty> + Send + Sync + toy_rpc::serde::Serialize + 'static,
+                {
+                    $self.client.call($service_method, args)
+                }
+            };
+
+            // non Result return type
             ($self:ident, $func:ident, $service_method:expr, $req_ty:ty, $ret_ty:ty) => {
                 pub fn $func<A>(&'c $self, args: A) -> toy_rpc::client::Call<$ret_ty>
                 where 
@@ -271,7 +304,7 @@ pub(crate) fn macro_rules_client_stub() -> proc_macro2::TokenStream {
                 {
                     $self.client.call($service_method, args)
                 }
-            }
+            };
         }
     }
 }

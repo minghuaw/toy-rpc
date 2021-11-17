@@ -57,6 +57,8 @@ dependencies = [
 [[package]]
 name = "brw"
 version = "0.1.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7982f925db467f4f4376c67b9a50dd9ded81fb55bef05c90697986b3b46ac296"
 dependencies = [
  "async-trait",
  "flume",
@@ -537,9 +539,9 @@ checksum = "bc881b2c22681370c6a780e47af9840ef841837bc98118431d4e1868bd0c1086"
 
 [[package]]
 name = "proc-macro2"
-version = "1.0.27"
+version = "1.0.32"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f0d8caf72986c1a598726adc988bb5984792ef84f5ee5aa50209145ee8077038"
+checksum = "ba508cc11742c0dc5c1659771673afbab7a0efab23aa17e854cbab0837ed0b43"
 dependencies = [
  "unicode-xid",
 ]
@@ -724,7 +726,7 @@ dependencies = [
 
 [[package]]
 name = "toy-rpc"
-version = "0.8.3"
+version = "0.8.4"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -749,10 +751,9 @@ dependencies = [
 [[package]]
 name = "toy-rpc-macros"
 version = "0.6.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "37b17351aeb1225c1b4f721fe52559019f39acbe2cc927ee40cc0ed99cef54dd"
 dependencies = [
  "darling",
+ "proc-macro2",
  "quote",
  "syn",
 ]

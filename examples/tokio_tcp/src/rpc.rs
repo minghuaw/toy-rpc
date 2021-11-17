@@ -38,9 +38,9 @@ pub trait Arith {
     #[export_method]
     async fn subtract(&self, args: (i32, i32)) -> Result<i32, Error>;
 
-    #[export_method]
-    async fn get_num_anyhow(&self, args:()) -> anyhow::Result<u32>;
+    // #[export_method]
+    // async fn get_num_anyhow(&self, args:()) -> anyhow::Result<u32>;
 
-    #[export_method]
-    async fn get_str_anyhow(&self, args:()) -> Result<String, Error>;
+    // #[export_method]
+    // async fn get_str_anyhow(&self, args:()) -> Result<String, Error>;
 }

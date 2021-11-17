@@ -111,7 +111,7 @@ fn impl_transformed_trait(
                     //         Ok(Box::new(outcome) as toy_rpc::service::Outcome)
                     //     }
                     // )
-                    handler!(self, #orig_ident, deserializer, #req_ty, #ret_ty)
+                    toy_rpc_handler!(self, #orig_ident, deserializer, #req_ty, #ret_ty)
                 }
             );
             trait_impl.items.push(syn::ImplItem::Method(f));
@@ -256,7 +256,7 @@ fn client_stub_impl_for_trait(
 
     let output = quote::quote!(
         impl<'c, AckMode> #client_ident<'c, AckMode> {
-            #(#generated_items)*
+            #(#generated_items;)*
         }
     );
     // output.items = generated_items;
@@ -359,14 +359,17 @@ fn generate_trait_method_impl_for_client(
         _ => panic!("Argument ident not found"),
     };
     let service_method = format!("{}.{}", service_ident, method_ident);
+    let ret_ty = unwrap_return_type(&method.sig.output);
+
     let block: syn::Block = syn::parse_quote!(
         {
-            Box::pin(
-                async move {
-                    let success = self.call(#service_method, #arg_ident).await?;
-                    Ok(success)
-                }
-            )
+            // Box::pin(
+            //     async move {
+            //         let success = self.call(#service_method, #arg_ident).await?;
+            //         Ok(success)
+            //     }
+            // )
+            toy_rpc_client_stub!(self, #service_method, #arg_ident, #ret_ty)
         }
     );
 

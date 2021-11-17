@@ -304,22 +304,22 @@ pub fn export_impl(
             #handler_impl
             #register_service_impl
         };
+        #client_ty
+        #stub_trait
         const _: () = {
             #macro_client
-            #client_ty
             #client_impl
-            #stub_trait
             #stub_impl
         };
     };
     #[cfg(all(not(feature = "server"), feature = "client", feature = "runtime"))]
     let output = quote::quote! {
         #input
+        #client_ty
+        #stub_trait
         const _: () = {
             #macro_client
-            #client_ty
             #client_impl
-            #stub_trait
             #stub_impl
         };
     };
@@ -439,13 +439,14 @@ pub fn export_trait(
                 #transformed_trait_impl
             };
             #local_registry
-            const _: () = {
-                #client_ty
-                #client_impl
-            };
+            #client_ty
             #stub_trait
-            #stub_impl
-            #trait_impl
+            const _: () = {
+                #macro_client
+                #client_impl
+                #stub_impl
+                #trait_impl
+            };
         }
     } else {
         quote::quote! {
@@ -456,38 +457,38 @@ pub fn export_trait(
                 #transformed_trait_impl
             };
             #local_registry
-            const _: () = {
-                #macro_handler
-                #client_ty
-                #client_impl
-            };
+            #client_ty
             #stub_trait
-            #stub_impl
+            const _: () = {
+                #macro_client
+                #client_impl
+                #stub_impl
+            };
         }
     };
     #[cfg(all(not(feature = "server"), feature = "client", feature = "runtime"))]
     let output = if args.impl_for_client {
         quote::quote! {
             #input
+            #client_ty
+            #stub_trait
             const _: () = {
                 #macro_client
-                #client_ty
                 #client_impl
+                #stub_impl
+                #trait_impl
             };
-            #stub_trait
-            #stub_impl
-            #trait_impl
         }
     } else {
         quote::quote! {
             #input
+            #client_ty
+            #stub_trait
             const _: () = {
                 #macro_client
-                #client_ty
                 #client_impl
+                #stub_impl
             };
-            #stub_trait
-            #stub_impl
         }
     };
     #[cfg(all(
