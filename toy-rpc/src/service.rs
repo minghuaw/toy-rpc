@@ -14,7 +14,6 @@ use crate::protocol::{InboundBody, OutboundBody};
 // pub(crate) type Success = Box<dyn erased::Serialize + Send + Sync + 'static>;
 // pub(crate) type Success = Box<OutboundBody>;
 
-
 pub type Outcome = Box<OutboundBody>;
 
 /// Handler result
@@ -81,9 +80,7 @@ where
     fn call(&self, name: &str, deserializer: Box<InboundBody>) -> ServiceCallFut {
         let state = self.state();
         match self.method(name) {
-            Some(m) => {
-                m(state, deserializer)
-            },
+            Some(m) => m(state, deserializer),
             None => Box::pin(async move { Err(Error::MethodNotFound) }),
         }
     }

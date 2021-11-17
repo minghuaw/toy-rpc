@@ -10,23 +10,23 @@ pub mod item_impl;
 
 pub mod item_trait;
 
-#[cfg(all(feature = "client", feature = "runtime"))]
-pub(crate) fn get_ok_ident_from_type(ty: Box<syn::Type>) -> Option<syn::GenericArgument> {
-    let ty = Box::leak(ty);
-    let arg = syn::GenericArgument::Type(ty.to_owned());
-    recursively_get_result_from_generic_arg(&arg)
-}
+// #[cfg(all(feature = "client", feature = "runtime"))]
+// pub(crate) fn get_ok_ident_from_type(ty: Box<syn::Type>) -> Option<syn::GenericArgument> {
+//     let ty = Box::leak(ty);
+//     let arg = syn::GenericArgument::Type(ty.to_owned());
+//     recursively_get_result_from_generic_arg(&arg)
+// }
 
-#[cfg(all(feature = "client", feature = "runtime"))]
-pub(crate) fn recursively_get_result_from_generic_arg(
-    arg: &syn::GenericArgument,
-) -> Option<syn::GenericArgument> {
-    match &arg {
-        syn::GenericArgument::Type(ty) => recusively_get_result_from_type(&ty),
-        syn::GenericArgument::Binding(binding) => recusively_get_result_from_type(&binding.ty),
-        _ => None,
-    }
-}
+// #[cfg(all(feature = "client", feature = "runtime"))]
+// pub(crate) fn recursively_get_result_from_generic_arg(
+//     arg: &syn::GenericArgument,
+// ) -> Option<syn::GenericArgument> {
+//     match &arg {
+//         syn::GenericArgument::Type(ty) => recusively_get_result_from_type(&ty),
+//         syn::GenericArgument::Binding(binding) => recusively_get_result_from_type(&binding.ty),
+//         _ => None,
+//     }
+// }
 
 pub(crate) fn unwrap_return_type(ty: &syn::ReturnType) -> syn::Type {
     // use syn::{Type};
@@ -111,35 +111,35 @@ pub(crate) fn unwrap_trait_obj<'a>(objs: impl Iterator<Item=&'a syn::TypeParamBo
     None
 }
 
-#[cfg(all(feature = "client", feature = "runtime"))]
-pub(crate) fn recusively_get_result_from_type(ty: &syn::Type) -> Option<syn::GenericArgument> {
-    match ty {
-        syn::Type::Path(ref path) => {
-            let ident = &path.path.segments.last()?.ident.to_string()[..];
-            match &path.path.segments.last()?.arguments {
-                syn::PathArguments::AngleBracketed(angle_bracket) => {
-                    if ident == "Result" {
-                        return angle_bracket.args.first().map(|g| g.to_owned());
-                    }
-                    recursively_get_result_from_generic_arg(angle_bracket.args.first()?)
-                }
-                _ => None,
-            }
-        }
-        syn::Type::TraitObject(ref tobj) => {
-            if let syn::TypeParamBound::Trait(bound) = tobj.bounds.first()? {
-                match &bound.path.segments.last()?.arguments {
-                    syn::PathArguments::AngleBracketed(angle_bracket) => {
-                        return recursively_get_result_from_generic_arg(angle_bracket.args.first()?)
-                    }
-                    _ => return None,
-                }
-            }
-            None
-        }
-        _ => None,
-    }
-}
+// #[cfg(all(feature = "client", feature = "runtime"))]
+// pub(crate) fn recusively_get_result_from_type(ty: &syn::Type) -> Option<syn::GenericArgument> {
+//     match ty {
+//         syn::Type::Path(ref path) => {
+//             let ident = &path.path.segments.last()?.ident.to_string()[..];
+//             match &path.path.segments.last()?.arguments {
+//                 syn::PathArguments::AngleBracketed(angle_bracket) => {
+//                     if ident == "Result" {
+//                         return angle_bracket.args.first().map(|g| g.to_owned());
+//                     }
+//                     recursively_get_result_from_generic_arg(angle_bracket.args.first()?)
+//                 }
+//                 _ => None,
+//             }
+//         }
+//         syn::Type::TraitObject(ref tobj) => {
+//             if let syn::TypeParamBound::Trait(bound) = tobj.bounds.first()? {
+//                 match &bound.path.segments.last()?.arguments {
+//                     syn::PathArguments::AngleBracketed(angle_bracket) => {
+//                         return recursively_get_result_from_generic_arg(angle_bracket.args.first()?)
+//                     }
+//                     _ => return None,
+//                 }
+//             }
+//             None
+//         }
+//         _ => None,
+//     }
+// }
 
 // #[cfg(any(feature = "server", all(feature = "client", feature = "runtime",)))]
 // pub(crate) fn parse_impl_self_ty(self_ty: &syn::Type) -> Result<&syn::Ident, syn::Error> {

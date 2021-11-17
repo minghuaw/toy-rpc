@@ -12,7 +12,7 @@ cfg_if::cfg_if! {
         use serde::{Deserialize, Serialize};
 
         use toy_rpc::macros::export_impl;
-        use toy_rpc::Error;
+        // use toy_rpc::Error;
 
         pub const COMMON_TEST_MAGIC_U8: u8 = 167;
         pub const COMMON_TEST_MAGIC_U16: u16 = 512;
@@ -80,58 +80,58 @@ cfg_if::cfg_if! {
         #[export_impl]
         impl CommonTest {
             #[export_method]
-            async fn get_magic_u8(&self, _: ()) -> Result<u8, Error> {
-                Ok(self.magic_u8)
+            async fn get_magic_u8(&self, _: ()) -> u8 {
+                self.magic_u8
             }
 
             #[export_method]
-            async fn get_magic_u16(&self, _: ()) -> Result<u16, String> {
-                Ok(self.magic_u16)
+            async fn get_magic_u16(&self, _: ()) -> u16 {
+                self.magic_u16
             }
 
             #[export_method]
-            async fn get_magic_u32(&self, _: ()) -> Result<u32, String> {
-                Ok(self.magic_u32)
+            async fn get_magic_u32(&self, _: ()) -> u32 {
+                self.magic_u32
             }
 
             #[export_method]
-            async fn get_magic_u64(&self, _: ()) -> Result<u64, String> {
-                Ok(self.magic_u64)
+            async fn get_magic_u64(&self, _: ()) -> u64 {
+                self.magic_u64
             }
 
             #[export_method]
-            async fn get_magic_i8(&self, _: ()) -> Result<i8, String> {
-                Ok(self.magic_i8)
+            async fn get_magic_i8(&self, _: ()) -> i8 {
+                self.magic_i8
             }
 
             #[export_method]
-            async fn get_magic_i16(&self, _: ()) -> Result<i16, String> {
-                Ok(self.magic_i16)
+            async fn get_magic_i16(&self, _: ()) -> i16 {
+                self.magic_i16
             }
 
             #[export_method]
-            async fn get_magic_i32(&self, _: ()) -> Result<i32, String> {
-                Ok(self.magic_i32)
+            async fn get_magic_i32(&self, _: ()) -> i32 {
+                self.magic_i32
             }
 
             #[export_method]
-            async fn get_magic_i64(&self, _: ()) -> Result<i64, String> {
-                Ok(self.magic_i64)
+            async fn get_magic_i64(&self, _: ()) -> i64 {
+                self.magic_i64
             }
 
             #[export_method]
-            async fn get_magic_bool(&self, _: ()) -> Result<bool, String> {
-                Ok(self.magic_bool)
+            async fn get_magic_bool(&self, _: ()) -> bool {
+                self.magic_bool
             }
 
             #[export_method]
-            async fn get_magic_str(&self, _: ()) -> Result<String, String> {
-                Ok(self.magic_str.into())
+            async fn get_magic_str(&self, _: ()) -> String {
+                self.magic_str.into()
             }
 
             #[export_method]
-            async fn get_magic_custom_struct(&self, _: ()) -> Result<CustomStruct, String> {
-                Ok(self.custom_struct.clone())
+            async fn get_magic_custom_struct(&self, _: ()) -> CustomStruct {
+                self.custom_struct.clone()
             }
 
             #[export_method]

@@ -45,7 +45,11 @@ impl<W: CodecWrite> ServerWriter<W> {
         Self { writer }
     }
 
-    async fn write_response(&mut self, id: MessageId, result: ServiceCallResult) -> Result<(), Error> {
+    async fn write_response(
+        &mut self,
+        id: MessageId,
+        result: ServiceCallResult,
+    ) -> Result<(), Error> {
         match result {
             Ok(body) => {
                 log::trace!("Message {} Success", &id);
