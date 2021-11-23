@@ -28,6 +28,7 @@ pub mod item_trait;
 //     }
 // }
 
+#[cfg(any(feature = "server", all(feature = "client", feature = "runtime")))]
 pub(crate) fn unwrap_return_type(ty: &syn::ReturnType) -> syn::Type {
     // use syn::{Type};
     // println!("{:?}", &ty);
@@ -40,6 +41,7 @@ pub(crate) fn unwrap_return_type(ty: &syn::ReturnType) -> syn::Type {
     ty
 }
 
+#[cfg(any(feature = "server", all(feature = "client", feature = "runtime")))]
 pub(crate) fn unwrap_type(ty: syn::Type) -> syn::Type {
     let tp = match ty {
         syn::Type::Path(tp) => tp,
@@ -52,6 +54,7 @@ pub(crate) fn unwrap_type(ty: syn::Type) -> syn::Type {
     }
 }
 
+#[cfg(any(feature = "server", all(feature = "client", feature = "runtime")))]
 pub(crate) fn unwrap_type_path_for_async_trait(tp: &syn::TypePath) -> Option<&syn::Type> {
     // println!("{:?}", tp.path.segments);
 
@@ -74,6 +77,7 @@ pub(crate) fn unwrap_type_path_for_async_trait(tp: &syn::TypePath) -> Option<&sy
     Some(ty)
 }
 
+#[cfg(any(feature = "server", all(feature = "client", feature = "runtime")))]
 pub(crate) fn unwrap_till_ident<'a>(segments: impl Iterator<Item=&'a syn::PathSegment>, ident: &'a str) -> Option<&'a syn::PathArguments> {
     for seg in segments {
         // println!("{:?}", seg.ident);
@@ -84,6 +88,7 @@ pub(crate) fn unwrap_till_ident<'a>(segments: impl Iterator<Item=&'a syn::PathSe
     None
 }
 
+#[cfg(any(feature = "server", all(feature = "client", feature = "runtime")))]
 pub(crate) fn unwrap_angled_path_args(path_args: &syn::PathArguments) -> Option<&syn::Type> {
     if let syn::PathArguments::AngleBracketed(aargs) = path_args {
         if let Some(garg) = aargs.args.first() {
@@ -99,6 +104,7 @@ pub(crate) fn unwrap_angled_path_args(path_args: &syn::PathArguments) -> Option<
 }
 
 
+#[cfg(any(feature = "server", all(feature = "client", feature = "runtime")))]
 pub(crate) fn unwrap_trait_obj<'a>(objs: impl Iterator<Item=&'a syn::TypeParamBound>) -> Option<impl Iterator<Item=&'a syn::PathSegment>> {
     for obj in objs {
         match obj {
@@ -110,47 +116,6 @@ pub(crate) fn unwrap_trait_obj<'a>(objs: impl Iterator<Item=&'a syn::TypeParamBo
     }
     None
 }
-
-// #[cfg(all(feature = "client", feature = "runtime"))]
-// pub(crate) fn recusively_get_result_from_type(ty: &syn::Type) -> Option<syn::GenericArgument> {
-//     match ty {
-//         syn::Type::Path(ref path) => {
-//             let ident = &path.path.segments.last()?.ident.to_string()[..];
-//             match &path.path.segments.last()?.arguments {
-//                 syn::PathArguments::AngleBracketed(angle_bracket) => {
-//                     if ident == "Result" {
-//                         return angle_bracket.args.first().map(|g| g.to_owned());
-//                     }
-//                     recursively_get_result_from_generic_arg(angle_bracket.args.first()?)
-//                 }
-//                 _ => None,
-//             }
-//         }
-//         syn::Type::TraitObject(ref tobj) => {
-//             if let syn::TypeParamBound::Trait(bound) = tobj.bounds.first()? {
-//                 match &bound.path.segments.last()?.arguments {
-//                     syn::PathArguments::AngleBracketed(angle_bracket) => {
-//                         return recursively_get_result_from_generic_arg(angle_bracket.args.first()?)
-//                     }
-//                     _ => return None,
-//                 }
-//             }
-//             None
-//         }
-//         _ => None,
-//     }
-// }
-
-// #[cfg(any(feature = "server", all(feature = "client", feature = "runtime",)))]
-// pub(crate) fn parse_impl_self_ty(self_ty: &syn::Type) -> Result<&syn::Ident, syn::Error> {
-//     match self_ty {
-//         syn::Type::Path(tp) => Ok(&tp.path.segments[0].ident),
-//         _ => Err(syn::Error::new_spanned(
-//             quote::quote! {},
-//             "Compile Error: Self type",
-//         )),
-//     }
-// }
 
 #[cfg(any(feature = "server", all(feature = "client", feature = "runtime",)))]
 pub(crate) fn parse_impl_self_ty_path(self_ty: &syn::Type) -> Result<&syn::TypePath, syn::Error> {
@@ -219,6 +184,7 @@ pub(crate) fn generate_client_stub_for_struct_method_impl(
     }
 }
 
+#[cfg(feature = "server")]
 pub(crate) fn macro_rules_handler() -> proc_macro2::TokenStream {
     quote::quote! {
         macro_rules! toy_rpc_handler {
@@ -265,6 +231,7 @@ pub(crate) fn macro_rules_handler() -> proc_macro2::TokenStream {
     }
 }
 
+#[cfg(all(feature = "client", feature = "runtime"))]
 pub(crate) fn macro_rules_client_stub() -> proc_macro2::TokenStream {
     quote::quote! {
         macro_rules! toy_rpc_client_stub {
@@ -314,30 +281,15 @@ pub(crate) fn macro_rules_client_stub() -> proc_macro2::TokenStream {
             };
 
             ($self:ident, $func:ident, $service_method:expr, $req_ty:ty, Result<$ok_ty:ty, $err_ty:ty>) => {
-                pub fn $func<A>(&'c $self, args: A) -> toy_rpc::client::Call<$ok_ty>
-                where 
-                    A: std::borrow::Borrow<$req_ty> + Send + Sync + toy_rpc::serde::Serialize + 'static,
-                {
-                    $self.client.call($service_method, args)
-                }
+                toy_rpc_client_stub!($self, $func, $service_method, $req_ty, Result<$ok_ty>);
             };
 
             ($self:ident, $func:ident, $service_method:expr, $req_ty:ty, toy_rpc::Result<$ok_ty:ty>) => {
-                pub fn $func<A>(&'c $self, args: A) -> toy_rpc::client::Call<$ok_ty>
-                where 
-                    A: std::borrow::Borrow<$req_ty> + Send + Sync + toy_rpc::serde::Serialize + 'static,
-                {
-                    $self.client.call($service_method, args)
-                }
+                toy_rpc_client_stub!($self, $func, $service_method, $req_ty, Result<$ok_ty>);
             };
 
             ($self:ident, $func:ident, $service_method:expr, $req_ty:ty, anyhow::Result<$ok_ty:ty>) => {
-                pub fn $func<A>(&'c $self, args: A) -> toy_rpc::client::Call<$ok_ty>
-                where 
-                    A: std::borrow::Borrow<$req_ty> + Send + Sync + toy_rpc::serde::Serialize + 'static,
-                {
-                    $self.client.call($service_method, args)
-                }
+                toy_rpc_client_stub!($self, $func, $service_method, $req_ty, Result<$ok_ty>);
             };
 
             // non Result return type

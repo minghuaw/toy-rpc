@@ -103,14 +103,6 @@ fn impl_transformed_trait(
                     mut deserializer: Box<dyn toy_rpc::erased_serde::Deserializer<'static> + Send>
                 ) -> toy_rpc::service::HandlerResultFut
                 {
-                    // Box::pin(
-                    //     async move {
-                    //         let req: #req_ty = toy_rpc::erased_serde::deserialize(&mut deserializer)
-                    //             .map_err(|e| toy_rpc::error::Error::ParseError(Box::new(e)))?;
-                    //         let outcome = self.#orig_ident(req).await;
-                    //         Ok(Box::new(outcome) as toy_rpc::service::Outcome)
-                    //     }
-                    // )
                     toy_rpc_handler!(self, #orig_ident, deserializer, #req_ty, #ret_ty)
                 }
             );

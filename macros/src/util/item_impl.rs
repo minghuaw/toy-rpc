@@ -47,23 +47,10 @@ pub(crate) fn transform_impl_item(f: &mut syn::ImplItemMethod) {
 
     // transform function request type
     if let syn::FnArg::Typed(pt) = f.sig.inputs.last().unwrap() {
-        // let method = quote::quote! {&self.#ident};
         let req_ty = &pt.ty;
-        // let ret_ty: syn::Type = match &f.sig.output {
-        //     syn::ReturnType::Default => syn::parse_quote! {()},
-        //     syn::ReturnType::Type(_, ty) => syn::parse_quote! {#ty}
-        // };
         let ret_ty = unwrap_return_type(&f.sig.output);
 
         f.block = syn::parse_quote!({
-            // Box::pin(
-            //     async move {
-            //         let req: #req_ty = toy_rpc::erased_serde::deserialize(&mut deserializer)
-            //             .map_err(|e| toy_rpc::error::Error::ParseError(Box::new(e)))?;
-            //         let outcome = self.#ident(req).await;
-            //         Ok(Box::new(outcome) as toy_rpc::service::Outcome)
-            //     }
-            // )
             toy_rpc_handler!(self, #ident, deserializer, #req_ty, #ret_ty)
         });
 
