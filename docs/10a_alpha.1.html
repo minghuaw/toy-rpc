@@ -1,0 +1,476 @@
+<!DOCTYPE HTML>
+<html lang="en" class="sidebar-visible no-js light">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>0.9.0-alpha.1 - toy-rpc Book</title>
+        
+        
+
+
+        <!-- Custom HTML head -->
+        
+
+
+        <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff" />
+
+        
+        <link rel="icon" href="favicon.svg">
+        
+        
+        <link rel="shortcut icon" href="favicon.png">
+        
+        <link rel="stylesheet" href="css/variables.css">
+        <link rel="stylesheet" href="css/general.css">
+        <link rel="stylesheet" href="css/chrome.css">
+        
+        <link rel="stylesheet" href="css/print.css" media="print">
+        
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="FontAwesome/css/font-awesome.css">
+        
+        <link rel="stylesheet" href="fonts/fonts.css">
+        
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="highlight.css">
+        <link rel="stylesheet" href="tomorrow-night.css">
+        <link rel="stylesheet" href="ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+        
+
+        
+    </head>
+    <body>
+        <!-- Provide site root to javascript -->
+        <script type="text/javascript">
+            var path_to_root = "";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "light";
+        </script>
+
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script type="text/javascript">
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script type="text/javascript">
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            var html = document.querySelector('html');
+            html.classList.remove('no-js')
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add('js');
+        </script>
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script type="text/javascript">
+            var html = document.querySelector('html');
+            var sidebar = 'hidden';
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            }
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <div class="sidebar-scrollbox">
+                <ol class="chapter"><li class="chapter-item expanded "><a href="01_introduction.html"><strong aria-hidden="true">1.</strong> Introduction</a></li><li class="chapter-item expanded "><a href="02_quickstart.html"><strong aria-hidden="true">2.</strong> Quickstart</a></li><li class="chapter-item expanded "><a href="03_define_service.html"><strong aria-hidden="true">3.</strong> Define Service</a></li><li class="chapter-item expanded "><a href="04_server.html"><strong aria-hidden="true">4.</strong> Server</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="04a_async_std.html"><strong aria-hidden="true">4.1.</strong> async-std</a></li><li class="chapter-item expanded "><a href="04b_tokio.html"><strong aria-hidden="true">4.2.</strong> tokio</a></li></ol></li><li class="chapter-item expanded "><a href="05_integration.html"><strong aria-hidden="true">5.</strong> Integration</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="05a_actix_web.html"><strong aria-hidden="true">5.1.</strong> actix-web</a></li><li class="chapter-item expanded "><a href="05b_tide.html"><strong aria-hidden="true">5.2.</strong> tide</a></li><li class="chapter-item expanded "><a href="05c_warp.html"><strong aria-hidden="true">5.3.</strong> warp</a></li></ol></li><li class="chapter-item expanded "><a href="06_client.html"><strong aria-hidden="true">6.</strong> Client</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="06a_cancellation.html"><strong aria-hidden="true">6.1.</strong> Cancellation</a></li><li class="chapter-item expanded "><a href="06b_timeout.html"><strong aria-hidden="true">6.2.</strong> Timeout</a></li></ol></li><li class="chapter-item expanded "><a href="07_tls.html"><strong aria-hidden="true">7.</strong> TLS Support</a></li><li class="chapter-item expanded "><a href="08_pubsub.html"><strong aria-hidden="true">8.</strong> PubSub</a></li><li class="chapter-item expanded "><a href="09_examples.html"><strong aria-hidden="true">9.</strong> Examples</a></li><li class="chapter-item expanded "><a href="10_preview.html"><strong aria-hidden="true">10.</strong> Version 0.9 Preview</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="10a_alpha.1.html" class="active"><strong aria-hidden="true">10.1.</strong> 0.9.0-alpha.1</a></li></ol></li><li class="chapter-item expanded "><a href="change_log.html"><strong aria-hidden="true">11.</strong> Change Logs</a></li></ol>
+            </div>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky bordered">
+                    <div class="left-buttons">
+                        <button id="sidebar-toggle" class="icon-button" type="button" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </button>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light (default)</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                        
+                    </div>
+
+                    <h1 class="menu-title">toy-rpc Book</h1>
+
+                    <div class="right-buttons">
+                        
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+                        
+                        
+                        
+
+                    </div>
+                </div>
+
+                
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+                
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script type="text/javascript">
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h2 id="090-alpha1"><a class="header" href="#090-alpha1">0.9.0-alpha.1</a></h2>
+<p>Relaxed method return type requirements. </p>
+<p>Prior to this release, only <code>Result</code> type is accepted as the return type for
+exported methods. Now, for methods that do not really need to be a <code>Result</code> (eg. a simple addition), the return type 
+no long needs to be wrapped inside a <code>Result</code>. A more detailed example is provided below and can be found in 
+this <a href="https://github.com/minghuaw/toy-rpc/tree/0.9-devel/examples/tokio_tcp">example</a>.</p>
+<h3 id="service-definition"><a class="header" href="#service-definition">Service definition</a></h3>
+<p>Please note that the codes that import the crates are intentionally omitted in the example below. Please refer to the 
+<a href="https://github.com/minghuaw/toy-rpc/tree/0.9-devel/examples/tokio_tcp">example</a> on github for more information.</p>
+<h4 id="service-definition-with-service-struct-impl"><a class="header" href="#service-definition-with-service-struct-impl">Service definition with service struct impl</a></h4>
+<pre><pre class="playground"><code class="language-rust">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub struct Echo { }
+
+#[export_impl]
+impl Echo {
+    /// This shows an exported method that returns a non-result type
+    #[export_method]
+    pub async fn echo_i32(&amp;self, req: i32) -&gt; i32 {
+        req
+    }
+
+    /// This shows an exported method that returns a Result type
+    #[export_method]
+    pub async fn echo_if_equal_to_one(&amp;self, req: i32) -&gt; Result&lt;i32, i32&gt; {
+        match req {
+            1 =&gt; Ok(req),
+            _ =&gt; Err(req), // This will present on the client call as `Error::ExecutionError`
+        }
+    }
+}
+
+<span class="boring">}
+</span></code></pre></pre>
+<h4 id="service-definition-with-a-trait"><a class="header" href="#service-definition-with-a-trait">Service definition with a trait</a></h4>
+<p>Please note that if <code>impl_for_client</code> is enabled, all the methods in the service trait <em><strong>must</strong></em> return 
+a <code>Result</code> type.</p>
+<pre><pre class="playground"><code class="language-rust">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>/// Here we define a trait `Arith` that comes with default implementations
+/// for all of its methods
+#[async_trait]
+#[export_trait] 
+pub trait Arith {
+    /// Addition
+    #[export_method]
+    async fn add(&amp;self, args: (i32, i32)) -&gt; i32 {
+        args.0 + args.1
+    }
+
+    /// Subtraction
+    #[export_method]
+    async fn subtract(&amp;self, args: (i32, i32)) -&gt; i32 {
+        args.0 - args.1
+    }
+
+    /// Multiplication
+    #[export_method]
+    async fn multiply(&amp;self, args: (i32, i32)) -&gt; i32 {
+        args.0 * args.1
+    }
+
+    /// Division. We cannot divide by zero
+    #[export_method]
+    async fn divide(&amp;self, args: (i32, i32)) -&gt; Result&lt;i32, String&gt; {
+        let (numerator, denominator) = args;
+        match denominator {
+            0 =&gt; return Err(&quot;Divide by zero!&quot;.to_string()),
+            _ =&gt; Ok( numerator / denominator )
+        }
+    }
+}
+
+/// Here we are going to define another trait (service) tha is almost 
+/// identical to `Arith` shown above, but we are going to generate the trait
+/// impl for the client using `impl_for_client` argument in our `#[export_trait]`
+/// attribute. Plus, we will not going to supply a default implementation either.
+#[async_trait]
+/// All methods must be exported if client trait impl generation is enabled.
+/// If `impl_for_client` is enabled, all methods in the trait must return 
+/// a Result
+#[export_trait(impl_for_client)]
+pub trait Arith2 {
+    #[export_method]
+    async fn add(&amp;self, args: (i32, i32)) -&gt; anyhow::Result&lt;i32&gt;;
+
+    #[export_method]
+    async fn subtract(&amp;self, args: (i32, i32)) -&gt; anyhow::Result&lt;i32&gt;;
+
+    #[export_method]
+    async fn multiply(&amp;self, args: (i32, i32)) -&gt; anyhow::Result&lt;i32&gt;;
+
+    #[export_method]
+    async fn divide(&amp;self, args: (i32, i32)) -&gt; anyhow::Result&lt;i32&gt;;
+}
+<span class="boring">}
+</span></code></pre></pre>
+<h3 id="server-implementation"><a class="header" href="#server-implementation">Server implementation</a></h3>
+<p>Nothing really changed in terms of usage for the server side. The server side example code is attached below for completeness.</p>
+<pre><pre class="playground"><code class="language-rust">struct Abacus { }
+
+/// We will simply use the default implementation provided in the trait 
+/// definition for all except for add
+#[async_trait]
+#[export_trait_impl]
+impl Arith for Abacus { 
+    /// We are overriding the default implementation just for 
+    /// the sake of demo
+    async fn add(&amp;self, args: (i32, i32)) -&gt; i32 {
+        args.0 + args.1
+    }
+}
+
+/// For now, you need a separate type for a new service
+struct Abacus2 { }
+
+#[async_trait]
+#[export_trait_impl]
+impl Arith2 for Abacus2 {
+    async fn add(&amp;self, args: (i32, i32)) -&gt; anyhow::Result&lt;i32&gt; {
+        Ok(args.0 + args.1)
+    }
+
+    async fn subtract(&amp;self, args: (i32, i32)) -&gt; anyhow::Result&lt;i32&gt; {
+        Ok(args.0 - args.1)
+    }
+
+    async fn multiply(&amp;self, args: (i32, i32)) -&gt; anyhow::Result&lt;i32&gt; {
+        Ok(args.0 * args.1)
+    }
+
+    async fn divide(&amp;self, args: (i32, i32)) -&gt; anyhow::Result&lt;i32&gt; {
+        let (numerator, denominator) = args;
+        match denominator {
+            0 =&gt; return Err(anyhow::anyhow!(&quot;Divide by zero!&quot;)),
+            _ =&gt; Ok( numerator / denominator )
+        }
+    }
+}
+
+#[tokio::main]
+async fn main() {
+    env_logger::init();
+
+    let addr = &quot;127.0.0.1:23333&quot;;
+    let echo_service = Arc::new(
+        Echo { }
+    );
+    let arith = Arc::new(Abacus { });
+    let arith2 = Arc::new(Abacus2 { });
+
+    let server = Server::builder()
+        .register(echo_service)
+        .register(arith)
+        .register(arith2)
+        .build();
+
+    let listener = TcpListener::bind(addr).await.unwrap();
+
+    log::info!(&quot;Starting server at {}&quot;, &amp;addr);
+
+    let handle = task::spawn(async move {
+        server.accept(listener).await.unwrap();
+    });
+    handle.await.expect(&quot;Error&quot;);
+}
+</code></pre></pre>
+<h3 id="client-side-implementation"><a class="header" href="#client-side-implementation">Client side implementation</a></h3>
+<p>Like the server side implementation, there isn't much change to the client side usage. The only thing
+worth mentioning is that even if the method doesn't return a <code>Result</code> in the service definition, the client
+will still get a <code>Result</code> because there could be errors with connection or serialization/deserialization.</p>
+<pre><pre class="playground"><code class="language-rust">
+#[tokio::main]
+async fn main() {
+    let _ = run().await;
+}
+
+async fn run() -&gt; anyhow::Result&lt;()&gt; {
+    env_logger::init();
+
+    // Establish connection
+    let addr = &quot;127.0.0.1:23333&quot;;
+    let client = Client::dial(addr).await.unwrap();
+
+    // Perform RPC using `call()` method
+    let call: Call&lt;i32&gt; = client.call(&quot;Echo.echo_i32&quot;, 13i32);
+    let reply = call.await?;
+    println!(&quot;{:?}&quot;, reply);
+
+    let reply: i32 = client.call(&quot;Echo.echo_i32&quot;, 1313i32).await?;
+    println!(&quot;{:?}&quot;, reply);
+
+    let ok_result = client
+        .echo() // refering to `Echo` service
+        .echo_if_equal_to_one(1) // refering to `echo_if_equal_to_one` method
+        .await; 
+    let err_result = client
+        .echo()
+        .echo_if_equal_to_one(2)
+        .await;
+    println!(&quot;Ok result: {:?}&quot;, ok_result);
+    println!(&quot;Err result: {:?}&quot;, err_result);
+
+    // Demo usage with the `Arith` trait
+    let addition = client
+        .arith() // generated for `Arith` service
+        .add((1, 3)).await; // call `add` method
+    println!(&quot;{:?}&quot;, addition);
+
+    // Although the return type of `divide` is a `Result&lt;T, E&gt;`,
+    // the execution result will be mapped to `Result&lt;T, toy_rpc::Error&gt;`
+    // where `E` is mapped to `toy_rpc::Error::ExecutionError` so that 
+    //   (1) the Error type doesn't need to implement `Serialize` and
+    //   (2) the users don't need to unwrap twice
+    let division = client
+        .arith()
+        .divide((3, 1)).await;
+    println!(&quot;{:?}&quot;, division);
+
+    // let's try to get an execution error
+    let divide_by_zero = client
+        .arith()
+        .divide((3, 0)).await;
+    println!(&quot;{:?}&quot;, divide_by_zero);
+
+    // Now let's take a look at using the generated trait impl for the client.
+    let addition = Arith2::add(&amp;client, (7, 8)).await;
+    println!(&quot;{:?}&quot;, addition);
+
+    let division = Arith2::divide(&amp;client, (7, 2)).await;
+    println!(&quot;{:?}&quot;, division);
+    let divide_by_zero = Arith2::divide(&amp;client, (7, 0)).await;
+    println!(&quot;{:?}&quot;, divide_by_zero);
+
+    client.close().await;
+    Ok(())
+}
+</code></pre></pre>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                        
+                            <a rel="prev" href="10_preview.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+                        
+
+                        
+                            <a rel="next" href="change_log.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+                        
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                
+                    <a rel="prev" href="10_preview.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+                
+
+                
+                    <a rel="next" href="change_log.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+                
+            </nav>
+
+        </div>
+
+        
+
+        
+
+        
+
+        
+        <script type="text/javascript">
+            window.playground_copyable = true;
+        </script>
+        
+
+        
+
+        
+        <script src="elasticlunr.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="mark.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="searcher.js" type="text/javascript" charset="utf-8"></script>
+        
+
+        <script src="clipboard.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="highlight.js" type="text/javascript" charset="utf-8"></script>
+        <script src="book.js" type="text/javascript" charset="utf-8"></script>
+
+        <!-- Custom JS scripts -->
+        
+
+        
+
+    </body>
+</html>
