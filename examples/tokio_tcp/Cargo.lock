@@ -750,9 +750,7 @@ dependencies = [
 
 [[package]]
 name = "toy-rpc-macros"
-version = "0.7.0-alpha.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "80ecfd924cb4509549a27e732970f41d24e1cc55099c7b0966a72b751fea3e45"
+version = "0.7.0-alpha.2"
 dependencies = [
  "darling",
  "proc-macro2",

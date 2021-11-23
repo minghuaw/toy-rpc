@@ -11,6 +11,12 @@ use util::item_impl::*;
 // #[cfg(any(feature = "server", feature = "client"))]
 use util::item_trait::*;
 
+use darling::FromDeriveInput;
+#[cfg(all(feature = "client", feature = "runtime"))]
+use crate::util::macro_rules_client_stub;
+#[cfg(feature = "server")]
+use crate::util::macro_rules_handler;
+
 // #[cfg(any(feature = "server", feature = "client"))]
 pub(crate) const ATTR_EXPORT_METHOD: &str = "export_method";
 #[cfg(feature = "server")]
@@ -425,6 +431,7 @@ pub fn export_trait(
     let transformed_trait_impl = remove_export_attr_from_impl(transformed_trait_impl);
 
     // macro_rules
+    #[cfg(feature = "server")]
     let macro_handler = macro_rules_handler();
     #[cfg(all(feature = "client", feature = "runtime"))]
     let macro_client = macro_rules_client_stub();
@@ -585,11 +592,6 @@ pub fn export_trait_impl(
 /* -------------------------------------------------------------------------- */
 /*                              #[derive(Topic)]                              */
 /* -------------------------------------------------------------------------- */
-
-use darling::FromDeriveInput;
-
-use crate::util::macro_rules_client_stub;
-use crate::util::macro_rules_handler;
 
 #[derive(Debug, Default, FromDeriveInput)]
 #[darling(attributes(topic))]
