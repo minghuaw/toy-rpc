@@ -16,4 +16,5 @@
 - [TLS Support](./07_tls.md)
 - [PubSub](./08_pubsub.md)
 - [Examples](./09_examples.md)
-- [Change Logs](./10_change_log.md)
+- [v0.9 Preview](./10_preview.md)
+- [Change Logs](./change_log.md)
