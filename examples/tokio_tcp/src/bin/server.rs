@@ -5,34 +5,47 @@ use async_trait::async_trait;
 
 use toy_rpc::Server;
 use toy_rpc::macros::export_trait_impl;
-use toy_rpc::Error;
 
 use tokio_tcp::rpc::*;
 
-fn return_anyhow_result() -> anyhow::Result<u32> {
-    Ok(7)
-}
 struct Abacus { }
+
+/// We will simply use the default implementation provided in the trait 
+/// definition for all except for add
+#[async_trait]
+#[export_trait_impl]
+impl Arith for Abacus { 
+    /// We are overriding the default implementation just for 
+    /// the sake of demo
+    async fn add(&self, args: (i32, i32)) -> i32 {
+        args.0 + args.1
+    }
+}
+
+/// For now, you need a separate type for a new service
+struct Abacus2 { }
 
 #[async_trait]
 #[export_trait_impl]
-impl Arith for Abacus {
-    async fn add(&self, args: (i32, i32)) -> Result<i32, Error> {
+impl Arith2 for Abacus2 {
+    async fn add(&self, args: (i32, i32)) -> anyhow::Result<i32> {
         Ok(args.0 + args.1)
     }
 
-    async fn subtract(&self, args: (i32, i32)) -> Result<i32, Error> {
+    async fn subtract(&self, args: (i32, i32)) -> anyhow::Result<i32> {
         Ok(args.0 - args.1)
     }
 
-    async fn get_num_anyhow(&self, _:()) -> anyhow::Result<u32> {
-        let success = return_anyhow_result()?;
-        Ok(success)
+    async fn multiply(&self, args: (i32, i32)) -> anyhow::Result<i32> {
+        Ok(args.0 * args.1)
     }
 
-    async fn get_str_anyhow(&self, _:()) -> Result<String, Error> {
-        let success = return_anyhow_result()?;
-        Ok(success.to_string())
+    async fn divide(&self, args: (i32, i32)) -> anyhow::Result<i32> {
+        let (numerator, denominator) = args;
+        match denominator {
+            0 => return Err(anyhow::anyhow!("Divide by zero!")),
+            _ => Ok( numerator / denominator )
+        }
     }
 }
 
@@ -45,10 +58,12 @@ async fn main() {
         Echo { }
     );
     let arith = Arc::new(Abacus { });
+    let arith2 = Arc::new(Abacus2 { });
 
     let server = Server::builder()
         .register(echo_service)
         .register(arith)
+        .register(arith2)
         .build();
 
     let listener = TcpListener::bind(addr).await.unwrap();

@@ -228,19 +228,50 @@ pub(crate) fn generate_client_stub_for_struct_method_impl(
 pub(crate) fn macro_rules_handler() -> proc_macro2::TokenStream {
     quote::quote! {
         macro_rules! toy_rpc_handler {
-            // handler when return type is a pinned Result (from async_trait)
-            ($self:ident, $method:ident, $de:ident, $req_ty:ty, Pin<$token:tt>) => {
-              
-            };
-
             // handler when return type is a Result
-            ($self:ident, $method:ident, $de:ident, $req_ty:ty, Result<$ret_ty:ty, $err_ty:ty>) => {
+            ($self:ident, $method:ident, $de:ident, $req_ty:ty, Result<$ok_ty:ty, $err_ty:ty>) => {
                 Box::pin(
                     async move {
                         let req: $req_ty = toy_rpc::erased_serde::deserialize(&mut $de)
                             .map_err(|e| toy_rpc::error::Error::ParseError(Box::new(e)))?;
-                        let result: Result<$ret_ty, $err_ty> = $self.$method(req).await;
-                        let outcome = result?;
+                        // let result: Result<$ok_ty, $err_ty> = $self.$method(req).await;
+                        let outcome: $ok_ty = $self.$method(req).await?;
+                        Ok(Box::new(outcome) as toy_rpc::service::Outcome)
+                    }
+                )
+            };
+
+            // handler when return type is either a toy_rpc or anyhow Result
+            ($self:ident, $method:ident, $de:ident, $req_ty:ty, Result<$ok_ty:ty>) => {
+                Box::pin(
+                    async move {
+                        let req: $req_ty = toy_rpc::erased_serde::deserialize(&mut $de)
+                            .map_err(|e| toy_rpc::error::Error::ParseError(Box::new(e)))?;
+                        let outcome: $ok_ty = $self.$method(req).await?;
+                        Ok(Box::new(outcome) as toy_rpc::service::Outcome)
+                    }
+                )
+            };
+
+            // handler when return type is either a toy_rpc::Result
+            ($self:ident, $method:ident, $de:ident, $req_ty:ty, toy_rpc::Result<$ok_ty:ty>) => {
+                Box::pin(
+                    async move {
+                        let req: $req_ty = toy_rpc::erased_serde::deserialize(&mut $de)
+                            .map_err(|e| toy_rpc::error::Error::ParseError(Box::new(e)))?;
+                        let outcome: $ok_ty = $self.$method(req).await?;
+                        Ok(Box::new(outcome) as toy_rpc::service::Outcome)
+                    }
+                )
+            };
+
+            // handler when return type is either a anyhow::Result
+            ($self:ident, $method:ident, $de:ident, $req_ty:ty, anyhow::Result<$ok_ty:ty>) => {
+                Box::pin(
+                    async move {
+                        let req: $req_ty = toy_rpc::erased_serde::deserialize(&mut $de)
+                            .map_err(|e| toy_rpc::error::Error::ParseError(Box::new(e)))?;
+                        let outcome: $ok_ty = $self.$method(req).await?;
                         Ok(Box::new(outcome) as toy_rpc::service::Outcome)
                     }
                 )
