@@ -1,6 +1,6 @@
 [package]
 name = "toy-rpc-macros"
-version = "0.6.3"
+version = "0.7.0-alpha.1"
 authors = ["Minghua Wu <michael.wu1107@gmail.com>"]
 edition = "2018"
 description = "Macros for toy-rpc"
@@ -15,8 +15,8 @@ readme = "Readme.md"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [features]
-default = ["server", "client", "runtime"]
-# default = []
+# default = ["server", "client", "runtime"]
+default = []
 
 server = []
 client = []
@@ -29,5 +29,5 @@ proc-macro = true
 syn = { version = "^1", features = ["full", "derive", "extra-traits"] }
 quote = { version = "^1" }
 darling = "0.13.0"
-proc-macro2 = "1.0.28"
+proc-macro2 = "1"
 
