@@ -11,3 +11,7 @@ More detailed information can be found in the corresponding page.
 ### 0.9.0-alpha.1
 
 Relaxed method return type requirements. 
+
+### 0.9.0-alpha.2
+
+Removed `AckMode`.

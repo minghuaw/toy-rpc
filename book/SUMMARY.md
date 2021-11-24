@@ -18,4 +18,5 @@
 - [Examples](./09_examples.md)
 - [Version 0.9 Preview](./10_preview.md)
     - [0.9.0-alpha.1](./10a_alpha.1.md)
+    - [0.9.0-alpha.2](./10b_alpha.2.md)
 - [Change Logs](./change_log.md)
