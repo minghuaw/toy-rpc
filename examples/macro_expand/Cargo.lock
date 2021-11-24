@@ -908,7 +908,7 @@ dependencies = [
 
 [[package]]
 name = "toy-rpc"
-version = "0.8.4"
+version = "0.9.0-alpha.1"
 dependencies = [
  "anyhow",
  "async-std",
@@ -933,7 +933,7 @@ dependencies = [
 
 [[package]]
 name = "toy-rpc-macros"
-version = "0.6.3"
+version = "0.7.0-alpha.2"
 dependencies = [
  "darling",
  "proc-macro2",
