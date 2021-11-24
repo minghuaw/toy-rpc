@@ -12,7 +12,7 @@ use futures::Stream;
 use crate::{
     codec::{DefaultCodec, Reserved, Unmarshal},
     error::Error,
-    pubsub::{Topic},
+    pubsub::Topic,
     server::{broker::ServerBrokerItem, Server, RESERVED_CLIENT_ID},
 };
 
@@ -167,8 +167,11 @@ impl Server {
         let client_id = RESERVED_CLIENT_ID;
         let topic = T::topic();
         let sender = PubSubResponder::Sender(sender);
-        self.pubsub_tx.send(PubSubItem::Subscribe{client_id, topic, sender})?;
+        self.pubsub_tx.send(PubSubItem::Subscribe {
+            client_id,
+            topic,
+            sender,
+        })?;
         Ok(Subscriber::new(rx, self.pubsub_tx.clone()))
     }
 }
-

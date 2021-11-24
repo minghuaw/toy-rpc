@@ -217,11 +217,12 @@ impl ServerBuilder {
     /// let server: Server = builder.build();
     /// ```
     pub fn build(self) -> Server {
-        use super::{AtomicClientId, RESERVED_CLIENT_ID, PubSubBroker};
+        use super::{AtomicClientId, PubSubBroker, RESERVED_CLIENT_ID};
 
         let services = Arc::new(self.services);
 
-        let (pubsub_broker, pubsub_tx) = PubSubBroker::new(self.pub_retry_timeout, self.max_num_retries);
+        let (pubsub_broker, pubsub_tx) =
+            PubSubBroker::new(self.pub_retry_timeout, self.max_num_retries);
         pubsub_broker.spawn();
 
         Server {

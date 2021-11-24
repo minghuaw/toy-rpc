@@ -11,7 +11,8 @@ pub(crate) fn transform_impl(
     let self_ty = input.self_ty.clone();
     let mut methods = exported_impl_items(input);
 
-    methods.iter_mut()
+    methods
+        .iter_mut()
         // first filter out method
         .filter_map(|item| match item {
             syn::ImplItem::Method(f) => Some(f),
@@ -23,9 +24,9 @@ pub(crate) fn transform_impl(
             idents.push(f.sig.ident.clone());
         });
 
-    let mut output: syn::ItemImpl = syn::parse_quote!{
+    let mut output: syn::ItemImpl = syn::parse_quote! {
         impl #self_ty {
-            
+
         }
     };
     output.items = methods;
@@ -49,9 +50,8 @@ pub(crate) fn transform_impl_item(f: &mut syn::ImplItemMethod) {
         let req_ty = &pt.ty;
         let ret_ty = unwrap_return_type(&f.sig.output);
 
-        f.block = syn::parse_quote!({
-            toy_rpc_handler!(self, #ident, deserializer, #req_ty, #ret_ty)
-        });
+        f.block =
+            syn::parse_quote!({ toy_rpc_handler!(self, #ident, deserializer, #req_ty, #ret_ty) });
 
         f.sig.inputs = syn::parse_quote!(
             self: std::sync::Arc<Self>, mut deserializer: Box<dyn toy_rpc::erased_serde::Deserializer<'static> + Send>

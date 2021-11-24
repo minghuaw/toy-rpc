@@ -3,12 +3,9 @@
 //!
 
 use cfg_if::cfg_if;
-use std::{
-    // marker::PhantomData,
-    sync::{atomic::AtomicU64, Arc},
-};
+use std::sync::{atomic::AtomicU64, Arc};
 
-use crate::{service::AsyncServiceMap};
+use crate::service::AsyncServiceMap;
 
 // #[cfg(any(feature = "docs", not(feature = "http_actix_web")))]
 // use crate::pubsub::AckModeAuto;
@@ -56,7 +53,6 @@ pub struct Server {
         all(feature = "tokio_runtime", not(feature = "async_std_runtime")),
     ))]
     pubsub_tx: Sender<PubSubItem>,
-
     // ack_mode: PhantomData<AckMode>,
 }
 

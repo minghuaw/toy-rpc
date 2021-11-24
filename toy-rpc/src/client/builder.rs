@@ -2,9 +2,7 @@
 
 use cfg_if::cfg_if;
 
-use crate::pubsub::{
-    DEFAULT_PUB_RETRIES, DEFAULT_PUB_RETRY_TIMEOUT,
-};
+use crate::pubsub::{DEFAULT_PUB_RETRIES, DEFAULT_PUB_RETRY_TIMEOUT};
 
 #[cfg(any(feature = "ws_tokio", feature = "ws_async_std"))]
 use crate::transport::ws::WebSocketConn;
@@ -46,7 +44,6 @@ cfg_if! {
 /// Client builder
 pub struct ClientBuilder {
     // pub ack_mode: PhantomData<AckMode>,
-
     /// The duration a publisher waits for the Ack
     /// Waiting is non-blocking, and thus the publisher can still
     /// send out new Publish messages while waiting for the Ack of previous

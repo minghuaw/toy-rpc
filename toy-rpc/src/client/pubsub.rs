@@ -11,7 +11,7 @@ use std::pin::Pin;
 use std::task::{Context, Poll};
 
 use super::{broker::ClientBrokerItem, Client};
-use crate::pubsub::{SeqId};
+use crate::pubsub::SeqId;
 use crate::{
     error::Error,
     protocol::{InboundBody, OutboundBody},

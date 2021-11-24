@@ -63,7 +63,6 @@ pub struct Client {
     broker: Sender<ClientBrokerItem>,
     broker_handle: Option<JoinHandle<Result<(), Error>>>,
     subscriptions: HashMap<String, TypeId>,
-
     // ack_mode: PhantomData<AckMode>,
 }
 

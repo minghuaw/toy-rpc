@@ -15,7 +15,7 @@ use crate::{
     codec::{DefaultCodec, Marshal, Reserved},
     error::Error,
     message::AtomicMessageId,
-    pubsub::{Topic},
+    pubsub::Topic,
     server::{Server, RESERVED_CLIENT_ID},
 };
 

@@ -20,7 +20,7 @@ use crate::{
     error::Error,
     message::{ErrorMessage, MessageId},
     protocol::{Header, InboundBody},
-    pubsub::{SeqId},
+    pubsub::SeqId,
     server::{
         broker::ServerBrokerItem,
         pubsub::{PubSubItem, PubSubResponder},
@@ -285,7 +285,6 @@ where
             responder,
             pubsub_broker: self.pubsub_broker.clone(),
             executions: HashMap::new(),
-
             // ack_mode: PhantomData
         };
         let addr = manager.start();
@@ -463,7 +462,7 @@ where
             // }
             ServerWriterItem::Stopping => {
                 ctx.close(None);
-            },
+            }
             ServerWriterItem::Stop => {
                 ctx.stop();
             }
@@ -486,7 +485,6 @@ struct ExecutionBroker {
     responder: Recipient<ServerWriterItem>,
     pubsub_broker: Sender<PubSubItem>,
     executions: HashMap<MessageId, Sender<()>>,
-
     // ack_mode: PhantomData<AckMode>,
 }
 
@@ -733,7 +731,8 @@ impl ExecutionBroker {
         let fut: Pin<Box<dyn Future<Output = ()>>> = Box::pin(async move {
             let result = execute_timed_call(id, duration, call_fut).await;
             let item = ServerBrokerItem::Response { id, result };
-            broker.do_send(item)
+            broker
+                .do_send(item)
                 .unwrap_or_else(|e| log::error!("{}", e));
         });
         let (tx, rx) = flume::bounded(1);
@@ -765,9 +764,7 @@ impl ExecutionBroker {
             topic,
             sender,
         };
-        self.pubsub_broker
-            .send(msg)
-            .map_err(|err| err.into())
+        self.pubsub_broker.send(msg).map_err(|err| err.into())
     }
 }
 
@@ -782,38 +779,24 @@ impl actix::Handler<ServerBrokerItem> for ExecutionBroker {
                 method,
                 duration,
                 deserializer,
-            } => {
-                self.handle_request(ctx, call, id, method, duration, deserializer)
-            }
-            ServerBrokerItem::Response { id, result } => {
-                self.handle_response(id, result)
-            }
-            ServerBrokerItem::Cancel(id) => {
-                self.handle_cancel(id)
-            }
+            } => self.handle_request(ctx, call, id, method, duration, deserializer),
+            ServerBrokerItem::Response { id, result } => self.handle_response(id, result),
+            ServerBrokerItem::Cancel(id) => self.handle_cancel(id),
             ServerBrokerItem::Publish { id, topic, content } => {
                 self.handle_publish(id, topic, content)
             }
-            ServerBrokerItem::Subscribe { id, topic } => {
-                self.handle_subscribe(ctx, id, topic)
-            }
-            ServerBrokerItem::Unsubscribe { id, topic } => {
-                self.handle_unsubscribe(id, topic)
-            }
+            ServerBrokerItem::Subscribe { id, topic } => self.handle_subscribe(ctx, id, topic),
+            ServerBrokerItem::Unsubscribe { id, topic } => self.handle_unsubscribe(id, topic),
             ServerBrokerItem::Publication {
                 seq_id,
                 topic,
                 content,
-            } => {
-                self.handle_publication(seq_id, topic, content)
-            },
-            ServerBrokerItem::InboundAck{seq_id} => {
-                self.handle_inbound_ack(seq_id)
-            },
+            } => self.handle_publication(seq_id, topic, content),
+            ServerBrokerItem::InboundAck { seq_id } => self.handle_inbound_ack(seq_id),
             ServerBrokerItem::Stopping => {
                 let msg = ServerWriterItem::Stopping;
                 self.responder.do_send(msg).map_err(Into::into)
-            },
+            }
             ServerBrokerItem::Stop => {
                 let msg = ServerWriterItem::Stop;
                 if let Err(err) = self.responder.do_send(msg) {

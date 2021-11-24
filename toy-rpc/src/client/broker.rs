@@ -24,7 +24,7 @@ use crate::{
     error::IoError,
     message::MessageId,
     protocol::{InboundBody, OutboundBody},
-    pubsub::{SeqId},
+    pubsub::SeqId,
     Error,
 };
 
@@ -735,45 +735,44 @@ impl<C: Marshal + Send> brw::Broker for ClientBroker<C> {
                 body,
                 resp_tx,
             } => {
-                self.handle_request(&mut writer, id, service_method, duration, body, resp_tx).await
+                self.handle_request(&mut writer, id, service_method, duration, body, resp_tx)
+                    .await
             }
-            ClientBrokerItem::Response { id, result } => {
-                self.handle_response(id, result)
-            },
-            ClientBrokerItem::Cancel(id) => {
-                self.handle_cancel(&mut writer, id).await
-            },
+            ClientBrokerItem::Response { id, result } => self.handle_response(id, result),
+            ClientBrokerItem::Cancel(id) => self.handle_cancel(&mut writer, id).await,
             ClientBrokerItem::Publish { topic, body } => {
                 self.handle_publish(&mut writer, ctx, topic, body).await
-            },
-            ClientBrokerItem::PublishRetry { count, id, topic, body } => {
-                self.handle_publish_retry(&mut writer, ctx, count, id, topic, body).await
-            },
+            }
+            ClientBrokerItem::PublishRetry {
+                count,
+                id,
+                topic,
+                body,
+            } => {
+                self.handle_publish_retry(&mut writer, ctx, count, id, topic, body)
+                    .await
+            }
             ClientBrokerItem::Subscribe { topic, item_sink } => {
                 self.handle_subscribe(&mut writer, topic, item_sink).await
-            },
+            }
             ClientBrokerItem::NewLocalSubscriber {
                 topic,
                 new_item_sink,
-            } => {
-                self.handle_new_local_subscriber(topic, new_item_sink)
-            },
+            } => self.handle_new_local_subscriber(topic, new_item_sink),
             ClientBrokerItem::Unsubscribe { topic } => {
                 self.handle_unsubscribe(&mut writer, topic).await
-            },
+            }
             ClientBrokerItem::Subscription { id, topic, item } => {
                 self.handle_subscription(&mut writer, id, topic, item).await
-            },
-            ClientBrokerItem::InboundAck(seq_id) => {
-                self.handle_inbound_ack(seq_id.0)
             }
+            ClientBrokerItem::InboundAck(seq_id) => self.handle_inbound_ack(seq_id.0),
             // ClientBrokerItem::OutboundAck(seq_id) => {
             //     self.handle_outbound_ack(&mut writer, seq_id).await
             // },
             ClientBrokerItem::Stopping => {
                 // Stopping ONLY comes from control
                 self.handle_stopping(&mut writer).await
-            },
+            }
             ClientBrokerItem::Stop(io_err) => {
                 // Stop ONLY comes from reader
                 match self.state {
@@ -781,13 +780,16 @@ impl<C: Marshal + Send> brw::Broker for ClientBroker<C> {
                         if let Err(_) = self.handle_stopping(&mut writer).await {
                             todo!()
                         }
-                    },
-                    ClientBrokerState::Stopping => { },
+                    }
+                    ClientBrokerState::Stopping => {}
                     ClientBrokerState::Stopped => {
-                        return Running::Stop(Some(IoError::new(
-                            std::io::ErrorKind::Other,
-                            "Connection is already stopped"
-                        ).into()))
+                        return Running::Stop(Some(
+                            IoError::new(
+                                std::io::ErrorKind::Other,
+                                "Connection is already stopped",
+                            )
+                            .into(),
+                        ))
                     }
                 }
 
@@ -795,7 +797,7 @@ impl<C: Marshal + Send> brw::Broker for ClientBroker<C> {
                     log::debug!("{}", err);
                 }
                 self.state = ClientBrokerState::Stopped;
-                return Running::Stop(io_err.map(Into::into))
+                return Running::Stop(io_err.map(Into::into));
             }
         };
 

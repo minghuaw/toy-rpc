@@ -10,7 +10,7 @@ use std::time::Duration;
 use actix::Recipient;
 
 use crate::message::{AtomicMessageId, MessageId};
-use crate::pubsub::{SeqId};
+use crate::pubsub::SeqId;
 use crate::Error;
 
 use super::{broker::ServerBrokerItem, ClientId};
@@ -356,35 +356,30 @@ impl PubSubBroker {
                     msg_id,
                     topic,
                     content,
-                } => {
-                    self.handle_publish(client_id, msg_id, topic, content)
-                },
+                } => self.handle_publish(client_id, msg_id, topic, content),
                 PubSubItem::PublishRetry {
                     count,
                     client_ids,
                     seq_id,
                     topic,
-                    content
+                    content,
                 } => {
-                    self.handle_publish_retry(count, client_ids, seq_id, topic, content).await
-                },
-                PubSubItem::RemovePendingAcks{ seq_id } => {
+                    self.handle_publish_retry(count, client_ids, seq_id, topic, content)
+                        .await
+                }
+                PubSubItem::RemovePendingAcks { seq_id } => {
                     log::debug!("Removing pending acks");
                     self.pending_acks.remove(&seq_id);
-                },
+                }
                 PubSubItem::Subscribe {
                     client_id,
                     topic,
                     sender,
-                } => {
-                    self.handle_subscribe(client_id, topic, sender)
-                },
+                } => self.handle_subscribe(client_id, topic, sender),
                 PubSubItem::Unsubscribe { client_id, topic } => {
                     self.handle_unsubscribe(client_id, topic)
-                },
-                PubSubItem::Ack{seq_id, client_id} => {
-                    self.handle_ack(seq_id, client_id).await
-                },
+                }
+                PubSubItem::Ack { seq_id, client_id } => self.handle_ack(seq_id, client_id).await,
                 PubSubItem::Stop => return,
             }
         }

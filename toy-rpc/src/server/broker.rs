@@ -89,7 +89,6 @@ pub(crate) struct ServerBroker {
     pub client_id: ClientId,
     pub executions: HashMap<MessageId, JoinHandle<()>>,
     pub pubsub_broker: Sender<PubSubItem>,
-
     // ack_mode: PhantomData<AckMode>,
 }
 
@@ -381,30 +380,27 @@ impl Broker for ServerBroker {
                 method,
                 duration,
                 deserializer,
-            } => {
-                self.handle_request(ctx, call, id, method, duration, deserializer)
-            },
+            } => self.handle_request(ctx, call, id, method, duration, deserializer),
             ServerBrokerItem::Response { id, result } => {
                 self.handle_response(&mut writer, id, result).await
-            },
-            ServerBrokerItem::Cancel(id) => {
-                self.handle_cancel(id).await
-            },
+            }
+            ServerBrokerItem::Cancel(id) => self.handle_cancel(id).await,
             ServerBrokerItem::Publish { id, topic, content } => {
                 self.handle_publish(&mut writer, id, topic, content).await
-            },
+            }
             ServerBrokerItem::Subscribe { id, topic } => {
                 self.handle_subscribe(ctx, id, topic).await
-            },
-            ServerBrokerItem::Unsubscribe { id, topic } => {
-                self.handle_unsubscribe(id, topic).await
-            },
-            ServerBrokerItem::Publication { seq_id, topic, content } => {
-                self.handle_publication(&mut writer, seq_id, topic, content).await
-            },
-            ServerBrokerItem::InboundAck {seq_id} => {
-                self.handle_inbound_ack(seq_id).await
-            },
+            }
+            ServerBrokerItem::Unsubscribe { id, topic } => self.handle_unsubscribe(id, topic).await,
+            ServerBrokerItem::Publication {
+                seq_id,
+                topic,
+                content,
+            } => {
+                self.handle_publication(&mut writer, seq_id, topic, content)
+                    .await
+            }
+            ServerBrokerItem::InboundAck { seq_id } => self.handle_inbound_ack(seq_id).await,
             ServerBrokerItem::Stopping => {
                 for (_, handle) in self.executions.drain() {
                     log::debug!("Stopping execution as client is disconnected");
@@ -414,10 +410,14 @@ impl Broker for ServerBroker {
                     handle.cancel().await;
                 }
 
-                let result = writer.send(ServerWriterItem::Stopping).await
+                let result = writer
+                    .send(ServerWriterItem::Stopping)
+                    .await
                     .map_err(Into::into);
 
-                ctx.broker.send_async(ServerBrokerItem::Stop).await
+                ctx.broker
+                    .send_async(ServerBrokerItem::Stop)
+                    .await
                     .map_err(Into::into)
                     .and(result)
             }
@@ -426,7 +426,7 @@ impl Broker for ServerBroker {
                     log::debug!("{}", err);
                 }
                 log::debug!("Client connection is closed");
-                return Running::Stop(None)
+                return Running::Stop(None);
             }
         };
 

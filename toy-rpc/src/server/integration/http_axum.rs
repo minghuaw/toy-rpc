@@ -109,10 +109,7 @@ use crate::{
 
 impl Server {
     /// axum websocket handler
-    pub async fn handle_axum_websocket(
-        ws: WebSocket,
-        state: Server
-    ) {
+    pub async fn handle_axum_websocket(ws: WebSocket, state: Server) {
         let codec = DefaultCodec::with_axum_websocket(ws);
         let services = state.services.clone();
         let client_id = state.client_counter.fetch_add(1, Ordering::Relaxed);
@@ -138,7 +135,7 @@ impl Server {
         Router::new()
             .route(
                 &format!("/{}", DEFAULT_RPC_PATH),
-                get(Self::on_websocket_upgrade)
+                get(Self::on_websocket_upgrade),
             )
             .layer(AddExtensionLayer::new(self))
             .boxed()

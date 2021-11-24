@@ -91,7 +91,7 @@ fn impl_transformed_trait(
             let handler_ident = &handler_item.sig.ident;
             let orig_ident = &orig_item.sig.ident;
 
-            let ret_ty = unwrap_return_type(&orig_item.sig.output );
+            let ret_ty = unwrap_return_type(&orig_item.sig.output);
 
             let f: syn::ImplItemMethod = syn::parse_quote!(
                 fn #handler_ident(
@@ -250,7 +250,7 @@ fn generate_client_stub_for_trait_method(
         let ret_ty = &f.sig.output;
         return Some(generate_client_stub_for_struct_method_impl(
             service_ident,
-            fn_ident,   
+            fn_ident,
             &req_ty,
             &ret_ty,
         ));
@@ -336,13 +336,9 @@ fn generate_trait_method_impl_for_client(
     };
     let service_method = format!("{}.{}", service_ident, method_ident);
     let ret_ty = unwrap_return_type(&method.sig.output);
-    
 
-    let block: syn::Block = syn::parse_quote!(
-        {
-            toy_rpc_client_stub!(self, #service_method, #arg_ident, #ret_ty)
-        }
-    );
+    let block: syn::Block =
+        syn::parse_quote!({ toy_rpc_client_stub!(self, #service_method, #arg_ident, #ret_ty) });
 
     syn::ImplItemMethod {
         attrs: method.attrs.clone(),
