@@ -26,11 +26,11 @@ pub(crate) enum ServerWriterItem {
         topic: String,
         content: Arc<Vec<u8>>,
     },
-    Ack {
-        // Server will only need to Ack Publish request from client.
-        // Thus should reply with the MessageId that came from the client
-        id: MessageId,
-    },
+    // Ack {
+    //     // Server will only need to Ack Publish request from client.
+    //     // Thus should reply with the MessageId that came from the client
+    //     id: MessageId,
+    // },
     Stopping,
     Stop,
 }
@@ -87,12 +87,12 @@ impl<W: CodecWrite> ServerWriter<W> {
         Ok(())
     }
 
-    // Ack message
-    async fn write_ack(&mut self, id: MessageId) -> Result<(), Error> {
-        let header = Header::Ack(id);
-        self.writer.write_header(header).await?;
-        Ok(())
-    }
+    // // Ack message
+    // async fn write_ack(&mut self, id: MessageId) -> Result<(), Error> {
+    //     let header = Header::Ack(id);
+    //     self.writer.write_header(header).await?;
+    //     Ok(())
+    // }
 }
 
 #[async_trait::async_trait]
@@ -115,7 +115,7 @@ impl<W: CodecWrite + GracefulShutdown> Writer for ServerWriter<W> {
                 let id = seq_id.0;
                 self.write_publication(id, topic, &content).await
             }
-            ServerWriterItem::Ack { id } => self.write_ack(id).await,
+            // ServerWriterItem::Ack { id } => self.write_ack(id).await,
             ServerWriterItem::Stopping => Ok(self.writer.close().await),
             ServerWriterItem::Stop => return Running::Stop(None),
         };

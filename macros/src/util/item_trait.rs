@@ -206,8 +206,8 @@ pub(crate) fn generate_service_client_for_trait(
     let client_ident = syn::Ident::new(&&concat_name, trait_ident.span());
 
     let client_struct: syn::Item = syn::parse_quote!(
-        pub struct #client_ident<'c, AckMode> {
-            client: &'c toy_rpc::client::Client<AckMode>,
+        pub struct #client_ident<'c> {
+            client: &'c toy_rpc::client::Client,
             service_name: &'c str,
         }
     );
@@ -232,7 +232,7 @@ fn client_stub_impl_for_trait(
     });
 
     let output = quote::quote!(
-        impl<'c, AckMode> #client_ident<'c, AckMode> {
+        impl<'c> #client_ident<'c> {
             #(#generated_items;)*
         }
     );
@@ -272,15 +272,15 @@ pub(crate) fn generate_client_stub_for_trait(
     let stub_fn = parse_stub_fn_name(trait_ident);
 
     let stub_trait: syn::Item = syn::parse_quote!(
-        pub trait #stub_ident<AckMode> {
-            fn #stub_fn<'c>(&'c self) -> #client_ident<AckMode>;
+        pub trait #stub_ident {
+            fn #stub_fn<'c>(&'c self) -> #client_ident;
         }
     );
 
     let service_name = trait_ident.to_string();
     let stub_impl: syn::ItemImpl = syn::parse_quote!(
-        impl<AckMode> #stub_ident<AckMode> for toy_rpc::client::Client<AckMode> {
-            fn #stub_fn<'c>(&'c self) -> #client_ident<AckMode> {
+        impl #stub_ident for toy_rpc::client::Client {
+            fn #stub_fn<'c>(&'c self) -> #client_ident {
                 #client_ident {
                     client: self,
                     service_name: #service_name,
@@ -305,7 +305,7 @@ pub fn generate_trait_impl_for_client(input: &syn::ItemTrait) -> syn::ItemImpl {
         }
     });
     let mut output: syn::ItemImpl = syn::parse_quote!(
-        impl<AckMode: Send + Sync> #service_ident for toy_rpc::client::Client<AckMode> {
+        impl #service_ident for toy_rpc::client::Client {
 
         }
     );

@@ -34,122 +34,227 @@ cfg_if! {
 
         use crate::{server::Server};
         use crate::codec::DefaultCodec;
-        use crate::pubsub::{AckModeNone, AckModeAuto};
+        // use crate::pubsub::{AckModeNone, AckModeAuto};
 
-        macro_rules! impl_warp_integration_for_ack_modes {
-            ($($ack_mode:ty),*) => {
-                $(
-                    /// The following impl block is controlled by feature flag. It is enabled
-                    /// if and only if **exactly one** of the the following feature flag is turned on
-                    /// - `serde_bincode`
-                    /// - `serde_json`
-                    /// - `serde_cbor`
-                    /// - `serde_rmp`
-                    impl Server<$ack_mode> {
-                        /// WebSocket handler for integration with `warp`
-                        fn warp_websocket_handler(state: Arc<Self>, ws: warp::ws::Ws) -> impl warp::Reply {
-                            ws.on_upgrade(|websocket| async move {
-                                let codec = DefaultCodec::with_warp_websocket(websocket);
-                                let services = state.services.clone();
-                                let client_id = state.client_counter.fetch_add(1, Ordering::Relaxed);
-                                let pubsub_broker = state.pubsub_tx.clone();
+        // macro_rules! impl_warp_integration_for_ack_modes {
+        //     ($($ack_mode:ty),*) => {
+        //         $(
+        //             /// The following impl block is controlled by feature flag. It is enabled
+        //             /// if and only if **exactly one** of the the following feature flag is turned on
+        //             /// - `serde_bincode`
+        //             /// - `serde_json`
+        //             /// - `serde_cbor`
+        //             /// - `serde_rmp`
+        //             impl Server<$ack_mode> {
+        //                 /// WebSocket handler for integration with `warp`
+        //                 fn warp_websocket_handler(state: Arc<Self>, ws: warp::ws::Ws) -> impl warp::Reply {
+        //                     ws.on_upgrade(|websocket| async move {
+        //                         let codec = DefaultCodec::with_warp_websocket(websocket);
+        //                         let services = state.services.clone();
+        //                         let client_id = state.client_counter.fetch_add(1, Ordering::Relaxed);
+        //                         let pubsub_broker = state.pubsub_tx.clone();
 
-                                let fut = Self::start_broker_reader_writer(codec, services, client_id, pubsub_broker);
-                                fut.await.unwrap_or_else(|e| log::error!("{}", e));
-                            })
-                        }
+        //                         let fut = Self::start_broker_reader_writer(codec, services, client_id, pubsub_broker);
+        //                         fut.await.unwrap_or_else(|e| log::error!("{}", e));
+        //                     })
+        //                 }
 
-                        /// Returns the `DEFAULT_RPC_PATH`
-                        fn handler_path() -> &'static str {
-                            crate::DEFAULT_RPC_PATH
-                        }
+        //                 /// Returns the `DEFAULT_RPC_PATH`
+        //                 fn handler_path() -> &'static str {
+        //                     crate::DEFAULT_RPC_PATH
+        //                 }
 
-                        /// Consumes `Server` and returns a `warp::filters::BoxedFilter`
-                        /// which can be chained with `warp` filters
-                        ///
-                        /// # Example
-                        ///
-                        /// ```rust
-                        /// let foo_service = Arc::new(FooService { });
-                        /// let server = Server::builder()
-                        ///     .register(foo_service)
-                        ///     .build();
-                        /// let routes = warp::path("rpc")
-                        ///     .and(server.into_boxed_filter());
-                        /// // RPC will be served at "ws://127.0.0.1/rpc/_rpc_"
-                        /// warp::serve(routes).run(([127, 0, 0, 1], 8080)).await;
-                        /// ```
-                        pub fn into_boxed_filter(self) -> BoxedFilter<(impl Reply,)> {
-                            let state = Arc::new(self);
-                            let state = warp::any().map(move || state.clone());
+        //                 /// Consumes `Server` and returns a `warp::filters::BoxedFilter`
+        //                 /// which can be chained with `warp` filters
+        //                 ///
+        //                 /// # Example
+        //                 ///
+        //                 /// ```rust
+        //                 /// let foo_service = Arc::new(FooService { });
+        //                 /// let server = Server::builder()
+        //                 ///     .register(foo_service)
+        //                 ///     .build();
+        //                 /// let routes = warp::path("rpc")
+        //                 ///     .and(server.into_boxed_filter());
+        //                 /// // RPC will be served at "ws://127.0.0.1/rpc/_rpc_"
+        //                 /// warp::serve(routes).run(([127, 0, 0, 1], 8080)).await;
+        //                 /// ```
+        //                 pub fn into_boxed_filter(self) -> BoxedFilter<(impl Reply,)> {
+        //                     let state = Arc::new(self);
+        //                     let state = warp::any().map(move || state.clone());
 
-                            let rpc_route = warp::path(Self::handler_path())
-                                .and(state)
-                                .and(warp::ws())
-                                .map(Self::warp_websocket_handler)
-                                .boxed();
+        //                     let rpc_route = warp::path(Self::handler_path())
+        //                         .and(state)
+        //                         .and(warp::ws())
+        //                         .map(Self::warp_websocket_handler)
+        //                         .boxed();
 
-                            rpc_route
-                        }
+        //                     rpc_route
+        //                 }
 
-                        #[cfg(any(
-                            all(
-                                feature = "http_warp",
-                                not(feature = "http_actix_web"),
-                                not(feature = "http_tide"),
-                                not(feature = "http_axum")
-                            ),
-                            feature = "docs"
-                        ))]
-                        #[cfg_attr(
-                            feature = "docs",
-                            doc(cfg(all(
-                                feature = "http_warp",
-                                not(feature = "http_actix_web"),
-                                not(feature = "http_tide"),
-                                not(feature = "http_axum"),
-                            )))
-                        )]
-                        /// A conevience function that calls the corresponding http handling
-                        /// function depending on the enabled feature flag
-                        ///
-                        /// | feature flag | function name  |
-                        /// | ------------ |---|
-                        /// | `http_tide`| [`into_endpoint`](#method.into_endpoint) |
-                        /// | `http_actix_web` | [`scope_config`](#method.scope_config) |
-                        /// | `http_warp` | [`into_boxed_filter`](#method.into_boxed_filter) |
-                        /// | `http_axum` | [`into_boxed_route`](#method.into_boxed_route) |
-                        ///
-                        /// This is enabled
-                        /// if and only if **exactly one** of the the following feature flag is turned on
-                        /// - `serde_bincode`
-                        /// - `serde_json`
-                        /// - `serde_cbor`
-                        /// - `serde_rmp`
-                        ///
-                        /// # Example
-                        ///
-                        /// ```rust
-                        /// let foo_service = Arc::new(FooService { });
-                        /// let server = Server::builder()
-                        ///     .register(foo_service)
-                        ///     .build();
-                        /// let routes = warp::path("rpc")
-                        ///     .and(server.handle_http());
-                        /// // RPC will be served at "ws://127.0.0.1/rpc/_rpc_"
-                        /// warp::serve(routes).run(([127, 0, 0, 1], 8080)).await;
-                        /// ```
-                        pub fn handle_http(self) -> BoxedFilter<(impl Reply,)> {
-                            self.into_boxed_filter()
-                        }
-                    }
-                )*
+        //                 #[cfg(any(
+        //                     all(
+        //                         feature = "http_warp",
+        //                         not(feature = "http_actix_web"),
+        //                         not(feature = "http_tide"),
+        //                         not(feature = "http_axum")
+        //                     ),
+        //                     feature = "docs"
+        //                 ))]
+        //                 #[cfg_attr(
+        //                     feature = "docs",
+        //                     doc(cfg(all(
+        //                         feature = "http_warp",
+        //                         not(feature = "http_actix_web"),
+        //                         not(feature = "http_tide"),
+        //                         not(feature = "http_axum"),
+        //                     )))
+        //                 )]
+        //                 /// A conevience function that calls the corresponding http handling
+        //                 /// function depending on the enabled feature flag
+        //                 ///
+        //                 /// | feature flag | function name  |
+        //                 /// | ------------ |---|
+        //                 /// | `http_tide`| [`into_endpoint`](#method.into_endpoint) |
+        //                 /// | `http_actix_web` | [`scope_config`](#method.scope_config) |
+        //                 /// | `http_warp` | [`into_boxed_filter`](#method.into_boxed_filter) |
+        //                 /// | `http_axum` | [`into_boxed_route`](#method.into_boxed_route) |
+        //                 ///
+        //                 /// This is enabled
+        //                 /// if and only if **exactly one** of the the following feature flag is turned on
+        //                 /// - `serde_bincode`
+        //                 /// - `serde_json`
+        //                 /// - `serde_cbor`
+        //                 /// - `serde_rmp`
+        //                 ///
+        //                 /// # Example
+        //                 ///
+        //                 /// ```rust
+        //                 /// let foo_service = Arc::new(FooService { });
+        //                 /// let server = Server::builder()
+        //                 ///     .register(foo_service)
+        //                 ///     .build();
+        //                 /// let routes = warp::path("rpc")
+        //                 ///     .and(server.handle_http());
+        //                 /// // RPC will be served at "ws://127.0.0.1/rpc/_rpc_"
+        //                 /// warp::serve(routes).run(([127, 0, 0, 1], 8080)).await;
+        //                 /// ```
+        //                 pub fn handle_http(self) -> BoxedFilter<(impl Reply,)> {
+        //                     self.into_boxed_filter()
+        //                 }
+        //             }
+        //         )*
+        //     }
+        // }
+
+        // impl_warp_integration_for_ack_modes!(AckModeNone);
+
+        // #[cfg(not(feature = "docs"))]
+        // impl_warp_integration_for_ack_modes!(AckModeAuto);
+
+         /// The following impl block is controlled by feature flag. It is enabled
+        /// if and only if **exactly one** of the the following feature flag is turned on
+        /// - `serde_bincode`
+        /// - `serde_json`
+        /// - `serde_cbor`
+        /// - `serde_rmp`
+        impl Server {
+            /// WebSocket handler for integration with `warp`
+            fn warp_websocket_handler(state: Arc<Self>, ws: warp::ws::Ws) -> impl warp::Reply {
+                ws.on_upgrade(|websocket| async move {
+                    let codec = DefaultCodec::with_warp_websocket(websocket);
+                    let services = state.services.clone();
+                    let client_id = state.client_counter.fetch_add(1, Ordering::Relaxed);
+                    let pubsub_broker = state.pubsub_tx.clone();
+
+                    let fut = Self::start_broker_reader_writer(codec, services, client_id, pubsub_broker);
+                    fut.await.unwrap_or_else(|e| log::error!("{}", e));
+                })
+            }
+
+            /// Returns the `DEFAULT_RPC_PATH`
+            fn handler_path() -> &'static str {
+                crate::DEFAULT_RPC_PATH
+            }
+
+            /// Consumes `Server` and returns a `warp::filters::BoxedFilter`
+            /// which can be chained with `warp` filters
+            ///
+            /// # Example
+            ///
+            /// ```rust
+            /// let foo_service = Arc::new(FooService { });
+            /// let server = Server::builder()
+            ///     .register(foo_service)
+            ///     .build();
+            /// let routes = warp::path("rpc")
+            ///     .and(server.into_boxed_filter());
+            /// // RPC will be served at "ws://127.0.0.1/rpc/_rpc_"
+            /// warp::serve(routes).run(([127, 0, 0, 1], 8080)).await;
+            /// ```
+            pub fn into_boxed_filter(self) -> BoxedFilter<(impl Reply,)> {
+                let state = Arc::new(self);
+                let state = warp::any().map(move || state.clone());
+
+                let rpc_route = warp::path(Self::handler_path())
+                    .and(state)
+                    .and(warp::ws())
+                    .map(Self::warp_websocket_handler)
+                    .boxed();
+
+                rpc_route
+            }
+
+            #[cfg(any(
+                all(
+                    feature = "http_warp",
+                    not(feature = "http_actix_web"),
+                    not(feature = "http_tide"),
+                    not(feature = "http_axum")
+                ),
+                feature = "docs"
+            ))]
+            #[cfg_attr(
+                feature = "docs",
+                doc(cfg(all(
+                    feature = "http_warp",
+                    not(feature = "http_actix_web"),
+                    not(feature = "http_tide"),
+                    not(feature = "http_axum"),
+                )))
+            )]
+            /// A conevience function that calls the corresponding http handling
+            /// function depending on the enabled feature flag
+            ///
+            /// | feature flag | function name  |
+            /// | ------------ |---|
+            /// | `http_tide`| [`into_endpoint`](#method.into_endpoint) |
+            /// | `http_actix_web` | [`scope_config`](#method.scope_config) |
+            /// | `http_warp` | [`into_boxed_filter`](#method.into_boxed_filter) |
+            /// | `http_axum` | [`into_boxed_route`](#method.into_boxed_route) |
+            ///
+            /// This is enabled
+            /// if and only if **exactly one** of the the following feature flag is turned on
+            /// - `serde_bincode`
+            /// - `serde_json`
+            /// - `serde_cbor`
+            /// - `serde_rmp`
+            ///
+            /// # Example
+            ///
+            /// ```rust
+            /// let foo_service = Arc::new(FooService { });
+            /// let server = Server::builder()
+            ///     .register(foo_service)
+            ///     .build();
+            /// let routes = warp::path("rpc")
+            ///     .and(server.handle_http());
+            /// // RPC will be served at "ws://127.0.0.1/rpc/_rpc_"
+            /// warp::serve(routes).run(([127, 0, 0, 1], 8080)).await;
+            /// ```
+            pub fn handle_http(self) -> BoxedFilter<(impl Reply,)> {
+                self.into_boxed_filter()
             }
         }
-
-        impl_warp_integration_for_ack_modes!(AckModeNone);
-
-        #[cfg(not(feature = "docs"))]
-        impl_warp_integration_for_ack_modes!(AckModeAuto);
     }
 }

@@ -2,7 +2,6 @@
 
 use flume::{Receiver, Sender};
 use std::collections::{BTreeMap, BTreeSet, HashMap};
-use std::marker::PhantomData;
 use std::sync::atomic::Ordering;
 use std::sync::Arc;
 use std::time::Duration;
@@ -11,7 +10,7 @@ use std::time::Duration;
 use actix::Recipient;
 
 use crate::message::{AtomicMessageId, MessageId};
-use crate::pubsub::{AckModeAuto, AckModeNone, SeqId};
+use crate::pubsub::{SeqId};
 use crate::Error;
 
 use super::{broker::ServerBrokerItem, ClientId};
@@ -62,7 +61,7 @@ pub(crate) enum PubSubItem {
     Stop,
 }
 
-pub(crate) struct PubSubBroker<AckMode> {
+pub(crate) struct PubSubBroker {
     seq_counter: AtomicMessageId,
     pubsub_tx: Sender<PubSubItem>,
     listener: Receiver<PubSubItem>,
@@ -70,10 +69,10 @@ pub(crate) struct PubSubBroker<AckMode> {
     pending_acks: BTreeMap<SeqId, Sender<ClientId>>,
     pub_retry_timeout: Duration,
     max_num_retries: u32,
-    ack_mode: PhantomData<AckMode>,
+    // ack_mode: PhantomData<AckMode>,
 }
 
-impl<AckMode: Send + 'static> PubSubBroker<AckMode> {
+impl PubSubBroker {
     pub fn new(retry_timeout: Duration, max_num_retries: u32) -> (Self, Sender<PubSubItem>) {
         let (pubsub_tx, listener) = flume::unbounded();
         (
@@ -85,7 +84,7 @@ impl<AckMode: Send + 'static> PubSubBroker<AckMode> {
                 pending_acks: BTreeMap::new(),
                 pub_retry_timeout: retry_timeout,
                 max_num_retries,
-                ack_mode: PhantomData,
+                // ack_mode: PhantomData,
             },
             pubsub_tx,
         )
@@ -241,7 +240,7 @@ impl<AckMode: Send + 'static> PubSubBroker<AckMode> {
     }
 }
 
-impl PubSubBroker<AckModeNone> {
+impl PubSubBroker {
     pub fn handle_publish(
         &mut self,
         client_id: ClientId,
@@ -254,87 +253,143 @@ impl PubSubBroker<AckModeNone> {
     }
 }
 
-impl PubSubBroker<AckModeAuto> {
-    pub fn handle_publish(
-        &mut self,
-        client_id: ClientId,
-        msg_id: MessageId,
-        topic: String,
-        content: Arc<Vec<u8>>,
-    ) {
-        let seq_id = self.seq_id(&client_id, &msg_id);
-        let count = 0;
-        self.handle_publish_inner(seq_id.clone(), &topic, content.clone());
-        if let Some(entry) = self.subscriptions.get(&topic) {
-            let set: BTreeSet<ClientId> = entry.keys().map(|val| *val).collect();
-            self.spawn_timed_task_waiting_for_acks(count, set, topic, seq_id, content)
+// impl PubSubBroker<AckModeAuto> {
+//     pub fn handle_publish(
+//         &mut self,
+//         client_id: ClientId,
+//         msg_id: MessageId,
+//         topic: String,
+//         content: Arc<Vec<u8>>,
+//     ) {
+//         let seq_id = self.seq_id(&client_id, &msg_id);
+//         let count = 0;
+//         self.handle_publish_inner(seq_id.clone(), &topic, content.clone());
+//         if let Some(entry) = self.subscriptions.get(&topic) {
+//             let set: BTreeSet<ClientId> = entry.keys().map(|val| *val).collect();
+//             self.spawn_timed_task_waiting_for_acks(count, set, topic, seq_id, content)
+//         }
+//     }
+// }
+
+// macro_rules! impl_pubsub_broker_for_ack_modes {
+//     ($($ack_mode:ty),*) => {
+//         $(
+//             impl PubSubBroker<$ack_mode> {
+//                 /// Spawn PubSubBroker loop in a task
+//                 #[cfg(any(
+//                     all(feature = "async_std_runtime", not(feature = "tokio_runtime")),
+//                     all(feature = "tokio_runtime", not(feature = "async_std_runtime")),
+//                 ))]
+//                 pub fn spawn(self) {
+//                     #[cfg(not(feature = "http_actix_web"))]
+//                     task::spawn(self.pubsub_loop());
+//                     #[cfg(all(feature = "http_actix_web"))]
+//                     actix::spawn(self.pubsub_loop());
+//                 }
+
+//                 pub async fn pubsub_loop(mut self) {
+//                     while let Ok(item) = self.listener.recv_async().await {
+//                         match item {
+//                             PubSubItem::Publish {
+//                                 client_id,
+//                                 msg_id,
+//                                 topic,
+//                                 content,
+//                             } => {
+//                                 self.handle_publish(client_id, msg_id, topic, content)
+//                             },
+//                             PubSubItem::PublishRetry {
+//                                 count,
+//                                 client_ids,
+//                                 seq_id,
+//                                 topic,
+//                                 content
+//                             } => {
+//                                 self.handle_publish_retry(count, client_ids, seq_id, topic, content).await
+//                             },
+//                             PubSubItem::RemovePendingAcks{ seq_id } => {
+//                                 log::debug!("Removing pending acks");
+//                                 self.pending_acks.remove(&seq_id);
+//                             },
+//                             PubSubItem::Subscribe {
+//                                 client_id,
+//                                 topic,
+//                                 sender,
+//                             } => {
+//                                 self.handle_subscribe(client_id, topic, sender)
+//                             },
+//                             PubSubItem::Unsubscribe { client_id, topic } => {
+//                                 self.handle_unsubscribe(client_id, topic)
+//                             },
+//                             PubSubItem::Ack{seq_id, client_id} => {
+//                                 self.handle_ack(seq_id, client_id).await
+//                             },
+//                             PubSubItem::Stop => return,
+//                         }
+//                     }
+//                 }
+//             }
+//         )*
+//     };
+// }
+
+// impl_pubsub_broker_for_ack_modes!(AckModeNone, AckModeAuto);
+
+impl PubSubBroker {
+    /// Spawn PubSubBroker loop in a task
+    #[cfg(any(
+        all(feature = "async_std_runtime", not(feature = "tokio_runtime")),
+        all(feature = "tokio_runtime", not(feature = "async_std_runtime")),
+    ))]
+    pub fn spawn(self) {
+        #[cfg(not(feature = "http_actix_web"))]
+        task::spawn(self.pubsub_loop());
+        #[cfg(all(feature = "http_actix_web"))]
+        actix::spawn(self.pubsub_loop());
+    }
+
+    pub async fn pubsub_loop(mut self) {
+        while let Ok(item) = self.listener.recv_async().await {
+            match item {
+                PubSubItem::Publish {
+                    client_id,
+                    msg_id,
+                    topic,
+                    content,
+                } => {
+                    self.handle_publish(client_id, msg_id, topic, content)
+                },
+                PubSubItem::PublishRetry {
+                    count,
+                    client_ids,
+                    seq_id,
+                    topic,
+                    content
+                } => {
+                    self.handle_publish_retry(count, client_ids, seq_id, topic, content).await
+                },
+                PubSubItem::RemovePendingAcks{ seq_id } => {
+                    log::debug!("Removing pending acks");
+                    self.pending_acks.remove(&seq_id);
+                },
+                PubSubItem::Subscribe {
+                    client_id,
+                    topic,
+                    sender,
+                } => {
+                    self.handle_subscribe(client_id, topic, sender)
+                },
+                PubSubItem::Unsubscribe { client_id, topic } => {
+                    self.handle_unsubscribe(client_id, topic)
+                },
+                PubSubItem::Ack{seq_id, client_id} => {
+                    self.handle_ack(seq_id, client_id).await
+                },
+                PubSubItem::Stop => return,
+            }
         }
     }
 }
-
-macro_rules! impl_pubsub_broker_for_ack_modes {
-    ($($ack_mode:ty),*) => {
-        $(
-            impl PubSubBroker<$ack_mode> {
-                /// Spawn PubSubBroker loop in a task
-                #[cfg(any(
-                    all(feature = "async_std_runtime", not(feature = "tokio_runtime")),
-                    all(feature = "tokio_runtime", not(feature = "async_std_runtime")),
-                ))]
-                pub fn spawn(self) {
-                    #[cfg(not(feature = "http_actix_web"))]
-                    task::spawn(self.pubsub_loop());
-                    #[cfg(all(feature = "http_actix_web"))]
-                    actix::spawn(self.pubsub_loop());
-                }
-
-                pub async fn pubsub_loop(mut self) {
-                    while let Ok(item) = self.listener.recv_async().await {
-                        match item {
-                            PubSubItem::Publish {
-                                client_id,
-                                msg_id,
-                                topic,
-                                content,
-                            } => {
-                                self.handle_publish(client_id, msg_id, topic, content)
-                            },
-                            PubSubItem::PublishRetry {
-                                count,
-                                client_ids,
-                                seq_id,
-                                topic,
-                                content
-                            } => {
-                                self.handle_publish_retry(count, client_ids, seq_id, topic, content).await
-                            },
-                            PubSubItem::RemovePendingAcks{ seq_id } => {
-                                log::debug!("Removing pending acks");
-                                self.pending_acks.remove(&seq_id);
-                            },
-                            PubSubItem::Subscribe {
-                                client_id,
-                                topic,
-                                sender,
-                            } => {
-                                self.handle_subscribe(client_id, topic, sender)
-                            },
-                            PubSubItem::Unsubscribe { client_id, topic } => {
-                                self.handle_unsubscribe(client_id, topic)
-                            },
-                            PubSubItem::Ack{seq_id, client_id} => {
-                                self.handle_ack(seq_id, client_id).await
-                            },
-                            PubSubItem::Stop => return,
-                        }
-                    }
-                }
-            }
-        )*
-    };
-}
-
-impl_pubsub_broker_for_ack_modes!(AckModeNone, AckModeAuto);
 
 fn send_broker_item_publication(responder: &mut PubSubResponder, msg: ServerBrokerItem) -> bool {
     match responder {

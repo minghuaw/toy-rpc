@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use cfg_if::cfg_if;
 
-use crate::pubsub::SeqId;
+// use crate::pubsub::SeqId;
 
 cfg_if! {
     if #[cfg(any(
@@ -33,7 +33,7 @@ cfg_if! {
 
             // Client will respond to Publish message sent from the server
             // Thus needs to reply with the seq_id
-            Ack(SeqId),
+            // Ack(SeqId),
             Cancel(MessageId),
             Stopping,
             Stop,
@@ -103,13 +103,13 @@ cfg_if! {
                         log::debug!("{:?}", &header);
                         self.write_request(header, &()).await
                     },
-                    ClientWriterItem::Ack(seq_id) => {
-                        let header = Header::Ack(seq_id.0);
-                        log::debug!("{:?}", &header);
-                        // There is no body frame for Ack message
-                        self.writer.write_header(header).await
-                            .map_err(Into::into)
-                    },
+                    // ClientWriterItem::Ack(seq_id) => {
+                    //     let header = Header::Ack(seq_id.0);
+                    //     log::debug!("{:?}", &header);
+                    //     // There is no body frame for Ack message
+                    //     self.writer.write_header(header).await
+                    //         .map_err(Into::into)
+                    // },
                     ClientWriterItem::Stopping => {
                         Ok(self.writer.close().await)
                     },

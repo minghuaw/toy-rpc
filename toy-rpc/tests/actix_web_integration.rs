@@ -2,7 +2,6 @@ use actix_web::{web, App, HttpServer};
 use anyhow::Result;
 use flume::{Receiver, Sender};
 use std::sync::Arc;
-use toy_rpc::pubsub::AckModeNone;
 use toy_rpc::{Client, Server};
 
 mod rpc;
@@ -43,7 +42,7 @@ async fn start_server(base: &'static str) -> Result<()> {
         App::new().service(
             web::scope("/rpc/")
                 .app_data(app_data.clone())
-                .configure(Server::<AckModeNone>::scope_config),
+                .configure(Server::scope_config),
         )
     })
     .bind(&base)?

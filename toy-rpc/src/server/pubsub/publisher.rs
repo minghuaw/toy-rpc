@@ -15,7 +15,7 @@ use crate::{
     codec::{DefaultCodec, Marshal, Reserved},
     error::Error,
     message::AtomicMessageId,
-    pubsub::{AckModeAuto, AckModeNone, Topic},
+    pubsub::{Topic},
     server::{Server, RESERVED_CLIENT_ID},
 };
 
@@ -87,18 +87,26 @@ impl<T: Topic, C: Marshal> Sink<T::Item> for Publisher<T, C> {
 
 type PhantomCodec = DefaultCodec<Reserved, Reserved, Reserved>;
 
-macro_rules! impl_server_pubsub_for_ack_modes {
-    ($($ack_mode:ty),*) => {
-        $(
-            impl Server<$ack_mode> {
-                /// Creates a new publihser on a topic
-                pub fn publisher<T: Topic>(&self) -> Publisher<T, PhantomCodec> {
-                    let tx = self.pubsub_tx.clone();
-                    Publisher::from(tx)
-                }
-            }
-        )*
+// macro_rules! impl_server_pubsub_for_ack_modes {
+//     ($($ack_mode:ty),*) => {
+//         $(
+//             impl Server<$ack_mode> {
+//                 /// Creates a new publihser on a topic
+//                 pub fn publisher<T: Topic>(&self) -> Publisher<T, PhantomCodec> {
+//                     let tx = self.pubsub_tx.clone();
+//                     Publisher::from(tx)
+//                 }
+//             }
+//         )*
+//     }
+// }
+
+// impl_server_pubsub_for_ack_modes!(AckModeNone, AckModeAuto);
+
+impl Server {
+    /// Creates a new publihser on a topic
+    pub fn publisher<T: Topic>(&self) -> Publisher<T, PhantomCodec> {
+        let tx = self.pubsub_tx.clone();
+        Publisher::from(tx)
     }
 }
-
-impl_server_pubsub_for_ack_modes!(AckModeNone, AckModeAuto);

@@ -137,8 +137,8 @@ pub(crate) fn generate_service_client_for_struct(
     let client_ident = syn::Ident::new(&concat_name, type_ident.span());
 
     let client_struct = syn::parse_quote!(
-        pub struct #client_ident<'c, AckMode> {
-            client: &'c toy_rpc::client::Client<AckMode>,
+        pub struct #client_ident<'c> {
+            client: &'c toy_rpc::client::Client,
             service_name: &'c str,
         }
     );
@@ -165,7 +165,7 @@ fn client_stub_impl_for_struct(
     });
 
     let output = quote::quote!(
-        impl<'c, AckMode> #client_ident<'c, AckMode> {
+        impl<'c> #client_ident<'c> {
             #(#generated_items;)*
         }
     );
@@ -210,15 +210,15 @@ pub(crate) fn generate_client_stub_for_struct(
     let stub_fn = parse_stub_fn_name(type_ident);
 
     let stub_trait = syn::parse_quote!(
-        pub trait #stub_ident<AckMode> {
-            fn #stub_fn<'c>(&'c self) -> #client_ident<AckMode>;
+        pub trait #stub_ident {
+            fn #stub_fn<'c>(&'c self) -> #client_ident;
         }
     );
 
     let service_name = type_ident.to_string();
     let stub_impl: syn::ItemImpl = syn::parse_quote!(
-        impl<AckMode> #stub_ident<AckMode> for toy_rpc::client::Client<AckMode> {
-            fn #stub_fn<'c>(&'c self) -> #client_ident<AckMode> {
+        impl #stub_ident for toy_rpc::client::Client {
+            fn #stub_fn<'c>(&'c self) -> #client_ident {
                 #client_ident {
                     client: self,
                     service_name: #service_name,

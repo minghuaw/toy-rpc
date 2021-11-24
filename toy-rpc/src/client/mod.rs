@@ -3,9 +3,9 @@
 use cfg_if::cfg_if;
 use crossbeam::atomic::AtomicCell;
 use flume::Sender;
-use std::{any::TypeId, collections::HashMap, marker::PhantomData, sync::Arc, time::Duration};
+use std::{any::TypeId, collections::HashMap, sync::Arc, time::Duration};
 
-use crate::{message::AtomicMessageId, protocol::InboundBody, pubsub::AckModeNone};
+use crate::{message::AtomicMessageId, protocol::InboundBody};
 
 pub(crate) mod broker;
 pub mod builder;
@@ -56,7 +56,7 @@ cfg_if! {
     ),
     allow(dead_code)
 )]
-pub struct Client<AckMode> {
+pub struct Client {
     count: Arc<AtomicMessageId>,
     default_timeout: Duration,
     next_timeout: AtomicCell<Option<Duration>>,
@@ -64,7 +64,7 @@ pub struct Client<AckMode> {
     broker_handle: Option<JoinHandle<Result<(), Error>>>,
     subscriptions: HashMap<String, TypeId>,
 
-    ack_mode: PhantomData<AckMode>,
+    // ack_mode: PhantomData<AckMode>,
 }
 
 cfg_if! {
@@ -98,7 +98,7 @@ cfg_if! {
         /// - `serde_json`
         /// - `serde_cbor`
         /// - `serde_rmp`
-        impl Client<AckModeNone> {
+        impl Client {
             /// Connects to an RPC server over socket at the specified network address
             ///
             /// This is enabled
@@ -302,7 +302,7 @@ pub mod call;
 pub use call::Call;
 
 // seems like it still works even without this impl
-impl<AckMode> Drop for Client<AckMode> {
+impl Drop for Client {
     fn drop(&mut self) {
         if !self.broker.is_disconnected() {
             for (topic, _) in self.subscriptions.drain() {
@@ -331,14 +331,12 @@ impl<AckMode> Drop for Client<AckMode> {
     }
 }
 
-impl Client<AckModeNone> {
+impl Client {
     /// Creates a `ClientBuilder`.
-    pub fn builder() -> ClientBuilder<AckModeNone> {
+    pub fn builder() -> ClientBuilder {
         ClientBuilder::default()
     }
-}
 
-impl<AckMode> Client<AckMode> {
     /// Closes connection with the server
     ///
     /// Dropping the client will close the connection as well
@@ -383,7 +381,7 @@ cfg_if! {
 
         use crate::{codec::split::SplittableCodec};
 
-        impl<AckMode> Client<AckMode> {
+        impl Client {
             /// Sets the default timeout duration for this client
             ///
             /// Example

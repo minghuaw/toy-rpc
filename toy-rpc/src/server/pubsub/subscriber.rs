@@ -12,7 +12,7 @@ use futures::Stream;
 use crate::{
     codec::{DefaultCodec, Reserved, Unmarshal},
     error::Error,
-    pubsub::{AckModeAuto, AckModeNone, Topic},
+    pubsub::{Topic},
     server::{broker::ServerBrokerItem, Server, RESERVED_CLIENT_ID},
 };
 
@@ -20,17 +20,17 @@ use super::{PubSubItem, PubSubResponder};
 
 /// Subscriber on the client side
 #[pin_project::pin_project(PinnedDrop)]
-pub struct Subscriber<T: Topic, C: Unmarshal, AckMode> {
+pub struct Subscriber<T: Topic, C: Unmarshal> {
     #[pin]
     inner: RecvStream<'static, ServerBrokerItem>,
     pubsub_tx: Sender<PubSubItem>,
     topic: String,
     marker: PhantomData<T>,
     codec: PhantomData<C>,
-    ack_mode: PhantomData<AckMode>,
+    // ack_mode: PhantomData<AckMode>,
 }
 
-impl<T: Topic, C: Unmarshal, AckMode> Subscriber<T, C, AckMode> {
+impl<T: Topic, C: Unmarshal> Subscriber<T, C> {
     fn new(inner: Receiver<ServerBrokerItem>, pubsub_tx: Sender<PubSubItem>) -> Self {
         Self {
             inner: inner.into_stream(),
@@ -38,13 +38,13 @@ impl<T: Topic, C: Unmarshal, AckMode> Subscriber<T, C, AckMode> {
             topic: T::topic(),
             marker: PhantomData,
             codec: PhantomData,
-            ack_mode: PhantomData,
+            // ack_mode: PhantomData,
         }
     }
 }
 
 #[pin_project::pinned_drop]
-impl<T: Topic, C: Unmarshal, AckMode> PinnedDrop for Subscriber<T, C, AckMode> {
+impl<T: Topic, C: Unmarshal> PinnedDrop for Subscriber<T, C> {
     fn drop(self: Pin<&mut Self>) {
         let this = self.get_mut();
 
@@ -60,7 +60,7 @@ impl<T: Topic, C: Unmarshal, AckMode> PinnedDrop for Subscriber<T, C, AckMode> {
     }
 }
 
-impl<T: Topic, C: Unmarshal> Stream for Subscriber<T, C, AckModeNone> {
+impl<T: Topic, C: Unmarshal> Stream for Subscriber<T, C> {
     type Item = Result<T::Item, Error>;
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
@@ -88,69 +88,87 @@ impl<T: Topic, C: Unmarshal> Stream for Subscriber<T, C, AckModeNone> {
     }
 }
 
-impl<T: Topic, C: Unmarshal> Stream for Subscriber<T, C, AckModeAuto> {
-    type Item = Result<T::Item, Error>;
+// impl<T: Topic, C: Unmarshal> Stream for Subscriber<T, C, AckModeAuto> {
+//     type Item = Result<T::Item, Error>;
 
-    fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        let this = self.project();
-        match this.inner.poll_next(cx) {
-            Poll::Pending => Poll::Pending,
-            Poll::Ready(opt) => match opt {
-                Some(item) => match item {
-                    ServerBrokerItem::Publication {
-                        seq_id,
-                        topic: _,
-                        content,
-                    } => {
-                        // Send back Ack first
-                        log::debug!("Auto Ack");
-                        if let Err(err) = this
-                            .pubsub_tx
-                            .send(PubSubItem::Ack {
-                                seq_id,
-                                client_id: RESERVED_CLIENT_ID,
-                            })
-                            .map_err(|err| err.into())
-                        {
-                            return Poll::Ready(Some(Err(err)));
-                        }
-                        let result = C::unmarshal(&content);
-                        Poll::Ready(Some(result.map_err(Into::into)))
-                    }
-                    _ => {
-                        let result = Err(Error::Internal("Invalid PubSub item".into()));
-                        Poll::Ready(Some(result))
-                    }
-                },
-                None => Poll::Ready(None),
-            },
-        }
-    }
-}
+//     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+//         let this = self.project();
+//         match this.inner.poll_next(cx) {
+//             Poll::Pending => Poll::Pending,
+//             Poll::Ready(opt) => match opt {
+//                 Some(item) => match item {
+//                     ServerBrokerItem::Publication {
+//                         seq_id,
+//                         topic: _,
+//                         content,
+//                     } => {
+//                         // Send back Ack first
+//                         log::debug!("Auto Ack");
+//                         if let Err(err) = this
+//                             .pubsub_tx
+//                             .send(PubSubItem::Ack {
+//                                 seq_id,
+//                                 client_id: RESERVED_CLIENT_ID,
+//                             })
+//                             .map_err(|err| err.into())
+//                         {
+//                             return Poll::Ready(Some(Err(err)));
+//                         }
+//                         let result = C::unmarshal(&content);
+//                         Poll::Ready(Some(result.map_err(Into::into)))
+//                     }
+//                     _ => {
+//                         let result = Err(Error::Internal("Invalid PubSub item".into()));
+//                         Poll::Ready(Some(result))
+//                     }
+//                 },
+//                 None => Poll::Ready(None),
+//             },
+//         }
+//     }
+// }
 
 type PhantomCodec = DefaultCodec<Reserved, Reserved, Reserved>;
 
-macro_rules! impl_server_pubsub_for_ack_modes {
-    ($($ack_mode:ty),*) => {
-        $(
-            impl Server<$ack_mode> {
-                /// Creates a new subscriber on a topic
-                ///
-                /// Only one subscriber per topic can exist at the same time on the server.
-                /// Creating a new subscriber will drop the sender of the old subscriber.
-                #[cfg(not(feature = "http_actix_web"))]
-                #[cfg_attr(feature = "docs", doc(cfg(not(feature = "http_actix_web"))))]
-                pub fn subscriber<T: Topic>(&self, cap: usize) -> Result<Subscriber<T, PhantomCodec, $ack_mode>, Error> {
-                    let (sender, rx) = flume::bounded(cap);
-                    let client_id = RESERVED_CLIENT_ID;
-                    let topic = T::topic();
-                    let sender = PubSubResponder::Sender(sender);
-                    self.pubsub_tx.send(PubSubItem::Subscribe{client_id, topic, sender})?;
-                    Ok(Subscriber::new(rx, self.pubsub_tx.clone()))
-                }
-            }
-        )*
+// macro_rules! impl_server_pubsub_for_ack_modes {
+//     ($($ack_mode:ty),*) => {
+//         $(
+//             impl Server<$ack_mode> {
+//                 /// Creates a new subscriber on a topic
+//                 ///
+//                 /// Only one subscriber per topic can exist at the same time on the server.
+//                 /// Creating a new subscriber will drop the sender of the old subscriber.
+//                 #[cfg(not(feature = "http_actix_web"))]
+//                 #[cfg_attr(feature = "docs", doc(cfg(not(feature = "http_actix_web"))))]
+//                 pub fn subscriber<T: Topic>(&self, cap: usize) -> Result<Subscriber<T, PhantomCodec, $ack_mode>, Error> {
+//                     let (sender, rx) = flume::bounded(cap);
+//                     let client_id = RESERVED_CLIENT_ID;
+//                     let topic = T::topic();
+//                     let sender = PubSubResponder::Sender(sender);
+//                     self.pubsub_tx.send(PubSubItem::Subscribe{client_id, topic, sender})?;
+//                     Ok(Subscriber::new(rx, self.pubsub_tx.clone()))
+//                 }
+//             }
+//         )*
+//     }
+// }
+
+// impl_server_pubsub_for_ack_modes!(AckModeNone, AckModeAuto);
+
+impl Server {
+    /// Creates a new subscriber on a topic
+    ///
+    /// Only one subscriber per topic can exist at the same time on the server.
+    /// Creating a new subscriber will drop the sender of the old subscriber.
+    #[cfg(not(feature = "http_actix_web"))]
+    #[cfg_attr(feature = "docs", doc(cfg(not(feature = "http_actix_web"))))]
+    pub fn subscriber<T: Topic>(&self, cap: usize) -> Result<Subscriber<T, PhantomCodec>, Error> {
+        let (sender, rx) = flume::bounded(cap);
+        let client_id = RESERVED_CLIENT_ID;
+        let topic = T::topic();
+        let sender = PubSubResponder::Sender(sender);
+        self.pubsub_tx.send(PubSubItem::Subscribe{client_id, topic, sender})?;
+        Ok(Subscriber::new(rx, self.pubsub_tx.clone()))
     }
 }
 
-impl_server_pubsub_for_ack_modes!(AckModeNone, AckModeAuto);
