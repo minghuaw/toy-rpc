@@ -10,28 +10,8 @@ pub mod item_impl;
 
 pub mod item_trait;
 
-// #[cfg(all(feature = "client", feature = "runtime"))]
-// pub(crate) fn get_ok_ident_from_type(ty: Box<syn::Type>) -> Option<syn::GenericArgument> {
-//     let ty = Box::leak(ty);
-//     let arg = syn::GenericArgument::Type(ty.to_owned());
-//     recursively_get_result_from_generic_arg(&arg)
-// }
-
-// #[cfg(all(feature = "client", feature = "runtime"))]
-// pub(crate) fn recursively_get_result_from_generic_arg(
-//     arg: &syn::GenericArgument,
-// ) -> Option<syn::GenericArgument> {
-//     match &arg {
-//         syn::GenericArgument::Type(ty) => recusively_get_result_from_type(&ty),
-//         syn::GenericArgument::Binding(binding) => recusively_get_result_from_type(&binding.ty),
-//         _ => None,
-//     }
-// }
-
 #[cfg(any(feature = "server", all(feature = "client", feature = "runtime")))]
 pub(crate) fn unwrap_return_type(ty: &syn::ReturnType) -> syn::Type {
-    // use syn::{Type};
-    // println!("{:?}", &ty);
     let ret_ty: syn::Type = match ty {
         syn::ReturnType::Default => syn::parse_quote! {()},
         syn::ReturnType::Type(_, ty) => syn::parse_quote! {#ty}
@@ -56,8 +36,6 @@ pub(crate) fn unwrap_type(ty: syn::Type) -> syn::Type {
 
 #[cfg(any(feature = "server", all(feature = "client", feature = "runtime")))]
 pub(crate) fn unwrap_type_path_for_async_trait(tp: &syn::TypePath) -> Option<&syn::Type> {
-    // println!("{:?}", tp.path.segments);
-
     let pin_args = unwrap_till_ident(tp.path.segments.iter(), "Pin")?;
     let ty = unwrap_angled_path_args(pin_args)?;
     let segments = match ty {
@@ -80,7 +58,6 @@ pub(crate) fn unwrap_type_path_for_async_trait(tp: &syn::TypePath) -> Option<&sy
 #[cfg(any(feature = "server", all(feature = "client", feature = "runtime")))]
 pub(crate) fn unwrap_till_ident<'a>(segments: impl Iterator<Item=&'a syn::PathSegment>, ident: &'a str) -> Option<&'a syn::PathArguments> {
     for seg in segments {
-        // println!("{:?}", seg.ident);
         if seg.ident == ident {
             return Some(&seg.arguments)
         }
@@ -260,12 +237,6 @@ pub(crate) fn macro_rules_client_stub() -> proc_macro2::TokenStream {
 
             // non Result return type
             ($self:ident, $service_method:expr, $req_id:ident, $ret_ty:ty) => {
-                // Box::pin(
-                //     async move {
-                //         let success = $self.call($service_method, $req_id).await;
-                //         Ok(success)
-                //     }
-                // )
                 compile_error!("`#[export_trait(impl_for_client)]` requires return type to be Result<_, _>");
             };
 

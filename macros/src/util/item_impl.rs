@@ -28,7 +28,6 @@ pub(crate) fn transform_impl(
             
         }
     };
-    // println!("{:?}", &output);
     output.items = methods;
 
     (output, names, idents)
@@ -67,10 +66,6 @@ pub(crate) fn transform_impl_item(f: &mut syn::ImplItemMethod) {
 }
 
 /// remove #[export_method] attribute
-// #[cfg(any(
-//     feature = "server",
-//     feature = "client"
-// ))]
 pub(crate) fn remove_export_attr_from_impl(mut input: syn::ItemImpl) -> syn::ItemImpl {
     input.items.iter_mut().for_each(|item| {
         // clear the attributes for now

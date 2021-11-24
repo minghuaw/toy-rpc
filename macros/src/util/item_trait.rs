@@ -88,10 +88,6 @@ fn impl_transformed_trait(
     for (handler_item, orig_item) in items {
         if let syn::FnArg::Typed(pt) = orig_item.sig.inputs.last().unwrap() {
             let req_ty = &pt.ty;
-            // let ret_ty: syn::Type = match &orig_item.sig.output {
-            //     syn::ReturnType::Default => syn::parse_quote! {()},
-            //     syn::ReturnType::Type(_, ty) => syn::parse_quote! {#ty}
-            // };
             let handler_ident = &handler_item.sig.ident;
             let orig_ident = &orig_item.sig.ident;
 
@@ -190,17 +186,6 @@ pub(crate) fn impl_register_service_for_trait_impl(
     ret
 }
 
-// #[cfg(feature = "server")]
-// pub(crate) fn get_trait_ident_from_item_impl(input: &syn::ItemImpl) -> Option<syn::Ident> {
-
-//     if let Some((_, ref path, _)) = input.trait_ {
-//         println!("path: {:?}", path);
-//         path.get_ident().map(|id| id.clone())
-//     } else {
-//         None
-//     }
-// }
-
 #[cfg(any(feature = "server", all(feature = "client", feature = "runtime",)))]
 pub(crate) fn filter_exported_trait_items(input: syn::ItemTrait) -> syn::ItemTrait {
     let mut output = input;
@@ -251,7 +236,6 @@ fn client_stub_impl_for_trait(
             #(#generated_items;)*
         }
     );
-    // output.items = generated_items;
     output
 }
 
@@ -356,12 +340,6 @@ fn generate_trait_method_impl_for_client(
 
     let block: syn::Block = syn::parse_quote!(
         {
-            // Box::pin(
-            //     async move {
-            //         let success = self.call(#service_method, #arg_ident).await?;
-            //         Ok(success)
-            //     }
-            // )
             toy_rpc_client_stub!(self, #service_method, #arg_ident, #ret_ty)
         }
     );
