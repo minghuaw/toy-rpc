@@ -1,5 +1,6 @@
 use async_trait::async_trait;
-use toy_rpc::macros::export_trait;
+use toy_rpc::{macros::export_trait};
+use serde::{Serialize, Deserialize};
 
 #[async_trait]
 #[export_trait]
@@ -13,9 +14,26 @@ pub trait Arith {
     fn say_hi(&self);
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Foo {
+    pub id: u32
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Bar {
+    pub id: u32
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(tag = "type")]
+pub enum Message {
+    New(Foo),
+    Old(Bar)
+}
+
 #[async_trait]
 #[export_trait(impl_for_client)]
 pub trait Consumer {
     #[export_method]
-    async fn consume(&self, message: String) -> anyhow::Result<u8>;
+    async fn consume(&self, message: Message) -> anyhow::Result<u8>;
 }

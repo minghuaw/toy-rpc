@@ -26,9 +26,18 @@ all-features = true
 features = ["docs"]
 rustdoc-args = ["--cfg", "feature=\"docs\""]
 
+[lib]
+crate-type = ["cdylib"]
+
 [features]
 default = [
-    "serde_bincode",
+    # "serde_bincode",
+    "serde_json",
+    "server",
+    # "client",
+    "tokio_runtime",
+    # "async_std_runtime",
+    # "wasm",
 ]
 
 docs = []
@@ -38,7 +47,7 @@ client = ["toy-rpc-macros/client"]
 tls = ["rustls", "tokio-rustls", "futures-rustls", "webpki"]
 ws_tokio = ["tungstenite", "async-tungstenite/tokio-runtime"]
 ws_async_std = ["tungstenite", "async-tungstenite/async-std-runtime"]
- 
+
 # feature flags for codec
 serde_bincode = []
 serde_rmp = ["rmp-serde"]
@@ -51,6 +60,8 @@ http_actix_web = ["actix-web", "actix", "actix-rt", "actix-web-actors", "actix-h
 http_warp = ["warp", "ws_tokio", "tokio_runtime", "server"]
 http_axum = ["axum", "http-body", "bytes", "ws_tokio", "tokio_runtime", "server"]
 
+wasm = ["async-std/wasm-bindgen-futures"]
+
 [dev-dependencies]
 async-std = "1.9.0"
 anyhow = "1.0.38"
@@ -62,8 +73,8 @@ hyper = "0.14.11"
 
 [dependencies]
 # local imports
-# toy-rpc-macros = { version = "0.7.0-alpha.3", path="../macros", default-features = false }
-toy-rpc-macros = { version = "0.7.0-alpha.3", default-features = false }
+toy-rpc-macros = { version = "0.7.0-alpha.3", path="../macros", default-features = false }
+# toy-rpc-macros = { version = "0.7.0-alpha.3", default-features = false }
 
 # feature gated optional dependecies
 serde_json = { version = "1.0", optional = true }
@@ -83,7 +94,7 @@ http-body = { version = "0.4.2", optional = true }
 bytes = { version = "1.0.1", optional = true }
 tower-service = { version = "0.3.1", optional = true }
 async-std = { version = "1", optional = true }
-tokio = { version = "1", features = ["rt-multi-thread", "io-util", "net", "time"], optional = true }
+tokio = { version = "1", features = ["rt", "io-util", "net", "time"], optional = true }
 tokio-stream = {  version = "0.1", features = ["net"], optional = true }
 tokio-rustls = { version = "0.23.0", optional = true }
 futures-rustls = { version = "0.22", optional = true }

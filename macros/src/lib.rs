@@ -294,12 +294,13 @@ pub fn export_impl(
     let input = remove_export_attr_from_impl(input);
     #[cfg(feature = "server")]
     let handler_impl = remove_export_attr_from_impl(handler_impl);
-    #[cfg(all(feature = "client", feature = "runtime"))]
+    // #[cfg(all(feature = "client", feature = "runtime"))]
     // let client_impl = remove_export_attr_from_impl(client_impl);
 
     // macro_rules
     #[cfg(feature = "server")]
     let macro_handler = macro_rules_handler();
+
     #[cfg(all(feature = "client", feature = "runtime"))]
     let macro_client = macro_rules_client_stub();
 
