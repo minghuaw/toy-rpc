@@ -48,8 +48,8 @@ pub struct Consumer {}
 #[async_trait]
 #[export_trait_impl]
 impl example_service::Consumer for Consumer {
-    async fn consume(&self, message: String) -> anyhow::Result<u8> {
-        println!("Message {}", message);
+    async fn consume(&self, message: Message) -> anyhow::Result<u8> {
+        println!("Message {:?}", message);
         Ok(0)
     }
 }
