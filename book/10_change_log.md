@@ -1,5 +1,9 @@
 # Change Log
 
+## 0.8.6
+
+- Updated serde_rmp, tungstenite, and async-tungstenite to the latest version
+
 ## 0.8.5
 
 - Moved accepting incoming websocket connection to main task to allow propagating error back to the user
