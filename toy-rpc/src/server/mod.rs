@@ -102,7 +102,7 @@ cfg_if! {
         use tokio::io::{AsyncRead, AsyncWrite};
 
         #[cfg(feature = "ws_tokio")]
-        use async_tungstenite::tokio::accept_async;
+        use async_tungstenite::{tokio::{accept_async}, WebSocketStream};
     } else if #[cfg(all(feature = "async_std_runtime", not(feature = "tokio_runtime")))] {
         #[cfg(feature = "tls")]
         use futures_rustls::{TlsAcceptor};
@@ -111,7 +111,7 @@ cfg_if! {
         use futures::io::{AsyncRead, AsyncWrite};
 
         #[cfg(feature = "ws_async_std")]
-        use async_tungstenite::accept_async;
+        use async_tungstenite::{accept_async, WebSocketStream};
     }
 }
 
@@ -265,8 +265,9 @@ cfg_if! {
 
                                 let client_id = self.client_counter.fetch_add(1, Ordering::Relaxed);
                                 let pubsub_broker = self.pubsub_tx.clone();
+                                let ws_stream = accept_async(stream).await?;
                                 task::spawn(
-                                    Self::accept_ws_connection(stream, self.services.clone(), client_id, pubsub_broker)
+                                    Self::accept_ws_connection(ws_stream, self.services.clone(), client_id, pubsub_broker)
                                 );
                             }
 
@@ -386,16 +387,15 @@ cfg_if! {
                         }
 
                         #[cfg(any(feature = "ws_tokio", feature = "ws_async_std"))]
-                        async fn accept_ws_connection(
-                            stream: TcpStream,
+                        async fn accept_ws_connection<T>(
+                            ws_stream: WebSocketStream<T>,
                             services: Arc<AsyncServiceMap>,
                             client_id: ClientId,
                             pubsub_broker: Sender<PubSubItem>
-                        ) {
-                            let ws_stream = accept_async(stream).await
-                                    .expect("Error during the websocket handshake occurred");
-                                log::debug!("Established WebSocket connection.");
-
+                        )
+                        where
+                            T: futures::AsyncRead + futures::AsyncWrite + Send + Sync + Unpin + 'static,
+                        {
                             let ws_stream = WebSocketConn::new(ws_stream);
                             let codec = DefaultCodec::with_websocket(ws_stream);
 
