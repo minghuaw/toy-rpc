@@ -267,7 +267,7 @@ cfg_if! {
                                 let pubsub_broker = self.pubsub_tx.clone();
                                 let ws_stream = accept_async(stream).await?;
                                 task::spawn(
-                                    Self::accept_ws_connection(ws_stream, self.services.clone(), client_id, pubsub_broker)
+                                    Self::serve_ws_connection(ws_stream, self.services.clone(), client_id, pubsub_broker)
                                 );
                             }
 
@@ -387,7 +387,7 @@ cfg_if! {
                         }
 
                         #[cfg(any(feature = "ws_tokio", feature = "ws_async_std"))]
-                        async fn accept_ws_connection<T>(
+                        async fn serve_ws_connection<T>(
                             ws_stream: WebSocketStream<T>,
                             services: Arc<AsyncServiceMap>,
                             client_id: ClientId,
