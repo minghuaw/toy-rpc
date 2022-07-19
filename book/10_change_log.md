@@ -1,5 +1,9 @@
 # Change Log
 
+## 0.8.5
+
+- Moved accepting incoming websocket connection to main task to allow propagating error back to the user
+
 ## 0.8.4
 
 - Unified all connection related error (read/write) to `Error::IoError(_)`
