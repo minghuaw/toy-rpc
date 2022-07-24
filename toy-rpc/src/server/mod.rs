@@ -21,6 +21,7 @@ cfg_if! {
         pub(crate) mod broker;
         mod reader;
         mod writer;
+        mod runtime;
 
         pub mod pubsub;
         use pubsub::{PubSubBroker, PubSubItem};

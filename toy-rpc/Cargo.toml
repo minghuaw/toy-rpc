@@ -51,8 +51,8 @@ serde_bincode = []
 serde_rmp = ["rmp-serde"]
 
 # feature flags for runtime
-tokio_runtime = ["tokio", "tokio-stream", "toy-rpc-macros/runtime", "brw/tokio"]
-async_std_runtime = ["async-std", "toy-rpc-macros/runtime", "brw/async-std"]
+tokio_runtime = ["tokio", "tokio-stream", "toy-rpc-macros/runtime"]
+async_std_runtime = ["async-std", "toy-rpc-macros/runtime"]
 http_tide = ["tide", "tide-websockets", "ws_async_std", "async_std_runtime", "server",]
 http_actix_web = ["actix-web", "actix", "actix-rt", "actix-web-actors", "actix-http", "ws_tokio", "tokio_runtime", "server"]
 http_warp = ["warp", "ws_tokio", "tokio_runtime", "server"]
@@ -115,7 +115,6 @@ thiserror = "1.0"
 flume = "0.10.7"
 pin-project = "1.0"
 crossbeam = "0.8"
-brw = { version = "^0.1.7" }
 
 [[test]]
 name = "async_std_tcp"

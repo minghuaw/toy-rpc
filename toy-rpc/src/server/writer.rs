@@ -1,14 +1,12 @@
 use std::sync::Arc;
 
-use brw::{Running, Writer};
-
 use crate::{
     codec::CodecWrite,
     error::Error,
     message::{ErrorMessage, MessageId},
     pubsub::SeqId,
     service::ServiceCallResult,
-    util::GracefulShutdown,
+    util::{GracefulShutdown, Running},
 };
 
 use crate::protocol::Header;
@@ -39,7 +37,7 @@ pub(crate) struct ServerWriter<W> {
     writer: W,
 }
 
-impl<W: CodecWrite> ServerWriter<W> {
+impl<W: CodecWrite + GracefulShutdown> ServerWriter<W> {
     #[cfg(not(feature = "http_actix_web"))]
     pub fn new(writer: W) -> Self {
         Self { writer }
@@ -93,18 +91,11 @@ impl<W: CodecWrite> ServerWriter<W> {
     //     self.writer.write_header(header).await?;
     //     Ok(())
     // }
-}
-
-#[async_trait::async_trait]
-impl<W: CodecWrite + GracefulShutdown> Writer for ServerWriter<W> {
-    type Item = ServerWriterItem;
-    type Ok = ();
-    type Error = Error;
-
+    
     async fn op(
         &mut self,
-        item: Self::Item,
-    ) -> Running<Result<Self::Ok, Self::Error>, Option<Self::Error>> {
+        item: ServerWriterItem,
+    ) -> Running<Result<(), Error>, Option<Error>> {
         let res = match item {
             ServerWriterItem::Response { id, result } => self.write_response(id, result).await,
             ServerWriterItem::Publication {
@@ -121,11 +112,19 @@ impl<W: CodecWrite + GracefulShutdown> Writer for ServerWriter<W> {
         };
         Running::Continue(res)
     }
-
-    async fn handle_result(res: Result<Self::Ok, Self::Error>) -> Running<(), Option<Self::Error>> {
-        if let Err(err) = res {
-            log::error!("{}", err);
-        }
-        Running::Continue(())
-    }
 }
+
+// #[async_trait::async_trait]
+// impl<W: CodecWrite + GracefulShutdown> Writer for ServerWriter<W> {
+//     type Item = ServerWriterItem;
+//     type Ok = ();
+//     type Error = Error;
+
+
+//     async fn handle_result(res: Result<Self::Ok, Self::Error>) -> Running<(), Option<Self::Error>> {
+//         if let Err(err) = res {
+//             log::error!("{}", err);
+//         }
+//         Running::Continue(())
+//     }
+// }

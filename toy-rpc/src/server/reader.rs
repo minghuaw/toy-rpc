@@ -1,4 +1,3 @@
-use brw::{Reader, Running};
 use futures::sink::{Sink, SinkExt};
 use std::sync::Arc;
 
@@ -7,7 +6,7 @@ use crate::{
     error::Error,
     message::{MessageId, CANCELLATION_TOKEN, CANCELLATION_TOKEN_DELIM},
     pubsub::SeqId,
-    service::{ArcAsyncServiceCall, AsyncServiceMap},
+    service::{ArcAsyncServiceCall, AsyncServiceMap}, util::Running,
 };
 
 use super::broker::ServerBrokerItem;
@@ -73,18 +72,13 @@ fn is_correct_cancellation_token(id: MessageId, token: &str) -> bool {
     }
 }
 
-#[async_trait::async_trait]
-impl<T: CodecRead> Reader for ServerReader<T> {
-    type BrokerItem = ServerBrokerItem;
-    type Ok = ();
-    type Error = Error;
-
+impl<T: CodecRead> ServerReader<T> {
     async fn op<B>(
         &mut self,
         mut broker: B,
-    ) -> Running<Result<Self::Ok, Self::Error>, Option<Self::Error>>
+    ) -> Running<Result<(), Error>, Option<Error>>
     where
-        B: Sink<Self::BrokerItem, Error = flume::SendError<Self::BrokerItem>> + Send + Unpin,
+        B: Sink<ServerBrokerItem, Error = flume::SendError<ServerBrokerItem>> + Send + Unpin,
     {
         if let Some(header) = self.reader.read_header().await {
             let header: Header = match header {
@@ -231,11 +225,20 @@ impl<T: CodecRead> Reader for ServerReader<T> {
             Running::Stop(None)
         }
     }
-
-    async fn handle_result(res: Result<Self::Ok, Self::Error>) -> Running<(), Option<Self::Error>> {
-        if let Err(err) = res {
-            log::error!("{}", err);
-        }
-        Running::Continue(())
-    }
 }
+
+// #[async_trait::async_trait]
+// impl<T: CodecRead> Reader for ServerReader<T> {
+//     type BrokerItem = ServerBrokerItem;
+//     type Ok = ();
+//     type Error = Error;
+
+    
+
+//     async fn handle_result(res: Result<Self::Ok, Self::Error>) -> Running<(), Option<Self::Error>> {
+//         if let Err(err) = res {
+//             log::error!("{}", err);
+//         }
+//         Running::Continue(())
+//     }
+// }
