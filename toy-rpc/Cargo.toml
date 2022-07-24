@@ -26,18 +26,16 @@ all-features = true
 features = ["docs"]
 rustdoc-args = ["--cfg", "feature=\"docs\""]
 
-[lib]
-crate-type = ["cdylib"]
-
 [features]
 default = [
-    # "serde_bincode",
-    "serde_json",
+    "serde_bincode",
+    # "serde_json",
     "server",
     # "client",
     "tokio_runtime",
     # "async_std_runtime",
     # "wasm",
+    "ws_tokio",
 ]
 
 docs = []
@@ -45,8 +43,8 @@ docs = []
 server = ["toy-rpc-macros/server"]
 client = ["toy-rpc-macros/client"]
 tls = ["rustls", "tokio-rustls", "futures-rustls", "webpki"]
-ws_tokio = ["tungstenite", "async-tungstenite/tokio-runtime"]
-ws_async_std = ["tungstenite", "async-tungstenite/async-std-runtime"]
+ws_tokio = ["tungstenite", "async-tungstenite/tokio-runtime", "tokio_runtime"]
+ws_async_std = ["tungstenite", "async-tungstenite/async-std-runtime", "async_std_runtime"]
 
 # feature flags for codec
 serde_bincode = []
@@ -73,7 +71,7 @@ hyper = "0.14.11"
 
 [dependencies]
 # local imports
-toy-rpc-macros = { version = "0.7.0-alpha.3", path="../macros", default-features = false }
+toy-rpc-macros = { path="../macros", default-features = false }
 # toy-rpc-macros = { version = "0.7.0-alpha.3", default-features = false }
 
 # feature gated optional dependecies

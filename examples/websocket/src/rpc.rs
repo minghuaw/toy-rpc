@@ -1,7 +1,8 @@
 // use serde::{Deserialize, Serialize};
 use async_trait::async_trait;
 use std::time::Duration;
-use toy_rpc::macros::{export_impl, export_trait};
+// use toy_rpc::macros::{export_impl, export_trait};
+use toy_rpc;
 
 use super::sleep;
 

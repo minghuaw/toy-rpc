@@ -19,7 +19,7 @@ example-service = { version = "0.1.0", path = "../example-service" }
 # # toy-rpc = { version = "0.9.0-alpha.2", features = ["tokio_runtime", "server", "anyhow"] }
 
 [dependencies.toy-rpc]
-version = "0.8.4"
-# # path = "../../toy-rpc/"
+# version = "0.8.4"
+# path = "../../toy-rpc"
 default-features = false
 features = [ "serde_json", "tokio_runtime", "server", "anyhow" ]
