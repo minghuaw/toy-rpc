@@ -91,11 +91,16 @@ impl<W: CodecWrite + GracefulShutdown> ServerWriter<W> {
     //     self.writer.write_header(header).await?;
     //     Ok(())
     // }
+
+    pub(crate) async fn handle_error(&mut self, error: Error) -> Running {
+        log::error!("{:?}", error);
+        Running::Stop
+    }
     
-    async fn op(
+    pub(crate) async fn op(
         &mut self,
         item: ServerWriterItem,
-    ) -> Running<Result<(), Error>, Option<Error>> {
+    ) -> Result<Running, Error> {
         let res = match item {
             ServerWriterItem::Response { id, result } => self.write_response(id, result).await,
             ServerWriterItem::Publication {
@@ -108,9 +113,9 @@ impl<W: CodecWrite + GracefulShutdown> ServerWriter<W> {
             }
             // ServerWriterItem::Ack { id } => self.write_ack(id).await,
             ServerWriterItem::Stopping => Ok(self.writer.close().await),
-            ServerWriterItem::Stop => return Running::Stop(None),
+            ServerWriterItem::Stop => return Ok(Running::Stop),
         };
-        Running::Continue(res)
+        Ok(Running::Continue)
     }
 }
 

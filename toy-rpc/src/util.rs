@@ -71,7 +71,7 @@ impl<T: Send> Terminate for tokio::task::JoinHandle<T> {
     }
 }
 
-pub enum Running<T, E> {
-    Continue(T),
-    Stop(E),
+pub enum Running {
+    Continue,
+    Stop,
 }

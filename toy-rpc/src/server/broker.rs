@@ -1,5 +1,6 @@
 //! Broker on the server side
 
+use std::collections::VecDeque;
 use std::future::Future;
 use std::sync::Arc;
 use std::time::Duration;
@@ -84,12 +85,18 @@ pub(crate) enum ServerBrokerItem {
     Stop,
 }
 
+pub(crate) enum BrokerState {
+    Started,
+    Ending,
+    Ended
+}
+
 #[cfg(not(feature = "http_actix_web"))]
 pub(crate) struct ServerBroker {
     pub client_id: ClientId,
     pub executions: HashMap<MessageId, JoinHandle<()>>,
     pub pubsub_broker: Sender<PubSubItem>,
-    // ack_mode: PhantomData<AckMode>,
+    pub state: BrokerState,
 }
 
 #[cfg(not(feature = "http_actix_web"))]
@@ -99,13 +106,13 @@ impl ServerBroker {
             client_id,
             executions: HashMap::new(),
             pubsub_broker,
-            // ack_mode: PhantomData,
+            state: BrokerState::Started,
         }
     }
 
     fn handle_request<'a>(
         &'a mut self,
-        broker: Sender<ServerBrokerItem>,
+        tx: &Sender<ServerBrokerItem>,
         call: ArcAsyncServiceCall,
         id: MessageId,
         method: String,
@@ -113,23 +120,18 @@ impl ServerBroker {
         deserializer: Box<InboundBody>,
     ) -> Result<(), Error> {
         let fut = call(method, deserializer);
-        let handle = spawn_timed_request_execution(broker, duration, id, fut);
+        let handle = spawn_timed_request_execution(tx, duration, id, fut);
         self.executions.insert(id, handle);
         Ok(())
     }
 
-    async fn handle_response<'w, W>(
-        &'w mut self,
-        writer: &'w mut W,
+    async fn handle_response(
+        &mut self,
         id: MessageId,
         result: ServiceCallResult,
-    ) -> Result<(), Error>
-    where
-        W: Sink<ServerWriterItem, Error = flume::SendError<ServerWriterItem>> + Send + Unpin,
-    {
+    ) -> ServerWriterItem {
         self.executions.remove(&id);
-        let msg = ServerWriterItem::Response { id, result };
-        writer.send(msg).await.map_err(|err| err.into())
+        ServerWriterItem::Response { id, result }
     }
 
     async fn handle_cancel(&mut self, id: MessageId) -> Result<(), Error> {
@@ -163,12 +165,12 @@ impl ServerBroker {
 
     async fn handle_subscribe<'a>(
         &'a mut self,
-        broker: Sender<ServerBrokerItem>,
+        tx: &Sender<ServerBrokerItem>,
         id: MessageId,
         topic: String,
     ) -> Result<(), Error> {
         log::debug!("Message ID: {}, Subscribe to topic: {}", &id, &topic);
-        let sender = PubSubResponder::Sender(broker);
+        let sender = PubSubResponder::Sender(tx.clone());
         let msg = PubSubItem::Subscribe {
             client_id: self.client_id,
             topic,
@@ -194,23 +196,18 @@ impl ServerBroker {
             .map_err(|err| err.into())
     }
 
-    async fn handle_publication<'w, W>(
-        &'w mut self,
-        writer: &'w mut W,
+    async fn handle_publication(
+        &mut self,
         seq_id: SeqId,
         topic: String,
         content: Arc<Vec<u8>>,
-    ) -> Result<(), Error>
-    where
-        W: Sink<ServerWriterItem, Error = flume::SendError<ServerWriterItem>> + Send + Unpin,
-    {
+    ) -> ServerWriterItem {
         // Publication is the PubSub message from server to client
-        let msg = ServerWriterItem::Publication {
+        ServerWriterItem::Publication {
             seq_id,
             topic,
             content,
-        };
-        writer.send(msg).await.map_err(|err| err.into())
+        }
     }
 
     async fn handle_inbound_ack(&mut self, seq_id: SeqId) -> Result<(), Error> {
@@ -228,59 +225,51 @@ impl ServerBroker {
 #[cfg(not(feature = "http_actix_web"))]
 impl ServerBroker {
     // Publish is the PubSub message from client to server
-    async fn handle_publish<'w, W>(
-        &'w mut self,
-        _: &'w mut W,
+    async fn handle_publish(
+        &mut self,
         id: MessageId,
         topic: String,
         content: Vec<u8>,
-    ) -> Result<(), Error>
-    where
-        W: Sink<ServerWriterItem, Error = flume::SendError<ServerWriterItem>> + Send + Unpin,
-    {
+    ) -> Result<(), Error> {
         self.handle_publish_inner(id, topic, content).await
     }
 }
 
 impl ServerBroker {
-    
-    async fn op<W>(
+    pub(crate) async fn op(
         &mut self,
-        broker: Sender<ServerBrokerItem>,
         item: ServerBrokerItem,
-        mut writer: W,
-    ) -> Running<Result<(), Error>, Option<Error>>
-    where
-        W: Sink<ServerWriterItem, Error = flume::SendError<ServerWriterItem>> + Send + Unpin,
-    {
-        let result = match item {
+        tx: &Sender<ServerBrokerItem>,
+    ) -> Result<Option<ServerWriterItem>, Error> {
+        match item {
             ServerBrokerItem::Request {
                 call,
                 id,
                 method,
                 duration,
                 deserializer,
-            } => self.handle_request(broker, call, id, method, duration, deserializer),
+            } => self.handle_request(tx, call, id, method, duration, deserializer).map(|_| None),
             ServerBrokerItem::Response { id, result } => {
-                self.handle_response(&mut writer, id, result).await
+                Ok(Some(self.handle_response(id, result).await))
             }
-            ServerBrokerItem::Cancel(id) => self.handle_cancel(id).await,
+            ServerBrokerItem::Cancel(id) => self.handle_cancel(id).await.map(|_| None),
             ServerBrokerItem::Publish { id, topic, content } => {
-                self.handle_publish(&mut writer, id, topic, content).await
+                self.handle_publish(id, topic, content).await.map(|_| None)
             }
             ServerBrokerItem::Subscribe { id, topic } => {
-                self.handle_subscribe(broker, id, topic).await
+                self.handle_subscribe(tx, id, topic).await.map(|_| None)
             }
-            ServerBrokerItem::Unsubscribe { id, topic } => self.handle_unsubscribe(id, topic).await,
+            ServerBrokerItem::Unsubscribe { id, topic } => self.handle_unsubscribe(id, topic).await.map(|_| None),
             ServerBrokerItem::Publication {
                 seq_id,
                 topic,
                 content,
             } => {
-                self.handle_publication(&mut writer, seq_id, topic, content)
-                    .await
+                let item = self.handle_publication(seq_id, topic, content)
+                    .await;
+                Ok(Some(item))
             }
-            ServerBrokerItem::InboundAck { seq_id } => self.handle_inbound_ack(seq_id).await,
+            ServerBrokerItem::InboundAck { seq_id } => self.handle_inbound_ack(seq_id).await.map(|_| None),
             ServerBrokerItem::Stopping => {
                 for (_, handle) in self.executions.drain() {
                     log::debug!("Stopping execution as client is disconnected");
@@ -290,27 +279,20 @@ impl ServerBroker {
                     handle.cancel().await;
                 }
 
-                let result = writer
-                    .send(ServerWriterItem::Stopping)
-                    .await
-                    .map_err(Into::into);
+                self.state = BrokerState::Ending;
 
-                broker
+                tx
                     .send_async(ServerBrokerItem::Stop)
-                    .await
-                    .map_err(Into::into)
-                    .and(result)
+                    .await?;
+
+                Ok(Some(ServerWriterItem::Stopping))
+
             }
             ServerBrokerItem::Stop => {
-                if let Err(err) = writer.send(ServerWriterItem::Stop).await {
-                    log::debug!("{}", err);
-                }
-                log::debug!("Client connection is closed");
-                return Running::Stop(None);
+                self.state = BrokerState::Ended;
+                Ok(Some(ServerWriterItem::Stop))
             }
-        };
-
-        Running::Continue(result)
+        }
     }
 }
 
@@ -395,14 +377,15 @@ impl ServerBroker {
 /// Spawn the execution in a async_std task and return the JoinHandle
 #[cfg(all(feature = "async_std_runtime", not(feature = "tokio_runtime")))]
 fn spawn_timed_request_execution(
-    broker: Sender<ServerBrokerItem>,
+    tx: &Sender<ServerBrokerItem>,
     duration: Duration,
     id: MessageId,
     fut: impl Future<Output = ServiceCallResult> + Send + 'static,
 ) -> ::async_std::task::JoinHandle<()> {
+    let tx = tx.clone();
     ::async_std::task::spawn(async move {
         let result = execute_timed_call(id, duration, fut).await;
-        broker
+        tx
             .send_async(ServerBrokerItem::Response { id, result })
             .await
             .unwrap_or_else(|e| log::error!("{}", e));
@@ -416,14 +399,15 @@ fn spawn_timed_request_execution(
     not(feature = "http_actix_web")
 ))]
 fn spawn_timed_request_execution(
-    broker: Sender<ServerBrokerItem>,
+    tx: &Sender<ServerBrokerItem>,
     duration: Duration,
     id: MessageId,
     fut: impl Future<Output = ServiceCallResult> + Send + 'static,
 ) -> ::tokio::task::JoinHandle<()> {
+    let tx = tx.clone();
     ::tokio::task::spawn(async move {
         let result = execute_timed_call(id, duration, fut).await;
-        broker
+        tx
             .send_async(ServerBrokerItem::Response { id, result })
             .await
             .unwrap_or_else(|e| log::error!("{}", e));
