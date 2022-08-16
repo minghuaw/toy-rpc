@@ -19,6 +19,5 @@ example-service = { version = "0.1.0", path = "../example-service" }
 # toy-rpc = { version = "0.7.5", features = ["tokio_runtime", "server"] }
 
 [dependencies.toy-rpc]
-version = "0.8.3"
 path = "../../toy-rpc/"
 features = [ "tokio_runtime", "server", "anyhow" ]

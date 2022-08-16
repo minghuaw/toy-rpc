@@ -7,7 +7,7 @@ Notes.md
 .idea/
 .vscode/
 *.DS_STORE
-Cargo.lock
+**Cargo.lock
 macros/Cargo.lock
 toy-rpc/Cargo.lock
 

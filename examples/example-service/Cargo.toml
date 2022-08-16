@@ -14,6 +14,6 @@ async-trait = "0.1.50"
 anyhow = "1.0"
 
 [dependencies.toy-rpc]
-version = "0.8.3"
+
 path = "../../toy-rpc/"
 features = []
