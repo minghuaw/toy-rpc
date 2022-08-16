@@ -15,7 +15,6 @@ anyhow = "1.0"
 serde = "1.0.137"
 
 [dependencies.toy-rpc]
-# version = "0.8.4"
 path = "../../toy-rpc"
-# features = []
+features = []
 default-features = false
