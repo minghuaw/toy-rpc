@@ -351,7 +351,7 @@ impl<C> ClientBroker<C> {
         }
     }
 
-    async fn handle_stopping(&mut self) -> Result<Option<ClientWriterItem>, Error> {
+    async fn handle_stopping(&mut self, tx: &Sender<ClientBrokerItem>) -> Result<Option<ClientWriterItem>, Error> {
         match self.state {
             ClientBrokerState::Started => self.state = ClientBrokerState::Stopping,
             ClientBrokerState::Stopping => self.state = ClientBrokerState::Stopped,
@@ -360,6 +360,7 @@ impl<C> ClientBroker<C> {
             }
         }
 
+        tx.send_async(ClientBrokerItem::Stop).await?;
         Ok(Some(ClientWriterItem::Stopping))
     }
 }
@@ -444,7 +445,7 @@ impl<C: Marshal + Send> Broker for  ClientBroker<C> {
             ClientBrokerItem::InboundAck(seq_id) => self.handle_inbound_ack(seq_id.0),
             ClientBrokerItem::Stopping => {
                 // Stopping ONLY comes from control
-                self.handle_stopping().await
+                self.handle_stopping(tx).await
             }
             ClientBrokerItem::Stop => {
                 self.state = ClientBrokerState::Stopped;
