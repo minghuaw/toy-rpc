@@ -1,14 +1,16 @@
 //! Utility traits and functions.
 
 use async_trait::async_trait;
-use flume::Sender;
 use std::collections::HashMap;
 
 use crate::service::AsyncHandler;
 
-#[cfg(any(feature = "async_std_runtime", feature = "tokio_runtime"))]
+#[cfg(any(feature = "client", feature = "server"))]
+use flume::Sender;
+#[cfg(any(feature = "client", feature = "server"))]
 use crate::error::Error;
 
+#[cfg(any(feature = "client", feature = "server"))]
 pub(crate) mod engine;
 
 /// Helper trait for service registration
@@ -74,6 +76,7 @@ impl<T: Send> Terminate for tokio::task::JoinHandle<T> {
     }
 }
 
+#[cfg(any(feature = "client", feature = "server"))]
 #[async_trait]
 pub(crate) trait Broker {
     type Item;
@@ -86,6 +89,7 @@ pub(crate) trait Broker {
     ) -> Result<Option<Self::WriterItem>, Error>;
 }
 
+#[cfg(any(feature = "client", feature = "server"))]
 #[async_trait]
 pub(crate) trait Reader {
     type BrokerItem;
@@ -99,6 +103,7 @@ pub(crate) trait Reader {
     ) -> Option<Result<Self::BrokerItem, Error>>;
 }
 
+#[cfg(any(feature = "client", feature = "server"))]
 #[async_trait]
 pub(crate) trait Writer {
     type Item;
@@ -113,6 +118,7 @@ pub(crate) trait Writer {
     ) -> Result<Running, Error>;
 }
 
+#[cfg(any(feature = "client", feature = "server"))]
 pub(crate) enum Running {
     Continue,
     Stop,
