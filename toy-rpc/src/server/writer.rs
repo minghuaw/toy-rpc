@@ -24,11 +24,6 @@ pub(crate) enum ServerWriterItem {
         topic: String,
         content: Arc<Vec<u8>>,
     },
-    // Ack {
-    //     // Server will only need to Ack Publish request from client.
-    //     // Thus should reply with the MessageId that came from the client
-    //     id: MessageId,
-    // },
     Stopping,
     Stop,
 }
@@ -85,51 +80,30 @@ impl<W: CodecWrite + GracefulShutdown> ServerWriter<W> {
         Ok(())
     }
 
-    // // Ack message
-    // async fn write_ack(&mut self, id: MessageId) -> Result<(), Error> {
-    //     let header = Header::Ack(id);
-    //     self.writer.write_header(header).await?;
-    //     Ok(())
-    // }
-
-    pub(crate) async fn handle_error(&mut self, error: Error) -> Running {
-        log::error!("{:?}", error);
-        Running::Stop
+    pub(crate) async fn handle_error(&mut self, error: Error) -> Result<Running, Error> {
+        Err(error)
     }
-    
-    pub(crate) async fn op(
-        &mut self,
-        item: ServerWriterItem,
-    ) -> Result<Running, Error> {
-        let res = match item {
-            ServerWriterItem::Response { id, result } => self.write_response(id, result).await,
+
+    pub(crate) async fn op(&mut self, item: ServerWriterItem) -> Result<Running, Error> {
+        match item {
+            ServerWriterItem::Response { id, result } => self
+                .write_response(id, result)
+                .await
+                .map(|_| Running::Continue),
             ServerWriterItem::Publication {
                 seq_id,
                 topic,
                 content,
             } => {
                 let id = seq_id.0;
-                self.write_publication(id, topic, &content).await
+                self.write_publication(id, topic, &content).await.map(|_| Running::Continue)
             }
             // ServerWriterItem::Ack { id } => self.write_ack(id).await,
-            ServerWriterItem::Stopping => Ok(self.writer.close().await),
-            ServerWriterItem::Stop => return Ok(Running::Stop),
-        };
-        Ok(Running::Continue)
+            ServerWriterItem::Stopping => {
+                self.writer.close().await;
+                Ok(Running::Continue)
+            },
+            ServerWriterItem::Stop => Ok(Running::Stop),
+        }
     }
 }
-
-// #[async_trait::async_trait]
-// impl<W: CodecWrite + GracefulShutdown> Writer for ServerWriter<W> {
-//     type Item = ServerWriterItem;
-//     type Ok = ();
-//     type Error = Error;
-
-
-//     async fn handle_result(res: Result<Self::Ok, Self::Error>) -> Running<(), Option<Self::Error>> {
-//         if let Err(err) = res {
-//             log::error!("{}", err);
-//         }
-//         Running::Continue(())
-//     }
-// }

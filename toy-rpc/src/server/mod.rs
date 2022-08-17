@@ -31,6 +31,8 @@ cfg_if! {
 pub mod builder;
 use builder::ServerBuilder;
 
+use self::runtime::ServerEngine;
+
 pub(crate) type ClientId = u64;
 pub(crate) type AtomicClientId = AtomicU64;
 
@@ -326,12 +328,12 @@ cfg_if! {
             {
                 let client_id = self.client_counter.fetch_add(1, Ordering::Relaxed);
                 let pubsub_broker = self.pubsub_tx.clone();
-                Self::start_broker_reader_writer(codec, self.services.clone(), client_id, pubsub_broker).await
+                Self::start_server_engine(codec, self.services.clone(), client_id, pubsub_broker).await
             }
         }
 
         impl Server {
-            pub(crate) async fn start_broker_reader_writer(
+            pub(crate) async fn start_server_engine(
                 codec: impl crate::codec::split::SplittableCodec + 'static,
                 services: Arc<AsyncServiceMap>,
                 client_id: ClientId,
@@ -343,9 +345,9 @@ cfg_if! {
                 let writer = writer::ServerWriter::new(writer);
                 let broker = broker::ServerBroker::new(client_id, pubsub_tx);
 
-                let (broker_handle, _) = brw::spawn(broker, reader, writer);
-                let _ = broker_handle.await;
-                Ok(())
+                ServerEngine::new(broker, reader, writer)
+                    .event_loop()
+                    .await
             }
 
             #[cfg(feature = "tls")]
@@ -375,7 +377,7 @@ cfg_if! {
                 let _peer_addr = stream.peer_addr()?;
                 // let ret = serve_readwrite_stream(stream, services, client_id, pubsub_broker);
                 let codec = DefaultCodec::new(stream);
-                let ret = Self::start_broker_reader_writer(codec, services, client_id, pubsub_broker).await;
+                let ret = Self::start_server_engine(codec, services, client_id, pubsub_broker).await;
                 log::info!("Client disconnected from {}", _peer_addr);
                 ret
             }
@@ -393,7 +395,7 @@ cfg_if! {
                 let ws_stream = WebSocketConn::new(ws_stream);
                 let codec = DefaultCodec::with_websocket(ws_stream);
 
-                if let Err(err) = Self::start_broker_reader_writer(codec, services, client_id, pubsub_broker).await {
+                if let Err(err) = Self::start_server_engine(codec, services, client_id, pubsub_broker).await {
                     log::error!("{}", err);
                 }
                 log::info!("Client disconnected from WebSocket connection");

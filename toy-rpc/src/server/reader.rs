@@ -1,4 +1,3 @@
-use futures::sink::{Sink, SinkExt};
 use std::sync::Arc;
 
 use crate::{
@@ -74,9 +73,8 @@ fn is_correct_cancellation_token(id: MessageId, token: &str) -> bool {
 }
 
 impl<T: CodecRead> ServerReader<T> {
-    pub(crate) async fn handle_error(&mut self, error: Error) -> Running {
-        log::error!("{:?}", error);
-        Running::Stop
+    pub(crate) async fn handle_error(&mut self, error: Error) -> Result<Running, Error> {
+        Err(error)
     }
 
     pub(crate) async fn op(&mut self) -> Option<Result<ServerBrokerItem, Error>> {

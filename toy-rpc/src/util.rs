@@ -71,7 +71,7 @@ impl<T: Send> Terminate for tokio::task::JoinHandle<T> {
     }
 }
 
-pub enum Running {
+pub(crate) enum Running {
     Continue,
     Stop,
 }
