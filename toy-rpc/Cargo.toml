@@ -1,6 +1,6 @@
 [package]
 name = "toy-rpc"
-version = "0.9.0-alpha.3"
+version = "0.9.0-alpha.4"
 authors = ["Minghua Wu <michael.wu1107@gmail.com>"]
 edition = "2018"
 description = "An async RPC that mimics golang net/rpc's usage and supports both async-std and tokio"
@@ -29,15 +29,15 @@ rustdoc-args = ["--cfg", "feature=\"docs\""]
 [features]
 default = [
     "serde_bincode",
-    "server",
-    "client",
+    # "server",
+    # "client",
     # "tokio_runtime",
     # "async_std_runtime",
     # "wasm",
     # "ws_tokio",
     # "http_actix_web",
     # "http_warp",
-    "http_axum",
+    # "http_axum",
 ]
 
 docs = []
