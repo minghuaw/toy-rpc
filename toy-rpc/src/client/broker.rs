@@ -1,3 +1,4 @@
+use async_trait::async_trait;
 use cfg_if::cfg_if;
 use flume::Sender;
 use futures::channel::oneshot;
@@ -10,7 +11,7 @@ cfg_if! {
         all(feature = "async_std_runtime", not(feature = "tokio_runtime"))
     ))] {
         use std::{sync::{Arc, atomic::Ordering}, collections::{HashMap, BTreeMap}};
-        use futures::{Sink, SinkExt};
+        use futures::{SinkExt};
 
         use crate::message::AtomicMessageId;
 
@@ -20,11 +21,10 @@ cfg_if! {
 
 use crate::{
     codec::Marshal,
-    error::IoError,
     message::MessageId,
     protocol::{InboundBody, OutboundBody},
     pubsub::SeqId,
-    Error,
+    Error, util::Broker,
 };
 
 use super::{pubsub::SubscriptionItem, ResponseResult};
@@ -210,7 +210,6 @@ impl<C> ClientBroker<C> {
 
     async fn handle_cancel(
         &mut self,
-        tx: &Sender<ClientBrokerItem>,
         id: MessageId,
     ) -> Result<Option<ClientWriterItem>, Error> {
         if let Some(tx) = self.pending.remove(&id) {
@@ -399,8 +398,13 @@ impl<C: Marshal + Send> ClientBroker<C> {
     }
 }
 
-impl<C: Marshal + Send> ClientBroker<C> {
-    pub(crate) async fn op(
+
+#[async_trait]
+impl<C: Marshal + Send> Broker for  ClientBroker<C> {
+    type Item = ClientBrokerItem;
+    type WriterItem = ClientWriterItem;
+
+    async fn op(
         &mut self,
         item: ClientBrokerItem,
         tx: &Sender<ClientBrokerItem>,
@@ -417,7 +421,7 @@ impl<C: Marshal + Send> ClientBroker<C> {
                     .await
             }
             ClientBrokerItem::Response { id, result } => self.handle_response(id, result),
-            ClientBrokerItem::Cancel(id) => self.handle_cancel(tx, id).await,
+            ClientBrokerItem::Cancel(id) => self.handle_cancel(id).await,
             ClientBrokerItem::Publish { topic, body } => {
                 self.handle_publish(topic, body).await
             }

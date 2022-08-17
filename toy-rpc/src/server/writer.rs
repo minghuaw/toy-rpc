@@ -1,12 +1,14 @@
 use std::sync::Arc;
 
+use async_trait::async_trait;
+
 use crate::{
     codec::CodecWrite,
     error::Error,
     message::{ErrorMessage, MessageId},
     pubsub::SeqId,
     service::ServiceCallResult,
-    util::{GracefulShutdown, Running},
+    util::{GracefulShutdown, Running, Writer},
 };
 
 use crate::protocol::Header;
@@ -80,11 +82,16 @@ impl<W: CodecWrite + GracefulShutdown> ServerWriter<W> {
         Ok(())
     }
 
-    pub(crate) async fn handle_error(&mut self, error: Error) -> Result<Running, Error> {
-        Err(error)
-    }
+}
 
-    pub(crate) async fn op(&mut self, item: ServerWriterItem) -> Result<Running, Error> {
+#[async_trait]
+impl<W> Writer for ServerWriter<W> 
+where
+    W: CodecWrite + GracefulShutdown,
+{
+    type Item = ServerWriterItem;
+
+    async fn op(&mut self, item: ServerWriterItem) -> Result<Running, Error> {
         match item {
             ServerWriterItem::Response { id, result } => self
                 .write_response(id, result)

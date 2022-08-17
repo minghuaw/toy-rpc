@@ -29,8 +29,7 @@ rustdoc-args = ["--cfg", "feature=\"docs\""]
 [features]
 default = [
     "serde_bincode",
-    # "serde_json",
-    # "server",
+    "server",
     "client",
     "tokio_runtime",
     # "async_std_runtime",

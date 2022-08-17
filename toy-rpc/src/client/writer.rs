@@ -1,11 +1,13 @@
 use std::sync::Arc;
 use std::time::Duration;
 
+use async_trait::async_trait;
+
 use crate::{
     codec::CodecWrite,
     message::{MessageId, Metadata, CANCELLATION_TOKEN, CANCELLATION_TOKEN_DELIM},
     protocol::{Header, OutboundBody},
-    util::{GracefulShutdown, Running},
+    util::{GracefulShutdown, Running, Writer},
     Error,
 };
 
@@ -47,7 +49,10 @@ impl<W: CodecWrite> ClientWriter<W> {
     }
 }
 
-impl<W: CodecWrite + GracefulShutdown> ClientWriter<W> {
+#[async_trait]
+impl<W: CodecWrite + GracefulShutdown> Writer for ClientWriter<W> {
+    type Item = ClientWriterItem;
+    
     async fn op(
         &mut self,
         item: ClientWriterItem,
@@ -96,9 +101,5 @@ impl<W: CodecWrite + GracefulShutdown> ClientWriter<W> {
             },
             ClientWriterItem::Stop => Ok(Running::Stop),
         }
-    }
-
-    async fn handle_error(error: Error) -> Result<Running, Error> {
-        Err(error)
     }
 }

@@ -1,14 +1,20 @@
+use async_trait::async_trait;
+
 use super::broker::ClientBrokerItem;
 use crate::protocol::{Header, InboundBody};
 use crate::pubsub::SeqId;
+use crate::util::Reader;
 use crate::{codec::CodecRead, Error};
 
 pub(crate) struct ClientReader<R> {
     pub reader: R,
 }
 
-impl<R: CodecRead> ClientReader<R> {
-    pub(crate) async fn op(
+#[async_trait]
+impl<R: CodecRead> Reader for ClientReader<R> {
+    type BrokerItem = ClientBrokerItem;
+
+    async fn op(
         &mut self,
     ) -> Option<Result<ClientBrokerItem, Error>> {
         let header = self.reader.read_header().await?;

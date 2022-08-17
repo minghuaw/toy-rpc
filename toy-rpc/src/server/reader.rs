@@ -1,12 +1,14 @@
 use std::sync::Arc;
 
+use async_trait::async_trait;
+
 use crate::{
     codec::CodecRead,
     error::Error,
     message::{MessageId, CANCELLATION_TOKEN, CANCELLATION_TOKEN_DELIM},
     pubsub::SeqId,
     service::{ArcAsyncServiceCall, AsyncServiceMap},
-    util::Running,
+    util::{Running, Reader},
 };
 
 use super::broker::ServerBrokerItem;
@@ -72,12 +74,15 @@ fn is_correct_cancellation_token(id: MessageId, token: &str) -> bool {
     }
 }
 
-impl<T: CodecRead> ServerReader<T> {
-    pub(crate) async fn handle_error(&mut self, error: Error) -> Result<Running, Error> {
+#[async_trait]
+impl<T: CodecRead> Reader for ServerReader<T> {
+    type BrokerItem = ServerBrokerItem;
+
+    async fn handle_error(&mut self, error: Error) -> Result<Running, Error> {
         Err(error)
     }
 
-    pub(crate) async fn op(&mut self) -> Option<Result<ServerBrokerItem, Error>> {
+    async fn op(&mut self) -> Option<Result<ServerBrokerItem, Error>> {
         let header = self.reader.read_header().await?;
         let header: Header = match header {
             Ok(header) => header,

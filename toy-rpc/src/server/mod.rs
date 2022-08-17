@@ -21,7 +21,6 @@ cfg_if! {
         pub(crate) mod broker;
         mod reader;
         mod writer;
-        mod engine;
 
         pub mod pubsub;
         use pubsub::{PubSubBroker, PubSubItem};
@@ -30,8 +29,6 @@ cfg_if! {
 
 pub mod builder;
 use builder::ServerBuilder;
-
-use self::engine::ServerEngine;
 
 pub(crate) type ClientId = u64;
 pub(crate) type AtomicClientId = AtomicU64;
@@ -339,13 +336,15 @@ cfg_if! {
                 client_id: ClientId,
                 pubsub_tx: Sender<PubSubItem>,
             ) -> Result<(), crate::Error> {
+                use crate::util::engine::Engine;
+
                 let (writer, reader) = codec.split();
 
                 let reader = reader::ServerReader::new(reader, services);
                 let writer = writer::ServerWriter::new(writer);
                 let broker = broker::ServerBroker::new(client_id, pubsub_tx);
 
-                ServerEngine::new(broker, reader, writer)
+                Engine::new(broker, reader, writer)
                     .event_loop()
                     .await
             }

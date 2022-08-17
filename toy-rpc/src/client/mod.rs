@@ -12,7 +12,6 @@ pub mod builder;
 pub mod pubsub;
 mod reader;
 mod writer;
-mod engine;
 
 use broker::ClientBrokerItem;
 use builder::ClientBuilder;
@@ -64,7 +63,6 @@ pub struct Client {
     broker: Sender<ClientBrokerItem>,
     broker_handle: Option<JoinHandle<Result<(), Error>>>,
     subscriptions: HashMap<String, TypeId>,
-    // ack_mode: PhantomData<AckMode>,
 }
 
 cfg_if! {

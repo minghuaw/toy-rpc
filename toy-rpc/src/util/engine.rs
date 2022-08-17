@@ -32,6 +32,10 @@ where
         }
     }
 
+    pub(crate) fn tx(&self) -> &Sender<BI> {
+        &self.pending_tx
+    }
+
     async fn handle_broker_item(&mut self, item: BI) -> Result<Running, Error> {
         match self.broker.op(item, &self.pending_tx).await {
             Err(err) => {

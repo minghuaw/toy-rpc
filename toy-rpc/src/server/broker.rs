@@ -8,6 +8,7 @@ use crate::protocol::InboundBody;
 use crate::pubsub::SeqId;
 use crate::service::{ArcAsyncServiceCall, ServiceCallResult};
 
+use crate::util::Broker;
 use crate::{error::Error, message::MessageId};
 
 cfg_if::cfg_if! {
@@ -26,6 +27,7 @@ cfg_if::cfg_if! {
 
 #[cfg(all(feature = "async_std_runtime", not(feature = "tokio_runtime")))]
 use ::async_std::task::JoinHandle;
+use async_trait::async_trait;
 #[cfg(any(
     feature = "docs",
     all(
@@ -230,8 +232,12 @@ impl ServerBroker {
     }
 }
 
-impl ServerBroker {
-    pub(crate) async fn op(
+#[async_trait]
+impl Broker for ServerBroker {
+    type Item = ServerBrokerItem;
+    type WriterItem = ServerWriterItem;
+
+    async fn op(
         &mut self,
         item: ServerBrokerItem,
         tx: &Sender<ServerBrokerItem>,
