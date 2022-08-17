@@ -441,7 +441,7 @@ impl<C: Marshal + Send> Broker for  ClientBroker<C> {
                 new_item_sink,
             } => self.handle_new_local_subscriber(topic, new_item_sink),
             ClientBrokerItem::Unsubscribe { topic } => {
-                self.handle_unsubscribe(tx, topic).await
+                self.handle_unsubscribe(topic).await
             }
             ClientBrokerItem::Subscription { id, topic, item } => {
                 self.handle_subscription(id, topic, item).await
