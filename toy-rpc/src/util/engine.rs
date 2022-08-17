@@ -1,31 +1,26 @@
-use flume::{Receiver, Sender};
+use flume::{Sender, Receiver};
 use futures::FutureExt;
 
-use crate::{
-    codec::{CodecRead, CodecWrite},
-    util::{GracefulShutdown, Running}, Error,
-};
+use crate::Error;
 
-use super::{
-    broker::{ServerBroker, ServerBrokerItem},
-    reader::ServerReader,
-    writer::ServerWriter,
-};
+use super::{Broker, Reader, Writer, Running};
 
-pub struct ServerEngine<R, W> {
-    broker: ServerBroker,
-    reader: ServerReader<R>,
-    writer: ServerWriter<W>,
-    pending_tx: Sender<ServerBrokerItem>,
-    pending_rx: Receiver<ServerBrokerItem>,
+
+pub(crate) struct Engine<B, R, W, BI> {
+    broker: B,
+    reader: R,
+    writer: W,
+    pending_tx: Sender<BI>,
+    pending_rx: Receiver<BI>,
 }
 
-impl<R, W> ServerEngine<R, W>
+impl<B, R, W, BI> Engine<B, R, W, BI>
 where
-    R: CodecRead,
-    W: CodecWrite + GracefulShutdown,
+    B: Broker<Item = BI, WriterItem = W::Item> + Send,
+    R: Reader<BrokerItem = B::Item> + Send,
+    W: Writer + Send,
 {
-    pub(crate) fn new(broker: ServerBroker, reader: ServerReader<R>, writer: ServerWriter<W>) -> Self {
+    pub(crate) fn new(broker: B, reader: R, writer: W) -> Self {
         let (pending_tx, pending_rx) = flume::unbounded();
 
         Self {
@@ -37,7 +32,7 @@ where
         }
     }
 
-    async fn handle_broker_item(&mut self, item: ServerBrokerItem) -> Result<Running, Error> {
+    async fn handle_broker_item(&mut self, item: BI) -> Result<Running, Error> {
         match self.broker.op(item, &self.pending_tx).await {
             Err(err) => {
                 log::error!("{:?}", err);
@@ -75,11 +70,7 @@ where
         }
     }
 
-    pub(crate) async fn event_loop(&mut self) -> Result<(), Error>
-    where
-        R: CodecRead,
-        W: CodecWrite,
-    {
+    pub(crate) async fn event_loop(&mut self) -> Result<(), Error> {
         loop {
             let running = self.event_loop_inner().await?;
 

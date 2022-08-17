@@ -400,7 +400,7 @@ impl<C: Marshal + Send> ClientBroker<C> {
 }
 
 impl<C: Marshal + Send> ClientBroker<C> {
-    async fn op<W>(
+    pub(crate) async fn op(
         &mut self,
         item: ClientBrokerItem,
         tx: &Sender<ClientBrokerItem>,

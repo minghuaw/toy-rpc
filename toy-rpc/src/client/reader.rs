@@ -8,7 +8,7 @@ pub(crate) struct ClientReader<R> {
 }
 
 impl<R: CodecRead> ClientReader<R> {
-    async fn op(
+    pub(crate) async fn op(
         &mut self,
     ) -> Option<Result<ClientBrokerItem, Error>> {
         let header = self.reader.read_header().await?;
