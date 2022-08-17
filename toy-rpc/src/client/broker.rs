@@ -11,10 +11,7 @@ cfg_if! {
         all(feature = "async_std_runtime", not(feature = "tokio_runtime"))
     ))] {
         use std::{sync::{Arc, atomic::Ordering}, collections::{HashMap, BTreeMap}};
-        use futures::{SinkExt};
-
         use crate::message::AtomicMessageId;
-
         use super::{writer::ClientWriterItem};
     }
 }
@@ -289,12 +286,10 @@ impl<C> ClientBroker<C> {
 
     async fn handle_subscribe(
         &mut self,
-        tx: &Sender<ClientBrokerItem>,
         topic: String,
         item_sink: Sender<SubscriptionItem>,
     ) -> Result<Option<ClientWriterItem>, Error> {
         let id = self.count.fetch_add(1, Ordering::Relaxed);
-        // NOTE: Only one local subscriber is allowed
         self.subscriptions.insert(topic.clone(), item_sink);
 
         Ok(Some(ClientWriterItem::Subscribe(id, topic)))
@@ -434,7 +429,7 @@ impl<C: Marshal + Send> Broker for  ClientBroker<C> {
                     .await
             }
             ClientBrokerItem::Subscribe { topic, item_sink } => {
-                self.handle_subscribe(tx, topic, item_sink).await
+                self.handle_subscribe(topic, item_sink).await
             }
             ClientBrokerItem::NewLocalSubscriber {
                 topic,
