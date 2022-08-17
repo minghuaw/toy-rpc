@@ -14,10 +14,10 @@ use actix_v3_integration::{
 async fn main() {
     env_logger::init();
 
-    let addr = "ws://127.0.0.1:23333/rpc/";
-    let mut client = Client::dial_http(addr).await.unwrap();
+    let addr = "ws://localhost:23333/";
+    let mut client = Client::dial_websocket(addr).await.unwrap();
     let mut publisher = client.publisher::<Count>();
-    let handle = tokio::spawn(async move {
+    let publisher_handle = tokio::spawn(async move {
         let mut count: u32 = 1;
         loop {
             println!("Publisher: {:?}", &count);
@@ -72,10 +72,12 @@ async fn main() {
 
     // third request, get_counter
     let args = ();
-    let mut call: Call<u32> = client.call("FooService.get_counter", args);
+    let call: Call<u32> = client.call("FooService.get_counter", args);
     let reply: u32 = call.await.unwrap();
     println!("{:?}", reply);
     // client.close().await;
 
+    publisher_handle.abort();
+    publisher_handle.await.unwrap();
     handle.await.unwrap();
 }

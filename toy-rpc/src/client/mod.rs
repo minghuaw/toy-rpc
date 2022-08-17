@@ -136,9 +136,8 @@ cfg_if! {
             /// Connects to an HTTP RPC server at the specified network address using WebSocket and the defatul codec.
             ///
             /// It is recommended to use "ws://" as the url scheme as opposed to "http://"; however, internally the url scheme
-            /// is changed to "ws://". Internally, `DEFAULT_RPC_PATH="_rpc"` is appended to the end of `addr`,
+            /// is changed to "ws://". Internally, `DEFAULT_RPC_PATH="_rpc_"` is appended to the end of `addr`,
             /// and the rest is the same is calling `dial_websocket`.
-            /// If a network path were to be supplpied, the network path must end with a slash "/".
             /// For example, a valid path could be "ws://127.0.0.1/rpc/".
             ///
             /// *Warning*: WebSocket is used as the underlying transport protocol starting from version "0.5.0-beta.0",

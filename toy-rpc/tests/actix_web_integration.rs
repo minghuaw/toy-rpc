@@ -1,3 +1,4 @@
+use actix_rt::task::JoinHandle;
 use actix_web::{web, App, HttpServer};
 use anyhow::Result;
 use flume::{Receiver, Sender};
@@ -40,9 +41,9 @@ async fn start_server(base: &'static str) -> Result<()> {
 
     HttpServer::new(move || {
         App::new().service(
-            web::scope("/rpc/")
+            web::resource("/rpc/")
                 .app_data(app_data.clone())
-                .configure(Server::scope_config),
+                .route(web::get().to(Server::index))
         )
     })
     .bind(&base)?
@@ -52,8 +53,8 @@ async fn start_server(base: &'static str) -> Result<()> {
     Ok(())
 }
 
-async fn run(base: &'static str, server_is_ready: Sender<()>, rx: Receiver<()>) -> Result<()> {
-    actix_rt::spawn(async move {
+async fn run(base: &'static str, server_is_ready: Sender<()>, rx: Receiver<()>) -> Result<JoinHandle<()>> {
+    let handle = actix_rt::spawn(async move {
         start_server(base)
             .await
             .expect("Error starting test server");
@@ -66,18 +67,18 @@ async fn run(base: &'static str, server_is_ready: Sender<()>, rx: Receiver<()>) 
         .expect("Error sending ready");
 
     let _ = rx.recv_async().await.expect("Error receiving ready");
-    Ok(())
+    Ok(handle)
 }
 
 // `#[actix_rt::test]` is needed to
 #[actix_rt::test]
 async fn http_actix_web_integration() {
-    let rt = tokio::runtime::Runtime::new().unwrap();
+    // let rt = tokio::runtime::Runtime::new().unwrap();
 
     let (server_is_ready, is_server_ready) = flume::bounded(1);
     let (tx, rx) = flume::bounded(1);
 
-    let handle = rt.spawn(async move {
+    let client_handle = actix_rt::spawn(async move {
         tokio::time::sleep(std::time::Duration::from_millis(500)).await;
         let _: () = is_server_ready
             .recv_async()
@@ -87,6 +88,7 @@ async fn http_actix_web_integration() {
         tx.send_async(()).await.unwrap();
     });
 
-    run(rpc::ADDR, server_is_ready, rx).await.unwrap();
-    handle.await.unwrap();
+    let server_handle = run(rpc::ADDR, server_is_ready, rx).await.unwrap();
+    server_handle.abort();
+    client_handle.await.unwrap();
 }

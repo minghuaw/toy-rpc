@@ -46,7 +46,7 @@ async fn run(base: &'static str) {
     // start testing server
     let server = Server::builder().register(common_test_service).build();
 
-    let app = Router::new().nest("/rpc", server.into_boxed_route());
+    let app = Router::new().nest("/rpc/", server.into_boxed_route());
     let addr: SocketAddr = base.parse().expect("Unable to parse addr");
     let server_handle = task::spawn(async move {
         hyper::Server::bind(&addr)

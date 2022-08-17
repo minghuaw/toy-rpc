@@ -1,4 +1,4 @@
-use axum::{prelude::*, routing::{nest}};
+use axum::{Router};
 use std::sync::Arc;
 use std::net::SocketAddr;
 use async_trait::async_trait;
@@ -35,13 +35,13 @@ async fn main() {
         .build();
     // let app = route("/rpc/_rpc_", ws(Server::<AckModeNone>::handle_axum_websocket))
     //     .layer(AddExtensionLayer::new(server));
-    let app = nest(
-        "/rpc",
+    let app = Router::new().nest(
+        "/rpc/",
         server.handle_http()
     );
 
     log::info!("Starting server at {}", &addr);
-    hyper::Server::bind(&addr)
+    axum::Server::bind(&addr)
         .serve(app.into_make_service())
         .await
         .unwrap();

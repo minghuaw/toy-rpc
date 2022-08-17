@@ -55,11 +55,6 @@ cfg_if! {
                 })
             }
 
-            /// Returns the `DEFAULT_RPC_PATH`
-            fn handler_path() -> &'static str {
-                crate::DEFAULT_RPC_PATH
-            }
-
             /// Consumes `Server` and returns a `warp::filters::BoxedFilter`
             /// which can be chained with `warp` filters
             ///
@@ -79,7 +74,7 @@ cfg_if! {
                 let state = Arc::new(self);
                 let state = warp::any().map(move || state.clone());
 
-                let rpc_route = warp::path(Self::handler_path())
+                let rpc_route = warp::path::end()
                     .and(state)
                     .and(warp::ws())
                     .map(Self::warp_websocket_handler)

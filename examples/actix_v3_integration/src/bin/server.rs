@@ -1,9 +1,10 @@
+use actix::clock::sleep;
 use actix_web::{App, HttpResponse, HttpServer, Responder, get, web};
-use actix::clock::{delay_for, Duration};
 use async_trait::async_trait;
+use futures::SinkExt;
 use std::sync::Arc;
+use std::time::Duration;
 use tokio::sync::Mutex;
-use futures::SinkExt; // This is needed for publisher
 
 use toy_rpc::macros::{export_impl};
 use toy_rpc::Server;
@@ -13,9 +14,12 @@ use actix_v3_integration::{
     rpc::{Rpc, BarService, FooRequest, FooResponse}
 };
 
-#[get("/")]
 async fn hello() -> impl Responder {
     HttpResponse::Ok().body("hello")
+}
+
+async fn world() -> impl Responder {
+    HttpResponse::Ok().body("world")
 }
 
 pub struct FooService {
@@ -84,28 +88,29 @@ async fn main() -> std::io::Result<()> {
         .register(foo_service)
         .register(bar_service)
         .build();
-    // let mut publisher = server.publisher::<Count>();
+    let mut publisher = server.publisher::<Count>();
 
-    // actix::spawn(async move {
-    //     let mut count: u32 = 1;
-    //     loop {
-    //         publisher.send(Count(count)).await.unwrap();
-    //         count += 1;
-    //         delay_for(Duration::from_millis(1000)).await;
-    //     }
-    // });
+    actix::spawn(async move {
+        let mut count: u32 = 1;
+        loop {
+            publisher.send(Count(count)).await.unwrap();
+            count += 1;
+            sleep(Duration::from_millis(1000)).await;
+        }
+    });
 
     let app_data = web::Data::new(server);
 
     HttpServer::new(
         move || {
+            // App::new()
+            //     .app_data(app_data.clone())
+            //     .route("/", web::get().to(Server::index))
             App::new()
-                .service(hello)
                 .service(
-                    web::scope("/rpc/")
-                        .app_data(app_data.clone())
-                        // .configure(Server::scope_config)
-                        .configure(Server::handle_http())
+                    web::resource("/")
+                    .app_data(app_data.clone())   
+                    .route(web::get().to(Server::index))
                 )
         }
     )

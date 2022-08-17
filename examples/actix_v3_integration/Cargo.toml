@@ -7,9 +7,9 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-toy-rpc = {  path = "../../toy-rpc", features = ["http_actix_web", "server", "client"]}
-actix-web = "3.3.2"
-actix = "0.10.0"
+toy-rpc = {  path = "../../toy-rpc", features = ["http_actix_web", "server", "client", "ws_tokio"]}
+actix-web = "4"
+actix = "0.13"
 tokio = { version = "1", features = ["rt", "rt-multi-thread", "macros", "net", "sync"] }
 
 serde = { version = "1.0.117", features = ["derive"] }

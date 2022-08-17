@@ -17,7 +17,6 @@ use crate::{
     codec::DefaultCodec,
     // pubsub::{AckModeAuto, AckModeNone},
     server::Server,
-    DEFAULT_RPC_PATH,
 };
 
 impl Server {
@@ -47,7 +46,7 @@ impl Server {
     {
         Router::new()
             .route(
-                &format!("/{}", DEFAULT_RPC_PATH),
+                "/",
                 get(Self::on_websocket_upgrade),
             )
             .layer(Extension(self))

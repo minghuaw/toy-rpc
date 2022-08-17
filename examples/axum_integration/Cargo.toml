@@ -13,4 +13,4 @@ toy-rpc = { path = "../../toy-rpc", features = ["http_axum", "server", "client"]
 log = "0.4.14"
 hyper = "0.14.11"
 tower = "0.4.8"
-axum = "0.1.2"
+axum = "0.5"

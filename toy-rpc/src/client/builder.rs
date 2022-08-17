@@ -112,8 +112,8 @@ cfg_if! {
             message::AtomicMessageId,
         };
 
-        #[cfg(any(feature = "ws_tokio", feature = "ws_async_std"))]
-        use crate::DEFAULT_RPC_PATH;
+        // #[cfg(any(feature = "ws_tokio", feature = "ws_async_std"))]
+        // use crate::DEFAULT_RPC_PATH;
 
         use super::{reader::ClientReader, writer::ClientWriter, broker};
 
@@ -215,8 +215,10 @@ cfg_if! {
             #[cfg(any(feature = "ws_tokio", feature = "ws_async_std"))]
             #[cfg_attr(feature = "docs", doc(cfg(any(feature = "ws_tokio", feature = "ws_async_std"))))]
             pub async fn dial_http(self, addr: &str) -> Result<Client, Error> {
-                let mut url = url::Url::parse(addr)?.join(DEFAULT_RPC_PATH)?;
+                let mut url = url::Url::parse(addr)?;
+                    // .join(DEFAULT_RPC_PATH)?;
                 url.set_scheme("ws").expect("Failed to change scheme to ws");
+                println!("{:?}", url.as_str());
 
                 ClientBuilder::new()
                     .dial_websocket_url(url).await
@@ -236,7 +238,7 @@ cfg_if! {
                 domain: &str,
                 config: ClientConfig,
             ) -> Result<Client, Error> {
-                let mut url = url::Url::parse(addr)?.join(DEFAULT_RPC_PATH)?;
+                let mut url = url::Url::parse(addr)?;
                 url.set_scheme("ws").expect("Failed to change scheme to ws");
 
                 self.websocket_client_with_tls_config(url, domain, config).await

@@ -53,13 +53,10 @@ pub struct WsMessageActor<C> {
 impl<C> WsMessageActor<C> {
     fn send_to_manager(&self, item: ServerBrokerItem) {
         if let Some(ref manager) = self.manager {
-            manager
-                .do_send(item)
-                .unwrap_or_else(|err| log::error!("{}", err));
+            manager.do_send(item)
         }
     }
 }
-
 
 impl<C> Actor for WsMessageActor<C>
 where
@@ -271,10 +268,10 @@ struct ExecutionBroker {
 }
 
 impl ExecutionBroker {
-    fn handle_response(&mut self, id: MessageId, result: HandlerResult) -> Result<(), Error> {
+    fn handle_response(&mut self, id: MessageId, result: HandlerResult) {
         self.executions.remove(&id);
         let msg = ServerWriterItem::Response { id, result };
-        self.responder.do_send(msg).map_err(|err| err.into())
+        self.responder.do_send(msg)
     }
 
     fn handle_cancel(&mut self, id: MessageId) -> Result<(), Error> {
@@ -309,18 +306,13 @@ impl ExecutionBroker {
         self.pubsub_broker.send(msg).map_err(|err| err.into())
     }
 
-    fn handle_publication(
-        &mut self,
-        seq_id: SeqId,
-        topic: String,
-        content: Arc<Vec<u8>>,
-    ) -> Result<(), Error> {
+    fn handle_publication(&mut self, seq_id: SeqId, topic: String, content: Arc<Vec<u8>>) {
         let msg = ServerWriterItem::Publication {
             seq_id,
             topic,
             content,
         };
-        self.responder.do_send(msg).map_err(|err| err.into())
+        self.responder.do_send(msg)
     }
 
     fn handle_inbound_ack(&mut self, seq_id: SeqId) -> Result<(), Error> {
@@ -365,16 +357,14 @@ impl ExecutionBroker {
         method: String,
         duration: Duration,
         deserializer: Box<InboundBody>,
-    ) -> Result<(), Error> {
+    ) {
         let call_fut = call(method, deserializer);
         let broker = ctx.address().recipient();
 
         let fut: Pin<Box<dyn Future<Output = ()>>> = Box::pin(async move {
             let result = execute_timed_call(id, duration, call_fut).await;
             let item = ServerBrokerItem::Response { id, result };
-            broker
-                .do_send(item)
-                .unwrap_or_else(|e| log::error!("{}", e));
+            broker.do_send(item);
         });
         let (tx, rx) = flume::bounded(1);
         self.executions.insert(id, tx);
@@ -389,7 +379,6 @@ impl ExecutionBroker {
                 }
             }
         });
-        Ok(())
     }
 
     fn handle_subscribe(
@@ -420,8 +409,14 @@ impl actix::Handler<ServerBrokerItem> for ExecutionBroker {
                 method,
                 duration,
                 deserializer,
-            } => self.handle_request(ctx, call, id, method, duration, deserializer),
-            ServerBrokerItem::Response { id, result } => self.handle_response(id, result),
+            } => {
+                self.handle_request(ctx, call, id, method, duration, deserializer);
+                Ok(())
+            }
+            ServerBrokerItem::Response { id, result } => {
+                self.handle_response(id, result);
+                Ok(())
+            }
             ServerBrokerItem::Cancel(id) => self.handle_cancel(id),
             ServerBrokerItem::Publish { id, topic, content } => {
                 self.handle_publish(id, topic, content)
@@ -432,17 +427,19 @@ impl actix::Handler<ServerBrokerItem> for ExecutionBroker {
                 seq_id,
                 topic,
                 content,
-            } => self.handle_publication(seq_id, topic, content),
+            } => {
+                self.handle_publication(seq_id, topic, content);
+                Ok(())
+            }
             ServerBrokerItem::InboundAck { seq_id } => self.handle_inbound_ack(seq_id),
             ServerBrokerItem::Stopping => {
                 let msg = ServerWriterItem::Stopping;
-                self.responder.do_send(msg).map_err(Into::into)
+                self.responder.do_send(msg);
+                Ok(())
             }
             ServerBrokerItem::Stop => {
                 let msg = ServerWriterItem::Stop;
-                if let Err(err) = self.responder.do_send(msg) {
-                    log::error!("{}", err);
-                }
+                self.responder.do_send(msg);
                 ctx.stop();
                 Ok(())
             }
@@ -503,7 +500,8 @@ cfg_if! {
         feature = "docs"
     ))] {
         impl Server {
-            async fn index(
+            /// Entry for integration with `actix-web`
+            pub async fn index(
                 state: web::Data<Server>,
                 req: HttpRequest,
                 stream: web::Payload,
@@ -524,106 +522,106 @@ cfg_if! {
                 ws::start(ws_actor, &req, stream)
             }
 
-            /// Configuration for integration with an actix-web scope.
-            /// A convenient funciont "handle_http" may be used to achieve the same thing
-            /// with the `actix-web` feature turned on.
-            ///
-            /// The `DEFAULT_RPC_PATH` will be appended to the end of the scope's path.
-            ///
-            /// This is enabled
-            /// if and only if **exactly one** of the the following feature flag is turned on
-            /// - `serde_bincode`
-            /// - `serde_json`
-            /// - `serde_cbor`
-            /// - `serde_rmp`
-            ///
-            /// # Example
-            ///
-            /// ```
-            /// let example_service = Arc::new(Example { });
-            /// let server = Server::builder()
-            ///     .register(example_service)
-            ///     .build();
-            /// let app_data = web::Data::new(server);
-            ///
-            /// HttpServer::new(
-            ///     move || {
-            ///         App::new()
-            ///             .service(
-            ///                 web::scope("/rpc/")
-            ///                     .app_data(app_data.clone())
-            ///                     .configure(toy_rpc::Server::scope_config)
-            ///             )
-            ///     }
-            /// )
-            /// ```
-            #[cfg(any(feature = "http_actix_web", feature = "docs"))]
-            #[cfg_attr(feature = "docs", doc(cfg(feature = "http_actix_web")))]
-            pub fn scope_config(cfg: &mut web::ServiceConfig) {
-                cfg.service(
-                    web::scope("/")
-                        .service(
-                            web::resource(crate::DEFAULT_RPC_PATH)
-                                .route(web::get().to(Self::index))
-                        )
-                );
-            }
+            // /// Configuration for integration with an actix-web scope.
+            // /// A convenient funciont "handle_http" may be used to achieve the same thing
+            // /// with the `actix-web` feature turned on.
+            // ///
+            // /// The `DEFAULT_RPC_PATH` will be appended to the end of the scope's path.
+            // ///
+            // /// This is enabled
+            // /// if and only if **exactly one** of the the following feature flag is turned on
+            // /// - `serde_bincode`
+            // /// - `serde_json`
+            // /// - `serde_cbor`
+            // /// - `serde_rmp`
+            // ///
+            // /// # Example
+            // ///
+            // /// ```
+            // /// let example_service = Arc::new(Example { });
+            // /// let server = Server::builder()
+            // ///     .register(example_service)
+            // ///     .build();
+            // /// let app_data = web::Data::new(server);
+            // ///
+            // /// HttpServer::new(
+            // ///     move || {
+            // ///         App::new()
+            // ///             .service(
+            // ///                 web::scope("/rpc/")
+            // ///                     .app_data(app_data.clone())
+            // ///                     .configure(toy_rpc::Server::scope_config)
+            // ///             )
+            // ///     }
+            // /// )
+            // /// ```
+            // #[cfg(any(feature = "http_actix_web", feature = "docs"))]
+            // #[cfg_attr(feature = "docs", doc(cfg(feature = "http_actix_web")))]
+            // pub fn scope_config(cfg: &mut web::ServiceConfig) {
+            //     cfg.service(
+            //         web::scope("/")
+            //             .service(
+            //                 web::resource(crate::DEFAULT_RPC_PATH)
+            //                     .route(web::get().to(Self::index))
+            //             )
+            //     );
+            // }
 
-            /// A conevience function that calls the corresponding http handling
-            /// function depending on the enabled feature flag
-            ///
-            /// | feature flag | function name  |
-            /// | ------------ |---|
-            /// | `http_tide`| [`into_endpoint`](#method.into_endpoint) |
-            /// | `http_actix_web` | [`scope_config`](#method.scope_config) |
-            /// | `http_warp` | [`into_boxed_filter`](#method.into_boxed_filter) |
-            /// | `http_axum` | [`into_boxed_route`](#method.into_boxed_route) |
-            ///
-            /// This is enabled
-            /// if and only if **exactly one** of the the following feature flag is turned on
-            /// - `serde_bincode`
-            /// - `serde_json`
-            /// - `serde_cbor`
-            /// - `serde_rmp`
-            ///
-            /// # Example
-            ///
-            /// ```
-            /// let example_service = Arc::new(Example { });
-            /// let server = Server::builder()
-            ///     .register(example_service)
-            ///     .build();
-            /// let app_data = web::Data::new(server);
-            ///
-            /// HttpServer::new(
-            ///     move || {
-            ///         App::new()
-            ///             .service(
-            ///                 web::scope("/rpc/")
-            ///                     .app_data(app_data.clone())
-            ///                     .configure(toy_rpc::Server::handle_http())
-            ///             )
-            ///     }
-            /// )
-            /// ```
-            #[cfg(any(all(
-                feature = "http_actix_web",
-                not(feature = "http_tide"),
-                not(feature = "http_warp"),
-                not(feature = "http_axum"),
-            ), feature = "docs"))]
-            #[cfg_attr(
-                feature = "docs",
-                doc(cfg(all(
-                    feature = "http_actix_web",
-                    not(feature = "http_tide"),
-                    not(feature = "http_warp"),
-                    not(feature = "http_axum"),
-                    not(feature = "http_warp"))))
-            )]
-            pub fn handle_http() -> fn(&mut web::ServiceConfig) {
-                Self::scope_config
-            }
+            // /// A conevience function that calls the corresponding http handling
+            // /// function depending on the enabled feature flag
+            // ///
+            // /// | feature flag | function name  |
+            // /// | ------------ |---|
+            // /// | `http_tide`| [`into_endpoint`](#method.into_endpoint) |
+            // /// | `http_actix_web` | [`scope_config`](#method.scope_config) |
+            // /// | `http_warp` | [`into_boxed_filter`](#method.into_boxed_filter) |
+            // /// | `http_axum` | [`into_boxed_route`](#method.into_boxed_route) |
+            // ///
+            // /// This is enabled
+            // /// if and only if **exactly one** of the the following feature flag is turned on
+            // /// - `serde_bincode`
+            // /// - `serde_json`
+            // /// - `serde_cbor`
+            // /// - `serde_rmp`
+            // ///
+            // /// # Example
+            // ///
+            // /// ```
+            // /// let example_service = Arc::new(Example { });
+            // /// let server = Server::builder()
+            // ///     .register(example_service)
+            // ///     .build();
+            // /// let app_data = web::Data::new(server);
+            // ///
+            // /// HttpServer::new(
+            // ///     move || {
+            // ///         App::new()
+            // ///             .service(
+            // ///                 web::scope("/rpc/")
+            // ///                     .app_data(app_data.clone())
+            // ///                     .configure(toy_rpc::Server::handle_http())
+            // ///             )
+            // ///     }
+            // /// )
+            // /// ```
+            // #[cfg(any(all(
+            //     feature = "http_actix_web",
+            //     not(feature = "http_tide"),
+            //     not(feature = "http_warp"),
+            //     not(feature = "http_axum"),
+            // ), feature = "docs"))]
+            // #[cfg_attr(
+            //     feature = "docs",
+            //     doc(cfg(all(
+            //         feature = "http_actix_web",
+            //         not(feature = "http_tide"),
+            //         not(feature = "http_warp"),
+            //         not(feature = "http_axum"),
+            //         not(feature = "http_warp"))))
+            // )]
+            // pub fn handle_http() -> fn(&mut web::ServiceConfig) {
+            //     Self::scope_config
+            // }
         }
     }
 }

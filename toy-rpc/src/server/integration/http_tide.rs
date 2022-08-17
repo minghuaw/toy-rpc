@@ -36,7 +36,6 @@ cfg_if! {
         use std::sync::atomic::Ordering;
 
         use crate::codec::DefaultCodec;
-        use crate::DEFAULT_RPC_PATH;
 
         /// The following impl block is controlled by feature flag. It is enabled
         /// if and only if **exactly one** of the the following feature flag is turned on
@@ -79,7 +78,7 @@ cfg_if! {
             pub fn into_endpoint(self) -> tide::Server<Server> {
                 let mut app = tide::Server::with_state(self);
                 // let mut app = tide::Server::new();
-                app.at(DEFAULT_RPC_PATH)
+                app.at("/")
                     // .connect(|_| async move { Ok("CONNECT request is received") })
                     .get(tide_ws::WebSocket::new(
                         |req: tide::Request<Server>, ws_stream| async move {
