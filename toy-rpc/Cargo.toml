@@ -31,8 +31,8 @@ default = [
     "serde_bincode",
     "server",
     "client",
-    "tokio_runtime",
-    # "async_std_runtime",
+    # "tokio_runtime",
+    "async_std_runtime",
     # "wasm",
     # "ws_tokio",
 ]

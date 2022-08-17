@@ -11,8 +11,8 @@ impl Echo {
     }
 
     #[export_method]
-    pub async fn echo_i32(&self, req: i32) -> Result<i32, String> {
-        Ok(req)
+    pub async fn echo_i32(&self, req: i32) -> i32 {
+        req
     }
 
     #[export_method]
