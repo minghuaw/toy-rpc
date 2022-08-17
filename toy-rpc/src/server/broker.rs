@@ -8,15 +8,15 @@ use crate::protocol::InboundBody;
 use crate::pubsub::SeqId;
 use crate::service::{ArcAsyncServiceCall, ServiceCallResult};
 
-use crate::util::Broker;
 use crate::{error::Error, message::MessageId};
 
 cfg_if::cfg_if! {
     if #[cfg(not(feature = "http_actix_web"))] {
         use std::collections::HashMap;
-
+        use async_trait::async_trait;
         use flume::Sender;
-
+        
+        use crate::util::Broker;
         use crate::server::pubsub::PubSubResponder;
 
         use super::ClientId;
@@ -27,7 +27,6 @@ cfg_if::cfg_if! {
 
 #[cfg(all(feature = "async_std_runtime", not(feature = "tokio_runtime")))]
 use ::async_std::task::JoinHandle;
-use async_trait::async_trait;
 #[cfg(any(
     feature = "docs",
     all(
@@ -82,6 +81,7 @@ pub(crate) enum ServerBrokerItem {
     Stop,
 }
 
+#[cfg(not(feature = "http_actix_web"))]
 pub(crate) enum BrokerState {
     Started,
     Ending,
@@ -232,6 +232,7 @@ impl ServerBroker {
     }
 }
 
+#[cfg(not(feature = "http_actix_web"))]
 #[async_trait]
 impl Broker for ServerBroker {
     type Item = ServerBrokerItem;
@@ -296,84 +297,6 @@ impl Broker for ServerBroker {
         }
     }
 }
-
-// #[cfg(not(feature = "http_actix_web"))]
-// #[async_trait::async_trait]
-// impl Broker for ServerBroker {
-//     type Item = ServerBrokerItem;
-//     type WriterItem = ServerWriterItem;
-//     type Ok = ();
-//     type Error = Error;
-
-//     async fn op<W>(
-//         &mut self,
-//         ctx: &Arc<brw::Context<Self::Item>>,
-//         item: Self::Item,
-//         mut writer: W,
-//     ) -> Running<Result<Self::Ok, Self::Error>, Option<Self::Error>>
-//     where
-//         W: Sink<Self::WriterItem, Error = flume::SendError<Self::WriterItem>> + Send + Unpin,
-//     {
-//         let result = match item {
-//             ServerBrokerItem::Request {
-//                 call,
-//                 id,
-//                 method,
-//                 duration,
-//                 deserializer,
-//             } => self.handle_request(ctx, call, id, method, duration, deserializer),
-//             ServerBrokerItem::Response { id, result } => {
-//                 self.handle_response(&mut writer, id, result).await
-//             }
-//             ServerBrokerItem::Cancel(id) => self.handle_cancel(id).await,
-//             ServerBrokerItem::Publish { id, topic, content } => {
-//                 self.handle_publish(&mut writer, id, topic, content).await
-//             }
-//             ServerBrokerItem::Subscribe { id, topic } => {
-//                 self.handle_subscribe(ctx, id, topic).await
-//             }
-//             ServerBrokerItem::Unsubscribe { id, topic } => self.handle_unsubscribe(id, topic).await,
-//             ServerBrokerItem::Publication {
-//                 seq_id,
-//                 topic,
-//                 content,
-//             } => {
-//                 self.handle_publication(&mut writer, seq_id, topic, content)
-//                     .await
-//             }
-//             ServerBrokerItem::InboundAck { seq_id } => self.handle_inbound_ack(seq_id).await,
-//             ServerBrokerItem::Stopping => {
-//                 for (_, handle) in self.executions.drain() {
-//                     log::debug!("Stopping execution as client is disconnected");
-//                     #[cfg(all(feature = "tokio_runtime", not(feature = "async_std_runtime")))]
-//                     handle.abort();
-//                     #[cfg(all(feature = "async_std_runtime", not(feature = "tokio_runtime")))]
-//                     handle.cancel().await;
-//                 }
-
-//                 let result = writer
-//                     .send(ServerWriterItem::Stopping)
-//                     .await
-//                     .map_err(Into::into);
-
-//                 ctx.broker
-//                     .send_async(ServerBrokerItem::Stop)
-//                     .await
-//                     .map_err(Into::into)
-//                     .and(result)
-//             }
-//             ServerBrokerItem::Stop => {
-//                 if let Err(err) = writer.send(ServerWriterItem::Stop).await {
-//                     log::debug!("{}", err);
-//                 }
-//                 log::debug!("Client connection is closed");
-//                 return Running::Stop(None);
-//             }
-//         };
-
-//         Running::Continue(result)
-//     }
-// }
 
 /// Spawn the execution in a async_std task and return the JoinHandle
 #[cfg(all(feature = "async_std_runtime", not(feature = "tokio_runtime")))]

@@ -105,7 +105,6 @@ where
                 let id = seq_id.0;
                 self.write_publication(id, topic, &content).await.map(|_| Running::Continue)
             }
-            // ServerWriterItem::Ack { id } => self.write_ack(id).await,
             ServerWriterItem::Stopping => {
                 self.writer.close().await;
                 Ok(Running::Continue)

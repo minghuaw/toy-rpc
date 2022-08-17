@@ -361,7 +361,7 @@ cfg_if! {
                 let tls_stream = acceptor.accept(stream).await?;
                 // let ret = serve_readwrite_stream(tls_stream, services).await;
                 let codec = DefaultCodec::new(tls_stream);
-                let ret = Self::start_broker_reader_writer(codec, services, client_id, pubsub_broker).await;
+                let ret = Self::start_server_engine(codec, services, client_id, pubsub_broker).await;
                 log::info!("Client disconnected from {}", peer_addr);
                 ret
             }

@@ -32,9 +32,11 @@ default = [
     "server",
     "client",
     # "tokio_runtime",
-    "async_std_runtime",
+    # "async_std_runtime",
     # "wasm",
     # "ws_tokio",
+    # "http_actix_web",
+    "http_warp",
 ]
 
 docs = []
