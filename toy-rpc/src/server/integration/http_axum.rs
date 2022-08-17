@@ -7,10 +7,8 @@ use axum::{
         ws::{WebSocket, WebSocketUpgrade},
         Extension,
     },
-    handler::get,
     response::IntoResponse,
-    routing::{BoxRoute, Router},
-    AddExtensionLayer,
+    routing::{Router, get},
 };
 use bytes::Bytes;
 use http_body::Body;
@@ -42,7 +40,7 @@ impl Server {
     }
 
     /// Consumes `Server` and returns something that can nested in axum as a service
-    pub fn into_boxed_route<B>(self) -> Router<BoxRoute<B>>
+    pub fn into_boxed_route<B>(self) -> Router<B>
     where
         B: Body<Data = Bytes> + Send + Sync + 'static,
         B::Error: std::error::Error + Send + Sync,
@@ -52,8 +50,7 @@ impl Server {
                 &format!("/{}", DEFAULT_RPC_PATH),
                 get(Self::on_websocket_upgrade),
             )
-            .layer(AddExtensionLayer::new(self))
-            .boxed()
+            .layer(Extension(self))
     }
 
     #[cfg(any(
@@ -83,7 +80,7 @@ impl Server {
     /// | `http_actix_web` | [`scope_config`](#method.scope_config) |
     /// | `http_warp` | [`into_boxed_filter`](#method.into_boxed_filter) |
     /// | `http_axum` | [`into_boxed_route`](#method.into_boxed_route) |
-    pub fn handle_http<B>(self) -> Router<BoxRoute<B>>
+    pub fn handle_http<B>(self) -> Router<B>
     where
         B: Body<Data = Bytes> + Send + Sync + 'static,
         B::Error: std::error::Error + Send + Sync,
