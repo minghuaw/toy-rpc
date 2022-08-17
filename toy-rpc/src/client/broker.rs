@@ -89,7 +89,7 @@ pub(crate) enum ClientBrokerItem {
     /// Stop
     ///
     ///
-    Stop(Option<std::io::Error>),
+    Stop,
 }
 
 enum ClientBrokerState {
@@ -311,7 +311,6 @@ impl<C> ClientBroker<C> {
 
     async fn handle_unsubscribe(
         &mut self,
-        tx: &Sender<ClientBrokerItem>,
         topic: String,
     ) -> Result<Option<ClientWriterItem>, Error> {
         let id = self.count.fetch_add(1, Ordering::Relaxed);
@@ -448,14 +447,11 @@ impl<C: Marshal + Send> Broker for  ClientBroker<C> {
                 self.handle_subscription(id, topic, item).await
             }
             ClientBrokerItem::InboundAck(seq_id) => self.handle_inbound_ack(seq_id.0),
-            // ClientBrokerItem::OutboundAck(seq_id) => {
-            //     self.handle_outbound_ack(tx, seq_id).await
-            // },
             ClientBrokerItem::Stopping => {
                 // Stopping ONLY comes from control
                 self.handle_stopping().await
             }
-            ClientBrokerItem::Stop(io_err) => {
+            ClientBrokerItem::Stop => {
                 self.state = ClientBrokerState::Stopped;
                 Ok(Some(ClientWriterItem::Stop))
             }

@@ -314,7 +314,7 @@ impl Drop for Client {
                 log::error!("{}", err);
             }
             #[cfg(not(any(feature = "ws_tokio", feature = "ws_async_std")))]
-            if let Err(err) = self.broker.try_send(broker::ClientBrokerItem::Stop(None)) {
+            if let Err(err) = self.broker.try_send(broker::ClientBrokerItem::Stop) {
                 log::error!("{}", err)
             }
 
@@ -354,7 +354,7 @@ impl Client {
 
         #[cfg(not(any(feature = "ws_tokio", feature = "ws_async_std")))]
         self.broker
-            .send_async(broker::ClientBrokerItem::Stop(None))
+            .send_async(broker::ClientBrokerItem::Stop)
             .await
             .unwrap_or_else(|err| log::error!("{}", err));
 
