@@ -564,18 +564,20 @@ cfg_if! {
                 let broker = broker::ClientBroker::<C>::new(
                     count.clone(), self.pub_retry_timeout, self.max_num_retries
                 );
-                let (handle, broker) = brw::spawn(broker, reader, writer);
+                // let (handle, broker) = brw::spawn(broker, reader, writer);
 
-                Client {
-                    count,
-                    default_timeout: Duration::from_secs(super::DEFAULT_TIMEOUT_SECONDS),
-                    next_timeout: AtomicCell::new(None),
-                    broker,
-                    broker_handle: Some(handle),
-                    subscriptions: HashMap::new(),
+                // Client {
+                //     count,
+                //     default_timeout: Duration::from_secs(super::DEFAULT_TIMEOUT_SECONDS),
+                //     next_timeout: AtomicCell::new(None),
+                //     broker,
+                //     broker_handle: Some(handle),
+                //     subscriptions: HashMap::new(),
 
-                    // ack_mode: PhantomData
-                }
+                //     // ack_mode: PhantomData
+                // }
+
+                todo!()
             }
         }
     }

@@ -12,6 +12,7 @@ pub mod builder;
 pub mod pubsub;
 mod reader;
 mod writer;
+mod engine;
 
 use broker::ClientBrokerItem;
 use builder::ClientBuilder;

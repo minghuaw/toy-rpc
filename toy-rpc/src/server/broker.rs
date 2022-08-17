@@ -1,6 +1,5 @@
 //! Broker on the server side
 
-use std::collections::VecDeque;
 use std::future::Future;
 use std::sync::Arc;
 use std::time::Duration;
@@ -9,19 +8,15 @@ use crate::protocol::InboundBody;
 use crate::pubsub::SeqId;
 use crate::service::{ArcAsyncServiceCall, ServiceCallResult};
 
-use crate::util::Running;
 use crate::{error::Error, message::MessageId};
 
 cfg_if::cfg_if! {
     if #[cfg(not(feature = "http_actix_web"))] {
         use std::collections::HashMap;
-        // use std::marker::PhantomData;
 
         use flume::Sender;
-        use futures::sink::{Sink, SinkExt};
 
         use crate::server::pubsub::PubSubResponder;
-        // use crate::pubsub::{AckModeNone, AckModeAuto};
 
         use super::ClientId;
         use super::pubsub::PubSubItem;

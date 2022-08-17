@@ -8,10 +8,7 @@ Notes.md
 .vscode/
 *.DS_STORE
 **Cargo.lock
-macros/Cargo.lock
-toy-rpc/Cargo.lock
-
-
+**/Cargo.lock
 
 *certificate.conf
 *ca.key

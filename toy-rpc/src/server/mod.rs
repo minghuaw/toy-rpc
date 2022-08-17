@@ -21,7 +21,7 @@ cfg_if! {
         pub(crate) mod broker;
         mod reader;
         mod writer;
-        mod runtime;
+        mod engine;
 
         pub mod pubsub;
         use pubsub::{PubSubBroker, PubSubItem};
@@ -31,7 +31,7 @@ cfg_if! {
 pub mod builder;
 use builder::ServerBuilder;
 
-use self::runtime::ServerEngine;
+use self::engine::ServerEngine;
 
 pub(crate) type ClientId = u64;
 pub(crate) type AtomicClientId = AtomicU64;
