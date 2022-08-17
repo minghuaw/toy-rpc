@@ -83,10 +83,12 @@ impl<T: CodecRead> Reader for ServerReader<T> {
     }
 
     async fn op(&mut self) -> Option<Result<ServerBrokerItem, Error>> {
-        let header = self.reader.read_header().await?;
-        let header: Header = match header {
-            Ok(header) => header,
-            Err(err) => return Some(Err(err.into())),
+        let header: Header = match self.reader.read_header().await {
+            Some(header) => match header {
+                Ok(header) => header,
+                Err(err) => return Some(Err(err.into())),
+            },
+            None => return Some(Ok(ServerBrokerItem::Stopping)), // Gracefully shutdown server
         };
 
         match header {
