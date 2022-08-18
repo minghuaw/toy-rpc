@@ -38,10 +38,6 @@ pub(crate) type AtomicClientId = AtomicU64;
 pub const RESERVED_CLIENT_ID: ClientId = 0;
 
 /// RPC Server
-///
-/// ```
-/// const DEFAULT_RPC_PATH: &str = "_rpc_";
-/// ```
 #[derive(Clone)]
 pub struct Server {
     services: Arc<AsyncServiceMap>,

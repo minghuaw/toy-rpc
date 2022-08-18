@@ -1,5 +1,5 @@
 [package]
-name = "actix_v3_integration"
+name = "actix_web_integration"
 version = "0.1.0"
 authors = ["Minghua Wu <michael.wu1107@gmail.com>"]
 edition = "2018"

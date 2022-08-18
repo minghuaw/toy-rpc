@@ -103,9 +103,6 @@ async fn main() -> std::io::Result<()> {
 
     HttpServer::new(
         move || {
-            // App::new()
-            //     .app_data(app_data.clone())
-            //     .route("/", web::get().to(Server::index))
             App::new()
                 .service(
                     web::resource("/")

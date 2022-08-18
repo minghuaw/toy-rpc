@@ -8,7 +8,7 @@ exclude = [
     "examples/async_std_tcp",
     "examples/tokio_tcp",
     "examples/tide_integration",
-    "examples/actix_v3_integration",
+    "examples/actix_web_integration",
     "examples/websocket",
     "examples/warp_integration",
     "examples/docs_examples",

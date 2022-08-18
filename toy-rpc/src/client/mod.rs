@@ -136,9 +136,13 @@ cfg_if! {
             /// Connects to an HTTP RPC server at the specified network address using WebSocket and the defatul codec.
             ///
             /// It is recommended to use "ws://" as the url scheme as opposed to "http://"; however, internally the url scheme
-            /// is changed to "ws://". Internally, `DEFAULT_RPC_PATH="_rpc_"` is appended to the end of `addr`,
-            /// and the rest is the same is calling `dial_websocket`.
-            /// For example, a valid path could be "ws://127.0.0.1/rpc/".
+            /// is changed to "ws://". For example, a valid path could be "ws://127.0.0.1/rpc/". Since deprecation of 
+            /// [`crate::DEFAULT_RPC_PATH`] starting from version 0.9.0-alpha.4, this no longer appends `DEFAULT_RPC_PATH`
+            /// to the end of the specified `addr`, making it essentially identical to [`dial_websocket`](./#method.dial_websocket).
+            /// 
+            /// For compatibility with HTTP integrated RPC server prior to version 0.9.0-alpha.4,
+            /// the user should manually append [`DEFAULT_RPC_PATH`] to the end of the path passed
+            /// to `Client::dial_http` or `Client::dial_websocket`
             ///
             /// *Warning*: WebSocket is used as the underlying transport protocol starting from version "0.5.0-beta.0",
             /// and this will make client of versions later than "0.5.0-beta.0" incompatible with servers of versions
@@ -195,8 +199,8 @@ cfg_if! {
 
             /// Similar to `dial`, this connects to an WebSocket RPC server at the specified network address using the defatul codec
             ///
-            /// The difference between `dial_websocket` and `dial_http` is that, `dial_websocket` does not
-            /// append `DEFAULT_RPC_PATH="_rpc"` to the end of the addr.
+            /// Since deprecation of [`crate::DEFAULT_RPC_PATH`] in version 0.9.0-alpha.4,
+            /// this becomes the same as [`dial_http`](./#method.dial_http).
             ///
             /// This is enabled
             /// if and only if **exactly one** of the the following feature flag is turned on

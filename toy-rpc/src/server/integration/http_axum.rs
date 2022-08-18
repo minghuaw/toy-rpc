@@ -76,7 +76,7 @@ impl Server {
     /// | feature flag | function name  |
     /// | ------------ |---|
     /// | `http_tide`| [`into_endpoint`](#method.into_endpoint) |
-    /// | `http_actix_web` | [`scope_config`](#method.scope_config) |
+    /// | `http_actix_web` | [`index`](#method.index) |
     /// | `http_warp` | [`into_boxed_filter`](#method.into_boxed_filter) |
     /// | `http_axum` | [`into_boxed_route`](#method.into_boxed_route) |
     pub fn handle_http<B>(self) -> Router<B>

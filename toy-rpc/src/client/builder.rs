@@ -112,9 +112,6 @@ cfg_if! {
             message::AtomicMessageId,
         };
 
-        // #[cfg(any(feature = "ws_tokio", feature = "ws_async_std"))]
-        // use crate::DEFAULT_RPC_PATH;
-
         use super::{reader::ClientReader, writer::ClientWriter, broker};
 
         impl ClientBuilder {
@@ -212,11 +209,12 @@ cfg_if! {
             }
 
             /// Connects to an HTTP RPC server at the specified network address using WebSocket and the defatul codec.
+            /// 
+            /// This functions the same as `dial_websocket`
             #[cfg(any(feature = "ws_tokio", feature = "ws_async_std"))]
             #[cfg_attr(feature = "docs", doc(cfg(any(feature = "ws_tokio", feature = "ws_async_std"))))]
             pub async fn dial_http(self, addr: &str) -> Result<Client, Error> {
                 let mut url = url::Url::parse(addr)?;
-                    // .join(DEFAULT_RPC_PATH)?;
                 url.set_scheme("ws").expect("Failed to change scheme to ws");
                 println!("{:?}", url.as_str());
 

@@ -50,8 +50,9 @@ cfg_if! {
             /// A convienient function `handle_http` can be used to achieve the same thing
             /// with `tide` feature turned on
             ///
-            /// The endpoint will be created with `DEFAULT_RPC_PATH` appended to the
-            /// end of the nested `tide` endpoint.
+            /// Since deprecation of [`crate::DEFAULT_RPC_PATH`] in version 0.9.0-alpha.4, 
+            /// [`DEFAULT_RPC_PATH`] is ***NO LONGER*** appended to the endpoint
+            /// path specified to the framework
             ///
             /// This is enabled
             /// if and only if **exactly one** of the the following feature flag is turned on
@@ -122,7 +123,7 @@ cfg_if! {
             /// | feature flag | function name  |
             /// | ------------ |---|
             /// | `http_tide`| [`into_endpoint`](#method.into_endpoint) |
-            /// | `http_actix_web` | [`scope_config`](#method.scope_config) |
+            /// | `http_actix_web` | [`index`](#method.index) |
             /// | `http_warp` | [`into_boxed_filter`](#method.into_boxed_filter) |
             /// | `http_axum` | [`into_boxed_route`](#method.into_boxed_route) |
             ///

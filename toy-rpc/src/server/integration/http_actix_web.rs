@@ -501,6 +501,30 @@ cfg_if! {
     ))] {
         impl Server {
             /// Entry for integration with `actix-web`
+            /// 
+            /// # Example
+            ///
+            /// ```
+            /// let example_service = Arc::new(Example { });
+            /// let server = Server::builder()
+            ///     .register(example_service)
+            ///     .build();
+            /// let app_data = web::Data::new(server);
+            ///
+            /// HttpServer::new(
+            ///     move || {
+            ///         App::new()
+            ///             .service(
+            ///                 web::resource("/")
+            ///                 .app_data(app_data.clone())   
+            ///                 .route(web::get().to(Server::index))
+            ///             )
+            ///     }
+            /// )
+            /// .bind(addr)?
+            /// .run()
+            /// .await
+            /// ```
             pub async fn index(
                 state: web::Data<Server>,
                 req: HttpRequest,
@@ -517,111 +541,9 @@ cfg_if! {
                         manager: None,
                         req_header: None,
                         marker: PhantomData,
-                        // ack_mode: PhantomData,
                     };
                 ws::start(ws_actor, &req, stream)
             }
-
-            // /// Configuration for integration with an actix-web scope.
-            // /// A convenient funciont "handle_http" may be used to achieve the same thing
-            // /// with the `actix-web` feature turned on.
-            // ///
-            // /// The `DEFAULT_RPC_PATH` will be appended to the end of the scope's path.
-            // ///
-            // /// This is enabled
-            // /// if and only if **exactly one** of the the following feature flag is turned on
-            // /// - `serde_bincode`
-            // /// - `serde_json`
-            // /// - `serde_cbor`
-            // /// - `serde_rmp`
-            // ///
-            // /// # Example
-            // ///
-            // /// ```
-            // /// let example_service = Arc::new(Example { });
-            // /// let server = Server::builder()
-            // ///     .register(example_service)
-            // ///     .build();
-            // /// let app_data = web::Data::new(server);
-            // ///
-            // /// HttpServer::new(
-            // ///     move || {
-            // ///         App::new()
-            // ///             .service(
-            // ///                 web::scope("/rpc/")
-            // ///                     .app_data(app_data.clone())
-            // ///                     .configure(toy_rpc::Server::scope_config)
-            // ///             )
-            // ///     }
-            // /// )
-            // /// ```
-            // #[cfg(any(feature = "http_actix_web", feature = "docs"))]
-            // #[cfg_attr(feature = "docs", doc(cfg(feature = "http_actix_web")))]
-            // pub fn scope_config(cfg: &mut web::ServiceConfig) {
-            //     cfg.service(
-            //         web::scope("/")
-            //             .service(
-            //                 web::resource(crate::DEFAULT_RPC_PATH)
-            //                     .route(web::get().to(Self::index))
-            //             )
-            //     );
-            // }
-
-            // /// A conevience function that calls the corresponding http handling
-            // /// function depending on the enabled feature flag
-            // ///
-            // /// | feature flag | function name  |
-            // /// | ------------ |---|
-            // /// | `http_tide`| [`into_endpoint`](#method.into_endpoint) |
-            // /// | `http_actix_web` | [`scope_config`](#method.scope_config) |
-            // /// | `http_warp` | [`into_boxed_filter`](#method.into_boxed_filter) |
-            // /// | `http_axum` | [`into_boxed_route`](#method.into_boxed_route) |
-            // ///
-            // /// This is enabled
-            // /// if and only if **exactly one** of the the following feature flag is turned on
-            // /// - `serde_bincode`
-            // /// - `serde_json`
-            // /// - `serde_cbor`
-            // /// - `serde_rmp`
-            // ///
-            // /// # Example
-            // ///
-            // /// ```
-            // /// let example_service = Arc::new(Example { });
-            // /// let server = Server::builder()
-            // ///     .register(example_service)
-            // ///     .build();
-            // /// let app_data = web::Data::new(server);
-            // ///
-            // /// HttpServer::new(
-            // ///     move || {
-            // ///         App::new()
-            // ///             .service(
-            // ///                 web::scope("/rpc/")
-            // ///                     .app_data(app_data.clone())
-            // ///                     .configure(toy_rpc::Server::handle_http())
-            // ///             )
-            // ///     }
-            // /// )
-            // /// ```
-            // #[cfg(any(all(
-            //     feature = "http_actix_web",
-            //     not(feature = "http_tide"),
-            //     not(feature = "http_warp"),
-            //     not(feature = "http_axum"),
-            // ), feature = "docs"))]
-            // #[cfg_attr(
-            //     feature = "docs",
-            //     doc(cfg(all(
-            //         feature = "http_actix_web",
-            //         not(feature = "http_tide"),
-            //         not(feature = "http_warp"),
-            //         not(feature = "http_axum"),
-            //         not(feature = "http_warp"))))
-            // )]
-            // pub fn handle_http() -> fn(&mut web::ServiceConfig) {
-            //     Self::scope_config
-            // }
         }
     }
 }
