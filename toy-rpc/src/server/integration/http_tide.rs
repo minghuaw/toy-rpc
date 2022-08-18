@@ -50,7 +50,7 @@ cfg_if! {
             /// A convienient function `handle_http` can be used to achieve the same thing
             /// with `tide` feature turned on
             ///
-            /// Since deprecation of [`crate::DEFAULT_RPC_PATH`] in version 0.9.0-alpha.4, 
+            /// Since deprecation of [`crate::DEFAULT_RPC_PATH`] in version 0.9.0-beta.1, 
             /// [`DEFAULT_RPC_PATH`] is ***NO LONGER*** appended to the endpoint
             /// path specified to the framework
             ///
