@@ -4,10 +4,9 @@ use std::sync::atomic::Ordering;
 
 use axum::{
     extract::ws::{WebSocket, WebSocketUpgrade},
-    routing::get,
     response::IntoResponse,
-    Router,
-    Extension,
+    routing::get,
+    Extension, Router,
 };
 
 use crate::{

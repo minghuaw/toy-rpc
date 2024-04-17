@@ -4,7 +4,7 @@
 use async_trait::async_trait;
 use std::marker::PhantomData;
 
-use crate::{util::GracefulShutdown};
+use crate::util::GracefulShutdown;
 
 use super::*;
 
