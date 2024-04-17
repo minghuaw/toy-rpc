@@ -6,7 +6,7 @@ use futures::{SinkExt, StreamExt}; // Make sure this is imported to use `send` o
 
 use tokio_pubsub::*;
 
-#[tokio::main]
+#[tokio::main(flavor = "current_thread")]
 async fn main() {
     env_logger::init();
 
@@ -19,6 +19,7 @@ async fn main() {
     
     // Periodically publish a message
     task::spawn(async move {
+        tokio::time::sleep(Duration::from_millis(2000)).await;
         let mut count = 0;
         loop {
             // let item = Count(count);

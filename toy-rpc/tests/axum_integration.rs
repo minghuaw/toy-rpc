@@ -46,13 +46,11 @@ async fn run(base: &'static str) {
     // start testing server
     let server = Server::builder().register(common_test_service).build();
 
-    let app = Router::new().nest("/rpc", server.into_boxed_route());
+    let app = Router::new().nest("/rpc", server.into_route());
     let addr: SocketAddr = base.parse().expect("Unable to parse addr");
     let server_handle = task::spawn(async move {
-        hyper::Server::bind(&addr)
-            .serve(app.into_make_service())
-            .await
-            .unwrap()
+        let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
+        axum::serve(listener, app).await.unwrap()
     });
     tx.send(()).expect("Error sending ready");
     let client_handle = task::spawn(test_client(base, rx));

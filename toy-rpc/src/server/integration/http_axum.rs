@@ -3,17 +3,11 @@
 use std::sync::atomic::Ordering;
 
 use axum::{
-    extract::{
-        ws::{WebSocket, WebSocketUpgrade},
-        Extension,
-    },
-    handler::get,
+    extract::ws::{WebSocket, WebSocketUpgrade},
     response::IntoResponse,
-    routing::{BoxRoute, Router},
-    AddExtensionLayer,
+    routing::get,
+    Extension, Router,
 };
-use bytes::Bytes;
-use http_body::Body;
 
 use crate::{
     codec::DefaultCodec,
@@ -48,18 +42,14 @@ macro_rules! impl_http_axum_for_ack_modes {
                 }
 
                 /// Consumes `Server` and returns something that can nested in axum as a service
-                pub fn into_boxed_route<B>(self) -> Router<BoxRoute<B>>
-                where
-                    B: Body<Data = Bytes> + Send + Sync + 'static,
-                    B::Error: std::error::Error + Send + Sync,
+                pub fn into_route(self) -> Router
                 {
                     Router::new()
                         .route(
                             &format!("/{}", DEFAULT_RPC_PATH),
                             get(Self::on_websocket_upgrade)
                         )
-                        .layer(AddExtensionLayer::new(self))
-                        .boxed()
+                        .layer(Extension(self.clone()))
                 }
 
                 #[cfg(any(
@@ -88,13 +78,10 @@ macro_rules! impl_http_axum_for_ack_modes {
                 /// | `http_tide`| [`into_endpoint`](#method.into_endpoint) |
                 /// | `http_actix_web` | [`scope_config`](#method.scope_config) |
                 /// | `http_warp` | [`into_boxed_filter`](#method.into_boxed_filter) |
-                /// | `http_axum` | [`into_boxed_route`](#method.into_boxed_route) |
-                pub fn handle_http<B>(self) -> Router<BoxRoute<B>>
-                where
-                    B: Body<Data = Bytes> + Send + Sync + 'static,
-                    B::Error: std::error::Error + Send + Sync,
+                /// | `http_axum` | [`into_route`](#method.into_route) |
+                pub fn handle_http(self) -> Router
                 {
-                    self.into_boxed_route::<B>()
+                    self.into_route()
                 }
             }
 
