@@ -1,5 +1,5 @@
 <!DOCTYPE HTML>
-<html lang="en" class="sidebar-visible no-js light">
+<html lang="en" class="light" dir="ltr">
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
@@ -8,10 +8,9 @@
 
         <!-- Custom HTML head -->
         
-        <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
         <meta name="description" content="">
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <meta name="theme-color" content="#ffffff" />
+        <meta name="theme-color" content="#ffffff">
 
         <link rel="icon" href="favicon.svg">
         <link rel="shortcut icon" href="favicon.png">
@@ -32,15 +31,16 @@
         <!-- Custom theme stylesheets -->
 
     </head>
-    <body>
+    <body class="sidebar-visible no-js">
+    <div id="body-container">
         <!-- Provide site root to javascript -->
-        <script type="text/javascript">
+        <script>
             var path_to_root = "";
             var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "light";
         </script>
 
         <!-- Work around some values being stored in localStorage wrapped in quotes -->
-        <script type="text/javascript">
+        <script>
             try {
                 var theme = localStorage.getItem('mdbook-theme');
                 var sidebar = localStorage.getItem('mdbook-sidebar');
@@ -56,50 +56,81 @@
         </script>
 
         <!-- Set the theme before any content is loaded, prevents flash -->
-        <script type="text/javascript">
+        <script>
             var theme;
             try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
             if (theme === null || theme === undefined) { theme = default_theme; }
             var html = document.querySelector('html');
-            html.classList.remove('no-js')
             html.classList.remove('light')
             html.classList.add(theme);
-            html.classList.add('js');
+            var body = document.querySelector('body');
+            body.classList.remove('no-js')
+            body.classList.add('js');
         </script>
 
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
         <!-- Hide / unhide sidebar before it is displayed -->
-        <script type="text/javascript">
-            var html = document.querySelector('html');
-            var sidebar = 'hidden';
+        <script>
+            var body = document.querySelector('body');
+            var sidebar = null;
+            var sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
             if (document.body.clientWidth >= 1080) {
                 try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
                 sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
             }
-            html.classList.remove('sidebar-visible');
-            html.classList.add("sidebar-" + sidebar);
+            sidebar_toggle.checked = sidebar === 'visible';
+            body.classList.remove('sidebar-visible');
+            body.classList.add("sidebar-" + sidebar);
         </script>
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
             <div class="sidebar-scrollbox">
                 <ol class="chapter"><li class="chapter-item expanded "><a href="01_introduction.html"><strong aria-hidden="true">1.</strong> Introduction</a></li><li class="chapter-item expanded "><a href="02_quickstart.html"><strong aria-hidden="true">2.</strong> Quickstart</a></li><li class="chapter-item expanded "><a href="03_define_service.html"><strong aria-hidden="true">3.</strong> Define Service</a></li><li class="chapter-item expanded "><a href="04_server.html"><strong aria-hidden="true">4.</strong> Server</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="04a_async_std.html"><strong aria-hidden="true">4.1.</strong> async-std</a></li><li class="chapter-item expanded "><a href="04b_tokio.html" class="active"><strong aria-hidden="true">4.2.</strong> tokio</a></li></ol></li><li class="chapter-item expanded "><a href="05_integration.html"><strong aria-hidden="true">5.</strong> Integration</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="05a_actix_web.html"><strong aria-hidden="true">5.1.</strong> actix-web</a></li><li class="chapter-item expanded "><a href="05b_tide.html"><strong aria-hidden="true">5.2.</strong> tide</a></li><li class="chapter-item expanded "><a href="05c_warp.html"><strong aria-hidden="true">5.3.</strong> warp</a></li></ol></li><li class="chapter-item expanded "><a href="06_client.html"><strong aria-hidden="true">6.</strong> Client</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="06a_cancellation.html"><strong aria-hidden="true">6.1.</strong> Cancellation</a></li><li class="chapter-item expanded "><a href="06b_timeout.html"><strong aria-hidden="true">6.2.</strong> Timeout</a></li></ol></li><li class="chapter-item expanded "><a href="07_tls.html"><strong aria-hidden="true">7.</strong> TLS Support</a></li><li class="chapter-item expanded "><a href="08_pubsub.html"><strong aria-hidden="true">8.</strong> PubSub</a></li><li class="chapter-item expanded "><a href="09_examples.html"><strong aria-hidden="true">9.</strong> Examples</a></li><li class="chapter-item expanded "><a href="10_change_log.html"><strong aria-hidden="true">10.</strong> Change Logs</a></li></ol>
             </div>
-            <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
         </nav>
+
+        <!-- Track and set sidebar scroll position -->
+        <script>
+            var sidebarScrollbox = document.querySelector('#sidebar .sidebar-scrollbox');
+            sidebarScrollbox.addEventListener('click', function(e) {
+                if (e.target.tagName === 'A') {
+                    sessionStorage.setItem('sidebar-scroll', sidebarScrollbox.scrollTop);
+                }
+            }, { passive: true });
+            var sidebarScrollTop = sessionStorage.getItem('sidebar-scroll');
+            sessionStorage.removeItem('sidebar-scroll');
+            if (sidebarScrollTop) {
+                // preserve sidebar scroll position when navigating via links within sidebar
+                sidebarScrollbox.scrollTop = sidebarScrollTop;
+            } else {
+                // scroll sidebar to current active section when navigating via "next/previous chapter" buttons
+                var activeSection = document.querySelector('#sidebar .active');
+                if (activeSection) {
+                    activeSection.scrollIntoView({ block: 'center' });
+                }
+            }
+        </script>
 
         <div id="page-wrapper" class="page-wrapper">
 
             <div class="page">
                                 <div id="menu-bar-hover-placeholder"></div>
-                <div id="menu-bar" class="menu-bar sticky bordered">
+                <div id="menu-bar" class="menu-bar sticky">
                     <div class="left-buttons">
-                        <button id="sidebar-toggle" class="icon-button" type="button" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
                             <i class="fa fa-bars"></i>
-                        </button>
+                        </label>
                         <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
                             <i class="fa fa-paint-brush"></i>
                         </button>
                         <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
-                            <li role="none"><button role="menuitem" class="theme" id="light">Light (default)</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
                             <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
                             <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
                             <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
@@ -132,7 +163,7 @@
                 </div>
 
                 <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
-                <script type="text/javascript">
+                <script>
                     document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
                     document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
                     Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
@@ -145,12 +176,12 @@
                         <h1 id="server-with-tokio-runtime"><a class="header" href="#server-with-tokio-runtime">Server with <code>tokio</code> runtime</a></h1>
 <p>This is just going to be an identical copy of the previous <a href="https://minghuaw.github.io/toy-rpc/04_server.html#example-with-export_trait-and-export_trait_impl"><code>#[export_trait]</code> and <code>#[export_trait_impl]</code> example</a>.</p>
 <pre><code class="language-toml">[dependencies]
-async-trait = &quot;0.1.50&quot;
-tokio = { version = &quot;1&quot;, features = [&quot;rt-multi-thread&quot;, &quot;macros&quot;, &quot;net&quot;] }
-toy-rpc = { version = &quot;0.7.5&quot;, features = [&quot;tokio_runtime&quot;, &quot;server&quot;] }
+async-trait = "0.1.50"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "net"] }
+toy-rpc = { version = "0.7.5", features = ["tokio_runtime", "server"] }
 
 # our service definition 
-example-service = { version = &quot;0.1.0&quot;, path = &quot;../example-service&quot; }
+example-service = { version = "0.1.0", path = "../example-service" }
 </code></pre>
 <pre><code class="language-rust noplaypen">// src/main.rs
 
@@ -168,7 +199,7 @@ use example_service::*;
 struct Abacus { }
 
 #[async_trait]
-#[export_trait_impl] // The default service name will be &quot;Arith&quot;
+#[export_trait_impl] // The default service name will be "Arith"
 impl Arith for Abacus {
     // Please note that you do NOT need to mark methods with
     // `#[export_method]` another time
@@ -182,23 +213,22 @@ impl Arith for Abacus {
     }
 
     fn say_hi(&amp;self) {
-        println!(&quot;hi&quot;);
+        println!("hi");
     }
 }
 
 #[tokio::main]
 async fn main() {
-    let addr = &quot;127.0.0.1:23333&quot;;
+    let addr = "127.0.0.1:23333";
     let arith = Arc::new(Abacus{}); // create an instance of the `Arith` service
     let listener = TcpListener::bind(addr).await.unwrap();
     let server = Server::builder()
-        .register(arith) // register service with default name &quot;Arith&quot;
+        .register(arith) // register service with default name "Arith"
         .build();
 
-    println!(&quot;Starting server at {}&quot;, &amp;addr);
+    println!("Starting server at {}", &amp;addr);
     server.accept(listener).await.unwrap()
-}
-</code></pre>
+}</code></pre>
 
                     </main>
 
@@ -208,7 +238,7 @@ async fn main() {
                                 <i class="fa fa-angle-left"></i>
                             </a>
 
-                            <a rel="next" href="05_integration.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next prefetch" href="05_integration.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <i class="fa fa-angle-right"></i>
                             </a>
 
@@ -222,7 +252,7 @@ async fn main() {
                         <i class="fa fa-angle-left"></i>
                     </a>
 
-                    <a rel="next" href="05_integration.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next prefetch" href="05_integration.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <i class="fa fa-angle-right"></i>
                     </a>
             </nav>
@@ -232,21 +262,22 @@ async fn main() {
 
 
 
-        <script type="text/javascript">
+        <script>
             window.playground_copyable = true;
         </script>
 
 
-        <script src="elasticlunr.min.js" type="text/javascript" charset="utf-8"></script>
-        <script src="mark.min.js" type="text/javascript" charset="utf-8"></script>
-        <script src="searcher.js" type="text/javascript" charset="utf-8"></script>
+        <script src="elasticlunr.min.js"></script>
+        <script src="mark.min.js"></script>
+        <script src="searcher.js"></script>
 
-        <script src="clipboard.min.js" type="text/javascript" charset="utf-8"></script>
-        <script src="highlight.js" type="text/javascript" charset="utf-8"></script>
-        <script src="book.js" type="text/javascript" charset="utf-8"></script>
+        <script src="clipboard.min.js"></script>
+        <script src="highlight.js"></script>
+        <script src="book.js"></script>
 
         <!-- Custom JS scripts -->
 
 
+    </div>
     </body>
 </html>
