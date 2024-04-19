@@ -11,7 +11,7 @@ run_task = [
         "test_tide_integration",
         "test_warp_integration",
         "test_axum_integration",
-        "test_actix_web_integration",
+        # "test_actix_web_integration",
     ] },
 ]
 

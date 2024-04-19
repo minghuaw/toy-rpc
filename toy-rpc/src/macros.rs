@@ -8,7 +8,6 @@ pub use toy_rpc_macros::{export_impl, export_trait, export_trait_impl, Topic};
         feature = "tokio_runtime",
         feature = "http_tide",
         feature = "http_warp",
-        feature = "http_actix_web"
     ),
     any(
         all(

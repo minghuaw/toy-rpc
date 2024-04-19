@@ -11,7 +11,6 @@ cfg_if! {
     } else if #[cfg(any(
         feature = "tokio_runtime",
         feature = "http_warp",
-        feature = "http_actix_web"
     ))] {
         mod tokio;
     }

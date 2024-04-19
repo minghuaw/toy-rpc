@@ -164,22 +164,6 @@ impl From<tokio::task::JoinError> for Error {
     }
 }
 
-#[cfg(feature = "http_actix_web")]
-impl From<Error> for actix_web::Error {
-    fn from(err: crate::error::Error) -> Self {
-        // wrap error with actix_web::error::InternalError for now
-        // TODO: imporve error handling
-        actix_web::error::InternalError::new(err, actix_web::http::StatusCode::OK).into()
-    }
-}
-
-#[cfg(feature = "http_actix_web")]
-impl<T> From<actix::prelude::SendError<T>> for Error {
-    fn from(err: actix::prelude::SendError<T>) -> Self {
-        Self::Internal(format!("Cannot send internal message {:?}", err).into())
-    }
-}
-
 #[cfg(any(feature = "ws_tokio", feature = "ws_async_std"))]
 impl From<tungstenite::Error> for crate::error::Error {
     fn from(err: tungstenite::Error) -> Self {

@@ -7,9 +7,6 @@ use std::sync::atomic::Ordering;
 use std::sync::Arc;
 use std::time::Duration;
 
-#[cfg(feature = "http_actix_web")]
-use actix::Recipient;
-
 use crate::message::{AtomicMessageId, MessageId};
 use crate::pubsub::{AckModeAuto, AckModeNone, SeqId};
 use crate::Error;
@@ -22,10 +19,7 @@ use async_std::task;
 use tokio::task;
 
 pub(crate) enum PubSubResponder {
-    #[cfg(not(feature = "http_actix_web"))]
     Sender(Sender<ServerBrokerItem>),
-    #[cfg(feature = "http_actix_web")]
-    Recipient(Recipient<ServerBrokerItem>),
 }
 
 pub(crate) enum PubSubItem {
@@ -282,10 +276,7 @@ macro_rules! impl_pubsub_broker_for_ack_modes {
                     all(feature = "tokio_runtime", not(feature = "async_std_runtime")),
                 ))]
                 pub fn spawn(self) {
-                    #[cfg(not(feature = "http_actix_web"))]
                     task::spawn(self.pubsub_loop());
-                    #[cfg(all(feature = "http_actix_web"))]
-                    actix::spawn(self.pubsub_loop());
                 }
 
                 pub async fn pubsub_loop(mut self) {
@@ -338,19 +329,9 @@ impl_pubsub_broker_for_ack_modes!(AckModeNone, AckModeAuto);
 
 fn send_broker_item_publication(responder: &mut PubSubResponder, msg: ServerBrokerItem) -> bool {
     match responder {
-        #[cfg(not(feature = "http_actix_web"))]
         PubSubResponder::Sender(tx) => {
             if let Err(err) = tx.try_send(msg) {
                 if let flume::TrySendError::Disconnected(_) = err {
-                    log::error!("Client is disconnected, removing from subscriptions");
-                    return false;
-                }
-            }
-        }
-        #[cfg(feature = "http_actix_web")]
-        PubSubResponder::Recipient(tx) => {
-            if let Err(err) = tx.try_send(msg) {
-                if let actix::prelude::SendError::Closed(_) = err {
                     log::error!("Client is disconnected, removing from subscriptions");
                     return false;
                 }
@@ -394,7 +375,6 @@ cfg_if::cfg_if! {
     ))] {
     pub mod publisher;
 
-    #[cfg(not(feature = "http_actix_web"))]
     pub mod subscriber;
     }
 }

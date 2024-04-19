@@ -9,8 +9,6 @@ use std::{
 };
 
 use crate::{pubsub::AckModeNone, service::AsyncServiceMap};
-
-#[cfg(any(feature = "docs", not(feature = "http_actix_web")))]
 use crate::pubsub::AckModeAuto;
 
 cfg_if! {
@@ -93,7 +91,7 @@ impl Server<AckModeNone> {
 cfg_if! {
     if #[cfg(any(
         feature = "docs",
-        all(feature = "tokio_runtime", not(feature = "async_std_runtime"), not(feature = "http_actix_web"))
+        all(feature = "tokio_runtime", not(feature = "async_std_runtime"))
     ))] {
         #[cfg(feature = "tls")]
         use tokio_rustls::{TlsAcceptor};
@@ -119,7 +117,6 @@ cfg_if! {
     if #[cfg(any(
         feature = "docs",
         all(
-            not(feature = "http_actix_web"),
             any(
                 all(
                     feature = "serde_bincode",
@@ -411,7 +408,6 @@ cfg_if! {
 
         impl_server_for_ack_modes!(AckModeNone);
 
-        #[cfg(not(feature = "docs"))]
         impl_server_for_ack_modes!(AckModeAuto);
     }
 }

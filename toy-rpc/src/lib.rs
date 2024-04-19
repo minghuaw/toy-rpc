@@ -130,7 +130,6 @@ pub mod util;
 
 /// The default path added to the HTTP url
 #[cfg(any(
-    feature = "http_actix_web",
     feature = "http_warp",
     feature = "http_tide",
     feature = "http_axum",
