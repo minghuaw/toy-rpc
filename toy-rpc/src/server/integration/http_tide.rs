@@ -106,7 +106,6 @@ cfg_if! {
                         #[cfg(any(
                             all(
                                 feature = "http_tide",
-                                not(feature = "http_actix_web"),
                                 not(feature = "http_warp"),
                                 not(feature = "http_axum"),
                             ),
@@ -116,7 +115,6 @@ cfg_if! {
                             feature = "docs",
                             doc(cfg(all(
                                 feature = "http_tide",
-                                not(feature = "http_actix_web"),
                                 not(feature = "http_warp"),
                                 not(feature = "http_axum"),
                             )))

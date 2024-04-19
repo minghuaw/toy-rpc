@@ -55,7 +55,6 @@ macro_rules! impl_http_axum_for_ack_modes {
                 #[cfg(any(
                     all(
                         feature = "http_axum",
-                        not(feature = "http_actix_web"),
                         not(feature = "http_tide"),
                         not(feature = "http_warp")
                     ),
@@ -65,7 +64,6 @@ macro_rules! impl_http_axum_for_ack_modes {
                     feature = "docs",
                     doc(cfg(all(
                         feature = "axum",
-                        not(feature = "http_actix_web"),
                         not(feature = "http_tide"),
                         not(feature = "http_warp")
                     )))

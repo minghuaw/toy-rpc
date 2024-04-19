@@ -25,7 +25,6 @@ cfg_if! {
     } else if #[cfg(any(
         feature = "tokio_runtime",
         feature = "http_warp",
-        feature = "http_actix_web"
     ))] {
         use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
     }

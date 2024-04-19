@@ -30,21 +30,20 @@ cfg_if! {
             feature = "docs",
             doc(cfg(any(
                 all(feature = "async_std_runtime", not(feature = "tokio_runtime")),
-                all(feature = "http_tide", not(feature="http_actix_web"), not(feature = "http_warp"))
+                all(feature = "http_tide", not(feature = "http_warp"))
             )))
         )]
         mod async_std;
     } else if #[cfg(any(
         feature = "tokio_runtime",
         feature = "http_warp",
-        feature = "http_actix_web"
     ))] {
         #[cfg_attr(
             feature = "docs",
             doc(any(
                 all(feature = "tokio_runtime", not(feature = "async_std_runtime")),
                 all(
-                    any(feature = "http_warp", feature = "http_actix_web"),
+                    feature = "http_warp",
                     not(feature = "http_tide")
                 )
             ))
@@ -378,7 +377,6 @@ cfg_if! {
             feature = "tokio_runtime",
             feature = "http_tide",
             feature = "http_warp",
-            feature = "http_actix_web"
         ),
         any(
             all(

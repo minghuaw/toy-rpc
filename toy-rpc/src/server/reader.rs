@@ -19,7 +19,6 @@ pub(crate) struct ServerReader<T> {
 }
 
 impl<T: CodecRead> ServerReader<T> {
-    #[cfg(not(feature = "http_actix_web"))]
     pub fn new(reader: T, services: Arc<AsyncServiceMap>) -> Self {
         Self { reader, services }
     }

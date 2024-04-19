@@ -10,38 +10,28 @@ use crate::service::{ArcAsyncServiceCall, HandlerResult};
 
 use crate::{error::Error, message::MessageId};
 
-cfg_if::cfg_if! {
-    if #[cfg(not(feature = "http_actix_web"))] {
-        use std::collections::HashMap;
-        use std::marker::PhantomData;
+use std::collections::HashMap;
+use std::marker::PhantomData;
 
-        use flume::Sender;
-        use brw::{Running, Broker};
-        use futures::sink::{Sink, SinkExt};
+use brw::{Broker, Running};
+use flume::Sender;
+use futures::sink::{Sink, SinkExt};
 
-        use crate::server::pubsub::PubSubResponder;
-        use crate::pubsub::{AckModeNone, AckModeAuto};
+use crate::pubsub::{AckModeAuto, AckModeNone};
+use crate::server::pubsub::PubSubResponder;
 
-        use super::ClientId;
-        use super::pubsub::PubSubItem;
-        use super::writer::ServerWriterItem;
-    }
-}
+use super::pubsub::PubSubItem;
+use super::writer::ServerWriterItem;
+use super::ClientId;
 
 #[cfg(all(feature = "async_std_runtime", not(feature = "tokio_runtime")))]
 use ::async_std::task::JoinHandle;
 #[cfg(any(
     feature = "docs",
-    all(
-        feature = "tokio_runtime",
-        not(feature = "async_std_runtime"),
-        not(feature = "http_actix_web")
-    )
+    all(feature = "tokio_runtime", not(feature = "async_std_runtime"),)
 ))]
 use ::tokio::task::JoinHandle;
 
-#[cfg_attr(feature = "http_actix_web", derive(actix::Message))]
-#[cfg_attr(feature = "http_actix_web", rtype(result = "()"))]
 pub(crate) enum ServerBrokerItem {
     Request {
         call: ArcAsyncServiceCall,
@@ -84,7 +74,6 @@ pub(crate) enum ServerBrokerItem {
     Stop,
 }
 
-#[cfg(not(feature = "http_actix_web"))]
 pub(crate) struct ServerBroker<AckMode> {
     pub client_id: ClientId,
     pub executions: HashMap<MessageId, JoinHandle<()>>,
@@ -93,7 +82,6 @@ pub(crate) struct ServerBroker<AckMode> {
     ack_mode: PhantomData<AckMode>,
 }
 
-#[cfg(not(feature = "http_actix_web"))]
 impl<AckMode> ServerBroker<AckMode> {
     pub fn new(client_id: ClientId, pubsub_broker: Sender<PubSubItem>) -> Self {
         Self {
@@ -227,7 +215,6 @@ impl<AckMode> ServerBroker<AckMode> {
     }
 }
 
-#[cfg(not(feature = "http_actix_web"))]
 impl ServerBroker<AckModeNone> {
     // Publish is the PubSub message from client to server
     async fn handle_publish<'w, W>(
@@ -244,7 +231,6 @@ impl ServerBroker<AckModeNone> {
     }
 }
 
-#[cfg(not(feature = "http_actix_web"))]
 impl ServerBroker<AckModeAuto> {
     async fn auto_ack<'w, W>(&'w self, writer: &'w mut W, id: MessageId) -> Result<(), Error>
     where
@@ -275,7 +261,6 @@ impl ServerBroker<AckModeAuto> {
 macro_rules! impl_server_broker_for_ack_modes {
     ($($ack_mode:ty),*) => {
         $(
-            #[cfg(not(feature = "http_actix_web"))]
             #[async_trait::async_trait]
             impl Broker for ServerBroker<$ack_mode> {
                 type Item = ServerBrokerItem;
@@ -375,11 +360,7 @@ fn spawn_timed_request_execution(
 }
 
 /// Spawn the execution in a tokio task and return the JoinHandle
-#[cfg(all(
-    feature = "tokio_runtime",
-    not(feature = "async_std_runtime"),
-    not(feature = "http_actix_web")
-))]
+#[cfg(all(feature = "tokio_runtime", not(feature = "async_std_runtime"),))]
 fn spawn_timed_request_execution(
     broker: Sender<ServerBrokerItem>,
     duration: Duration,
@@ -417,7 +398,6 @@ pub(crate) async fn execute_call(
     result
 }
 
-#[cfg(not(feature = "http_actix_web"))]
 pub(crate) async fn execute_timed_call(
     id: MessageId,
     duration: Duration,

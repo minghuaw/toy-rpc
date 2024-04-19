@@ -13,8 +13,6 @@ use crate::{
 
 use crate::protocol::Header;
 
-#[cfg_attr(feature = "http_actix_web", derive(actix::Message))]
-#[cfg_attr(feature = "http_actix_web", rtype(result = "()"))]
 pub(crate) enum ServerWriterItem {
     Response {
         id: MessageId,
@@ -40,7 +38,6 @@ pub(crate) struct ServerWriter<W> {
 }
 
 impl<W: CodecWrite> ServerWriter<W> {
-    #[cfg(not(feature = "http_actix_web"))]
     pub fn new(writer: W) -> Self {
         Self { writer }
     }

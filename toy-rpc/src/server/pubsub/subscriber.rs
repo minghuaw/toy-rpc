@@ -138,8 +138,6 @@ macro_rules! impl_server_pubsub_for_ack_modes {
                 ///
                 /// Only one subscriber per topic can exist at the same time on the server.
                 /// Creating a new subscriber will drop the sender of the old subscriber.
-                #[cfg(not(feature = "http_actix_web"))]
-                #[cfg_attr(feature = "docs", doc(cfg(not(feature = "http_actix_web"))))]
                 pub fn subscriber<T: Topic>(&self, cap: usize) -> Result<Subscriber<T, PhantomCodec, $ack_mode>, Error> {
                     let (sender, rx) = flume::bounded(cap);
                     let client_id = RESERVED_CLIENT_ID;
